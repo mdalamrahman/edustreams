@@ -17,11 +17,8 @@ from telethon.tl.types import (
     DocumentAttributeFilename,
     MessageMediaDocument,
     PeerChannel,
-    ChatInviteAlready,
-    ChatInvite,
 )
 from telethon.tl.functions.channels import GetFullChannelRequest
-from telethon.tl.functions.messages import CheckChatInviteRequest
 
 # Environment Variables
 API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
@@ -53,26 +50,6 @@ _client_lock = asyncio.Lock()
 _entity_cache = {}
 
 
-async def resolve_invite_link(client: TelegramClient, invite_url: str):
-    """Resolves Telegram private group invite link (https://t.me/+HASH) to chat entity with access_hash."""
-    if not invite_url:
-        return None
-    clean_hash = invite_url.split("+")[-1].split("/")[-1].strip()
-    try:
-        res = await client(CheckChatInviteRequest(clean_hash))
-        if hasattr(res, 'chat') and res.chat:
-            print(f"[Telethon Invite] Resolved hash '{clean_hash}' to title: {getattr(res.chat, 'title', res.chat)}")
-            return res.chat
-    except Exception as e:
-        print(f"[Telethon Invite] CheckChatInviteRequest failed for hash '{clean_hash}': {e}")
-
-    try:
-        return await client.get_entity(invite_url)
-    except Exception as e:
-        print(f"[Telethon Invite] get_entity failed for invite '{invite_url}': {e}")
-        return None
-
-
 async def get_client() -> TelegramClient:
     """Returns an authenticated Telethon client using the Bot Token."""
     global _telethon_client, _entity_cache
@@ -87,20 +64,18 @@ async def get_client() -> TelegramClient:
             me = await _telethon_client.get_me()
             print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
 
-            # Pre-warm entity cache for all configured channels to cache access_hash
+            # Pre-warm entity cache for all configured channels
             for cname, cid in CHANNEL_IDS.items():
-                try:
-                    ent = await _telethon_client.get_entity(cid)
-                    _entity_cache[cid] = ent
-                    print(f"[Telethon Bot] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
-                except Exception as e:
-                    print(f"[Telethon Bot] Entity pre-warm failed for {cname} ({cid}): {e}")
-                    invite = CHANNEL_INVITE_LINKS.get(cname, "")
-                    if invite:
-                        ent = await resolve_invite_link(_telethon_client, invite)
+                clean_id = int(str(cid).replace("-100", "").replace("-", ""))
+                for target in [cid, clean_id, PeerChannel(clean_id)]:
+                    try:
+                        ent = await _telethon_client.get_entity(target)
                         if ent:
                             _entity_cache[cid] = ent
-                            print(f"[Telethon Bot] Cached entity via invite for {cname}: {getattr(ent, 'title', ent)}")
+                            print(f"[Telethon Bot] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
+                            break
+                    except Exception as e:
+                        print(f"[Telethon Bot] Pre-warm target {target} failed for {cname}: {e}")
 
     return _telethon_client
 
@@ -184,30 +159,13 @@ async def resolve_channel_peer(chat_id: int):
 
     clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
 
-    # 1. Try direct resolution
-    for target in [chat_id, clean_id]:
+    for target in [chat_id, clean_id, PeerChannel(clean_id)]:
         try:
             entity = await client.get_entity(target)
-            _entity_cache[chat_id] = entity
-            return entity
-        except Exception:
-            pass
-
-    # 2. Try invite link resolution if configured in environment
-    cname = next((k for k, v in CHANNEL_IDS.items() if v == chat_id), None)
-    if cname and CHANNEL_INVITE_LINKS.get(cname):
-        entity = await resolve_invite_link(client, CHANNEL_INVITE_LINKS[cname])
-        if entity:
-            _entity_cache[chat_id] = entity
-            print(f"[Telethon] Resolved entity for {cname} ({chat_id}) via invite link")
-            return entity
-
-    # 3. Try get_input_entity
-    for target in [chat_id, clean_id]:
-        try:
-            entity = await client.get_input_entity(target)
-            _entity_cache[chat_id] = entity
-            return entity
+            if entity:
+                _entity_cache[chat_id] = entity
+                print(f"[Telethon] Resolved entity for {chat_id}: {getattr(entity, 'title', entity)}")
+                return entity
         except Exception:
             pass
 
