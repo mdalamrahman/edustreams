@@ -1,0 +1,46 @@
+{
+  "DSA": {
+    "channel": {
+      "name": "Striver DSA",
+      "id": -1004390749731,
+      "category": "DSA"
+    },
+    "videos": [],
+    "documents": [],
+    "photos": [],
+    "texts": []
+  },
+  "System Design": {
+    "channel": {
+      "name": "STRIVER LLD",
+      "id": -1004329144420,
+      "category": "System Design"
+    },
+    "videos": [],
+    "documents": [],
+    "photos": [],
+    "texts": []
+  },
+  "DBMS": {
+    "channel": {
+      "name": "Striver DBMS",
+      "id": -1004332462419,
+      "category": "DBMS"
+    },
+    "videos": [],
+    "documents": [],
+    "photos": [],
+    "texts": []
+  },
+  "Computer Networks": {
+    "channel": {
+      "name": "Striver CN",
+      "id": -1004308430774,
+      "category": "Computer Networks"
+    },
+    "videos": [],
+    "documents": [],
+    "photos": [],
+    "texts": []
+  }
+}
