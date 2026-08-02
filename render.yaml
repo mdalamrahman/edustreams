@@ -8,6 +8,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
       - key: TELEGRAM_BOT_TOKEN
         value: 8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI
       - key: TELEGRAM_API_ID
