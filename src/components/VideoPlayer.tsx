@@ -263,7 +263,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <p className="text-[11px] text-slate-500 mb-4 max-w-sm">
               {!streamSrc
                 ? 'No stream URL available — missing channel or message ID.'
-                : 'Connection to HF Telethon backend failed. The Space may be sleeping or restarting.'}
+                : 'Connection to Render Telethon backend failed. The instance may be spinning up from inactivity.'}
             </p>
             <button
               onClick={handleReconnect}
@@ -358,10 +358,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     ))}
                   </div>
 
-                  {/* HF Backend connection indicator */}
+                  {/* Render Backend connection indicator */}
                   <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400" title={`Streaming via ${TELEGRAM_BACKEND_URL}`}>
                     <Wifi className="w-3 h-3" />
-                    <span className="hidden xl:inline">HF Live</span>
+                    <span className="hidden xl:inline">Render Live</span>
                   </div>
 
                   <button
