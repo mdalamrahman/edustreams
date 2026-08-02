@@ -8,34 +8,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - fromGroup: edustremas
       - key: PYTHON_VERSION
         value: 3.11.8
-      - key: TELEGRAM_BOT_TOKEN
-        value: 8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI
-      - key: TELEGRAM_API_ID
-        value: "37503742"
-      - key: TELEGRAM_API_HASH
-        value: e9418514754885f7a01050ca1d2997b1
-      - key: TELEGRAM_CHANNEL_DSA
-        value: "-1004390749731"
-      - key: TELEGRAM_CHANNEL_SYSTEM_DESIGN
-        value: "-1004329144420"
-      - key: TELEGRAM_CHANNEL_DBMS
-        value: "-1004332462419"
-      - key: TELEGRAM_CHANNEL_CN
-        value: "-1004308430774"
-      - key: GROQ_API_KEY
-        value: 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
-      - key: MISTRAL_API_KEY
-        value: ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5
-      - key: ONLINE_COMPILER_API_KEY
-        value: 7a0cea3dc7bb5dd29fef0795568febfe
-      - key: TELEGRAM_INVITE_DSA
-        sync: false
-      - key: TELEGRAM_INVITE_SYSTEM_DESIGN
-        sync: false
-      - key: TELEGRAM_INVITE_DBMS
-        sync: false
-      - key: TELEGRAM_INVITE_CN
-        sync: false
+
 
