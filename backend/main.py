@@ -243,19 +243,16 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
         return {"chat_id": chat_id, "count": 0, "videos": [], "error": str(e)}
 
 
-@app.get("/api/catalog/all")
-async def get_all_catalogs(limit: int = 50):
-    """Lists videos from all 4 configured Telegram channels."""
-    result = {}
-    for category, cid in CHANNEL_IDS.items():
-        result[category] = await fetch_channel_videos(cid, limit=limit)
-    return result
-
-
-@app.get("/api/catalog/{chat_id:int}")
-async def get_channel_catalog(chat_id: int, limit: int = 50):
-    """Lists video messages from a single Telegram channel by integer chat_id."""
-    return await fetch_channel_videos(chat_id, limit=limit)
+@app.get("/api/catalog/{chat_id}")
+async def get_channel_catalog(chat_id: str, limit: int = 50):
+    """Lists video messages from a single Telegram channel by chat_id (supports negative IDs)."""
+    if chat_id == "all":
+        return await get_all_catalogs(limit=limit)
+    try:
+        cid = int(chat_id)
+        return await fetch_channel_videos(cid, limit=limit)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid chat_id format")
 
 
 
