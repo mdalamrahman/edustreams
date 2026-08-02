@@ -18,6 +18,7 @@ from telethon.tl.types import (
     MessageMediaDocument,
     PeerChannel,
 )
+from telethon.tl.functions.channels import GetFullChannelRequest
 
 # Environment Variables
 API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
@@ -137,46 +138,68 @@ async def resolve_channel_peer(chat_id: int):
 
 
 async def fetch_channel_videos(chat_id: int, limit: int = 50):
-    """Internal helper to fetch videos from a channel entity."""
+    """Internal helper to fetch videos from a channel entity using get_messages (compatible with bot tokens)."""
     try:
         client = await get_client()
         entity = await resolve_channel_peer(chat_id)
         videos = []
 
-        async for msg in client.iter_messages(entity, limit=limit):
-            if not msg.media or not isinstance(msg.media, MessageMediaDocument):
-                continue
-            doc = msg.media.document
-            if not doc:
-                continue
+        # Bot tokens cannot call iter_messages/GetHistoryRequest.
+        # Use get_messages with ID batch ranges instead!
+        max_id = 10000
+        try:
+            full = await client(GetFullChannelRequest(entity))
+            if hasattr(full, 'full_chat') and getattr(full.full_chat, 'read_inbox_max_id', 0) > 0:
+                max_id = max(max_id, full.full_chat.read_inbox_max_id + 500)
+        except Exception:
+            pass
 
-            is_video = any(
-                isinstance(a, DocumentAttributeVideo) for a in (doc.attributes or [])
-            )
-            if not is_video:
+        # Probe in chunks of 100 message IDs from top down
+        for r in range(max_id, 0, -100):
+            ids = list(range(max(1, r - 99), r + 1))
+            try:
+                msgs = await client.get_messages(entity, ids=ids)
+                for msg in (msgs or []):
+                    if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
+                        continue
+                    doc = msg.media.document
+                    if not doc:
+                        continue
+
+                    is_video = any(
+                        isinstance(a, DocumentAttributeVideo) for a in (doc.attributes or [])
+                    )
+                    if not is_video:
+                        continue
+
+                    file_name = next(
+                        (a.file_name for a in (doc.attributes or []) if isinstance(a, DocumentAttributeFilename)),
+                        f"video_{msg.id}.mp4",
+                    )
+                    duration = next(
+                        (a.duration for a in (doc.attributes or []) if isinstance(a, DocumentAttributeVideo)),
+                        0,
+                    )
+
+                    videos.append({
+                        "msg_id": msg.id,
+                        "file_id": str(doc.id),
+                        "file_name": file_name,
+                        "size_bytes": doc.size,
+                        "size_mb": round(doc.size / (1024 * 1024), 1),
+                        "duration": duration,
+                        "mime_type": doc.mime_type,
+                        "caption": (msg.message or "")[:300],
+                        "date": msg.date.isoformat() if msg.date else None,
+                        "stream_url": f"/stream/{chat_id}/{msg.id}",
+                    })
+                    if len(videos) >= limit:
+                        break
+            except Exception as e:
+                print(f"[Catalog] Batch error for chat {chat_id}: {e}")
                 continue
-
-            file_name = next(
-                (a.file_name for a in (doc.attributes or []) if isinstance(a, DocumentAttributeFilename)),
-                f"video_{msg.id}.mp4",
-            )
-            duration = next(
-                (a.duration for a in (doc.attributes or []) if isinstance(a, DocumentAttributeVideo)),
-                0,
-            )
-
-            videos.append({
-                "msg_id": msg.id,
-                "file_id": str(doc.id),
-                "file_name": file_name,
-                "size_bytes": doc.size,
-                "size_mb": round(doc.size / (1024 * 1024), 1),
-                "duration": duration,
-                "mime_type": doc.mime_type,
-                "caption": (msg.message or "")[:300],
-                "date": msg.date.isoformat() if msg.date else None,
-                "stream_url": f"/stream/{chat_id}/{msg.id}",
-            })
+            if len(videos) >= limit:
+                break
 
         return {"chat_id": chat_id, "count": len(videos), "videos": videos}
 
