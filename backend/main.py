@@ -201,16 +201,19 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
                     if not doc:
                         continue
 
-                    is_video = any(
-                        isinstance(a, DocumentAttributeVideo) for a in (doc.attributes or [])
-                    )
-                    if not is_video:
-                        continue
-
                     file_name = next(
                         (a.file_name for a in (doc.attributes or []) if isinstance(a, DocumentAttributeFilename)),
                         f"video_{msg.id}.mp4",
                     )
+                    mime_type = doc.mime_type or ""
+                    is_video = (
+                        any(isinstance(a, DocumentAttributeVideo) for a in (doc.attributes or []))
+                        or mime_type.startswith("video/")
+                        or file_name.lower().endswith((".mp4", ".mkv", ".webm", ".avi", ".mov", ".flv"))
+                    )
+                    if not is_video:
+                        continue
+
                     duration = next(
                         (a.duration for a in (doc.attributes or []) if isinstance(a, DocumentAttributeVideo)),
                         0,
