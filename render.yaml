@@ -30,3 +30,12 @@ services:
         value: ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5
       - key: ONLINE_COMPILER_API_KEY
         value: 7a0cea3dc7bb5dd29fef0795568febfe
+      - key: TELEGRAM_INVITE_DSA
+        sync: false
+      - key: TELEGRAM_INVITE_SYSTEM_DESIGN
+        sync: false
+      - key: TELEGRAM_INVITE_DBMS
+        sync: false
+      - key: TELEGRAM_INVITE_CN
+        sync: false
+

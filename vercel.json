@@ -1,28 +1,31 @@
 {
-  "services": {
-    "frontend": {
-      "root": ".",
-      "framework": "vite"
-    },
-    "backend": {
-      "root": "backend",
-      "entrypoint": "main:app"
-    }
-  },
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api(/.*)?",
-      "destination": {
-        "type": "service",
-        "service": "backend"
-      }
+      "source": "/stream/(.*)",
+      "destination": "https://edustream-backend-90vm.onrender.com/stream/$1"
+    },
+    {
+      "source": "/api/download/(.*)",
+      "destination": "https://edustream-backend-90vm.onrender.com/api/download/$1"
+    },
+    {
+      "source": "/api/catalog/(.*)",
+      "destination": "https://edustream-backend-90vm.onrender.com/api/catalog/$1"
+    },
+    {
+      "source": "/api/compile",
+      "destination": "https://edustream-backend-90vm.onrender.com/api/compile"
+    },
+    {
+      "source": "/api/ai/(.*)",
+      "destination": "https://edustream-backend-90vm.onrender.com/api/ai/$1"
     },
     {
       "source": "/(.*)",
-      "destination": {
-        "type": "service",
-        "service": "frontend"
-      }
+      "destination": "/index.html"
     }
   ]
 }

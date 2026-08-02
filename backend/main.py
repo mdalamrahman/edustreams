@@ -36,7 +36,15 @@ CHANNEL_IDS = {
     "Computer Networks": int(os.getenv("TELEGRAM_CHANNEL_CN", "-1004308430774")),
 }
 
-# Telethon MTProto client (bot session — no session file needed)
+# Optional Channel Invite Links (read dynamically from environment)
+CHANNEL_INVITE_LINKS = {
+    "DSA": os.getenv("TELEGRAM_INVITE_DSA", ""),
+    "System Design": os.getenv("TELEGRAM_INVITE_SYSTEM_DESIGN", ""),
+    "DBMS": os.getenv("TELEGRAM_INVITE_DBMS", ""),
+    "Computer Networks": os.getenv("TELEGRAM_INVITE_CN", ""),
+}
+
+# Telethon MTProto client (bot session — persistent SQLite session)
 _telethon_client: Optional[TelegramClient] = None
 _client_lock = asyncio.Lock()
 _entity_cache = {}
@@ -64,13 +72,14 @@ async def get_client() -> TelegramClient:
                     print(f"[Telethon Bot] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
                 except Exception as e:
                     print(f"[Telethon Bot] Entity pre-warm failed for {cname} ({cid}): {e}")
-                    clean_id = int(str(cid).replace("-100", "").replace("-", ""))
-                    try:
-                        ent = await _telethon_client.get_entity(clean_id)
-                        _entity_cache[cid] = ent
-                        print(f"[Telethon Bot] Cached clean entity for {cname} ({clean_id}): {getattr(ent, 'title', ent)}")
-                    except Exception as e2:
-                        print(f"[Telethon Bot] Clean entity pre-warm failed for {cname}: {e2}")
+                    invite = CHANNEL_INVITE_LINKS.get(cname, "")
+                    if invite:
+                        try:
+                            ent = await _telethon_client.get_entity(invite)
+                            _entity_cache[cid] = ent
+                            print(f"[Telethon Bot] Cached entity via invite for {cname}: {getattr(ent, 'title', ent)}")
+                        except Exception as e2:
+                            print(f"[Telethon Bot] Invite pre-warm failed for {cname}: {e2}")
 
     return _telethon_client
 
@@ -154,6 +163,7 @@ async def resolve_channel_peer(chat_id: int):
 
     clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
 
+    # 1. Try direct resolution
     for target in [chat_id, clean_id]:
         try:
             entity = await client.get_entity(target)
@@ -162,6 +172,18 @@ async def resolve_channel_peer(chat_id: int):
         except Exception:
             pass
 
+    # 2. Try invite link resolution if configured in environment
+    cname = next((k for k, v in CHANNEL_IDS.items() if v == chat_id), None)
+    if cname and CHANNEL_INVITE_LINKS.get(cname):
+        try:
+            entity = await client.get_entity(CHANNEL_INVITE_LINKS[cname])
+            _entity_cache[chat_id] = entity
+            print(f"[Telethon] Resolved entity for {cname} ({chat_id}) via invite link")
+            return entity
+        except Exception as e:
+            print(f"[Telethon] Invite resolution failed for {cname}: {e}")
+
+    # 3. Try get_input_entity
     for target in [chat_id, clean_id]:
         try:
             entity = await client.get_input_entity(target)
