@@ -126,11 +126,21 @@ async def read_root():
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------
 
+async def resolve_channel_peer(chat_id: int):
+    """Resolves a channel chat_id to a Telethon entity or PeerChannel for bot tokens."""
+    client = await get_client()
+    try:
+        return await client.get_entity(chat_id)
+    except Exception:
+        clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
+        return PeerChannel(clean_id)
+
+
 async def fetch_channel_videos(chat_id: int, limit: int = 50):
     """Internal helper to fetch videos from a channel entity."""
     try:
         client = await get_client()
-        entity = await client.get_entity(chat_id)
+        entity = await resolve_channel_peer(chat_id)
         videos = []
 
         async for msg in client.iter_messages(entity, limit=limit):
@@ -210,7 +220,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
     """
     try:
         client = await get_client()
-        entity = await client.get_entity(chat_id)
+        entity = await resolve_channel_peer(chat_id)
         msg = await client.get_messages(entity, ids=msg_id)
 
         if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
@@ -301,7 +311,7 @@ async def download_telegram_attachment(
     """Downloads document/attachment from a Telegram message via MTProto."""
     try:
         client = await get_client()
-        entity = await client.get_entity(chat_id)
+        entity = await resolve_channel_peer(chat_id)
         msg = await client.get_messages(entity, ids=msg_id)
 
         if not msg or not msg.media:

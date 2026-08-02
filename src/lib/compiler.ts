@@ -1,6 +1,5 @@
 import { CodeExecutionResult } from './types';
-
-const ONLINE_COMPILER_API_KEY = import.meta.env.VITE_ONLINE_COMPILER_API_KEY || '7a0cea3dc7bb5dd29fef0795568febfe';
+import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export type SupportedLanguage = 'python' | 'java' | 'cpp' | 'sql' | 'go' | 'rust' | 'javascript';
 
@@ -8,11 +7,11 @@ export async function executeCode(code: string, language: SupportedLanguage): Pr
   const startTime = performance.now();
   
   try {
-    const response = await fetch('https://api.onlinecompiler.io/v1/compile', {
+    const compileEndpoint = `${TELEGRAM_BACKEND_URL}/api/compile`;
+    const response = await fetch(compileEndpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ONLINE_COMPILER_API_KEY}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         language: language,

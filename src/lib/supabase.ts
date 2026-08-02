@@ -56,7 +56,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7121 | Size: 17.7 MB]\nFile: Count primes in range L to R.mp4\nLocation: 19. Maths/01. Sieve of Eratosthenes/03. Count prime",
   "duration_seconds": 350,
   "transcript": "Ingested from Telegram Channel Post #7121 (Count primes in range L to R.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -93,7 +93,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7120 | Size: 11.4 MB]\nFile: Prime factorisation of a Number.mp4\nLocation: 19. Maths/01. Sieve of Eratosthenes/02. Prime fa",
   "duration_seconds": 228,
   "transcript": "Ingested from Telegram Channel Post #7120 (Prime factorisation of a Number.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -130,7 +130,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7119 | Size: 54.4 MB]\nFile: Print all primes till N.mp4\nLocation: 19. Maths/01. Sieve of Eratosthenes/01. Print all primes",
   "duration_seconds": 1074,
   "transcript": "Ingested from Telegram Channel Post #7119 (Print all primes till N.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -167,7 +167,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7118 | Size: 19.8 MB]\nFile: Shortest Palindrome.mp4\nLocation: 18. Strings (Advanced Algo)/02. Advanced Problems (Less aske",
   "duration_seconds": 418,
   "transcript": "Ingested from Telegram Channel Post #7118 (Shortest Palindrome.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -204,7 +204,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7117 | Size: 24.4 MB]\nFile: KMP Algorithm or LPS array.mp4\nLocation: 18. Strings (Advanced Algo)/02. Advanced Problems (Le",
   "duration_seconds": 565,
   "transcript": "Ingested from Telegram Channel Post #7117 (KMP Algorithm or LPS array.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -241,7 +241,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7116 | Size: 25.2 MB]\nFile: Z function.mp4\nLocation: 18. Strings (Advanced Algo)/02. Advanced Problems (Less asked)/02. Z ",
   "duration_seconds": 574,
   "transcript": "Ingested from Telegram Channel Post #7116 (Z function.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -278,7 +278,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7115 | Size: 34.6 MB]\nFile: Rabin Karp Algorithm.mp4\nLocation: 18. Strings (Advanced Algo)/02. Advanced Problems (Less ask",
   "duration_seconds": 785,
   "transcript": "Ingested from Telegram Channel Post #7115 (Rabin Karp Algorithm.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -315,7 +315,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7114 | Size: 63.5 MB]\nFile: Count and say.mp4\nLocation: 18. Strings (Advanced Algo)/01. Medium Problems/03. Count and say\n",
   "duration_seconds": 1146,
   "transcript": "Ingested from Telegram Channel Post #7114 (Count and say.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -352,7 +352,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7113 | Size: 70.0 MB]\nFile: Minimum number of bracket reversals to make an expression balanced.mp4\nLocation: 18. Strings (",
   "duration_seconds": 1169,
   "transcript": "Ingested from Telegram Channel Post #7113 (Minimum_number_of_bracket_reversals_to_make_an_expression_balanced.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -389,7 +389,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7112 | Size: 56.0 MB]\nFile: Reverse every word in a string.mp4\nLocation: 18. Strings (Advanced Algo)/01. Medium Problems/0",
   "duration_seconds": 940,
   "transcript": "Ingested from Telegram Channel Post #7112 (Reverse every word in a string.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -426,7 +426,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7111 | Size: 86.1 MB]\nFile: Maximum Xor with an element from an array.mp4\nLocation: 17. Tries/02. Problems/04. Maximum Xor",
   "duration_seconds": 1394,
   "transcript": "Ingested from Telegram Channel Post #7111 (Maximum Xor with an element from an array.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -463,7 +463,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7110 | Size: 107.3 MB]\nFile: Maximum XOR of two numbers in an array.mp4\nLocation: 17. Tries/02. Problems/03. Maximum XOR of",
   "duration_seconds": 2039,
   "transcript": "Ingested from Telegram Channel Post #7110 (Maximum XOR of two numbers in an array.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -500,7 +500,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7109 | Size: 23.1 MB]\nFile: Number of distinct substrings in a string.mp4\nLocation: 17. Tries/02. Problems/02. Number of d",
   "duration_seconds": 496,
   "transcript": "Ingested from Telegram Channel Post #7109 (Number of distinct substrings in a string.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -537,7 +537,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7108 | Size: 81.0 MB]\nFile: Longest Word with All Prefixes.mp4\nLocation: 17. Tries/02. Problems/01. Longest Word with All ",
   "duration_seconds": 1476,
   "transcript": "Ingested from Telegram Channel Post #7108 (Longest Word with All Prefixes.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -574,7 +574,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7107 | Size: 80.7 MB]\nFile: Trie Implementation and Advanced Operations.mp4\nLocation: 17. Tries/01. Theory/02. Trie Implem",
   "duration_seconds": 1330,
   "transcript": "Ingested from Telegram Channel Post #7107 (Trie Implementation and Advanced Operations.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -611,7 +611,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7106 | Size: 102.1 MB]\nFile: Trie Implementation and Operations.mp4\nLocation: 17. Tries/01. Theory/01. Trie Implementation ",
   "duration_seconds": 1780,
   "transcript": "Ingested from Telegram Channel Post #7106 (Trie Implementation and Operations.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -648,7 +648,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7105 | Size: 154.9 MB]\nFile: Palindrome partitioning II.mp4\nLocation: 16. Dynamic Programming/09. MCM DP/04. Palindrome par",
   "duration_seconds": 1190,
   "transcript": "Ingested from Telegram Channel Post #7105 (Palindrome partitioning II.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -685,7 +685,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7104 | Size: 209.2 MB]\nFile: Burst balloons.mp4\nLocation: 16. Dynamic Programming/09. MCM DP/03. Burst balloons\n\nFollow Now",
   "duration_seconds": 1723,
   "transcript": "Ingested from Telegram Channel Post #7104 (Burst balloons.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
   "quiz_json": [
@@ -722,7 +722,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7103 | Size: 180.6 MB]\nFile: Minimum cost to cut the stick.mp4\nLocation: 16. Dynamic Programming/09. MCM DP/02. Minimum cos",
   "duration_seconds": 1434,
   "transcript": "Ingested from Telegram Channel Post #7103 (Minimum cost to cut the stick.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -759,7 +759,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7102 | Size: 365.5 MB]\nFile: Matrix chain multiplication.mp4\nLocation: 16. Dynamic Programming/09. MCM DP/01. Matrix chain ",
   "duration_seconds": 3182,
   "transcript": "Ingested from Telegram Channel Post #7102 (Matrix chain multiplication.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -796,7 +796,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7101 | Size: 194.6 MB]\nFile: Wildcard matching.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/09. Wildcard matchin",
   "duration_seconds": 1866,
   "transcript": "Ingested from Telegram Channel Post #7101 (Wildcard matching.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -833,7 +833,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7100 | Size: 199.1 MB]\nFile: Edit distance.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/08. Edit distance\n\nFollo",
   "duration_seconds": 1601,
   "transcript": "Ingested from Telegram Channel Post #7100 (Edit distance.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -870,7 +870,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7099 | Size: 166.1 MB]\nFile: Distinct subsequences.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/07. Distinct sub",
   "duration_seconds": 1311,
   "transcript": "Ingested from Telegram Channel Post #7099 (Distinct subsequences.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -907,7 +907,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7098 | Size: 202.4 MB]\nFile: Shortest common supersequence.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/06. Shor",
   "duration_seconds": 1555,
   "transcript": "Ingested from Telegram Channel Post #7098 (Shortest common supersequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -944,7 +944,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7097 | Size: 57.8 MB]\nFile: Minimum insertions or deletions to convert string A to B.mp4\nLocation: 16. Dynamic Programming",
   "duration_seconds": 426,
   "transcript": "Ingested from Telegram Channel Post #7097 (Minimum insertions or deletions to convert string A to B.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -981,7 +981,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7096 | Size: 87.8 MB]\nFile: Minimum insertions to make string palindrome.mp4\nLocation: 16. Dynamic Programming/08. DP on s",
   "duration_seconds": 699,
   "transcript": "Ingested from Telegram Channel Post #7096 (Minimum insertions to make string palindrome.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1018,7 +1018,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7095 | Size: 59.5 MB]\nFile: Longest palindromic subsequence.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/03. Lo",
   "duration_seconds": 549,
   "transcript": "Ingested from Telegram Channel Post #7095 (Longest palindromic subsequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1055,7 +1055,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7094 | Size: 95.6 MB]\nFile: Longest common substring.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/02. Longest c",
   "duration_seconds": 822,
   "transcript": "Ingested from Telegram Channel Post #7094 (Longest common substring.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1092,7 +1092,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7093 | Size: 217.6 MB]\nFile: Longest common subsequence.mp4\nLocation: 16. Dynamic Programming/08. DP on strings/01. Longest",
   "duration_seconds": 2102,
   "transcript": "Ingested from Telegram Channel Post #7093 (Longest common subsequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1129,7 +1129,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7092 | Size: 136.8 MB]\nFile: Number of Longest Increasing Subsequences.mp4\nLocation: 16. Dynamic Programming/07. LIS/06. Nu",
   "duration_seconds": 1199,
   "transcript": "Ingested from Telegram Channel Post #7092 (Number of Longest Increasing Subsequences.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1166,7 +1166,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7091 | Size: 86.9 MB]\nFile: Longest Bitonic Subsequence.mp4\nLocation: 16. Dynamic Programming/07. LIS/05. Longest Bitonic ",
   "duration_seconds": 769,
   "transcript": "Ingested from Telegram Channel Post #7091 (Longest Bitonic Subsequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
   "quiz_json": [
@@ -1203,7 +1203,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7090 | Size: 106.1 MB]\nFile: Longest String Chain.mp4\nLocation: 16. Dynamic Programming/07. LIS/04. Longest String Chain\n\nF",
   "duration_seconds": 987,
   "transcript": "Ingested from Telegram Channel Post #7090 (Longest String Chain.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1240,7 +1240,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7089 | Size: 106.6 MB]\nFile: Largest Divisible Subset.mp4\nLocation: 16. Dynamic Programming/07. LIS/03. Largest Divisible S",
   "duration_seconds": 860,
   "transcript": "Ingested from Telegram Channel Post #7089 (Largest Divisible Subset.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1277,7 +1277,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7088 | Size: 162.5 MB]\nFile: Print Longest Increasing Subsequence.mp4\nLocation: 16. Dynamic Programming/07. LIS/02. Print L",
   "duration_seconds": 1531,
   "transcript": "Ingested from Telegram Channel Post #7088 (Print Longest Increasing Subsequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1314,7 +1314,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7087 | Size: 157.0 MB]\nFile: Longest Increasing Subsequence.mp4\nLocation: 16. Dynamic Programming/07. LIS/01. Longest Incre",
   "duration_seconds": 1435,
   "transcript": "Ingested from Telegram Channel Post #7087 (Longest Increasing Subsequence.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1351,7 +1351,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7086 | Size: 106.8 MB]\nFile: Rod cutting problem.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/11. Rod cutti",
   "duration_seconds": 798,
   "transcript": "Ingested from Telegram Channel Post #7086 (Rod cutting problem.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1388,7 +1388,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7085 | Size: 87.2 MB]\nFile: Unbounded knapsack.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/10. Unbounded ",
   "duration_seconds": 626,
   "transcript": "Ingested from Telegram Channel Post #7085 (Unbounded knapsack.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1425,7 +1425,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7084 | Size: 100.3 MB]\nFile: Coin change II.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/09. Coin change II",
   "duration_seconds": 823,
   "transcript": "Ingested from Telegram Channel Post #7084 (Coin change II.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1462,7 +1462,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7083 | Size: 61.1 MB]\nFile: Target sum.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/08. Target sum\n\nFollow",
   "duration_seconds": 490,
   "transcript": "Ingested from Telegram Channel Post #7083 (Target sum.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1499,7 +1499,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7082 | Size: 179.2 MB]\nFile: Minimum coins.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/07. Minimum coins\n\n",
   "duration_seconds": 1385,
   "transcript": "Ingested from Telegram Channel Post #7082 (Minimum coins.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1536,7 +1536,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7081 | Size: 192.8 MB]\nFile: 0 and 1 Knapsack.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/06. 0 and 1 Knap",
   "duration_seconds": 1408,
   "transcript": "Ingested from Telegram Channel Post #7081 (0 and 1 Knapsack.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1573,7 +1573,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7080 | Size: 130.0 MB]\nFile: Count partitions with given difference.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequ",
   "duration_seconds": 1026,
   "transcript": "Ingested from Telegram Channel Post #7080 (Count partitions with given difference.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1610,7 +1610,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7079 | Size: 152.2 MB]\nFile: Count subsets with sum K.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/04. Coun",
   "duration_seconds": 1238,
   "transcript": "Ingested from Telegram Channel Post #7079 (Count subsets with sum K.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1647,7 +1647,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7078 | Size: 191.0 MB]\nFile: Partition a set into two subsets with minimum absolute sum difference.mp4\nLocation: 16. Dynami",
   "duration_seconds": 1736,
   "transcript": "Ingested from Telegram Channel Post #7078 (Partition_a_set_into_two_subsets_with_minimum_absolute_sum_difference.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1684,7 +1684,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7077 | Size: 58.5 MB]\nFile: Partition equal subset sum.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/02. Pa",
   "duration_seconds": 448,
   "transcript": "Ingested from Telegram Channel Post #7077 (Partition equal subset sum.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1721,7 +1721,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7076 | Size: 132.7 MB]\nFile: Subset sum equals to target.mp4\nLocation: 16. Dynamic Programming/06. DP on subsequences/01. S",
   "duration_seconds": 1250,
   "transcript": "Ingested from Telegram Channel Post #7076 (Subset sum equals to target.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1758,7 +1758,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #7075 | Size: 44.6 MB]\nFile: Best time to buy and sell stock with transaction fees.mp4\nLocation: 16. Dynamic Programming/05",
   "duration_seconds": 344,
   "transcript": "Ingested from Telegram Channel Post #7075 (Best time to buy and sell stock with transaction fees.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
   "quiz_json": [
@@ -1795,7 +1795,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6048 | Size: 187.8 MB]\nFile Name: 11.10 Task Management System Code.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6048 (11.10 Task Management System Code.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:37+00:00",
   "quiz_json": [
@@ -1832,7 +1832,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6047 | Size: 443.7 MB]\nFile Name: 11.9 Task Management System Design.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6047 (11.9 Task Management System Design.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -1869,7 +1869,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6046 | Size: 231.9 MB]\nFile Name: 11.8 Vending Machine Code.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6046 (11.8 Vending Machine Code.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -1906,7 +1906,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6045 | Size: 416.7 MB]\nFile Name: 11.7 Vending Machine Design.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6045 (11.7 Vending Machine Design.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -1943,7 +1943,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6044 | Size: 232.9 MB]\nFile Name: 11.6 Traffic Signal System (Code).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6044 (11.6 Traffic Signal System (Code).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -1980,7 +1980,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6043 | Size: 501.8 MB]\nFile Name: 11.5 Traffic Signal System (Design).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6043 (11.5 Traffic Signal System (Design).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2017,7 +2017,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6042 | Size: 219.0 MB]\nFile Name: 11.4 Logging Framework (Code).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6042 (11.4 Logging Framework (Code).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2054,7 +2054,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6041 | Size: 252.5 MB]\nFile Name: 11.2 Parking Lot (Code).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6041 (11.2 Parking Lot (Code).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2091,7 +2091,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6040 | Size: 284.2 MB]\nFile Name: 11.1 Parking Lot (Design) (Interview Problems (Part-1).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6040 (11.1 Parking Lot (Design) (Interview Problems (Part-1).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2128,7 +2128,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6039 | Size: 240.7 MB]\nFile Name: 10.3 How to approach a LLD Interview.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6039 (10.3 How to approach a LLD Interview.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2165,7 +2165,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6038 | Size: 169.0 MB]\nFile Name: 10.2 Database Design and Integration.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6038 (10.2 Database Design and Integration.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2202,7 +2202,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6037 | Size: 445.3 MB]\nFile Name: 10.1 Exceptions and Error Handling (Best practices in LLD).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6037 (10.1 Exceptions and Error Handling (Best practices in LLD).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2239,7 +2239,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6036 | Size: 165.2 MB]\nFile Name: 9.1 Exception Handling (LLD) (Exceptions and Error Handling).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6036 (9.1 Exception Handling (LLD) (Exceptions and Error Handling).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2276,7 +2276,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6035 | Size: 134.5 MB]\nFile Name: 8. Producer Consumer Problem.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6035 (8. Producer Consumer Problem.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2313,7 +2313,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6034 | Size: 328.4 MB]\nFile Name: 7_1_Multithreading_and_Concurrency_Multithreading_and_Concurrency.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6034 (7_1_Multithreading_and_Concurrency_Multithreading_and_Concurrency.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2350,7 +2350,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6033 | Size: 122.2 MB]\nFile Name: 7.7 Producer Consumer Problem.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6033 (7.7 Producer Consumer Problem.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2387,7 +2387,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6032 | Size: 255.0 MB]\nFile Name: 7.6 Locks and Synchronization Mechanism.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6032 (7.6 Locks and Synchronization Mechanism.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2424,7 +2424,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6031 | Size: 198.1 MB]\nFile Name: 7.5 Deadlock and Prevention Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6031 (7.5 Deadlock and Prevention Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2461,7 +2461,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6030 | Size: 224.8 MB]\nFile Name: 7.4 Thread Safety and Synchronization.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6030 (7.4 Thread Safety and Synchronization.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2498,7 +2498,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6029 | Size: 276.2 MB]\nFile Name: 7.3 Thread Pools and Executors.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6029 (7.3 Thread Pools and Executors.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2535,7 +2535,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6028 | Size: 305.7 MB]\nFile Name: 7.2 Creating and Managing Threads.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6028 (7.2 Creating and Managing Threads.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2572,7 +2572,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6027 | Size: 93.8 MB]\nFile Name: 6.10 Memento Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6027 (6.10 Memento Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2609,7 +2609,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6026 | Size: 72.8 MB]\nFile Name: 6.9 Mediator Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6026 (6.9 Mediator Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2646,7 +2646,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6025 | Size: 142.9 MB]\nFile Name: 6.8 Visitor Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6025 (6.8 Visitor Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2683,7 +2683,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6024 | Size: 96.0 MB]\nFile Name: 6.7 Chain of Responsibility.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6024 (6.7 Chain of Responsibility.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2720,7 +2720,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6023 | Size: 111.0 MB]\nFile Name: 6.6 State Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6023 (6.6 State Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2757,7 +2757,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6022 | Size: 100.2 MB]\nFile Name: 6.5 Template Method.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6022 (6.5 Template Method.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2794,7 +2794,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6021 | Size: 159.5 MB]\nFile Name: 6.4 Command Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6021 (6.4 Command Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2831,7 +2831,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6020 | Size: 67.6 MB]\nFile Name: 6.3 Strategy Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6020 (6.3 Strategy Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2868,7 +2868,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6019 | Size: 102.7 MB]\nFile Name: 6.2 Behavioural Design Patterns.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6019 (6.2 Behavioural Design Patterns.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2905,7 +2905,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6018 | Size: 131.9 MB]\nFile Name: 6.1 Iterator Pattern (Behavioural Design Patterns).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6018 (6.1 Iterator Pattern (Behavioural Design Patterns).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2942,7 +2942,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6017 | Size: 96.4 MB]\nFile Name: 5.7 Flyweight Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6017 (5.7 Flyweight Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -2979,7 +2979,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6016 | Size: 100.1 MB]\nFile Name: 5.6 Bridge Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6016 (5.6 Bridge Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3016,7 +3016,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6015 | Size: 94.1 MB]\nFile Name: 5.5 Proxy Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6015 (5.5 Proxy Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3053,7 +3053,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6014 | Size: 124.7 MB]\nFile Name: 5.4 Composite Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6014 (5.4 Composite Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3090,7 +3090,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6013 | Size: 92.9 MB]\nFile Name: 5.3 Facade Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6013 (5.3 Facade Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3127,7 +3127,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6012 | Size: 131.0 MB]\nFile Name: 5.2 Structural Design Patterns.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6012 (5.2 Structural Design Patterns.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3164,7 +3164,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6011 | Size: 87.5 MB]\nFile Name: 5.1 Adapter Pattern (Structural Design Patterns).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6011 (5.1 Adapter Pattern (Structural Design Patterns).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3201,7 +3201,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6010 | Size: 50.4 MB]\nFile Name: 4_1_Introduction_to_Design_Patterns_Creational_Design_Patterns.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6010 (4_1_Introduction_to_Design_Patterns_Creational_Design_Patterns.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3238,7 +3238,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6009 | Size: 113.3 MB]\nFile Name: 4.6 Prototype Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6009 (4.6 Prototype Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3275,7 +3275,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6008 | Size: 188.7 MB]\nFile Name: 4.5 Abstract Factory.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6008 (4.5 Abstract Factory.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3312,7 +3312,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6007 | Size: 151.9 MB]\nFile Name: 4.4 Builder Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6007 (4.4 Builder Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3349,7 +3349,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6006 | Size: 89.5 MB]\nFile Name: 4.3 Factory Method.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6006 (4.3 Factory Method.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3386,7 +3386,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6005 | Size: 164.8 MB]\nFile Name: 4.2 Singleton Design Pattern.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6005 (4.2 Singleton Design Pattern.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3423,7 +3423,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6004 | Size: 210.8 MB]\nFile Name: 3.2 Class UML diagrams.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6004 (3.2 Class UML diagrams.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3460,7 +3460,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6003 | Size: 68.0 MB]\nFile Name: 3.1 Unified Modeling Language (UML).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6003 (3.1 Unified Modeling Language (UML).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3497,7 +3497,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6002 | Size: 90.6 MB]\nFile Name: 2.5 Dependency Inversion Principle (DIP).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6002 (2.5 Dependency Inversion Principle (DIP).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3534,7 +3534,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6001 | Size: 48.0 MB]\nFile Name: 2.4 Interface Segregation Principle (ISP).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6001 (2.4 Interface Segregation Principle (ISP).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
   "quiz_json": [
@@ -3571,7 +3571,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6144 | Size: 122.9 MB]\nFile Name: 14.3 Event-Driven Architecture.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6144 (14.3 Event-Driven Architecture.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3608,7 +3608,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6143 | Size: 104.9 MB]\nFile Name: 14.2 Data Warehousing.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6143 (14.2 Data Warehousing.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3645,7 +3645,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6142 | Size: 100.6 MB]\nFile Name: 14.1 Database Migration (Data Warehousing and Migration).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6142 (14.1 Database Migration (Data Warehousing and Migration).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3682,7 +3682,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6141 | Size: 65.1 MB]\nFile Name: 13.3 DBaas (Database as a Service).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6141 (13.3 DBaas (Database as a Service).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3719,7 +3719,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6140 | Size: 111.5 MB]\nFile Name: 13.2 Big Data and DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6140 (13.2 Big Data and DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3756,7 +3756,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6139 | Size: 126.3 MB]\nFile Name: 13.1 Database Scaling (Scalability and Big Data).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6139 (13.1 Database Scaling (Scalability and Big Data).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3793,7 +3793,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6138 | Size: 113.4 MB]\nFile Name: 12.6 RBAC Models.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6138 (12.6 RBAC Models.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3830,7 +3830,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6137 | Size: 100.4 MB]\nFile Name: 12.5 RBAC (Role-Based Access Control).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6137 (12.5 RBAC (Role-Based Access Control).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3867,7 +3867,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6136 | Size: 105.4 MB]\nFile Name: 12.4 Data Masking Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6136 (12.4 Data Masking Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3904,7 +3904,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6135 | Size: 64.1 MB]\nFile Name: 12.3 Encryption Techniques in DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6135 (12.3 Encryption Techniques in DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3941,7 +3941,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6134 | Size: 124.8 MB]\nFile Name: 12.2 Database Security.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6134 (12.2 Database Security.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -3978,7 +3978,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6133 | Size: 84.4 MB]\nFile Name: 12.1 Data Encryption in DBMS (Security and Access Control).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6133 (12.1 Data Encryption in DBMS (Security and Access Control).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4015,7 +4015,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6132 | Size: 81.1 MB]\nFile Name: 11.4 Database Caching Strategies.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6132 (11.4 Database Caching Strategies.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4052,7 +4052,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6131 | Size: 89.5 MB]\nFile Name: 11.3 Database Caching.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6131 (11.3 Database Caching.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4089,7 +4089,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6130 | Size: 106.2 MB]\nFile Name: 11.2 Performance Tuning.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6130 (11.2 Performance Tuning.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4126,7 +4126,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6129 | Size: 124.7 MB]\nFile Name: 11.1 Database Monitoring (Database Monitoring and Caching).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6129 (11.1 Database Monitoring (Database Monitoring and Caching).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4163,7 +4163,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6128 | Size: 117.3 MB]\nFile Name: 10.4 B- and B+ Trees.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6128 (10.4 B- and B+ Trees.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4200,7 +4200,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6127 | Size: 114.9 MB]\nFile Name: 10.3 Indexing Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6127 (10.3 Indexing Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4237,7 +4237,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6126 | Size: 105.1 MB]\nFile Name: 10.2 Types of Database Indexing.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6126 (10.2 Types of Database Indexing.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4274,7 +4274,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6125 | Size: 153.7 MB]\nFile Name: 10.1 Database Indexing (Indexing and Performance Tuning).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6125 (10.1 Database Indexing (Indexing and Performance Tuning).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4311,7 +4311,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6124 | Size: 106.0 MB]\nFile Name: 9.2 Database Backups.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6124 (9.2 Database Backups.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4348,7 +4348,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6123 | Size: 126.3 MB]\nFile Name: 9.1 Database Recovery Management (Recovery and Backup).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6123 (9.1 Database Recovery Management (Recovery and Backup).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4385,7 +4385,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6122 | Size: 108.5 MB]\nFile Name: 8.2 Stored Procedures in Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6122 (8.2 Stored Procedures in Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4422,7 +4422,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6121 | Size: 107.9 MB]\nFile Name: 8.1 Triggers in Databases (Triggers and Procedural Features).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6121 (8.1 Triggers in Databases (Triggers and Procedural Features).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4459,7 +4459,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6120 | Size: 128.8 MB]\nFile Name: 7.15 Managing Transaction Consistency and Concurrency.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6120 (7.15 Managing Transaction Consistency and Concurrency.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4496,7 +4496,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6119 | Size: 97.5 MB]\nFile Name: 7.14 Isolation Levels.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6119 (7.14 Isolation Levels.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4533,7 +4533,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6118 | Size: 63.6 MB]\nFile Name: 7.13 Serialization Graphs in Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6118 (7.13 Serialization Graphs in Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4570,7 +4570,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6117 | Size: 83.2 MB]\nFile Name: 7.12 Scheduling in Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6117 (7.12 Scheduling in Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4607,7 +4607,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6116 | Size: 151.9 MB]\nFile Name: 7.11 Serialization in Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6116 (7.11 Serialization in Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4644,7 +4644,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6115 | Size: 157.8 MB]\nFile Name: 7.10 Concurrency Control in Distributed Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6115 (7.10 Concurrency Control in Distributed Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
   "quiz_json": [
@@ -4681,7 +4681,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6114 | Size: 179.2 MB]\nFile Name: 7.9 Deadlock in DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6114 (7.9 Deadlock in DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4718,7 +4718,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6113 | Size: 77.6 MB]\nFile Name: 7.8 Starvation in DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6113 (7.8 Starvation in DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4755,7 +4755,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6112 | Size: 133.8 MB]\nFile Name: 7.7 Timestamp Ordering Protocols in DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6112 (7.7 Timestamp Ordering Protocols in DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4792,7 +4792,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6111 | Size: 145.5 MB]\nFile Name: 7.6 Locking Protocol (Shared Locks, Exclusive Locks).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6111 (7.6 Locking Protocol (Shared Locks, Exclusive Locks).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4829,7 +4829,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6110 | Size: 190.8 MB]\nFile Name: 7.5 Concurrency Control in Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6110 (7.5 Concurrency Control in Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4866,7 +4866,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6109 | Size: 99.2 MB]\nFile Name: 7.4 Database Transactions.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6109 (7.4 Database Transactions.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4903,7 +4903,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6108 | Size: 133.5 MB]\nFile Name: 7.3 CAP Theorem.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6108 (7.3 CAP Theorem.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4940,7 +4940,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6107 | Size: 107.6 MB]\nFile Name: 7.2 ACID Properties.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6107 (7.2 ACID Properties.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -4977,7 +4977,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6106 | Size: 59.3 MB]\nFile Name: 7.1 Thomas' Rules (Transactions and Concurrency).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6106 (7.1 Thomas' Rules (Transactions and Concurrency).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5014,7 +5014,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6105 | Size: 130.5 MB]\nFile Name: 6.7 Data Replication Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6105 (6.7 Data Replication Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5051,7 +5051,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6104 | Size: 97.3 MB]\nFile Name: 6.6 Load Balancing in Distributed Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6104 (6.6 Load Balancing in Distributed Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5088,7 +5088,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6103 | Size: 126.3 MB]\nFile Name: 6.5 Fault Tolerance in Distributed Databases.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6103 (6.5 Fault Tolerance in Distributed Databases.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5125,7 +5125,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6102 | Size: 151.2 MB]\nFile Name: 6.4 Data Distribution Methods.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6102 (6.4 Data Distribution Methods.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5162,7 +5162,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6101 | Size: 105.2 MB]\nFile Name: 6.3 Architecture of Distributed Database Systems.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6101 (6.3 Architecture of Distributed Database Systems.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5199,7 +5199,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6100 | Size: 122.2 MB]\nFile Name: 6.2 Distributed Database Systems.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6100 (6.2 Distributed Database Systems.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5236,7 +5236,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6099 | Size: 140.5 MB]\nFile Name: 6.1 Sharding in DBMS (Distributed Database Systems).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6099 (6.1 Sharding in DBMS (Distributed Database Systems).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5273,7 +5273,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6098 | Size: 199.7 MB]\nFile Name: 5.8 Sharding in DBMS.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6098 (5.8 Sharding in DBMS.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
   "quiz_json": [
@@ -5310,7 +5310,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6185 | Size: 61.9 MB]\nFile Name: 10.6 Network Reliability and Fault Tolerance.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6185 (10.6 Network Reliability and Fault Tolerance.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5347,7 +5347,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6184 | Size: 63.8 MB]\nFile Name: 10.5 Software-Defined Networking (SDN).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6184 (10.5 Software-Defined Networking (SDN).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5384,7 +5384,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6183 | Size: 53.7 MB]\nFile Name: 10.4 Network Virtualization.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6183 (10.4 Network Virtualization.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5421,7 +5421,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6182 | Size: 83.0 MB]\nFile Name: 10.3 Load Balancing Techniques, Content Delivery Networks (CDNs).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6182 (10_3_Load_Balancing_Techniques,_Content_Delivery_Networks_CDNs.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5458,7 +5458,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6181 | Size: 68.0 MB]\nFile Name: 10.2 Network Design Principles and Considerations.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6181 (10.2 Network Design Principles and Considerations.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5495,7 +5495,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6180 | Size: 112.6 MB]\nFile Name: 10.1 Client-Server Vs Peer-to-Peer Architectures (Advanced Networking Concepts).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6180 (10_1_Client_Server_Vs_Peer_to_Peer_Architectures_Advanced_Networking.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5532,7 +5532,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6179 | Size: 69.8 MB]\nFile Name: 9.6 Network Protocol Analysis Tools (Wireshark, tcpdump).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6179 (9.6 Network Protocol Analysis Tools (Wireshark, tcpdump).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5569,7 +5569,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6178 | Size: 68.3 MB]\nFile Name: 9.5 Network Monitoring and Management.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6178 (9.5 Network Monitoring and Management.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5606,7 +5606,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6177 | Size: 65.9 MB]\nFile Name: 9.4 Network Troubleshooting Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6177 (9.4 Network Troubleshooting Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5643,7 +5643,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6176 | Size: 72.6 MB]\nFile Name: 9.3 Network Performance Metrics.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6176 (9.3 Network Performance Metrics.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5680,7 +5680,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6175 | Size: 111.0 MB]\nFile Name: 9.2 Quality of Service (QoS), Bandwidth and Latency, Network Congestion and Control Mecha",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6175 (9_2_Quality_of_Service_QoS,_Bandwidth_and_Latency,_Network_Congestion.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5717,7 +5717,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6174 | Size: 119.1 MB]\nFile Name: 9.1 Traffic Management Techniques (Network Management and Monitoring).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6174 (9_1_Traffic_Management_Techniques_Network_Management_and_Monitoring.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5754,7 +5754,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6173 | Size: 93.8 MB]\nFile Name: 8.7 Network Layer and Application Layer Firewalls.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6173 (8.7 Network Layer and Application Layer Firewalls.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5791,7 +5791,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6172 | Size: 94.6 MB]\nFile Name: 8.6 Transport Layer Security (TLS) and SSL.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6172 (8.6 Transport Layer Security (TLS) and SSL.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5828,7 +5828,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6171 | Size: 43.7 MB]\nFile Name: 8.5 Cryptography Basics (Symmetric and Asymmetric Encryption).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6171 (8_5_Cryptography_Basics_Symmetric_and_Asymmetric_Encryption.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5865,7 +5865,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6170 | Size: 74.4 MB]\nFile Name: 8.4 Virtual Private Networks (VPNs) and Public Key Infrastructure (PKI).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6170 (8_4_Virtual_Private_Networks_VPNs_and_Public_Key_Infrastructure.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5902,7 +5902,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6169 | Size: 71.5 MB]\nFile Name: 8.3 Intrusion Detection and Prevention Systems.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6169 (8.3 Intrusion Detection and Prevention Systems.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5939,7 +5939,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6168 | Size: 39.8 MB]\nFile Name: 8.2 Firewall and their Types.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6168 (8.2 Firewall and their Types.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -5976,7 +5976,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6167 | Size: 78.2 MB]\nFile Name: 8.1 Network Security Fundamentals (Network Security).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6167 (8.1 Network Security Fundamentals (Network Security).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
   "quiz_json": [
@@ -6013,7 +6013,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6166 | Size: 62.8 MB]\nFile Name: 7.3 Data Link Protocols and Spanning tree Protocol.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6166 (7.3 Data Link Protocols and Spanning tree Protocol.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6050,7 +6050,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6165 | Size: 46.8 MB]\nFile Name: 7.2 Ethernet Switching and VLANs.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6165 (7.2 Ethernet Switching and VLANs.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6087,7 +6087,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6164 | Size: 42.0 MB]\nFile Name: 7.1 Ethernet Standards (IEEE 802.3) and Wireless Networking (IEEE 802.11) (Network Techno",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6164 (7_1_Ethernet_Standards_IEEE_802_3_and_Wireless_Networking_IEEE_802.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6124,7 +6124,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6163 | Size: 63.2 MB]\nFile Name: 6.4 Switching Techniques.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6163 (6.4 Switching Techniques.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6161,7 +6161,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6162 | Size: 74.2 MB]\nFile Name: 6.3 Border Gateway Protocol (BGP), Interior Gateway Protocols (IGRP, EIGRP, OSPF).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6162 (6_3_Border_Gateway_Protocol_BGP,_Interior_Gateway_Protocols_IGRP.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6198,7 +6198,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6161 | Size: 102.4 MB]\nFile Name: 6.2 Distance Vector and Link State Routing Protocols.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6161 (6.2 Distance Vector and Link State Routing Protocols.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6235,7 +6235,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6160 | Size: 99.9 MB]\nFile Name: 6.1 Routing Algorithms (Routing and Switching).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6160 (6.1 Routing Algorithms (Routing and Switching).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6272,7 +6272,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6159 | Size: 74.5 MB]\nFile Name: 5.3 Network Address Translation (NAT), Dynamic Host Configuration Protocol (DHCP), Domain",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6159 (5_3_Network_Address_Translation_NAT,_Dynamic_Host_Configuration.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6309,7 +6309,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6158 | Size: 89.6 MB]\nFile Name: 5.2 Subnetting, Supernetting and Classful vs Classless Addressing.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6158 (5_2_Subnetting,_Supernetting_and_Classful_vs_Classless_Addressing.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6346,7 +6346,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6157 | Size: 46.1 MB]\nFile Name: 5.1 IP Addressing (IPv4 and IPv6) IP Addressing and Subnetting).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6157 (5_1_IP_Addressing_IPv4_and_IPv6_IP_Addressing_and_Subnetting.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6383,7 +6383,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6156 | Size: 50.1 MB]\nFile Name: 4.3 Layer Functions, Protocols and Connectionless vs Connection-Oriented Protocols.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6156 (4_3_Layer_Functions,_Protocols_and_Connectionless_vs_Connection.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6420,7 +6420,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6155 | Size: 57.2 MB]\nFile Name: 4.2 Application Layer Protocols (HTTP, FTP, SMTP, SNMP).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6155 (4.2 Application Layer Protocols (HTTP, FTP, SMTP, SNMP).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6457,7 +6457,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6154 | Size: 70.6 MB]\nFile Name: 4.1 Network Protocols (Network Protocols and Communication).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6154 (4.1 Network Protocols (Network Protocols and Communication).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6494,7 +6494,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6153 | Size: 81.8 MB]\nFile Name: 3.3 Ethernet Frame Structure + ARP + NAC.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6153 (3.3 Ethernet Frame Structure + ARP + NAC.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6531,7 +6531,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6152 | Size: 50.7 MB]\nFile Name: 3.2 Network Devices.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6152 (3.2 Network Devices.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6568,7 +6568,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6151 | Size: 70.8 MB]\nFile Name: 3.1 Network Cabling and Connectors (Networking Fundamentals and Basics).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6151 (3_1_Network_Cabling_and_Connectors_Networking_Fundamentals_and_Basics.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6605,7 +6605,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6150 | Size: 60.5 MB]\nFile Name: 2.2 TCP and IP Model and Its Layers + Comparison.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6150 (2.2 TCP and IP Model and Its Layers + Comparison.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6642,7 +6642,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6149 | Size: 135.1 MB]\nFile Name: 2.1 OSI Model and Layers (Networking Models).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6149 (2.1 OSI Model and Layers (Networking Models).mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6679,7 +6679,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6148 | Size: 103.5 MB]\nFile Name: 1.3 Network and Logical Topologies.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6148 (1.3 Network and Logical Topologies.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6716,7 +6716,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6147 | Size: 71.9 MB]\nFile Name: 1.2 Types of Networks and Interconnected Net.mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6147 (1.2 Types of Networks and Interconnected Net.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
@@ -6753,7 +6753,7 @@ export const MOCK_VIDEOS: Video[] = [
   "telegram_caption": "\ud83d\udccc [Telegram Channel Post #6146 | Size: 85.1 MB]\nFile Name: 1.1 Introduction to Computer Networks (Introduction to Computer Networks).mp4",
   "duration_seconds": 1200,
   "transcript": "Ingested from Telegram Channel Post #6146 (1_1_Introduction_to_Computer_Networks_Introduction_to_Computer_Networks.mp4). Video stream powered by Telethon MTProto Proxy.",
-  "thumbnail_url": "https://images.unsplash.com/photo-1516116211223-4c7142b2e2ec?auto=format&fit=crop&w=800&q=80",
+  "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
   "quiz_json": [
