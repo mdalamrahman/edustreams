@@ -7,7 +7,7 @@
  */
 
 // Render / Backend base URL (the Telethon FastAPI backend)
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string) || (import.meta.env.VITE_HF_SPACE_URL as string) || 'https://edustream-backend.onrender.com';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
 
 // Remove trailing slash if present
 const BACKEND_BASE = BACKEND_URL.replace(/\/+$/, '');
