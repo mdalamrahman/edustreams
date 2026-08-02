@@ -39,21 +39,39 @@ CHANNEL_IDS = {
 # Telethon MTProto client (bot session — no session file needed)
 _telethon_client: Optional[TelegramClient] = None
 _client_lock = asyncio.Lock()
+_entity_cache = {}
 
 
 async def get_client() -> TelegramClient:
     """Returns an authenticated Telethon client using the Bot Token."""
-    global _telethon_client
+    global _telethon_client, _entity_cache
     async with _client_lock:
         if _telethon_client is None or not _telethon_client.is_connected():
             _telethon_client = TelegramClient(
-                StringSession(), API_ID, API_HASH,
+                "edustream_bot.session", API_ID, API_HASH,
                 connection_retries=5,
                 retry_delay=2,
             )
             await _telethon_client.start(bot_token=BOT_TOKEN)
             me = await _telethon_client.get_me()
             print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
+
+            # Pre-warm entity cache for all configured channels to cache access_hash
+            for cname, cid in CHANNEL_IDS.items():
+                try:
+                    ent = await _telethon_client.get_entity(cid)
+                    _entity_cache[cid] = ent
+                    print(f"[Telethon Bot] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
+                except Exception as e:
+                    print(f"[Telethon Bot] Entity pre-warm failed for {cname} ({cid}): {e}")
+                    clean_id = int(str(cid).replace("-100", "").replace("-", ""))
+                    try:
+                        ent = await _telethon_client.get_entity(clean_id)
+                        _entity_cache[cid] = ent
+                        print(f"[Telethon Bot] Cached clean entity for {cname} ({clean_id}): {getattr(ent, 'title', ent)}")
+                    except Exception as e2:
+                        print(f"[Telethon Bot] Clean entity pre-warm failed for {cname}: {e2}")
+
     return _telethon_client
 
 
@@ -117,6 +135,7 @@ async def read_root():
         "bot_username": bot_name,
         "channels_configured": len(CHANNEL_IDS),
         "channel_ids": CHANNEL_IDS,
+        "cached_entities": list(_entity_cache.keys()),
         "stt_engine": "Groq whisper-large-v3",
         "ai_engine": "Mistral Small / Devstral",
         "compiler_engine": "OnlineCompiler.io",
@@ -128,13 +147,30 @@ async def read_root():
 # -------------------------------------------------------------------
 
 async def resolve_channel_peer(chat_id: int):
-    """Resolves a channel chat_id to a Telethon entity or PeerChannel for bot tokens."""
+    """Resolves a channel chat_id to a Telethon entity with access_hash."""
     client = await get_client()
-    try:
-        return await client.get_entity(chat_id)
-    except Exception:
-        clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
-        return PeerChannel(clean_id)
+    if chat_id in _entity_cache:
+        return _entity_cache[chat_id]
+
+    clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
+
+    for target in [chat_id, clean_id]:
+        try:
+            entity = await client.get_entity(target)
+            _entity_cache[chat_id] = entity
+            return entity
+        except Exception:
+            pass
+
+    for target in [chat_id, clean_id]:
+        try:
+            entity = await client.get_input_entity(target)
+            _entity_cache[chat_id] = entity
+            return entity
+        except Exception:
+            pass
+
+    return PeerChannel(clean_id)
 
 
 async def fetch_channel_videos(chat_id: int, limit: int = 50):
