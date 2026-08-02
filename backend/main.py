@@ -126,25 +126,8 @@ async def read_root():
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------
 
-@app.get("/api/catalog/all")
-async def get_all_catalogs(limit: int = 50):
-    """Lists videos from all 4 configured Telegram channels."""
-    result = {}
-    for category, cid in CHANNEL_IDS.items():
-        try:
-            data = await get_channel_catalog(cid, limit=limit)
-            result[category] = data
-        except Exception as e:
-            result[category] = {"chat_id": cid, "count": 0, "videos": [], "error": str(e)}
-    return result
-
-
-@app.get("/api/catalog/{chat_id}")
-async def get_channel_catalog(chat_id: int, limit: int = 50):
-    """
-    Lists video messages from a single Telegram channel.
-    Returns metadata: msg_id, file_name, duration, size, caption, date.
-    """
+async def fetch_channel_videos(chat_id: int, limit: int = 50):
+    """Internal helper to fetch videos from a channel entity."""
     try:
         client = await get_client()
         entity = await client.get_entity(chat_id)
@@ -189,7 +172,22 @@ async def get_channel_catalog(chat_id: int, limit: int = 50):
 
     except Exception as e:
         print(f"[Catalog] Error for chat {chat_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Catalog fetch error: {str(e)}")
+        return {"chat_id": chat_id, "count": 0, "videos": [], "error": str(e)}
+
+
+@app.get("/api/catalog/all")
+async def get_all_catalogs(limit: int = 50):
+    """Lists videos from all 4 configured Telegram channels."""
+    result = {}
+    for category, cid in CHANNEL_IDS.items():
+        result[category] = await fetch_channel_videos(cid, limit=limit)
+    return result
+
+
+@app.get("/api/catalog/{chat_id:int}")
+async def get_channel_catalog(chat_id: int, limit: int = 50):
+    """Lists video messages from a single Telegram channel by integer chat_id."""
+    return await fetch_channel_videos(chat_id, limit=limit)
 
 
 
