@@ -360,10 +360,50 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
     try:
         client = await get_client()
         entity = await resolve_channel_peer(chat_id)
-        msg = await client.get_messages(entity, ids=msg_id)
+        msg = None
+        try:
+            msg = await client.get_messages(entity, ids=msg_id)
+        except Exception as e:
+            print(f"[Stream] Notice: get_messages failed for msg {msg_id} in {chat_id}: {e}")
 
         if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
-            raise HTTPException(status_code=404, detail=f"No video found at msg {msg_id}")
+            print(f"[Stream] Msg {msg_id} not found in {chat_id}. Finding latest video fallback...")
+            # User session or Bot fallback search
+            is_bot_client = client.is_bot() if hasattr(client, "is_bot") else True
+            if not is_bot_client:
+                async for m in client.iter_messages(entity, limit=30):
+                    if m and m.media and isinstance(m.media, MessageMediaDocument):
+                        doc_temp = m.media.document
+                        if doc_temp:
+                            mime_temp = doc_temp.mime_type or ""
+                            fname_temp = next((a.file_name for a in (doc_temp.attributes or []) if isinstance(a, DocumentAttributeFilename)), "")
+                            if (any(isinstance(a, DocumentAttributeVideo) for a in (doc_temp.attributes or [])) or mime_temp.startswith("video/") or fname_temp.lower().endswith((".mp4", ".mkv", ".webm"))):
+                                msg = m
+                                print(f"[Stream Fallback] Using latest channel video msg #{m.id}")
+                                break
+            else:
+                # Bot fallback range probe
+                for r in range(1000, 0, -100):
+                    ids_fallback = list(range(max(1, r - 99), r + 1))
+                    try:
+                        fmsgs = await client.get_messages(entity, ids=ids_fallback)
+                        for fm in (fmsgs or []):
+                            if fm and fm.media and isinstance(fm.media, MessageMediaDocument):
+                                doc_temp = fm.media.document
+                                if doc_temp:
+                                    mime_temp = doc_temp.mime_type or ""
+                                    fname_temp = next((a.file_name for a in (doc_temp.attributes or []) if isinstance(a, DocumentAttributeFilename)), "")
+                                    if (any(isinstance(a, DocumentAttributeVideo) for a in (doc_temp.attributes or [])) or mime_temp.startswith("video/") or fname_temp.lower().endswith((".mp4", ".mkv", ".webm"))):
+                                        msg = fm
+                                        print(f"[Stream Fallback] Using bot channel video msg #{fm.id}")
+                                        break
+                        if msg:
+                            break
+                    except Exception:
+                        pass
+
+        if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
+            raise HTTPException(status_code=404, detail=f"No video media found in channel {chat_id}")
 
         doc = msg.media.document
         file_size = doc.size
