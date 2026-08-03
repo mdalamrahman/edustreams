@@ -24,6 +24,7 @@ from telethon.tl.functions.channels import GetFullChannelRequest
 API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
@@ -44,25 +45,35 @@ CHANNEL_INVITE_LINKS = {
     "Computer Networks": os.getenv("TELEGRAM_INVITE_CN", ""),
 }
 
-# Telethon MTProto client (bot session — persistent SQLite session)
+# Telethon MTProto client (bot or user session)
 _telethon_client: Optional[TelegramClient] = None
 _client_lock = asyncio.Lock()
 _entity_cache = {}
 
 
 async def get_client() -> TelegramClient:
-    """Returns an authenticated Telethon client using the Bot Token."""
+    """Returns an authenticated Telethon client (User Session if TELEGRAM_SESSION_STRING set, else Bot Token)."""
     global _telethon_client, _entity_cache
     async with _client_lock:
         if _telethon_client is None or not _telethon_client.is_connected():
-            _telethon_client = TelegramClient(
-                "edustream_bot.session", API_ID, API_HASH,
-                connection_retries=5,
-                retry_delay=2,
-            )
-            await _telethon_client.start(bot_token=BOT_TOKEN)
-            me = await _telethon_client.get_me()
-            print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
+            if SESSION_STRING:
+                _telethon_client = TelegramClient(
+                    StringSession(SESSION_STRING), API_ID, API_HASH,
+                    connection_retries=5,
+                    retry_delay=2,
+                )
+                await _telethon_client.start()
+                me = await _telethon_client.get_me()
+                print(f"[Telethon User] Connected as: {me.first_name} (@{me.username or me.id})")
+            else:
+                _telethon_client = TelegramClient(
+                    "edustream_bot.session", API_ID, API_HASH,
+                    connection_retries=5,
+                    retry_delay=2,
+                )
+                await _telethon_client.start(bot_token=BOT_TOKEN)
+                me = await _telethon_client.get_me()
+                print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
 
             # Pre-warm entity cache for all configured channels
             for cname, cid in CHANNEL_IDS.items():
@@ -72,10 +83,10 @@ async def get_client() -> TelegramClient:
                         ent = await _telethon_client.get_entity(target)
                         if ent:
                             _entity_cache[cid] = ent
-                            print(f"[Telethon Bot] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
+                            print(f"[Telethon] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
                             break
                     except Exception as e:
-                        print(f"[Telethon Bot] Pre-warm target {target} failed for {cname}: {e}")
+                        print(f"[Telethon] Pre-warm target {target} failed for {cname}: {e}")
 
     return _telethon_client
 
@@ -129,15 +140,16 @@ async def read_root():
         client = await get_client()
         me = await client.get_me()
         bot_ok = True
-        bot_name = f"@{me.username}"
+        bot_name = f"@{me.username}" if getattr(me, 'username', None) else getattr(me, 'first_name', str(me.id))
     except Exception as e:
-        print(f"[Health] Bot connection check failed: {e}")
+        print(f"[Health] Connection check failed: {e}")
 
     return {
         "status": "online",
         "service": "EduStream Telegram Video Stream Proxy & AI Engine",
         "bot_connected": bot_ok,
         "bot_username": bot_name,
+        "mode": "User Session" if SESSION_STRING else "Bot Token",
         "channels_configured": len(CHANNEL_IDS),
         "channel_ids": CHANNEL_IDS,
         "cached_entities": list(_entity_cache.keys()),
