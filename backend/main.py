@@ -31,10 +31,10 @@ ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
 
 # Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX)
 CHANNEL_IDS = {
-    "DSA": int(os.getenv("TELEGRAM_CHANNEL_DSA", "-1004390749731")),
-    "System Design": int(os.getenv("TELEGRAM_CHANNEL_SYSTEM_DESIGN", "-1004329144420")),
-    "DBMS": int(os.getenv("TELEGRAM_CHANNEL_DBMS", "-1004332462419")),
-    "Computer Networks": int(os.getenv("TELEGRAM_CHANNEL_CN", "-1004308430774")),
+    "DSA": int(os.getenv("TELEGRAM_CHANNEL_DSA", "-1002381302446")),
+    "System Design": int(os.getenv("TELEGRAM_CHANNEL_SYSTEM_DESIGN", "-1002264048233")),
+    "DBMS": int(os.getenv("TELEGRAM_CHANNEL_DBMS", "-1002165961714")),
+    "Computer Networks": int(os.getenv("TELEGRAM_CHANNEL_CN", "-1002204032417")),
 }
 
 # Optional Channel Invite Links (read dynamically from environment)
