@@ -346,8 +346,8 @@ async def get_channel_catalog(chat_id: str, limit: int = 50):
 # TELEGRAM VIDEO STREAMING — Real bytes from Telegram Datacenters
 # -------------------------------------------------------------------
 
-REQUEST_SIZE = 1024 * 1024  # 1MB per Telethon chunk (max for documents)
-DEFAULT_RANGE_SIZE = 5 * 1024 * 1024  # 5MB default response chunk
+REQUEST_SIZE = 128 * 1024  # 128KB per Telethon MTProto chunk (native alignment)
+DEFAULT_RANGE_SIZE = 2 * 1024 * 1024  # 2MB default response chunk
 
 
 @app.get("/stream/{chat_id}/{msg_id}")
