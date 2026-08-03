@@ -76,6 +76,18 @@ async def get_client() -> TelegramClient:
                 print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
 
             # Pre-warm entity cache for all configured channels
+            if SESSION_STRING:
+                try:
+                    async for dialog in _telethon_client.iter_dialogs(limit=100):
+                        _entity_cache[dialog.id] = dialog.entity
+                        # Also cache with -100 prefix format
+                        clean = int(str(dialog.id).replace("-100", "").replace("-", ""))
+                        _entity_cache[-1000000000000 - clean if clean < 1000000000000 else dialog.id] = dialog.entity
+                        _entity_cache[clean] = dialog.entity
+                    print(f"[Telethon User] Pre-warmed {_entity_cache.__len__()} channel entities via iter_dialogs")
+                except Exception as e:
+                    print(f"[Telethon User] iter_dialogs pre-warm notice: {e}")
+
             for cname, cid in CHANNEL_IDS.items():
                 clean_id = int(str(cid).replace("-100", "").replace("-", ""))
                 for target in [cid, clean_id, PeerChannel(clean_id)]:
@@ -253,6 +265,7 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
                     break
         else:
             # User session mode: use fast iter_messages!
+            print(f"[Catalog User Mode] Fetching videos for chat {chat_id} (limit={limit})...")
             async for msg in client.iter_messages(entity, limit=limit * 3):
                 if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
                     continue
