@@ -118,7 +118,26 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Range", "Content-Length", "Accept-Ranges", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def add_cors_headers_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        response = Response(status_code=204)
+    else:
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            print(f"[Unhandled Exception] {exc}")
+            response = JSONResponse(status_code=500, content={"detail": str(exc)})
+
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Expose-Headers"] = "Content-Range, Content-Length, Accept-Ranges, Content-Type"
+    return response
 
 
 # Pydantic Data Models
@@ -180,9 +199,17 @@ async def read_root():
 
 TITLE_SEARCH_MAP = {
     -1004390749731: "striver dsa",
+    1004390749731: "striver dsa",
+    4390749731: "striver dsa",
     -1004329144420: "striver lld",
+    1004329144420: "striver lld",
+    4329144420: "striver lld",
     -1004332462419: "striver dbms",
+    1004332462419: "striver dbms",
+    4332462419: "striver dbms",
     -1004308430774: "striver cn",
+    1004308430774: "striver cn",
+    4308430774: "striver cn",
 }
 
 
@@ -480,6 +507,10 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                 print(f"[Stream] iter_download error for msg {msg_id}: {e}")
 
         headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Accept-Ranges": "bytes",
             "Content-Length": str(chunk_size),

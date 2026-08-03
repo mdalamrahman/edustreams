@@ -11,28 +11,28 @@ export const MOCK_CHANNELS: Channel[] = [
     id: 'ch-dsa-01',
     telegram_channel_id: -1004390749731,
     category_name: 'DSA',
-    description: 'Striver DSA Sheet, LeetCode Patterns, Dynamic Programming, Graphs & Trees (47 Real Telegram Videos)',
+    description: 'Striver DSA Sheet, LeetCode Patterns, Dynamic Programming, Graphs & Trees (418 Real Telegram Videos)',
     icon: 'code-2',
     created_at: new Date().toISOString(),
-    post_count: 47
+    post_count: 418
   },
   {
     id: 'ch-sd-02',
     telegram_channel_id: -1004329144420,
     category_name: 'System Design',
-    description: 'STRIVER LLD: Low Level Design, Microservices, Caching & Distributed Consensus (48 Real Telegram Videos)',
+    description: 'STRIVER LLD: Low Level Design, Microservices, Caching & Distributed Consensus (53 Real Telegram Videos)',
     icon: 'cpu',
     created_at: new Date().toISOString(),
-    post_count: 48
+    post_count: 53
   },
   {
     id: 'ch-dbms-03',
     telegram_channel_id: -1004332462419,
     category_name: 'DBMS',
-    description: 'Striver DBMS: Relational Algebra, B+ Trees, SQL Optimization & MVCC Locks (47 Real Telegram Videos)',
+    description: 'Striver DBMS: Relational Algebra, B+ Trees, SQL Optimization & MVCC Locks (94 Real Telegram Videos)',
     icon: 'database',
     created_at: new Date().toISOString(),
-    post_count: 47
+    post_count: 94
   },
   {
     id: 'ch-cn-04',
