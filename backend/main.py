@@ -75,12 +75,14 @@ async def get_client() -> TelegramClient:
                 me = await _telethon_client.get_me()
                 print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
 
-            # Pre-warm entity cache for all configured channels
+            # Pre-warm entity cache for all configured channels via iter_dialogs
             if SESSION_STRING:
                 try:
-                    async for dialog in _telethon_client.iter_dialogs(limit=100):
+                    async for dialog in _telethon_client.iter_dialogs(limit=200):
                         _entity_cache[dialog.id] = dialog.entity
-                        # Also cache with -100 prefix format
+                        t_name = dialog.name.lower().strip()
+                        _entity_cache[t_name] = dialog.entity
+
                         clean = int(str(dialog.id).replace("-100", "").replace("-", ""))
                         _entity_cache[-1000000000000 - clean if clean < 1000000000000 else dialog.id] = dialog.entity
                         _entity_cache[clean] = dialog.entity
@@ -89,16 +91,17 @@ async def get_client() -> TelegramClient:
                     print(f"[Telethon User] iter_dialogs pre-warm notice: {e}")
 
             for cname, cid in CHANNEL_IDS.items():
-                clean_id = int(str(cid).replace("-100", "").replace("-", ""))
-                for target in [cid, clean_id, PeerChannel(clean_id)]:
-                    try:
-                        ent = await _telethon_client.get_entity(target)
-                        if ent:
-                            _entity_cache[cid] = ent
-                            print(f"[Telethon] Cached entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
-                            break
-                    except Exception as e:
-                        print(f"[Telethon] Pre-warm target {target} failed for {cname}: {e}")
+                if cid not in _entity_cache:
+                    clean_id = int(str(cid).replace("-100", "").replace("-", ""))
+                    for target in [cid, clean_id, PeerChannel(clean_id)]:
+                        try:
+                            ent = await _telethon_client.get_entity(target)
+                            if ent:
+                                _entity_cache[cid] = ent
+                                print(f"[Telethon] Cached fallback entity for {cname} ({cid}): {getattr(ent, 'title', ent)}")
+                                break
+                        except Exception as e:
+                            print(f"[Telethon] Pre-warm target {target} failed for {cname}: {e}")
 
     return _telethon_client
 
@@ -175,9 +178,24 @@ async def read_root():
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------
 
+TITLE_SEARCH_MAP = {
+    -1004390749731: "striver dsa",
+    -1004329144420: "striver lld",
+    -1004332462419: "striver dbms",
+    -1004308430774: "striver cn",
+}
+
+
 async def resolve_channel_peer(chat_id: int):
     """Resolves a channel chat_id to a Telethon entity with access_hash."""
     client = await get_client()
+
+    # Title lookup first for migrated group dialogs (contains all 418+ video posts)
+    if chat_id in TITLE_SEARCH_MAP:
+        target_title = TITLE_SEARCH_MAP[chat_id]
+        if target_title in _entity_cache:
+            return _entity_cache[target_title]
+
     if chat_id in _entity_cache:
         return _entity_cache[chat_id]
 
