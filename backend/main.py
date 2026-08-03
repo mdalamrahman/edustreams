@@ -481,6 +481,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                     doc,
                     offset=aligned_start,
                     request_size=REQUEST_SIZE,
+                    dc_id=getattr(doc, 'dc_id', None),
                 ):
                     # Skip bytes before the actual requested start (due to alignment)
                     if skip > 0:
