@@ -63,14 +63,22 @@ export function getDownloadUrl(channelId: string, messageId: number, fileName: s
  * This calls the backend's /api/catalog/all endpoint.
  */
 export async function fetchCatalog(): Promise<Record<string, unknown[]>> {
-  try {
-    const resp = await fetch(`${BACKEND_BASE}/api/catalog/all`);
-    if (!resp.ok) throw new Error(`Catalog fetch failed: ${resp.status}`);
-    return await resp.json();
-  } catch (err) {
-    console.error('[Telegram API] Catalog fetch error:', err);
-    return {};
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const resp = await fetch(`${BACKEND_BASE}/api/catalog/all`);
+      if (resp.ok) {
+        return await resp.json();
+      }
+    } catch (err) {
+      if (attempt < maxRetries) {
+        // Wait 2s, 4s between retries while Render spins up
+        await new Promise((res) => setTimeout(res, 2000 * attempt));
+        continue;
+      }
+    }
   }
+  return {};
 }
 
 /**

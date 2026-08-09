@@ -145,7 +145,7 @@ export function App() {
         }
       })
       .catch((err) => {
-        console.error('[EduStream] Catalog fetch failed, using static fallback:', err);
+        console.warn('[EduStream] Using fallback catalog:', err);
       })
       .finally(() => setCatalogLoading(false));
   }, []);
