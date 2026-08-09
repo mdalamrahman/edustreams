@@ -177,38 +177,36 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   useEffect(() => {
     if (activeTab === 'transcript') {
       const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
-      const defaultText =
-        `[00:00:00] Welcome to the lecture on ${cleanTitle}. Today we analyze key theoretical concepts, computational bounds, and practical implementation patterns.\n` +
-        `[00:02:15] Section 1: Fundamentals & Structural Overview. We begin by reviewing core data structures, memory layout, and runtime guarantees.\n` +
-        `[00:06:40] Section 2: Step-by-Step Code Walkthrough. Investigating optimal state transformations, iteration bounds, and auxiliary variable allocation.\n` +
-        `[00:12:10] Section 3: Time & Space Complexity Analysis. Evaluating worst-case O(N) execution time and O(1) auxiliary space optimization.\n` +
-        `[00:18:30] Section 4: Edge Cases & Optimization Tips. Verifying zero-length inputs, boundary parameters, and memory reuse techniques.\n` +
-        `[00:24:00] Lecture Summary: Practice the accompanying LeetCode workspace problems to reinforce understanding.`;
+      const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
 
-      const cacheKey = `edustream_transcript_${video.id || cleanTitle}`;
+      const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v2`;
       const savedTranscript = localStorage.getItem(cacheKey);
-      if (savedTranscript) {
+      if (savedTranscript && !savedTranscript.includes('LeetCode workspace problems')) {
         setDynamicTranscript(savedTranscript);
         setLoadingTranscript(false);
         return;
       }
 
       setLoadingTranscript(true);
-      const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}`;
+      const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
       fetch(url)
         .then((r) => r.json())
         .then((data) => {
-          const txt = data?.transcript || defaultText;
-          setDynamicTranscript(txt);
-          localStorage.setItem(cacheKey, txt);
+          if (data?.transcript) {
+            setDynamicTranscript(data.transcript);
+            localStorage.setItem(cacheKey, data.transcript);
+          } else {
+            const fallbackTxt = `[00:00:00] Welcome to ${cleanTitle}.\n[00:02:30] Section 1: Core Principles & Definitions.\n[00:07:15] Section 2: Architectural Walkthrough & Code Implementation.\n[00:11:45] Section 3: Summary & Performance Boundaries (${durationMins} Mins).`;
+            setDynamicTranscript(fallbackTxt);
+          }
         })
         .catch(() => {
-          setDynamicTranscript(defaultText);
-          localStorage.setItem(cacheKey, defaultText);
+          const fallbackTxt = `[00:00:00] Welcome to ${cleanTitle}.\n[00:02:30] Section 1: Core Principles & Definitions.\n[00:07:15] Section 2: Architectural Walkthrough & Code Implementation.\n[00:11:45] Section 3: Summary & Performance Boundaries (${durationMins} Mins).`;
+          setDynamicTranscript(fallbackTxt);
         })
         .finally(() => setLoadingTranscript(false));
     }
-  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id]);
+  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds]);
 
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">

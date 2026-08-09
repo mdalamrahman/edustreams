@@ -742,11 +742,12 @@ def generate_mistral_quiz(transcript: str) -> dict:
 # -------------------------------------------------------------------
 
 @app.get("/api/transcript/{chat_id}/{msg_id}")
-async def get_video_transcript_route(chat_id: int, msg_id: int, title: Optional[str] = None):
+async def get_video_transcript_route(chat_id: int, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15):
     """
     Returns AI-generated Whisper STT lecture transcript with timestamps and structural concepts.
     """
     clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
+    dur_mins = max(5, duration or 15)
     
     # Try generating a rich topic-specific transcript using Mistral AI
     if MISTRAL_API_KEY:
