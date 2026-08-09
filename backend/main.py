@@ -6,8 +6,8 @@ import subprocess
 import json
 import requests
 from typing import Optional, List
-from fastapi import FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from telethon import TelegramClient
@@ -28,6 +28,15 @@ SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
+
+# Media Storage Directory (saves downloaded videos locally for instant range seeking)
+MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", r"C:\Users\User\Desktop\edustreamfiles")
+try:
+    os.makedirs(MEDIA_STORAGE_DIR, exist_ok=True)
+except Exception:
+    MEDIA_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "media_storage")
+    os.makedirs(MEDIA_STORAGE_DIR, exist_ok=True)
+print(f"[Media Storage] Active video storage directory: {MEDIA_STORAGE_DIR}")
 
 # Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX)
 CHANNEL_IDS = {
@@ -403,10 +412,58 @@ DEFAULT_RANGE_SIZE = 2 * 1024 * 1024  # 2MB default response chunk
 @app.get("/stream/{chat_id}/{msg_id}")
 async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
     """
-    Streams actual video bytes from Telegram Datacenters via Telethon MTProto.
+    Streams actual video bytes from local disk storage if available,
+    otherwise fetches from Telegram Datacenters via Telethon MTProto.
     Supports HTTP 206 Partial Content range requests for instant video scrubbing.
-    Uses iter_download with proper offset alignment for efficient chunk delivery.
     """
+    # 1. Check if video file is already stored locally on disk (e.g. C:\Users\User\Desktop\edustreamfiles)
+    local_filename = f"video_{chat_id}_{msg_id}.mp4"
+    local_file_path = os.path.join(MEDIA_STORAGE_DIR, local_filename)
+
+    if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+        file_size = os.path.getsize(local_file_path)
+        mime_type = "video/mp4"
+
+        range_header = request.headers.get("range")
+        if range_header:
+            range_str = range_header.replace("bytes=", "")
+            parts = range_str.split("-")
+            start = int(parts[0]) if parts[0] else 0
+            end = int(parts[1]) if parts[1] else min(start + DEFAULT_RANGE_SIZE - 1, file_size - 1)
+        else:
+            start = 0
+            end = min(DEFAULT_RANGE_SIZE - 1, file_size - 1)
+
+        end = min(end, file_size - 1)
+        chunk_size = end - start + 1
+
+        async def generate_from_disk():
+            with open(local_file_path, "rb") as f:
+                f.seek(start)
+                remaining = chunk_size
+                while remaining > 0:
+                    read_bytes = min(remaining, 64 * 1024)
+                    chunk = f.read(read_bytes)
+                    if not chunk:
+                        break
+                    yield chunk
+                    remaining -= len(chunk)
+
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(chunk_size),
+            "Content-Type": mime_type,
+            "Cache-Control": "public, max-age=86400",
+            "X-EduStream-Source": "LocalDiskStorage",
+        }
+        return StreamingResponse(generate_from_disk(), status_code=206, headers=headers)
+
+    # 2. Local disk cache miss: stream from Telegram MTProto
     try:
         client = await get_client()
         entity = await resolve_channel_peer(chat_id)
@@ -418,7 +475,6 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
 
         if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
             print(f"[Stream] Msg {msg_id} not found in {chat_id}. Finding latest video fallback...")
-            # User session or Bot fallback search
             is_bot_client = (await client.is_bot()) if hasattr(client, "is_bot") else True
             if not is_bot_client:
                 async for m in client.iter_messages(entity, limit=30):
@@ -432,7 +488,6 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                                 print(f"[Stream Fallback] Using latest channel video msg #{m.id}")
                                 break
             else:
-                # Bot fallback range probe
                 for r in range(1000, 0, -100):
                     ids_fallback = list(range(max(1, r - 99), r + 1))
                     try:
@@ -470,11 +525,9 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
             start = 0
             end = min(DEFAULT_RANGE_SIZE - 1, file_size - 1)
 
-        # Clamp
         end = min(end, file_size - 1)
         chunk_size = end - start + 1
 
-        # Align start offset to REQUEST_SIZE boundary for Telethon
         aligned_start = (start // REQUEST_SIZE) * REQUEST_SIZE
         skip_bytes = start - aligned_start
 
@@ -488,7 +541,6 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                     request_size=REQUEST_SIZE,
                     dc_id=getattr(doc, 'dc_id', None),
                 ):
-                    # Skip bytes before the actual requested start (due to alignment)
                     if skip > 0:
                         if len(chunk) <= skip:
                             skip -= len(chunk)
@@ -496,7 +548,6 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                         chunk = chunk[skip:]
                         skip = 0
 
-                    # Trim to requested size
                     remaining = chunk_size - bytes_sent
                     if remaining <= 0:
                         break
@@ -522,6 +573,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
             "Content-Length": str(chunk_size),
             "Content-Type": mime_type,
             "Cache-Control": "public, max-age=86400",
+            "X-EduStream-Source": "TelegramMTProto",
         }
         return StreamingResponse(generate(), status_code=206, headers=headers)
 
@@ -533,7 +585,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
 
 
 # -------------------------------------------------------------------
-# TELEGRAM ATTACHMENT DOWNLOAD
+# TELEGRAM ATTACHMENT DOWNLOAD & LOCAL DISK SAVE
 # -------------------------------------------------------------------
 
 @app.get("/api/download/{chat_id}/{msg_id}")
@@ -542,7 +594,23 @@ async def download_telegram_attachment(
     msg_id: int,
     file_name: Optional[str] = "telegram_resource",
 ):
-    """Downloads document/attachment from a Telegram message via MTProto."""
+    """Downloads document/attachment from local disk if available, otherwise from Telegram MTProto."""
+    local_filename = f"video_{chat_id}_{msg_id}.mp4"
+    local_file_path = os.path.join(MEDIA_STORAGE_DIR, local_filename)
+
+    # 1. Serve from local disk storage if already saved
+    if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+        print(f"[Download Cache Hit] Serving {local_filename} from local disk storage: {local_file_path}")
+        return FileResponse(
+            local_file_path,
+            filename=file_name,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Content-Disposition": f'attachment; filename="{file_name}"',
+            }
+        )
+
+    # 2. Download from Telegram MTProto & save to local disk
     try:
         client = await get_client()
         entity = await resolve_channel_peer(chat_id)
@@ -551,25 +619,20 @@ async def download_telegram_attachment(
         if not msg or not msg.media:
             raise HTTPException(status_code=404, detail="Message has no media")
 
-        # Download full file to bytes
-        data = await client.download_media(msg.media, bytes)
-        if not data:
-            raise HTTPException(status_code=404, detail="Download returned empty")
+        print(f"[Download MTProto] Saving video #{msg_id} from chat {chat_id} to local disk: {local_file_path}...")
+        await client.download_media(msg.media, file=local_file_path)
 
-        # Detect mime type from document if available
-        mime = "application/octet-stream"
-        if isinstance(msg.media, MessageMediaDocument) and msg.media.document:
-            mime = msg.media.document.mime_type or mime
+        if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+            return FileResponse(
+                local_file_path,
+                filename=file_name,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Disposition": f'attachment; filename="{file_name}"',
+                }
+            )
 
-        return StreamingResponse(
-            io.BytesIO(data),
-            media_type=mime,
-            headers={
-                "Content-Disposition": f'attachment; filename="{file_name}"',
-                "Content-Length": str(len(data)),
-                "Cache-Control": "public, max-age=86400",
-            },
-        )
+        raise HTTPException(status_code=500, detail="Failed to save video to local disk")
     except HTTPException:
         raise
     except Exception as e:

@@ -140,23 +140,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const toggleOfflineCache = async () => {
-    if (isCachedOffline || isCaching || !streamSrc) return;
-    setIsCaching(true);
-    try {
-      if ('caches' in window) {
-        const cache = await caches.open('edustream-video-v1');
-        const response = await fetch(streamSrc);
-        if (response.ok) {
-          await cache.put(streamSrc, response);
-          setIsCachedOffline(true);
-        }
-      }
-    } catch (err) {
-      console.warn('Offline cache error:', err);
-    } finally {
-      setIsCaching(false);
-    }
+  const handleDownloadVideoFile = () => {
+    if (!streamSrc) return;
+    const a = document.createElement('a');
+    a.href = streamSrc;
+    a.download = `${video.title || 'video'}.mp4`;
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleReconnect = () => {
@@ -178,25 +170,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       
-      {/* Top Header Bar with Next / Prev Navigation */}
-      <div className="px-4 py-3 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center space-x-2 truncate min-w-0">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
-          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 flex-shrink-0">
-            Post #{video.telegram_message_id || 101}
-          </span>
-          <h2 className="text-sm font-bold text-slate-100 truncate">{video.title}</h2>
+      {/* Video Title Bar & Navigation Controls */}
+      <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center space-x-2 mb-1">
+            <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700 text-[11px] font-mono font-bold text-indigo-300">
+              Post #{video.telegram_message_id}
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">{video.sender_username || '@EduStreamBot'}</span>
+          </div>
+          <h2 className="text-base font-bold text-slate-100 line-clamp-1">{video.title}</h2>
         </div>
 
-        {/* Prev / Next Navigation Controls */}
         <div className="flex items-center space-x-2 flex-shrink-0">
           {onPrevLecture && (
             <button
               onClick={onPrevLecture}
               disabled={!hasPrevLecture}
-              className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 hasPrevLecture
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200'
                   : 'bg-slate-950 text-slate-600 border border-slate-900 cursor-not-allowed'
               }`}
               title="Previous Lecture"
@@ -217,31 +210,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }`}
               title="Next Lecture"
             >
-              <span>Next Lecture</span>
+              <span>Next</span>
               <SkipForward className="w-3.5 h-3.5" />
             </button>
           )}
 
           <button
-            onClick={toggleOfflineCache}
-            disabled={isCachedOffline || isCaching}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              isCachedOffline
-                ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
-                : 'bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-700'
-            }`}
+            onClick={handleDownloadVideoFile}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-all shadow-md"
+            title="Download Video File directly to disk"
           >
-            {isCachedOffline ? (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Saved</span>
-              </>
-            ) : (
-              <>
-                <DownloadCloud className="w-3.5 h-3.5" />
-                <span>{isCaching ? 'Saving...' : 'Offline'}</span>
-              </>
-            )}
+            <DownloadCloud className="w-3.5 h-3.5" />
+            <span>Download .MP4 File</span>
           </button>
         </div>
       </div>
