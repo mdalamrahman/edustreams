@@ -21,8 +21,14 @@ export async function signUpStudent(email: string, password: string): Promise<{ 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
       return { user: studentUser, error: null };
     }
-    if (error && !error.message.includes('Fetch') && !error.message.includes('network') && !error.message.includes('RESOLVED')) {
-      return { user: null, error: error.message };
+    if (error) {
+      const msg = (error.message || '').toLowerCase();
+      // If error is genuine Supabase user error (e.g. Password too short, invalid format), return it.
+      // If error is network/fetch/DNS resolution error due to demo URL, fall through to local session.
+      const isNetworkErr = msg.includes('fetch') || msg.includes('network') || msg.includes('resolved') || msg.includes('failed to fetch');
+      if (!isNetworkErr) {
+        return { user: null, error: error.message };
+      }
     }
   } catch (err: any) {
     console.warn('[EduStream Auth] Supabase endpoint notice:', err);
@@ -61,8 +67,12 @@ export async function signInStudent(email: string, password: string): Promise<{ 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
       return { user: studentUser, error: null };
     }
-    if (error && !error.message.includes('Fetch') && !error.message.includes('network') && !error.message.includes('RESOLVED')) {
-      return { user: null, error: error.message };
+    if (error) {
+      const msg = (error.message || '').toLowerCase();
+      const isNetworkErr = msg.includes('fetch') || msg.includes('network') || msg.includes('resolved') || msg.includes('failed to fetch');
+      if (!isNetworkErr) {
+        return { user: null, error: error.message };
+      }
     }
   } catch (err: any) {
     console.warn('[EduStream Auth] Supabase endpoint notice:', err);
