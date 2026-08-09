@@ -61,7 +61,6 @@ Instructions:
     console.warn('[Mistral Chat] API notice:', err);
   }
 
-  // Smart fallback answer generator based on user message and video title
   if (userMsg.toLowerCase().includes('complexity') || userMsg.toLowerCase().includes('big-o')) {
     return `In **${cleanTitle}**, the time complexity is typically **O(N)** or **O(N log N)** depending on array partitioning, while space complexity is optimized to **O(1)** auxiliary space.`;
   }
@@ -148,14 +147,12 @@ Return ONLY valid JSON.`;
     console.warn('[Mistral Quiz] API notice:', err);
   }
 
-  // Fallback video-specific quiz generator
   return generateTopicSpecificQuizFallback(cleanTitle, channelName);
 }
 
 function generateTopicSpecificQuizFallback(title: string, channelName: string): QuizQuestion[] {
-  const isCpp = title.toLowerCase().includes('cpp') || title.toLowerCase().includes('c++') || title.toLowerCase().includes('basics');
+  const isCpp = title.toLowerCase().includes('cpp') || title.toLowerCase().includes('c++') || title.toLowerCase().includes('basics') || title.toLowerCase().includes('software design');
   const isPrime = title.toLowerCase().includes('prime') || title.toLowerCase().includes('factor');
-  const isString = title.toLowerCase().includes('string') || title.toLowerCase().includes('kmp') || title.toLowerCase().includes('palindrome');
 
   if (isCpp) {
     return [
@@ -175,7 +172,7 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
         question: `Which C++ standard library container is implemented as an underlying Hash Table offering O(1) average lookup?`,
         options: ['std::map', 'std::set', 'std::unordered_map', 'std::list'],
         correct_answer: 2,
-        explanation: 'std::unordered_map uses hash buckets for O(1) average search, whereas std::map uses balanced Red-Black Trees with O(log N) lookup.'
+        explanation: 'std::unordered_map uses hash buckets for O(1) average search.'
       },
       {
         id: `mcq-cpp-3`,
@@ -189,7 +186,7 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
           'The function argument is converted to a raw double pointer'
         ],
         correct_answer: 1,
-        explanation: 'Passing by const reference avoids deep object copying while enforcing read-only immutability inside the function.'
+        explanation: 'Passing by const reference avoids deep object copying.'
       },
       {
         id: `code-cpp-4`,
@@ -213,7 +210,7 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
         question: `What is the time complexity of the Sieve of Eratosthenes algorithm for finding all primes up to N?`,
         options: ['O(N log N)', 'O(N log(log N))', 'O(N sqrt(N))', 'O(2^N)'],
         correct_answer: 1,
-        explanation: 'Sieve of Eratosthenes runs in O(N log(log N)) time by marking prime multiples across the boolean array.'
+        explanation: 'Sieve of Eratosthenes runs in O(N log(log N)) time.'
       },
       {
         id: `mcq-prime-2`,
@@ -227,7 +224,7 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
           'Because Euler Totient function limits factor searching'
         ],
         correct_answer: 0,
-        explanation: 'If N has a factor greater than sqrt(N), its matching factor pair MUST be less than or equal to sqrt(N).'
+        explanation: 'If N has a factor > sqrt(N), its matching factor MUST be <= sqrt(N).'
       },
       {
         id: `mcq-prime-3`,
@@ -236,7 +233,7 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
         question: `What is the prime factorization time complexity for a number N using trial division up to sqrt(N)?`,
         options: ['O(N)', 'O(sqrt(N))', 'O(log N)', 'O(1)'],
         correct_answer: 1,
-        explanation: 'Iterating up to sqrt(N) while dividing out prime factors yields O(sqrt(N)) worst-case runtime.'
+        explanation: 'Iterating up to sqrt(N) yields O(sqrt(N)) worst-case runtime.'
       },
       {
         id: `code-prime-4`,
@@ -251,7 +248,6 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
     ];
   }
 
-  // Default topic fallback matching video title
   return [
     {
       id: `mcq-gen-1`,
@@ -371,24 +367,92 @@ export async function requestMistralDiagnostic(
   accuracyPercent: number
 ): Promise<AIDiagnosticReport> {
   const speedIndex = Number((totalSolved / Math.max(totalMins, 1.0)).toFixed(2));
-  
+
+  if (totalSolved === 0 && totalMins === 0) {
+    return {
+      solving_velocity_qpm: 0,
+      academic_performance: 'Initial Diagnostic Pending',
+      strengths: [
+        'Ready to begin initial DSA & Systems lectures',
+        'Authentication verified and workspace initialized',
+        'LeetCode Sandboxed Compiler ready for code execution'
+      ],
+      weaknesses: [
+        'No solved questions recorded yet. Complete MCQs or Code Challenges to log weak topics.'
+      ],
+      recommended_lectures: [
+        'DSA: 1.2 Software Design Principles & C++ Basics',
+        'DSA: Count primes in range L to R',
+        'System Design: Distributed Caching & Rate Limiting'
+      ],
+      summary: 'Welcome! You have not logged active solving minutes yet. Watch lectures and solve quizzes/coding challenges to generate real-time Mistral AI diagnostics.'
+    };
+  }
+
+  const prompt = `You are a Computer Science Academic Dean evaluating a student.
+Student Stats:
+- Total Solved Questions: ${totalSolved}
+- Total Active Minutes: ${Math.round(totalMins)}
+- Question Solving Velocity: ${speedIndex} questions/min
+- First-Attempt Accuracy: ${accuracyPercent}%
+
+Generate a strict JSON object with:
+1. "academic_performance": string (e.g. "High Velocity (Mastery Level)", "Steady Progress", or "Needs Concept Practice")
+2. "strengths": array of 3 specific student strengths based on these stats
+3. "weaknesses": array of 2 specific weak topics that need review
+4. "recommended_lectures": array of 3 specific lecture topics to re-watch
+5. "summary": string summary paragraph
+
+Return ONLY valid JSON.`;
+
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = JSON.parse(data.choices[0]?.message?.content || '{}');
+      return {
+        solving_velocity_qpm: speedIndex,
+        academic_performance: content.academic_performance || (speedIndex >= 0.3 ? 'High Velocity (Mastery Level)' : 'Steady Progress'),
+        strengths: content.strengths || ['Consistent speed in solving DSA challenges', 'Strong accuracy in MCQ comprehension', 'Active engagement in code compilation'],
+        weaknesses: content.weaknesses || ['Complex recursion stack overflow edge cases', 'System design consistent hashing node rebalancing'],
+        recommended_lectures: content.recommended_lectures || ['DSA: 1.2 Software Design Principles', 'DSA: Sieve of Eratosthenes', 'System Design: Distributed Caching'],
+        summary: content.summary || `Dynamic Diagnostic Summary: You have solved ${totalSolved} questions in ${Math.round(totalMins)} active minutes, maintaining a Question Solving Velocity of ${speedIndex} questions/min with ${accuracyPercent}% accuracy.`
+      };
+    }
+  } catch (err) {
+    console.warn('[Mistral Diagnostic Notice]:', err);
+  }
+
+  const perf = speedIndex >= 0.4 ? 'High Velocity (Mastery Level)' : speedIndex >= 0.1 ? 'Steady Progress' : 'Needs Concept Practice';
   return {
     solving_velocity_qpm: speedIndex,
-    academic_performance: speedIndex >= 0.4 ? 'High Velocity (Mastery Level)' : 'Steady Progress',
+    academic_performance: perf,
     strengths: [
-      'Rapid MCQ comprehension under timed conditions',
-      'Strong grasp of Dynamic Programming & Subproblem memoization',
-      'Consistent SQL transaction analysis'
+      accuracyPercent >= 75 ? 'Excellent accuracy on first-attempt problem solving' : 'Consistent practice pace across topics',
+      `Logged ${totalSolved} verified problem completions`,
+      `Active learning velocity of ${speedIndex} QPM`
     ],
     weaknesses: [
-      'Graph DFS recursion stack overflow edge cases',
-      'System design consistent hashing node rebalancing calculations'
+      accuracyPercent < 70 ? 'Accuracy below target 70%. Review boundary edge cases and variable types.' : 'Advanced graph DFS memory optimization'
     ],
     recommended_lectures: [
-      'DSA Lecture 4: Dynamic Programming & Space Optimization',
-      'System Design Lecture 2: Distributed Caching & Virtual Rings',
-      'DBMS Lecture 3: PostgreSQL Write-Ahead Logging & MVCC'
+      'DSA: Software Design Principles & C++ Basics',
+      'DSA: Sieve of Eratosthenes & Prime Factorization',
+      'System Design: Load Balancers & Distributed Caching'
     ],
-    summary: `Weekly Diagnostic Summary: You have solved ${totalSolved} questions in ${Math.round(totalMins)} active minutes, maintaining a Question Solving Velocity of ${speedIndex} questions/min with ${accuracyPercent}% accuracy.`
+    summary: `Dynamic Academic Summary: You have completed ${totalSolved} practice problems across ${Math.round(totalMins)} active learning minutes with an overall accuracy of ${accuracyPercent}%.`
   };
 }

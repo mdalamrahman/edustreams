@@ -16,8 +16,10 @@ import {
   AlertTriangle,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  BookOpen
 } from 'lucide-react';
+import { AINotesAndSimulation } from './AINotesAndSimulation';
 import { Video } from '../lib/types';
 import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
@@ -46,7 +48,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isCachedOffline, setIsCachedOffline] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'caption' | 'transcript'>('caption');
+  const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'notes_sim'>('caption');
   const [streamError, setStreamError] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
 
@@ -418,6 +420,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               <span>Whisper Transcript</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('notes_sim')}
+              className={`flex items-center space-x-1.5 text-xs font-bold transition-all ${
+                activeTab === 'notes_sim'
+                  ? 'text-emerald-400 border-b-2 border-emerald-400 pb-1'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+              <span>AI Notes & Simulation</span>
+            </button>
           </div>
 
           <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
@@ -433,7 +447,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
             <p className="whitespace-pre-line text-slate-300 font-sans">{video.telegram_caption || 'No caption available.'}</p>
           </div>
-        ) : (
+        ) : activeTab === 'transcript' ? (
           <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line">
             {loadingTranscript ? (
               <span className="text-purple-400 animate-pulse">Generating Groq whisper-large-v3 STT transcript...</span>
@@ -441,6 +455,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               dynamicTranscript || video.transcript || 'Groq whisper-large-v3 transcript processing...'
             )}
           </div>
+        ) : (
+          <AINotesAndSimulation video={video} />
         )}
       </div>
     </div>
