@@ -6,9 +6,13 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const backendUrl = env.VITE_BACKEND_URL || env.VITE_RENDER_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+  const authSecret = env.VITE_AUTH_SECRET_CODE || 'Zerocheck@8100648132';
 
   return {
     plugins: [react()],
+    define: {
+      'import.meta.env.VITE_AUTH_SECRET_CODE': JSON.stringify(authSecret),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
