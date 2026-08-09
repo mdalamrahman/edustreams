@@ -22,8 +22,9 @@ import { ResourceCard } from './components/ResourceCard';
 import { VelocityTracker } from './components/VelocityTracker';
 import { DiagnosticCard } from './components/DiagnosticCard';
 import { MobileGatedOverlay } from './components/MobileGatedOverlay';
+import { AuthModal } from './components/AuthModal';
 import { useDevice } from './lib/device';
-import { MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
+import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { Video } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 
@@ -35,6 +36,22 @@ export function App() {
   const [lessonSubTab, setLessonSubTab] = useState<'quiz' | 'code'>('code');
   const [showMobileGating, setShowMobileGating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Auth State
+  const [user, setUser] = useState<any>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Velocity Tracker State
   const [totalSolved, setTotalSolved] = useState<number>(8);
@@ -205,6 +222,12 @@ export function App() {
         setActiveTab={setActiveTab}
         selectedChannel={selectedChannelId}
         setSelectedChannel={handleSelectChannel}
+        user={user}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onSignOut={async () => {
+          await supabase.auth.signOut();
+          setUser(null);
+        }}
       />
 
       {/* Main Container */}
@@ -542,6 +565,15 @@ export function App() {
           }}
         />
       )}
+
+      {/* Auth Modal with Zerocheck@8100648132 Gated Signup */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(loggedUser) => {
+          setUser(loggedUser);
+        }}
+      />
 
     </div>
   );

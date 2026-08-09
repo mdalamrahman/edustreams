@@ -6,7 +6,10 @@ import {
   HardDrive, 
   Smartphone, 
   Laptop, 
-  BookOpen 
+  BookOpen,
+  UserCheck,
+  LogOut,
+  KeyRound
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 
@@ -15,11 +18,17 @@ interface NavbarProps {
   setActiveTab: (tab: 'channels' | 'lesson' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
+  user: any;
+  onOpenAuthModal: () => void;
+  onSignOut: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
-  setActiveTab
+  setActiveTab,
+  user,
+  onOpenAuthModal,
+  onSignOut,
 }) => {
   const { isMobile } = useDevice();
 
@@ -96,18 +105,42 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </nav>
 
-        {/* Right Device Indicator */}
+        {/* Right User & Auth Section */}
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs">
+          {user ? (
+            <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1 pr-2">
+              <div className="px-2.5 py-1 rounded-lg bg-indigo-950 text-indigo-300 font-mono text-xs font-bold flex items-center gap-1.5 border border-indigo-700/60">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="max-w-[120px] truncate">{user.email || 'Authorized Student'}</span>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-red-400 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuthModal}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Student Auth</span>
+            </button>
+          )}
+
+          <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs">
             {isMobile ? (
               <>
                 <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[11px] text-amber-300 font-medium">Mobile View</span>
+                <span className="text-[11px] text-amber-300 font-medium">Mobile</span>
               </>
             ) : (
               <>
                 <Laptop className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px] text-emerald-300 font-medium">Desktop Workspace</span>
+                <span className="text-[11px] text-emerald-300 font-medium">Desktop</span>
               </>
             )}
           </div>
