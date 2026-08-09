@@ -185,19 +185,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         `[00:18:30] Section 4: Edge Cases & Optimization Tips. Verifying zero-length inputs, boundary parameters, and memory reuse techniques.\n` +
         `[00:24:00] Lecture Summary: Practice the accompanying LeetCode workspace problems to reinforce understanding.`;
 
+      const cacheKey = `edustream_transcript_${video.id || cleanTitle}`;
+      const savedTranscript = localStorage.getItem(cacheKey);
+      if (savedTranscript) {
+        setDynamicTranscript(savedTranscript);
+        setLoadingTranscript(false);
+        return;
+      }
+
       setLoadingTranscript(true);
       const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}`;
       fetch(url)
         .then((r) => r.json())
         .then((data) => {
-          if (data?.transcript) {
-            setDynamicTranscript(data.transcript);
-          } else {
-            setDynamicTranscript(defaultText);
-          }
+          const txt = data?.transcript || defaultText;
+          setDynamicTranscript(txt);
+          localStorage.setItem(cacheKey, txt);
         })
         .catch(() => {
           setDynamicTranscript(defaultText);
+          localStorage.setItem(cacheKey, defaultText);
         })
         .finally(() => setLoadingTranscript(false));
     }

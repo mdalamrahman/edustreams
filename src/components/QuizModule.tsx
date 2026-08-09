@@ -6,9 +6,16 @@ import { QuizQuestion } from '../lib/types';
 interface QuizModuleProps {
   questions: QuizQuestion[];
   onQuizSubmitted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
+  onAttemptMoreQuestions?: () => void;
+  isGeneratingMore?: boolean;
 }
 
-export const QuizModule: React.FC<QuizModuleProps> = ({ questions, onQuizSubmitted }) => {
+export const QuizModule: React.FC<QuizModuleProps> = ({
+  questions,
+  onQuizSubmitted,
+  onAttemptMoreQuestions,
+  isGeneratingMore
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -66,6 +73,17 @@ export const QuizModule: React.FC<QuizModuleProps> = ({ questions, onQuizSubmitt
         </div>
 
         <div className="flex items-center space-x-2 font-mono text-xs">
+          {onAttemptMoreQuestions && (
+            <button
+              onClick={onAttemptMoreQuestions}
+              disabled={isGeneratingMore}
+              className="flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 font-bold transition-all text-xs shadow-md"
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${isGeneratingMore ? 'animate-spin text-amber-300' : 'text-amber-300'}`} />
+              <span>{isGeneratingMore ? 'Generating...' : 'Attempt More'}</span>
+            </button>
+          )}
+
           <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
             Question {currentIndex + 1} of {questions.length}
           </span>
@@ -157,9 +175,27 @@ export const QuizModule: React.FC<QuizModuleProps> = ({ questions, onQuizSubmitt
             <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
-          <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold bg-emerald-950/80 px-4 py-2 rounded-xl border border-emerald-800">
-            <Award className="w-4 h-4" />
-            <span>Quiz Complete! ({score}/{questions.length} Correct)</span>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold bg-emerald-950/80 px-4 py-2 rounded-xl border border-emerald-800">
+              <Award className="w-4 h-4" />
+              <span>Quiz Complete! ({score}/{questions.length} Correct)</span>
+            </div>
+
+            {onAttemptMoreQuestions && (
+              <button
+                onClick={() => {
+                  setCurrentIndex(0);
+                  setSelectedOption(null);
+                  setIsAnswered(false);
+                  onAttemptMoreQuestions();
+                }}
+                disabled={isGeneratingMore}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-md shadow-purple-600/30"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>Attempt More Questions</span>
+              </button>
+            )}
           </div>
         )}
       </div>

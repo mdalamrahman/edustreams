@@ -12,6 +12,22 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
   const [isPlayingSim, setIsPlayingSim] = useState(false);
 
   const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
+  const cacheKey = `edustream_ainotes_${video.id || cleanTitle}`;
+
+  const [aiNotesText, setAiNotesText] = useState<string>(() => {
+    return localStorage.getItem(cacheKey) || '';
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(cacheKey);
+    if (saved) {
+      setAiNotesText(saved);
+    } else {
+      const generated = `Executive Summary for ${cleanTitle}: This lecture covers fundamental subproblem decomposition, space-time trade-offs, and memory bounds.`;
+      setAiNotesText(generated);
+      localStorage.setItem(cacheKey, generated);
+    }
+  }, [video.id, cleanTitle]);
 
   // Simulation steps tailored to algorithm
   const simSteps = [

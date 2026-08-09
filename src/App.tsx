@@ -53,6 +53,27 @@ export function App() {
   // Video-specific Quiz State
   const [activeVideoQuiz, setActiveVideoQuiz] = useState<QuizQuestion[]>([]);
   const [quizLoading, setQuizLoading] = useState<boolean>(false);
+  const [isGeneratingMoreQuiz, setIsGeneratingMoreQuiz] = useState<boolean>(false);
+
+  const handleAttemptMoreQuestions = async () => {
+    if (!selectedVideo) return;
+    setIsGeneratingMoreQuiz(true);
+    try {
+      const chObj = MOCK_CHANNELS.find((c) => c.id === selectedVideo.channel_id);
+      const newQuestions = await requestMistralQuiz(
+        `${selectedVideo.title} (Batch #${Math.floor(Math.random() * 1000)})`,
+        selectedVideo.transcript,
+        chObj?.name || 'DSA'
+      );
+      if (newQuestions && newQuestions.length > 0) {
+        setActiveVideoQuiz(newQuestions);
+      }
+    } catch (err) {
+      console.warn('[Attempt More Notice]:', err);
+    } finally {
+      setIsGeneratingMoreQuiz(false);
+    }
+  };
 
   useEffect(() => {
     // Restore student session on mount
@@ -549,6 +570,8 @@ export function App() {
                   <QuizModule
                     questions={activeMCQs}
                     onQuizSubmitted={handleQuestionSolved}
+                    onAttemptMoreQuestions={handleAttemptMoreQuestions}
+                    isGeneratingMore={isGeneratingMoreQuiz}
                   />
                 )}
               </div>
