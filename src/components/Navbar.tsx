@@ -19,7 +19,7 @@ interface NavbarProps {
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
-  onOpenAuthModal: () => void;
+  onOpenAuthModal?: () => void;
   onSignOut: () => void;
 }
 

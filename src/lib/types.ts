@@ -4,6 +4,8 @@ export interface Channel {
   id: string;
   telegram_channel_id: number;
   category_name: CategoryName;
+  name?: string;
+  total_videos?: number;
   description: string;
   icon: string;
   created_at: string;
@@ -24,6 +26,7 @@ export interface Attachment {
 
 export interface QuizQuestion {
   id: string;
+  video_id?: string;
   type: 'MCQ' | 'CODING';
   question: string;
   options?: string[];

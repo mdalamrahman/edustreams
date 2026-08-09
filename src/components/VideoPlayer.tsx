@@ -27,6 +27,7 @@ interface VideoPlayerProps {
   onPrevLecture?: () => void;
   hasNextLecture?: boolean;
   hasPrevLecture?: boolean;
+  onOpenAskAI?: () => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -34,7 +35,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onNextLecture,
   onPrevLecture,
   hasNextLecture = true,
-  hasPrevLecture = true
+  hasPrevLecture = true,
+  onOpenAskAI
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -244,6 +246,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             >
               <span>Next</span>
               <SkipForward className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {onOpenAskAI && (
+            <button
+              onClick={onOpenAskAI}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30 transition-all border border-purple-400/30"
+              title="Ask AI Teaching Assistant about this lecture"
+            >
+              <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+              <span>Ask AI</span>
             </button>
           )}
 
