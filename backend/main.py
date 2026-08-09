@@ -248,7 +248,7 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
         entity = await resolve_channel_peer(chat_id)
         videos = []
 
-        is_bot_client = client.is_bot() if hasattr(client, "is_bot") else True
+        is_bot_client = (await client.is_bot()) if hasattr(client, "is_bot") else True
 
         if is_bot_client:
             # Bot tokens cannot call iter_messages/GetHistoryRequest. Use get_messages with ID batch ranges!
@@ -414,7 +414,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
         if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
             print(f"[Stream] Msg {msg_id} not found in {chat_id}. Finding latest video fallback...")
             # User session or Bot fallback search
-            is_bot_client = client.is_bot() if hasattr(client, "is_bot") else True
+            is_bot_client = (await client.is_bot()) if hasattr(client, "is_bot") else True
             if not is_bot_client:
                 async for m in client.iter_messages(entity, limit=30):
                     if m and m.media and isinstance(m.media, MessageMediaDocument):
@@ -498,7 +498,7 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
                     if len(chunk) > remaining:
                         chunk = chunk[:remaining]
 
-                    yield chunk
+                    yield bytes(chunk)
                     bytes_sent += len(chunk)
                     if bytes_sent >= chunk_size:
                         break
