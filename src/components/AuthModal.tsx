@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { signUpStudent, signInStudent } from '../lib/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -45,21 +45,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setLoading(true);
       try {
-        const { data, error: signUpErr } = await supabase.auth.signUp({
-          email: email.trim(),
-          password: password,
-        });
+        const { user, error: signUpErr } = await signUpStudent(email.trim(), password);
 
         if (signUpErr) {
-          setError(signUpErr.message);
-        } else {
-          setSuccessMsg('Account created successfully! Logging you in...');
-          if (data.user) {
-            setTimeout(() => {
-              onSuccess(data.user);
-              if (onClose) onClose();
-            }, 800);
-          }
+          setError(signUpErr);
+        } else if (user) {
+          setSuccessMsg('Account created successfully! Unlocking portal...');
+          setTimeout(() => {
+            onSuccess(user);
+            if (onClose) onClose();
+          }, 600);
         }
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred during signup.');
@@ -69,21 +64,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } else {
       setLoading(true);
       try {
-        const { data, error: signInErr } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password: password,
-        });
+        const { user, error: signInErr } = await signInStudent(email.trim(), password);
 
         if (signInErr) {
-          setError(signInErr.message);
-        } else {
+          setError(signInErr);
+        } else if (user) {
           setSuccessMsg('Signed in successfully! Loading portal...');
-          if (data.user) {
-            setTimeout(() => {
-              onSuccess(data.user);
-              if (onClose) onClose();
-            }, 600);
-          }
+          setTimeout(() => {
+            onSuccess(user);
+            if (onClose) onClose();
+          }, 500);
         }
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred during sign in.');

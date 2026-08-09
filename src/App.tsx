@@ -25,6 +25,7 @@ import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { AuthModal } from './components/AuthModal';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
+import { getCurrentStudent, signOutStudent } from './lib/auth';
 import { Video } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 
@@ -43,13 +44,25 @@ export function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    // Restore student session on mount
+    const student = getCurrentStudent();
+    if (student) {
+      setUser(student);
       setAuthChecking(false);
-    });
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setUser(session.user);
+        }
+      }).catch((err) => {
+        console.warn('[EduStream Auth] Remote Supabase notice:', err);
+      }).finally(() => {
+        setAuthChecking(false);
+      });
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (session?.user) setUser(session.user);
       setAuthChecking(false);
     });
 
@@ -246,8 +259,8 @@ export function App() {
         setSelectedChannel={handleSelectChannel}
         user={user}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
-        onSignOut={async () => {
-          await supabase.auth.signOut();
+        onSignOut={() => {
+          signOutStudent();
           setUser(null);
         }}
       />
