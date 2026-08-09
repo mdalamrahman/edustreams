@@ -241,7 +241,7 @@ async def resolve_channel_peer(chat_id: int):
     return PeerChannel(clean_id)
 
 
-async def fetch_channel_videos(chat_id: int, limit: int = 50):
+async def fetch_channel_videos(chat_id: int, limit: int = 0):
     """Internal helper to fetch videos from a channel entity."""
     try:
         client = await get_client()
@@ -301,17 +301,19 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
                             "date": msg.date.isoformat() if msg.date else None,
                             "stream_url": f"/stream/{chat_id}/{msg.id}",
                         })
-                        if len(videos) >= limit:
+                        if limit > 0 and len(videos) >= limit:
                             break
                 except Exception as e:
                     print(f"[Catalog] Batch error for chat {chat_id}: {e}")
                     continue
-                if len(videos) >= limit:
+                if limit > 0 and len(videos) >= limit:
                     break
         else:
             # User session mode: use fast iter_messages!
-            print(f"[Catalog User Mode] Fetching videos for chat {chat_id} (limit={limit})...")
-            async for msg in client.iter_messages(entity, limit=limit * 3):
+            # limit=0 means fetch ALL messages; otherwise cap the iteration
+            iter_limit = None if limit <= 0 else limit * 3
+            print(f"[Catalog User Mode] Fetching videos for chat {chat_id} (limit={limit}, iter_limit={iter_limit})...")
+            async for msg in client.iter_messages(entity, limit=iter_limit):
                 if not msg or not msg.media or not isinstance(msg.media, MessageMediaDocument):
                     continue
                 doc = msg.media.document
@@ -348,8 +350,11 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
                     "date": msg.date.isoformat() if msg.date else None,
                     "stream_url": f"/stream/{chat_id}/{msg.id}",
                 })
-                if len(videos) >= limit:
+                if limit > 0 and len(videos) >= limit:
                     break
+
+        # Sort chronologically: oldest message first (ascending msg_id)
+        videos.sort(key=lambda v: v["msg_id"])
 
         return {"chat_id": chat_id, "count": len(videos), "videos": videos}
 
@@ -358,7 +363,7 @@ async def fetch_channel_videos(chat_id: int, limit: int = 50):
         return {"chat_id": chat_id, "count": 0, "videos": [], "error": str(e)}
 
 
-async def fetch_all_catalogs(limit: int = 50):
+async def fetch_all_catalogs(limit: int = 0):
     """Fetches video catalogs for all configured channels."""
     results = {}
     for cname, cid in CHANNEL_IDS.items():
@@ -367,13 +372,13 @@ async def fetch_all_catalogs(limit: int = 50):
 
 
 @app.get("/api/catalog/all")
-async def get_all_catalogs_route(limit: int = 50):
+async def get_all_catalogs_route(limit: int = 0):
     """Lists video catalogs across all configured channels."""
     return await fetch_all_catalogs(limit=limit)
 
 
 @app.get("/api/catalog/{chat_id}")
-async def get_channel_catalog(chat_id: str, limit: int = 50):
+async def get_channel_catalog(chat_id: str, limit: int = 0):
     """Lists video messages from a single Telegram channel by chat_id (supports negative IDs)."""
     if chat_id == "all":
         return await fetch_all_catalogs(limit=limit)

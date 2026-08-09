@@ -25,6 +25,7 @@ import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { useDevice } from './lib/device';
 import { MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { Video } from './lib/types';
+import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 
 export function App() {
   const { isMobile } = useDevice();
@@ -53,23 +54,89 @@ export function App() {
     }
   }, []);
 
-  const filteredVideos = MOCK_VIDEOS.filter((v) => v.channel_id === selectedChannelId);
+  // Dynamic video catalog from backend API
+  const [dynamicVideos, setDynamicVideos] = useState<Video[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
+
+  // Fetch real video catalog from backend on mount
+  useEffect(() => {
+    setCatalogLoading(true);
+    fetchCatalog()
+      .then((data: any) => {
+        const channels = data?.channels || {};
+        const allVideos: Video[] = [];
+        const counts: Record<string, number> = {};
+
+        // Map backend channel names to frontend channel IDs
+        const channelNameToId: Record<string, string> = {
+          'DSA': 'ch-dsa-01',
+          'System Design': 'ch-sd-02',
+          'DBMS': 'ch-dbms-03',
+          'Computer Networks': 'ch-cn-04',
+        };
+
+        for (const [chName, chData] of Object.entries(channels) as [string, any][]) {
+          const channelId = channelNameToId[chName] || chName;
+          const videos = chData?.videos || [];
+          counts[channelId] = chData?.count || videos.length;
+
+          for (const v of videos) {
+            allVideos.push({
+              id: `tg-${channelId}-${v.msg_id}`,
+              channel_id: channelId,
+              telegram_file_id: v.file_id || '',
+              telegram_message_id: v.msg_id,
+              sender_username: '@EduStreamBot',
+              title: (v.file_name || `Video ${v.msg_id}`).replace(/\.(mp4|mkv|webm|avi|mov|flv)$/i, ''),
+              telegram_caption: v.caption || `📌 [Telegram Post #${v.msg_id} | Size: ${v.size_mb} MB]\nFile: ${v.file_name}`,
+              duration_seconds: v.duration || 0,
+              transcript: `Ingested from Telegram Post #${v.msg_id} (${v.file_name}). Stream powered by Telethon MTProto.`,
+              thumbnail_url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80',
+              stream_url: `${TELEGRAM_BACKEND_URL}${v.stream_url}`,
+              created_at: v.date || new Date().toISOString(),
+              quiz_json: [],
+              attachments: [],
+            });
+          }
+        }
+
+        if (allVideos.length > 0) {
+          setDynamicVideos(allVideos);
+          setChannelCounts(counts);
+          // Select the first video from the first channel
+          const firstChannelVideos = allVideos.filter(v => v.channel_id === selectedChannelId);
+          if (firstChannelVideos.length > 0) {
+            setSelectedVideo(firstChannelVideos[0]);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('[EduStream] Catalog fetch failed, using static fallback:', err);
+      })
+      .finally(() => setCatalogLoading(false));
+  }, []);
+
+  // Use dynamic videos if available, otherwise fall back to MOCK_VIDEOS
+  const activeVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+
+  const filteredVideos = activeVideos.filter((v) => v.channel_id === selectedChannelId);
 
   // Search filter: matches title, caption, transcript, sender
   const searchFilteredVideos = useMemo(() => {
     if (!searchQuery.trim()) return filteredVideos;
     const q = searchQuery.toLowerCase();
-    return MOCK_VIDEOS.filter((v) =>
+    return activeVideos.filter((v) =>
       v.title.toLowerCase().includes(q) ||
       (v.telegram_caption || '').toLowerCase().includes(q) ||
       (v.transcript || '').toLowerCase().includes(q) ||
       (v.sender_username || '').toLowerCase().includes(q)
     );
-  }, [searchQuery, filteredVideos]);
+  }, [searchQuery, filteredVideos, activeVideos]);
 
   const handleSelectChannel = (channelId: string) => {
     setSelectedChannelId(channelId);
-    const matchingVideos = MOCK_VIDEOS.filter((v) => v.channel_id === channelId);
+    const matchingVideos = activeVideos.filter((v) => v.channel_id === channelId);
     if (matchingVideos.length > 0) {
       setSelectedVideo(matchingVideos[0]);
     }
@@ -91,7 +158,7 @@ export function App() {
     }
   };
 
-  const currentList = filteredVideos.length > 0 ? filteredVideos : MOCK_VIDEOS;
+  const currentList = filteredVideos.length > 0 ? filteredVideos : activeVideos;
   const currentIndex = currentList.findIndex((v) => v.id === selectedVideo.id);
   const hasNextLecture = currentIndex >= 0 && currentIndex < currentList.length - 1;
   const hasPrevLecture = currentIndex > 0;
@@ -200,7 +267,7 @@ export function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {MOCK_CHANNELS.map((ch) => {
                 const isSelected = ch.id === selectedChannelId;
-                const channelVideos = MOCK_VIDEOS.filter((v) => v.channel_id === ch.id);
+                const channelVideos = activeVideos.filter((v) => v.channel_id === ch.id);
                 return (
                   <div
                     key={ch.id}
