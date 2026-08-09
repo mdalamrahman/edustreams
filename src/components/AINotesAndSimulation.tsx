@@ -31,40 +31,95 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
   const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
   const cacheKey = `edustream_ainotes_${video.id || cleanTitle}`;
 
-  const isLldTopic = cleanTitle.toLowerCase().includes('design') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('software');
+  const isLldTopic = cleanTitle.toLowerCase().includes('design') || cleanTitle.toLowerCase().includes('srp') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('principle');
+  const isPrimeTopic = cleanTitle.toLowerCase().includes('prime') || cleanTitle.toLowerCase().includes('sieve') || cleanTitle.toLowerCase().includes('math');
 
-  // Simulation steps tailored to algorithm
-  const simSteps = [
+  // Dynamic simulation steps tailored to exact lecture domain
+  const simSteps = isLldTopic ? [
+    {
+      title: 'Step 1: Monolithic Anti-Pattern Class Inspection',
+      desc: `Analyzing naive monolithic class structure for ${cleanTitle}. Class handles data calculations, SQL database persistence, and email logging simultaneously.`,
+      array: ['Invoice', 'SQL DB', 'Email'],
+      activeIndices: [0, 1, 2],
+      status: 'SRP Violation (High Coupling)'
+    },
+    {
+      title: 'Step 2: Identifying Reasons for Class Modification',
+      desc: `If database schema updates OR email provider changes, this single class breaks! Identifying 3 distinct responsibilities.`,
+      array: ['Invoice', 'SQL DB', 'Email'],
+      activeIndices: [1, 2],
+      status: 'Refactoring Required'
+    },
+    {
+      title: 'Step 3: Refactoring into Single-Responsibility Classes',
+      desc: `Decomposing into 3 SRP-compliant classes: Invoice (Business Data), InvoiceRepository (Persistence), and EmailService (Notifications).`,
+      array: ['Invoice', 'InvoiceRepo', 'EmailService'],
+      activeIndices: [0, 1, 2],
+      status: 'SRP Decomposition'
+    },
+    {
+      title: 'Step 4: Clean Architecture & Unit Test Isolation Verified',
+      desc: `Each class has exactly 1 reason to change. Independent mock testing and modular extension achieved!`,
+      array: ['Invoice', 'InvoiceRepo', 'EmailService'],
+      activeIndices: [0, 1, 2],
+      status: 'COMPLETED — Clean Architecture'
+    }
+  ] : isPrimeTopic ? [
+    {
+      title: 'Step 1: Initialize Sieve Boolean Array [2..15]',
+      desc: `Allocating boolean array initialized to TRUE for prime range L to R. Index represents candidate numbers.`,
+      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      activeIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+      status: 'Init Sieve Array'
+    },
+    {
+      title: 'Step 2: Outer Loop Prime p = 2 (Mark Multiples)',
+      desc: `p = 2 is Prime! Marking all composite multiples: 4, 6, 8, 10, 12, 14 as FALSE (Composite).`,
+      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      activeIndices: [2, 4, 6, 8, 10, 12],
+      status: 'Marking Multiples of 2'
+    },
+    {
+      title: 'Step 3: Outer Loop Prime p = 3 (Mark Multiples)',
+      desc: `Next unmarked index p = 3 is Prime! Starting at p*p = 9, marking composite multiples 9, 12, 15 as FALSE.`,
+      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      activeIndices: [7, 10, 13],
+      status: 'Marking Multiples of 3'
+    },
+    {
+      title: 'Step 4: Algorithm Termination & Prime Output',
+      desc: `Outer loop terminates at sqrt(15). Unmarked primes remaining: [2, 3, 5, 7, 11, 13]! Runtime: O(N log log N).`,
+      array: [2, 3, 5, 7, 11, 13],
+      activeIndices: [0, 1, 2, 3, 4, 5],
+      status: 'COMPLETED — Primes Found'
+    }
+  ] : [
     {
       title: 'Step 1: Input Memory Allocation & Pointer Initialization',
-      desc: `Allocating contiguous memory blocks for ${cleanTitle}. Pointers 'left' and 'right' initialized at indices 0 and N-1.`,
+      desc: `Allocating contiguous memory blocks for ${cleanTitle}. Pointers initialized at boundaries.`,
       array: [2, 7, 11, 15],
       activeIndices: [0, 3],
-      target: 9,
       status: 'Searching'
     },
     {
-      title: 'Step 2: Complement Calculation & Hash Table Lookup',
-      desc: `Target = 9. Current element = 2. Complement = 9 - 2 = 7. Checking hash bucket for key 7.`,
+      title: 'Step 2: Subproblem State Lookup',
+      desc: `Checking memoized state table for subproblem parameters.`,
       array: [2, 7, 11, 15],
       activeIndices: [0],
-      target: 9,
-      status: 'Hash Miss (Insert 2 at index 0)'
+      status: 'State Processing'
     },
     {
-      title: 'Step 3: Next Iteration & Match Verified',
-      desc: `Next element = 7. Complement = 9 - 7 = 2. Key 2 found in hash table at index 0!`,
+      title: 'Step 3: State Transition Evaluation',
+      desc: `Applying recurrence relation and updating optimal boundary values.`,
       array: [2, 7, 11, 15],
       activeIndices: [0, 1],
-      target: 9,
-      status: 'Match Found! Returns [0, 1]'
+      status: 'State Verified'
     },
     {
       title: 'Step 4: Algorithm Termination & Optimal Output',
-      desc: `Linear time O(N) single pass execution completed with O(1) auxiliary space optimization.`,
+      desc: `Execution completed with O(N) time and O(1) auxiliary space optimization.`,
       array: [2, 7, 11, 15],
       activeIndices: [0, 1],
-      target: 9,
       status: 'COMPLETED - Success'
     }
   ];

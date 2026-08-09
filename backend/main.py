@@ -746,16 +746,69 @@ async def get_video_transcript_route(chat_id: int, msg_id: int, title: Optional[
     """
     Returns AI-generated Whisper STT lecture transcript with timestamps and structural concepts.
     """
-    clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ")
+    clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
     
-    transcript_text = (
-        f"[00:00:00] Welcome to the lecture on {clean_title}. Today we analyze core theoretical concepts, computational bounds, and practical implementation patterns.\n"
-        f"[00:02:15] Section 1: Fundamentals & Structural Overview. We begin by reviewing core data structures, memory layout, and runtime guarantees.\n"
-        f"[00:06:40] Section 2: Step-by-Step Code Walkthrough. Investigating optimal state transformations, iteration bounds, and auxiliary variable allocation.\n"
-        f"[00:12:10] Section 3: Time & Space Complexity Analysis. Evaluating worst-case O(N) execution time and O(1) auxiliary space optimization.\n"
-        f"[00:18:30] Section 4: Edge Cases & Optimization Tips. Verifying zero-length inputs, boundary parameters, and memory reuse techniques.\n"
-        f"[00:24:00] Lecture Summary: Practice the accompanying LeetCode workspace problems to reinforce understanding."
-    )
+    # Try generating a rich topic-specific transcript using Mistral AI
+    if MISTRAL_API_KEY:
+        try:
+            prompt = (
+                f"You are a Computer Science Professor. Write a detailed, realistic 5-section timestamped lecture transcript for the video '{clean_title}'. "
+                f"Use timestamps [00:00:00], [00:03:15], [00:08:40], [00:14:20], [00:21:00]. "
+                f"Explain the core subject (e.g. Single Responsibility Principle, Sieve of Eratosthenes, or System Design) with clear code examples, class design, and architectural rationale."
+            )
+            headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}", "Content-Type": "application/json"}
+            payload = {"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.3}
+            resp = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=8)
+            if resp.status_code == 200:
+                txt = resp.json()["choices"][0]["message"]["content"]
+                return {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt}
+        except Exception as e:
+            print(f"[Transcript API] Mistral notice: {e}")
+
+    # Specialized topic fallback
+    is_srp = "single responsibility" in clean_title.lower() or "srp" in clean_title.lower() or "solid" in clean_title.lower()
+    is_prime = "prime" in clean_title.lower() or "sieve" in clean_title.lower()
+
+    if is_srp:
+        transcript_text = (
+            f"[00:00:00] Welcome to System Design & LLD: {clean_title}.\n"
+            f"The Single Responsibility Principle (SRP) states that a class should have one, and only one, reason to change. That means a class must have only one responsibility or job.\n\n"
+            f"[00:03:15] Section 1: Monolithic Anti-Pattern vs SRP Refactoring.\n"
+            f"Consider a naive 'Invoice' class that calculates totals, saves the invoice to a PostgreSQL database, and sends an email receipt. "
+            f"If database schema changes, Invoice class changes. If email provider changes, Invoice class changes! This violates SRP.\n\n"
+            f"[00:08:40] Section 2: Refactoring into SRP Compliant Classes.\n"
+            f"We refactor into 3 separate classes:\n"
+            f"1. Invoice (Calculates totals & holds business data)\n"
+            f"2. InvoiceRepository (Handles DB persistence)\n"
+            f"3. EmailService (Handles email notifications)\n\n"
+            f"[00:14:20] Section 3: C++ & Java Class Design Example.\n"
+            f"In C++, we inject InvoiceRepository and EmailService interfaces into InvoiceManager. Each class is tightly encapsulated and decoupled.\n\n"
+            f"[00:21:00] Summary: SRP simplifies unit testing, reduces class coupling, and prevents unintended side effects."
+        )
+    elif is_prime:
+        transcript_text = (
+            f"[00:00:00] Welcome to DSA Lecture: {clean_title}.\n"
+            f"Today we master prime counting using the Sieve of Eratosthenes algorithm running in O(N log log N) time complexity.\n\n"
+            f"[00:03:15] Section 1: Trial Division vs Sieve of Eratosthenes.\n"
+            f"Trial division up to sqrt(N) for N numbers takes O(N sqrt(N)). Sieve of Eratosthenes initializes a boolean array of size N+1 and marks multiples of each prime starting from 2.\n\n"
+            f"[00:08:40] Section 2: Step-by-Step Marking & Outer Loop Boundary.\n"
+            f"Outer loop runs while p * p <= N. For prime p=2, mark 4, 6, 8, 10... For p=3, mark 9, 12, 15... Multiples start at p*p because smaller multiples were marked by previous primes.\n\n"
+            f"[00:14:20] Section 3: Space Optimization & Segmented Sieve.\n"
+            f"Using std::vector<bool> in C++ uses 1 bit per boolean, compressing space requirements for large ranges L to R.\n\n"
+            f"[00:21:00] Summary: Practice the accompanying LeetCode prime range workspace problem."
+        )
+    else:
+        transcript_text = (
+            f"[00:00:00] Welcome to {clean_title}.\n"
+            f"In this lecture, we explore the core principles of {clean_title}, analyzing subproblem state transitions and memory bounds.\n\n"
+            f"[00:03:15] Section 1: Structural Overview & Problem Statement.\n"
+            f"We define the problem parameters, input guarantees, and identify why naive approaches suffer from exponential time bounds.\n\n"
+            f"[00:08:40] Section 2: Algorithmic Transformation & Step-by-Step Code Walkthrough.\n"
+            f"Decomposing the problem into subproblems, constructing the state transition table, and applying memoization or iterative DP.\n\n"
+            f"[00:14:20] Section 3: Time & Space Complexity Derivation.\n"
+            f"Deriving the O(N) execution bounds and O(1) auxiliary space optimization.\n\n"
+            f"[00:21:00] Summary: Reinforce learning by solving the accompanying workspace coding challenges."
+        )
 
     return {
         "chat_id": chat_id,

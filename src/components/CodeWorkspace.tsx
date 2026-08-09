@@ -20,6 +20,7 @@ import { LeetCodeWorkspaceModal } from './LeetCodeWorkspaceModal';
 
 interface CodeWorkspaceProps {
   question?: QuizQuestion;
+  allCodingQuestions?: QuizQuestion[];
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
@@ -186,9 +187,13 @@ const MONACO_LANG_MAP: Record<SupportedLanguage, string> = {
   sql: 'sql'
 };
 
-export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeExecuted }) => {
+export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodingQuestions = [], onCodeExecuted }) => {
+  const codingList = allCodingQuestions.length > 0 ? allCodingQuestions : (question ? [question] : []);
+  const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
+  const activeQ = codingList[activeQuestionIdx] || question;
+
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
-  const [code, setCode] = useState<string>(question?.starter_code || LANGUAGE_STARTERS.cpp);
+  const [code, setCode] = useState<string>(activeQ?.starter_code || LANGUAGE_STARTERS.cpp);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
@@ -199,12 +204,12 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
 
   // Synchronize starter code whenever question changes
   useEffect(() => {
-    if (question?.starter_code) {
-      setCode(question.starter_code);
+    if (activeQ?.starter_code) {
+      setCode(activeQ.starter_code);
       setExecutionResult(null);
       setAiReview(null);
     }
-  }, [question?.id, question?.starter_code]);
+  }, [activeQ?.id, activeQ?.starter_code]);
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
@@ -326,6 +331,28 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
             <Code className="w-3.5 h-3.5 text-indigo-400" />
             <span className="font-mono text-slate-300">Monaco Editor</span>
           </div>
+
+          {codingList.length > 1 && (
+            <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+              {codingList.map((q, idx) => (
+                <button
+                  key={q.id}
+                  onClick={() => {
+                    setActiveQuestionIdx(idx);
+                    if (q.starter_code) setCode(q.starter_code);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold font-mono transition-all ${
+                    activeQuestionIdx === idx
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={q.question}
+                >
+                  Var {idx + 1}
+                </button>
+              ))}
+            </div>
+          )}
 
           <select
             value={language}

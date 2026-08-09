@@ -564,6 +564,7 @@ export function App() {
                 {lessonSubTab === 'code' ? (
                   <CodeWorkspace
                     question={activeCodingQuestion}
+                    allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
                     onCodeExecuted={handleQuestionSolved}
                   />
                 ) : (

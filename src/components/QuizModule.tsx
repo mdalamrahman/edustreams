@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HelpCircle, CheckCircle2, XCircle, Sparkles, ArrowRight, Award } from 'lucide-react';
+import { HelpCircle, CheckCircle2, XCircle, Sparkles, ArrowRight, Award, Maximize2, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QuizQuestion } from '../lib/types';
 
@@ -21,6 +21,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [startTime] = useState(Date.now());
+  const [isFullscreenQuiz, setIsFullscreenQuiz] = useState(false);
 
   if (!questions || questions.length === 0) {
     return (
@@ -73,6 +74,15 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
         </div>
 
         <div className="flex items-center space-x-2 font-mono text-xs">
+          <button
+            onClick={() => setIsFullscreenQuiz(true)}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 font-bold transition-all text-xs shadow-sm"
+            title="Open Quiz in Fullscreen Mode"
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Fullscreen Quiz</span>
+          </button>
+
           {onAttemptMoreQuestions && (
             <button
               onClick={onAttemptMoreQuestions}
@@ -200,6 +210,122 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
         )}
       </div>
 
+      {/* Fullscreen Quiz Modal */}
+      {isFullscreenQuiz && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl p-6 sm:p-10 overflow-y-auto flex items-center justify-center">
+          <div className="bg-slate-900 border border-indigo-500/40 p-8 rounded-3xl max-w-3xl w-full space-y-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsFullscreenQuiz(false)}
+              className="absolute top-6 right-6 p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all flex items-center gap-1.5 text-xs font-bold"
+            >
+              <X className="w-5 h-5" />
+              <span>Close Fullscreen</span>
+            </button>
+
+            <div className="flex items-center space-x-3 border-b border-slate-800 pb-4">
+              <div className="p-3 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300">
+                <HelpCircle className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-100">Mistral AI MCQ Quiz — Fullscreen Assessment</h3>
+                <p className="text-xs text-slate-400">Question {currentIndex + 1} of {questions.length} • Current Score: {score}</p>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <h4 className="text-lg font-bold text-slate-100 leading-snug">
+              {currentQ.question}
+            </h4>
+
+            {/* Options List */}
+            <div className="space-y-3">
+              {currentQ.options?.map((option, idx) => {
+                let optionStyle = 'bg-slate-950 hover:bg-slate-800/80 border-slate-800 text-slate-200';
+                
+                if (selectedOption === idx) {
+                  optionStyle = 'bg-indigo-950/90 border-indigo-500 text-white font-semibold ring-2 ring-indigo-500/30';
+                }
+
+                if (isAnswered) {
+                  if (idx === currentQ.correct_answer) {
+                    optionStyle = 'bg-emerald-950/90 border-emerald-500 text-emerald-200 font-bold';
+                  } else if (selectedOption === idx && idx !== currentQ.correct_answer) {
+                    optionStyle = 'bg-red-950/90 border-red-500 text-red-200 font-bold';
+                  }
+                }
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectOption(idx)}
+                    disabled={isAnswered}
+                    className={`w-full text-left p-4 rounded-2xl border text-sm sm:text-base transition-all flex items-center justify-between ${optionStyle}`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center font-mono text-sm font-bold text-slate-300">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <span>{option}</span>
+                    </div>
+
+                    {isAnswered && idx === currentQ.correct_answer && (
+                      <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
+                    )}
+                    {isAnswered && selectedOption === idx && idx !== currentQ.correct_answer && (
+                      <XCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Explanation Box */}
+            {isAnswered && currentQ.explanation && (
+              <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-900/50 text-xs sm:text-sm text-slate-300 space-y-1">
+                <strong className="text-indigo-400 font-semibold flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-300" /> Mistral AI Conceptual Explanation:
+                </strong>
+                <p>{currentQ.explanation}</p>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+              <span className="text-xs font-mono text-slate-400">Score: {score}/{questions.length}</span>
+              
+              {!isAnswered ? (
+                <button
+                  onClick={handleSubmitAnswer}
+                  disabled={selectedOption === null}
+                  className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                    selectedOption !== null
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  Submit Answer
+                </button>
+              ) : currentIndex < questions.length - 1 ? (
+                <button
+                  onClick={handleNext}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm flex items-center space-x-2 shadow-lg shadow-indigo-600/30"
+                >
+                  <span>Next Question</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsFullscreenQuiz(false)}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30"
+                >
+                  Finish Assessment
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };
