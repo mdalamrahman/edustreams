@@ -13,7 +13,9 @@ import {
   Send,
   Search,
   X,
-  Sparkles
+  Sparkles,
+  ArrowLeft,
+  BookOpen
 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { VideoPlayer } from './components/VideoPlayer';
@@ -35,6 +37,7 @@ import { requestMistralQuiz } from './lib/mistral';
 export function App() {
   const { isMobile } = useDevice();
   const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'analytics' | 'settings'>('channels');
+  const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
   const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
   const [lessonSubTab, setLessonSubTab] = useState<'quiz' | 'code'>('code');
@@ -77,18 +80,26 @@ export function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Dynamic Real Velocity Analytics State
-  const [totalSolved, setTotalSolved] = useState<number>(12);
-  const [totalActiveMins, setTotalActiveMins] = useState<number>(24.0);
-  const [correctAttempts, setCorrectAttempts] = useState<number>(10);
-  const [timeBreakdown, setTimeBreakdown] = useState({
-    lecturesMins: 45,
-    quizzesMins: 20,
-    codingMins: 35
+  // Real Dynamic Velocity Analytics State (persisted in localStorage)
+  const [totalSolved, setTotalSolved] = useState<number>(() => {
+    const saved = localStorage.getItem('edustream_total_solved');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [totalActiveMins, setTotalActiveMins] = useState<number>(() => {
+    const saved = localStorage.getItem('edustream_active_mins');
+    return saved ? parseFloat(saved) : 0.0;
+  });
+  const [correctAttempts, setCorrectAttempts] = useState<number>(() => {
+    const saved = localStorage.getItem('edustream_correct_attempts');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [timeBreakdown, setTimeBreakdown] = useState(() => {
+    const saved = localStorage.getItem('edustream_time_breakdown');
+    return saved ? JSON.parse(saved) : { lecturesMins: 0, quizzesMins: 0, codingMins: 0 };
   });
 
   // Storage Manager State
-  const [cacheUsageBytes, setCacheUsageBytes] = useState<number>(1.4 * 1024 * 1024 * 1024);
+  const [cacheUsageBytes, setCacheUsageBytes] = useState<number>(0);
   const [cacheQuotaBytes, setCacheQuotaBytes] = useState<number>(12 * 1024 * 1024 * 1024);
 
   useEffect(() => {
@@ -99,6 +110,14 @@ export function App() {
       });
     }
   }, []);
+
+  // Save student progress to localStorage
+  useEffect(() => {
+    localStorage.setItem('edustream_total_solved', totalSolved.toString());
+    localStorage.setItem('edustream_active_mins', totalActiveMins.toString());
+    localStorage.setItem('edustream_correct_attempts', correctAttempts.toString());
+    localStorage.setItem('edustream_time_breakdown', JSON.stringify(timeBreakdown));
+  }, [totalSolved, totalActiveMins, correctAttempts, timeBreakdown]);
 
   // Dynamic video catalog from backend API
   const [dynamicVideos, setDynamicVideos] = useState<Video[]>([]);
@@ -188,16 +207,18 @@ export function App() {
   const searchFilteredVideos = useMemo(() => {
     if (!searchQuery.trim()) return filteredVideos;
     const q = searchQuery.toLowerCase();
-    return activeVideos.filter((v) =>
+    return filteredVideos.filter((v) =>
       v.title.toLowerCase().includes(q) ||
       (v.telegram_caption || '').toLowerCase().includes(q) ||
       (v.transcript || '').toLowerCase().includes(q) ||
       (v.sender_username || '').toLowerCase().includes(q)
     );
-  }, [searchQuery, filteredVideos, activeVideos]);
+  }, [searchQuery, filteredVideos]);
 
   const handleSelectChannel = (channelId: string) => {
     setSelectedChannelId(channelId);
+    setChannelViewMode('detail');
+    setSearchQuery('');
     const matchingVideos = activeVideos.filter((v) => v.channel_id === channelId);
     if (matchingVideos.length > 0) {
       setSelectedVideo(matchingVideos[0]);
@@ -240,13 +261,13 @@ export function App() {
     if (isCorrect) setCorrectAttempts((prev) => prev + 1);
 
     if (lessonSubTab === 'code') {
-      setTimeBreakdown((prev) => ({ ...prev, codingMins: Math.round(prev.codingMins + mins) }));
+      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ ...prev, codingMins: Math.round(prev.codingMins + mins) }));
     } else {
-      setTimeBreakdown((prev) => ({ ...prev, quizzesMins: Math.round(prev.quizzesMins + mins) }));
+      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ ...prev, quizzesMins: Math.round(prev.quizzesMins + mins) }));
     }
   };
 
-  const accuracyPercent = Math.round((correctAttempts / Math.max(totalSolved, 1)) * 100);
+  const accuracyPercent = totalSolved > 0 ? Math.round((correctAttempts / totalSolved) * 100) : 0;
 
   const getChannelIcon = (icon: string) => {
     switch (icon) {
@@ -278,14 +299,18 @@ export function App() {
 
   const activeCodingQuestion = activeVideoQuiz.find((q) => q.type === 'CODING');
   const activeMCQs = activeVideoQuiz.filter((q) => q.type === 'MCQ');
+  const activeChannelObj = MOCK_CHANNELS.find((c) => c.id === selectedChannelId) || MOCK_CHANNELS[0];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative">
       
       {/* Navbar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'channels') setChannelViewMode('overview');
+        }}
         selectedChannel={selectedChannelId}
         setSelectedChannel={handleSelectChannel}
         user={user}
@@ -298,140 +323,159 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
-        {/* VIEW 1: TELEGRAM CHANNELS GRID & VIDEO FEED */}
+        {/* VIEW 1: TELEGRAM CHANNELS OVERVIEW & DEDICATED CHANNEL PAGES */}
         {activeTab === 'channels' && (
-          <div className="space-y-8">
-            
-            {/* Top Channels Selection Cards */}
-            <div>
-              <h2 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-400" />
-                Telegram Course Channels
-              </h2>
+          <div>
+            {channelViewMode === 'overview' ? (
+              /* Channel Hub Overview Cards */
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100 mb-1 flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-indigo-400" />
+                    Telegram Course Channels Hub
+                  </h2>
+                  <p className="text-xs text-slate-400">Click any channel card to open its dedicated lecture page and search bar</p>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {MOCK_CHANNELS.map((ch) => {
-                  const isSelected = ch.id === selectedChannelId;
-                  const videoCount = channelCounts[ch.id] || ch.total_videos;
-                  return (
-                    <button
-                      key={ch.id}
-                      onClick={() => handleSelectChannel(ch.id)}
-                      className={`glass-panel p-5 rounded-2xl text-left transition-all relative overflow-hidden group ${
-                        isSelected 
-                          ? 'border-indigo-500 bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-xl' 
-                          : 'border-slate-800/80 hover:border-slate-700 bg-slate-900/50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 group-hover:scale-105 transition-transform">
-                          {getChannelIcon(ch.icon)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                  {MOCK_CHANNELS.map((ch) => {
+                    const videoCount = channelCounts[ch.id] || ch.total_videos || 0;
+                    return (
+                      <button
+                        key={ch.id}
+                        onClick={() => handleSelectChannel(ch.id)}
+                        className="glass-panel p-6 rounded-2xl text-left transition-all relative overflow-hidden group border border-slate-800/80 hover:border-indigo-500/80 hover:bg-indigo-950/20 shadow-xl"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 group-hover:scale-110 transition-transform">
+                            {getChannelIcon(ch.icon)}
+                          </div>
+                          <span className="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-xs font-mono font-bold text-indigo-300">
+                            {videoCount} Lectures
+                          </span>
                         </div>
-                        <span className="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[11px] font-mono font-bold text-slate-400">
-                          {videoCount} Videos
+
+                        <h3 className="text-base font-bold text-slate-100 mb-1.5 group-hover:text-indigo-300 transition-colors flex items-center justify-between">
+                          <span>{ch.name}</span>
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
+                        </h3>
+                        <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{ch.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* DEDICATED CHANNEL PAGE (e.g. LLD Page, DSA Page, DBMS Page, CN Page) */
+              <div className="space-y-6">
+                
+                {/* Header & Back to Overview Navigation */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl">
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => setChannelViewMode('overview')}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-slate-100 transition-all flex items-center gap-1.5 text-xs font-bold"
+                      title="Back to All Channels"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Back to Channels</span>
+                    </button>
+
+                    <div>
+                      <div className="flex items-center space-x-2 mb-1">
+                        <div className="p-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-500/40">
+                          {getChannelIcon(activeChannelObj.icon)}
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-100">{activeChannelObj.name} Workspace</h2>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-[11px] font-mono font-bold text-emerald-300">
+                          {filteredVideos.length} Ingested Videos
                         </span>
                       </div>
+                      <p className="text-xs text-slate-400">{activeChannelObj.description}</p>
+                    </div>
+                  </div>
 
-                      <h3 className="text-sm font-bold text-slate-100 mb-1 group-hover:text-indigo-400 transition-colors">
-                        {ch.name}
-                      </h3>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{ch.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Video Search & Feed Grid */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                    <Play className="w-4 h-4 text-emerald-400 fill-current" />
-                    Ingested Video Feed (Oldest Message #6704 First)
-                  </h3>
-                  <p className="text-xs text-slate-400">Stream directly via Render Telethon MTProto Proxy</p>
+                  {/* Dedicated Search Bar for this specific channel page */}
+                  <div className="relative w-full sm:w-80">
+                    <Search className="w-4 h-4 text-indigo-400 absolute left-3 top-3" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={`Search ${activeChannelObj.name} lectures by topic or post #...`}
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-slate-950 border border-indigo-500/40 text-xs text-slate-100 focus:outline-none focus:border-indigo-400 font-sans shadow-inner"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-200"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="relative w-full sm:w-72">
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search lectures by topic..."
-                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-sans"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
+                {/* Videos Grid for this Dedicated Channel */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {searchFilteredVideos.map((v) => {
+                    const isCurrent = v.id === selectedVideo.id;
+                    return (
+                      <div
+                        key={v.id}
+                        className={`glass-panel rounded-2xl overflow-hidden border transition-all flex flex-col justify-between group ${
+                          isCurrent
+                            ? 'border-indigo-500 shadow-lg shadow-indigo-500/10'
+                            : 'border-slate-800/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="p-4 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                            <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-800/60 font-bold text-indigo-300">
+                              Post #{v.telegram_message_id}
+                            </span>
+                            <span>{v.sender_username || '@EduStreamBot'}</span>
+                          </div>
 
-              {/* Videos Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {searchFilteredVideos.map((v) => {
-                  const isCurrent = v.id === selectedVideo.id;
-                  return (
-                    <div
-                      key={v.id}
-                      className={`glass-panel rounded-2xl overflow-hidden border transition-all flex flex-col justify-between group ${
-                        isCurrent
-                          ? 'border-indigo-500 shadow-lg shadow-indigo-500/10'
-                          : 'border-slate-800/80 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="p-4 space-y-2">
-                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                          <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-800/60 font-bold text-indigo-300">
-                            Post #{v.telegram_message_id}
-                          </span>
-                          <span>{v.sender_username || '@EduStreamBot'}</span>
+                          <h4 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-2">
+                            {v.title}
+                          </h4>
+
+                          <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-line font-mono text-[11px]">
+                            {v.telegram_caption}
+                          </p>
                         </div>
 
-                        <h4 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-2">
-                          {v.title}
-                        </h4>
+                        <div className="p-4 bg-slate-900/60 border-t border-slate-800/60 flex items-center justify-between">
+                          <button
+                            onClick={() => {
+                              setSelectedVideo(v);
+                              setActiveTab('lesson');
+                            }}
+                            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>Watch Lecture</span>
+                          </button>
 
-                        <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-line font-mono text-[11px]">
-                          {v.telegram_caption}
-                        </p>
+                          <button
+                            onClick={() => {
+                              setSelectedVideo(v);
+                              setIsAskAIOpen(true);
+                            }}
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Ask AI</span>
+                          </button>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      <div className="p-4 bg-slate-900/60 border-t border-slate-800/60 flex items-center justify-between">
-                        <button
-                          onClick={() => {
-                            setSelectedVideo(v);
-                            setActiveTab('lesson');
-                          }}
-                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Watch Lecture</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedVideo(v);
-                            setIsAskAIOpen(true);
-                          }}
-                          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Ask AI</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
-            </div>
-
+            )}
           </div>
         )}
 
@@ -467,19 +511,17 @@ export function App() {
                 </button>
               </div>
 
-              <button
-                onClick={() => setIsAskAIOpen(true)}
-                className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all border border-purple-400/30"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>Ask AI Teaching Assistant</span>
-              </button>
+              <div className="hidden sm:flex items-center space-x-2">
+                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
+                  Topic: {selectedVideo.title}
+                </span>
+              </div>
             </div>
 
             {/* Split Screen Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              {/* Left Column: Video Player with Next/Prev & Ask AI Controls */}
+              {/* Left Column: Video Player with Next/Prev Controls */}
               <div className="lg:col-span-7 space-y-6">
                 <VideoPlayer
                   video={selectedVideo}
@@ -535,6 +577,18 @@ export function App() {
         )}
 
       </main>
+
+      {/* Floating Circular Ask AI Assistant Action Button at Bottom-Right */}
+      <button
+        onClick={() => setIsAskAIOpen(true)}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"
+        title="Ask AI Teaching Assistant"
+      >
+        <Sparkles className="w-7 h-7 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+        <span className="absolute right-16 bg-slate-900 border border-slate-800 text-slate-100 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
+          Ask AI Teaching Assistant
+        </span>
+      </button>
 
       {/* Mobile Coding Access Policy Overlay Modal */}
       {showMobileGating && (

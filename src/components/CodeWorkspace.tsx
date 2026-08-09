@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { 
   Play, 
@@ -186,8 +186,8 @@ const MONACO_LANG_MAP: Record<SupportedLanguage, string> = {
 };
 
 export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeExecuted }) => {
-  const [language, setLanguage] = useState<SupportedLanguage>('python');
-  const [code, setCode] = useState<string>(question?.starter_code || LANGUAGE_STARTERS.python);
+  const [language, setLanguage] = useState<SupportedLanguage>('cpp');
+  const [code, setCode] = useState<string>(question?.starter_code || LANGUAGE_STARTERS.cpp);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
@@ -195,9 +195,17 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
   const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta'>('terminal');
   const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
 
+  // Synchronize starter code whenever question changes
+  useEffect(() => {
+    if (question?.starter_code) {
+      setCode(question.starter_code);
+      setExecutionResult(null);
+      setAiReview(null);
+    }
+  }, [question?.id, question?.starter_code]);
+
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    // Only replace code if user hasn't modified it or if switching to a new language
     setCode(LANGUAGE_STARTERS[newLang]);
     setExecutionResult(null);
     setAiReview(null);
@@ -210,7 +218,6 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
   };
 
   const handleEditorMount: OnMount = (editor, monaco) => {
-    // LeetCode-style keyboard shortcuts
     editor.addAction({
       id: 'run-code',
       label: 'Run Code',
@@ -231,6 +238,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
   const handleRunCode = async () => {
     setIsExecuting(true);
     setExecutionResult(null);
+    setAiReview(null);
 
     const startTime = performance.now();
     const result = await executeCode(code, language);
@@ -240,9 +248,16 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
     setExecutionResult(result);
     setActiveBottomTab('terminal');
 
+    // Trigger Mistral AI evaluation for test cases automatically
+    setIsAnalyzingAI(true);
+    requestMistralCodeReview(code, language, result.stdout, result.stderr, question?.question || 'Lecture Challenge')
+      .then((review) => setAiReview(review))
+      .catch((err) => console.warn('[Mistral TA Notice]:', err))
+      .finally(() => setIsAnalyzingAI(false));
+
     if (onCodeExecuted) {
       const timeSeconds = Math.max(15, Math.round((endTime - startTime) / 1000));
-      onCodeExecuted(timeSeconds, result.status === 'SUCCESS');
+      onCodeExecuted(timeSeconds, result.status === 'SUCCESS' && !result.stderr);
     }
   };
 
