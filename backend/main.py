@@ -918,6 +918,110 @@ async def generate_diagnostic(req: DiagnosticRequest):
     }
 
 
+# Shared Global AI Cache Storage (Notes & Quizzes cached per video so all users share generated content)
+AI_CACHE_FILE = os.path.join(MEDIA_STORAGE_DIR, "ai_cache.json")
+ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
+
+def load_ai_cache():
+    if os.path.exists(AI_CACHE_FILE):
+        try:
+            with open(AI_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_ai_cache(cache_data):
+    try:
+        with open(AI_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, indent=2)
+    except Exception as e:
+        print(f"[AI Cache] Save error: {e}")
+
+class CacheNotesRequest(BaseModel):
+    video_id: str
+    notes: str
+
+class CacheQuizRequest(BaseModel):
+    video_id: str
+    quiz_json: list
+
+class LogAttemptRequest(BaseModel):
+    user_id: Optional[str] = "student-1"
+    video_id: Optional[str] = ""
+    question_title: str
+    question_type: str  # "MCQ" or "CODING"
+    code_submitted: Optional[str] = ""
+    stdout: Optional[str] = ""
+    stderr: Optional[str] = ""
+    is_correct: bool
+    time_taken_seconds: int
+
+@app.get("/api/ai/cache/{video_id}")
+async def get_ai_cache(video_id: str):
+    cache = load_ai_cache()
+    return cache.get(video_id, {})
+
+@app.post("/api/ai/cache/notes")
+async def save_notes_cache(req: CacheNotesRequest):
+    cache = load_ai_cache()
+    if req.video_id not in cache:
+        cache[req.video_id] = {}
+    cache[req.video_id]["notes"] = req.notes
+    save_ai_cache(cache)
+    return {"status": "ok", "message": f"Notes cached for {req.video_id}"}
+
+@app.post("/api/ai/cache/quiz")
+async def save_quiz_cache(req: CacheQuizRequest):
+    cache = load_ai_cache()
+    if req.video_id not in cache:
+        cache[req.video_id] = {}
+    cache[req.video_id]["quiz_json"] = req.quiz_json
+    save_ai_cache(cache)
+    return {"status": "ok", "message": f"Quiz cached for {req.video_id}"}
+
+@app.post("/api/attempts/log")
+async def log_student_attempt(req: LogAttemptRequest):
+    attempts = []
+    if os.path.exists(ATTEMPTS_HISTORY_FILE):
+        try:
+            with open(ATTEMPTS_HISTORY_FILE, "r", encoding="utf-8") as f:
+                attempts = json.load(f)
+        except Exception:
+            attempts = []
+    
+    entry = {
+        "id": f"att-{len(attempts) + 1}",
+        "user_id": req.user_id,
+        "video_id": req.video_id,
+        "question_title": req.question_title,
+        "question_type": req.question_type,
+        "code_submitted": req.code_submitted,
+        "stdout": req.stdout,
+        "stderr": req.stderr,
+        "is_correct": req.is_correct,
+        "time_taken_seconds": req.time_taken_seconds,
+    }
+    attempts.insert(0, entry)
+    try:
+        with open(ATTEMPTS_HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(attempts[:100], f, indent=2)
+    except Exception as e:
+        print(f"[Attempts Storage] Error saving attempt: {e}")
+    
+    return {"status": "ok", "entry": entry}
+
+@app.get("/api/attempts/history")
+async def get_attempts_history(user_id: Optional[str] = "student-1"):
+    if os.path.exists(ATTEMPTS_HISTORY_FILE):
+        try:
+            with open(ATTEMPTS_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)

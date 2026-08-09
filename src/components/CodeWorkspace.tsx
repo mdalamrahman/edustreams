@@ -271,6 +271,22 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
     try {
       const existing = JSON.parse(localStorage.getItem('edustream_code_history') || '[]');
       localStorage.setItem('edustream_code_history', JSON.stringify([submissionEntry, ...existing].slice(0, 30)));
+
+      // Sync attempt to Cloud Database
+      const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+      fetch(`${backendUrl}/api/attempts/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_title: question?.question || 'Lecture Coding Challenge',
+          question_type: 'CODING',
+          code_submitted: code,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          is_correct: result.status === 'SUCCESS' && !result.stderr,
+          time_taken_seconds: Math.max(15, Math.round((endTime - startTime) / 1000))
+        })
+      }).catch((e) => console.warn('[Attempt Sync Notice]:', e));
     } catch (e) {
       console.warn('[Storage Notice]:', e);
     }

@@ -76,6 +76,20 @@ export async function requestMistralQuiz(
   channelName: string = 'DSA'
 ): Promise<QuizQuestion[]> {
   const cleanTitle = (videoTitle || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
+
+  // 1. Check global shared backend AI cache first so ALL users get the exact same quiz
+  try {
+    const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+    const cacheResp = await fetch(`${backendUrl}/api/ai/cache/${encodeURIComponent(cleanTitle)}`);
+    if (cacheResp.ok) {
+      const cacheData = await cacheResp.json();
+      if (cacheData.quiz_json && cacheData.quiz_json.length > 0) {
+        return cacheData.quiz_json;
+      }
+    }
+  } catch (err) {
+    console.warn('[AI Cache Check Notice]:', err);
+  }
   const prompt = `You are a Computer Science Professor.
 Create a 4-question quiz for a student who just watched the lecture "${cleanTitle}" (${channelName}).
 Transcript excerpt: "${(transcript || '').slice(0, 2000)}"
@@ -141,7 +155,20 @@ Return ONLY valid JSON.`;
         });
       }
 
-      if (questions.length > 0) return questions;
+      if (questions.length > 0) {
+        // Save to global backend cache so all users share this exact generated quiz
+        try {
+          const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+          fetch(`${backendUrl}/api/ai/cache/quiz`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ video_id: cleanTitle, quiz_json: questions })
+          }).catch((e) => console.warn('[Save Quiz Cache Notice]:', e));
+        } catch (e) {
+          // Silent catch
+        }
+        return questions;
+      }
     }
   } catch (err) {
     console.warn('[Mistral Quiz] API notice:', err);
