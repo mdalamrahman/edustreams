@@ -10,7 +10,8 @@ import {
   Cpu, 
   Maximize2, 
   Code,
-  RotateCcw
+  RotateCcw,
+  History
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, CodeTAReview } from '../lib/mistral';
@@ -194,6 +195,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta'>('terminal');
   const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Synchronize starter code whenever question changes
   useEffect(() => {
@@ -255,6 +257,24 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
       .catch((err) => console.warn('[Mistral TA Notice]:', err))
       .finally(() => setIsAnalyzingAI(false));
 
+    // Save submission attempt to localStorage history
+    const submissionEntry = {
+      id: `sub-${Date.now()}`,
+      problemTitle: question?.question || 'Lecture Challenge',
+      code,
+      language,
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem('edustream_code_history') || '[]');
+      localStorage.setItem('edustream_code_history', JSON.stringify([submissionEntry, ...existing].slice(0, 30)));
+    } catch (e) {
+      console.warn('[Storage Notice]:', e);
+    }
+
     if (onCodeExecuted) {
       const timeSeconds = Math.max(15, Math.round((endTime - startTime) / 1000));
       onCodeExecuted(timeSeconds, result.status === 'SUCCESS' && !result.stderr);
@@ -312,6 +332,15 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
           >
             <RotateCcw className="w-3 h-3" />
             <span className="hidden sm:inline">Reset</span>
+          </button>
+
+          <button
+            onClick={() => setShowHistoryModal(true)}
+            className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300 hover:text-purple-200 text-xs transition-all font-bold"
+            title="View Code Submission History"
+          >
+            <History className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden sm:inline">History</span>
           </button>
         </div>
 
@@ -497,6 +526,47 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, onCodeEx
         />
       )}
 
+      {/* Submission History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-6 overflow-y-auto flex items-center justify-center">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-2xl w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <History className="w-5 h-5 text-purple-400" />
+                Code Execution & Attempt Submission History
+              </h3>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-xs font-bold px-2 py-1 bg-slate-800 rounded-lg"
+              >
+                Close ✖
+              </button>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto space-y-3 font-mono text-xs">
+              {(() => {
+                const history = JSON.parse(localStorage.getItem('edustream_code_history') || '[]');
+                if (history.length === 0) {
+                  return <p className="text-slate-400 italic text-center py-6">No submission history logged yet. Run code in Monaco Editor to record history.</p>;
+                }
+                return history.map((sub: any) => (
+                  <div key={sub.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-indigo-300">{sub.problemTitle}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sub.status === 'SUCCESS' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-red-950 text-red-300 border border-red-800'}`}>
+                        {sub.status} • {sub.timestamp}
+                      </span>
+                    </div>
+                    <pre className="p-2 rounded bg-slate-900 text-[10px] text-slate-300 overflow-x-auto">
+                      {sub.code}
+                    </pre>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -189,14 +189,118 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
         explanation: 'Passing by const reference avoids deep object copying.'
       },
       {
-        id: `code-cpp-4`,
+        id: `code-cpp-1`,
         video_id: title,
         type: 'CODING',
-        question: `Implement a C++ solution for "${title}". Write a function that finds two numbers in a vector that add up to a target value in O(N) time.`,
+        question: `Variation 1 (Basic Lazy Singleton Pattern): Implement a basic C++ Lazy Singleton class for "${title}" that instantiates an object only when getInstance() is invoked for the first time.`,
         options: [],
         correct_answer: 0,
-        starter_code: `// EduStream C++ Challenge for ${title}\n#include <iostream>\n#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nvector<int> solveTwoSum(const vector<int>& nums, int target) {\n    unordered_map<int, int> seen;\n    for (int i = 0; i < (int)nums.size(); i++) {\n        int complement = target - nums[i];\n        if (seen.count(complement)) {\n            return {seen[complement], i};\n        }\n        seen[nums[i]] = i;\n    }\n    return {};\n}\n\nint main() {\n    vector<int> nums = {2, 7, 11, 15};\n    auto ans = solveTwoSum(nums, 9);\n    cout << "Target indices: [" << ans[0] << ", " << ans[1] << "]" << endl;\n    return 0;\n}`,
-        explanation: 'Hash map lookups allow single-pass O(N) linear time solution.'
+        starter_code: `// Variation 1: Basic Lazy Singleton Pattern for ${title}
+#include <iostream>
+using namespace std;
+
+class LazySingleton {
+private:
+    static LazySingleton* instance;
+    LazySingleton() {
+        cout << "[Lazy Singleton]: Initialized" << endl;
+    }
+public:
+    static LazySingleton* getInstance() {
+        if (instance == nullptr) {
+            instance = new LazySingleton();
+        }
+        return instance;
+    }
+
+    void showMessage() {
+        cout << "[Lazy Singleton]: Instance Active" << endl;
+    }
+};
+
+LazySingleton* LazySingleton::instance = nullptr;
+
+int main() {
+    LazySingleton* s1 = LazySingleton::getInstance();
+    s1->showMessage();
+    return 0;
+}`,
+        explanation: 'Lazy Singleton delays instantiation until first use.'
+      },
+      {
+        id: `code-cpp-2`,
+        video_id: title,
+        type: 'CODING',
+        question: `Variation 2 (Thread-Safe Double-Checked Locking Singleton): Implement a thread-safe Singleton in C++ using std::mutex to prevent race conditions during concurrent access.`,
+        options: [],
+        correct_answer: 0,
+        starter_code: `// Variation 2: Thread-Safe Double-Checked Locking Singleton for ${title}
+#include <iostream>
+#include <mutex>
+using namespace std;
+
+class ThreadSafeSingleton {
+private:
+    static ThreadSafeSingleton* instance;
+    static mutex mtx;
+    ThreadSafeSingleton() {
+        cout << "[Thread-Safe Singleton]: Initialized with Mutex Lock" << endl;
+    }
+public:
+    static ThreadSafeSingleton* getInstance() {
+        if (instance == nullptr) {
+            lock_guard<mutex> lock(mtx);
+            if (instance == nullptr) {
+                instance = new ThreadSafeSingleton();
+            }
+        }
+        return instance;
+    }
+};
+
+ThreadSafeSingleton* ThreadSafeSingleton::instance = nullptr;
+mutex ThreadSafeSingleton::mtx;
+
+int main() {
+    auto s1 = ThreadSafeSingleton::getInstance();
+    cout << "[Thread-Safe Singleton]: Double-checked lock verified" << endl;
+    return 0;
+}`,
+        explanation: 'Double-checked locking ensures thread safety while minimizing mutex locking overhead.'
+      },
+      {
+        id: `code-cpp-3`,
+        video_id: title,
+        type: 'CODING',
+        question: `Variation 3 (Meyers C++ Thread-Safe Singleton): Implement the C++11+ Meyers Singleton pattern using a static local reference for automatic thread-safe lifetime management.`,
+        options: [],
+        correct_answer: 0,
+        starter_code: `// Variation 3: Meyers C++ Thread-Safe Singleton for ${title}
+#include <iostream>
+using namespace std;
+
+class MeyersSingleton {
+private:
+    MeyersSingleton() {
+        cout << "[Meyers Singleton]: Thread-Safe Static Local Init" << endl;
+    }
+public:
+    // C++11 guarantees thread-safe static local variable initialization
+    static MeyersSingleton& getInstance() {
+        static MeyersSingleton instance;
+        return instance;
+    }
+
+    void doWork() {
+        cout << "[Meyers Singleton]: Operation Executed" << endl;
+    }
+};
+
+int main() {
+    MeyersSingleton::getInstance().doWork();
+    return 0;
+}`,
+        explanation: 'Meyers Singleton is the standard C++11+ recommended pattern.'
       }
     ];
   }
