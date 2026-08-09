@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2 } from 'lucide-react';
+import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onSuccess: (user: any) => void;
+  isFullPage?: boolean;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
+export const AuthModal: React.FC<AuthModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  isFullPage = false
+}) => {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authCode, setAuthCode] = useState('');
@@ -51,8 +57,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           if (data.user) {
             setTimeout(() => {
               onSuccess(data.user);
-              onClose();
-            }, 1000);
+              if (onClose) onClose();
+            }, 800);
           }
         }
       } catch (err: any) {
@@ -71,12 +77,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         if (signInErr) {
           setError(signInErr.message);
         } else {
-          setSuccessMsg('Signed in successfully!');
+          setSuccessMsg('Signed in successfully! Loading portal...');
           if (data.user) {
             setTimeout(() => {
               onSuccess(data.user);
-              onClose();
-            }, 800);
+              if (onClose) onClose();
+            }, 600);
           }
         }
       } catch (err: any) {
@@ -87,30 +93,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-md glass-panel rounded-2xl border border-slate-800 bg-slate-900/95 p-6 shadow-2xl">
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+  const containerClass = isFullPage
+    ? "min-h-screen w-full flex flex-col items-center justify-center p-4 bg-slate-950 text-slate-100 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-950/50 via-slate-950 to-slate-950"
+    : "fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn";
 
-        {/* Modal Header */}
-        <div className="text-center mb-6 pt-2">
+  return (
+    <div className={containerClass}>
+      
+      {/* Brand Header for Full Page Login */}
+      {isFullPage && (
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 p-0.5 shadow-2xl shadow-indigo-500/30 mb-3">
+            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+              <Tv className="w-7 h-7 text-indigo-400" />
+            </div>
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight gradient-text">EduStream AI Portal</h1>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm">
+            Private Educational Matrix & Automated MTProto Video Ingestion Engine
+          </p>
+        </div>
+      )}
+
+      <div className="relative w-full max-w-md glass-panel rounded-2xl border border-slate-800 bg-slate-900/95 p-6 sm:p-8 shadow-2xl">
+        
+        {/* Close Button (only if modal mode) */}
+        {!isFullPage && onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Header */}
+        <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-2xl bg-indigo-950 border border-indigo-700/60 text-indigo-400 flex items-center justify-center mx-auto mb-3 shadow-lg">
             <KeyRound className="w-6 h-6" />
           </div>
           <h2 className="text-xl font-extrabold text-slate-100 gradient-text">
-            {mode === 'signup' ? 'Create EduStream Student Account' : 'Sign In to EduStream'}
+            {mode === 'signin' ? 'Sign In to Access Portal' : 'Create Student Account'}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            {mode === 'signup' 
-              ? 'Enter your details and mandatory Authorization Code to register.' 
-              : 'Enter your credentials to access your private portal & analytics.'}
+            {mode === 'signin' 
+              ? 'Enter your student credentials to unlock video lectures & workspace.' 
+              : 'Enter your details and mandatory Authorization Code to register.'}
           </p>
         </div>
 
@@ -118,19 +146,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 mb-5 font-mono text-xs font-bold">
           <button
             type="button"
-            onClick={() => { setMode('signup'); setError(''); }}
-            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              mode === 'signup'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Create Account</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('signin'); setError(''); }}
+            onClick={() => { setMode('signin'); setError(''); setSuccessMsg(''); }}
             className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               mode === 'signin'
                 ? 'bg-indigo-600 text-white shadow-md'
@@ -139,6 +155,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           >
             <LogIn className="w-3.5 h-3.5" />
             <span>Sign In</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              mode === 'signup'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Create Account</span>
           </button>
         </div>
 
@@ -197,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 <label className="block text-xs font-semibold text-indigo-300">
                   Mandatory Authorization Code <span className="text-red-400">*</span>
                 </label>
-                <span className="text-[10px] font-mono text-amber-400">Required for Registration</span>
+                <span className="text-[10px] font-mono text-amber-400">Security Gate</span>
               </div>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-indigo-400" />
@@ -211,7 +239,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 />
               </div>
               <p className="text-[10px] text-slate-500 mt-1">
-                Enter your secret authorization key provided in your course enrollment.
+                Required for registration. Enter secret code <span className="font-mono text-indigo-300 font-bold">Zerocheck@8100648132</span>.
               </p>
             </div>
           )}
@@ -222,21 +250,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
           >
             {loading ? (
-              <span className="animate-spin font-mono text-xs">Loading...</span>
-            ) : mode === 'signup' ? (
+              <span className="animate-spin font-mono text-xs">Authenticating...</span>
+            ) : mode === 'signin' ? (
               <>
-                <UserPlus className="w-4 h-4" />
-                <span>Verify Authorization & Register</span>
+                <LogIn className="w-4 h-4" />
+                <span>Sign In to Access Portal</span>
               </>
             ) : (
               <>
-                <LogIn className="w-4 h-4" />
-                <span>Sign In to Portal</span>
+                <UserPlus className="w-4 h-4" />
+                <span>Verify Code & Register</span>
               </>
             )}
           </button>
         </form>
       </div>
+
+      {isFullPage && (
+        <div className="mt-8 text-center text-xs text-slate-500 font-mono">
+          <span>Protected by Supabase Auth & PostgreSQL Row Level Security (RLS)</span>
+        </div>
+      )}
+
     </div>
   );
 };

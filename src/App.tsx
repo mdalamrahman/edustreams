@@ -39,15 +39,18 @@ export function App() {
 
   // Auth State
   const [user, setUser] = useState<any>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setAuthChecking(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthChecking(false);
     });
 
     return () => subscription.unsubscribe();
@@ -212,6 +215,25 @@ export function App() {
       default: return <Network className="w-5 h-5 text-sky-400" />;
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center font-sans">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-xs font-mono text-slate-400">Verifying Supabase Authentication...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthModal
+        isOpen={true}
+        isFullPage={true}
+        onSuccess={(loggedUser) => setUser(loggedUser)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
