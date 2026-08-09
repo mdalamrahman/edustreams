@@ -91,18 +91,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <BarChart3 className="w-4 h-4 text-emerald-400" />
             <span className="hidden sm:inline">Velocity Analytics</span>
           </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === 'settings'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <HardDrive className="w-4 h-4" />
-            <span className="hidden sm:inline">Cache & Storage</span>
-          </button>
         </nav>
 
         {/* Right User & Auth Section */}

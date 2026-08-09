@@ -539,55 +539,6 @@ export function App() {
           </div>
         )}
 
-        {/* VIEW 4: CACHE STORAGE MANAGER & SETTINGS */}
-        {activeTab === 'settings' && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-2xl">
-              <div className="flex items-center space-x-3 pb-4 border-b border-slate-800 mb-5">
-                <div className="p-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/40">
-                  <HardDrive className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-100">Browser CacheStorage Manager</h2>
-                  <p className="text-xs text-slate-400">Offline video chunks stored in edustream-video-v1</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-slate-300">Offline Storage Footprint</span>
-                  <span className="text-indigo-400 font-bold">
-                    {(cacheUsageBytes / (1024 * 1024 * 1024)).toFixed(2)} GB used / {(cacheQuotaBytes / (1024 * 1024 * 1024)).toFixed(0)} GB quota
-                  </span>
-                </div>
-
-                <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (cacheUsageBytes / cacheQuotaBytes) * 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800">
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-200">Clear Downloaded Videos</h4>
-                  <p className="text-xs text-slate-400">Purges cached MP4 chunks from CacheStorage edustream-video-v1</p>
-                </div>
-
-                <button
-                  onClick={handleClearCache}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 text-xs font-bold transition-all shadow-md"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Clear Cache</span>
-                </button>
-              </div>
-
-            </div>
-          </div>
-        )}
-
       </main>
 
       {/* Mobile Coding Access Policy Overlay Modal */}
