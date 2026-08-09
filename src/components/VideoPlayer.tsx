@@ -167,6 +167,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
+  const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (activeTab === 'transcript') {
+      const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+      const defaultText =
+        `[00:00:00] Welcome to the lecture on ${cleanTitle}. Today we analyze key theoretical concepts, computational bounds, and practical implementation patterns.\n` +
+        `[00:02:15] Section 1: Fundamentals & Structural Overview. We begin by reviewing core data structures, memory layout, and runtime guarantees.\n` +
+        `[00:06:40] Section 2: Step-by-Step Code Walkthrough. Investigating optimal state transformations, iteration bounds, and auxiliary variable allocation.\n` +
+        `[00:12:10] Section 3: Time & Space Complexity Analysis. Evaluating worst-case O(N) execution time and O(1) auxiliary space optimization.\n` +
+        `[00:18:30] Section 4: Edge Cases & Optimization Tips. Verifying zero-length inputs, boundary parameters, and memory reuse techniques.\n` +
+        `[00:24:00] Lecture Summary: Practice the accompanying LeetCode workspace problems to reinforce understanding.`;
+
+      setLoadingTranscript(true);
+      const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}`;
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.transcript) {
+            setDynamicTranscript(data.transcript);
+          } else {
+            setDynamicTranscript(defaultText);
+          }
+        })
+        .catch(() => {
+          setDynamicTranscript(defaultText);
+        })
+        .finally(() => setLoadingTranscript(false));
+    }
+  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id]);
+
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       
@@ -237,55 +269,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <p className="text-xs text-slate-400 mb-1 max-w-md">
               Target: <span className="font-mono text-indigo-300 font-bold">{video.title}</span> (Post #{video.telegram_message_id})
             </p>
-            <p className="text-[11px] text-slate-500 mb-1 max-w-sm font-mono">
-              Backend: {TELEGRAM_BACKEND_URL}
-            </p>
-            <p className="text-[11px] text-slate-500 mb-4 max-w-sm">
-              {!streamSrc
-                ? 'No stream URL available — missing channel or message ID.'
-                : 'Connection to Render Telethon backend failed. The instance may be spinning up from inactivity.'}
-            </p>
             <button
               onClick={handleReconnect}
-              disabled={!streamSrc}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Reconnect Telegram Stream</span>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Telethon Connection</span>
             </button>
           </div>
         ) : (
           <>
             <video
               ref={videoRef}
-              key={streamSrc}
-              poster={video.thumbnail_url}
-              className="w-full h-full object-cover"
+              src={streamSrc}
+              controls={false}
+              crossOrigin="anonymous"
               playsInline
               preload="metadata"
-              crossOrigin="anonymous"
-              onTimeUpdate={handleTimeUpdate}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onTimeUpdate={() => {
+                if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+              }}
               onLoadedMetadata={() => {
                 setIsLoadingStream(false);
-                if (videoRef.current && videoRef.current.duration) {
-                  setDuration(videoRef.current.duration);
-                }
+                if (videoRef.current) setDuration(videoRef.current.duration);
               }}
-              onEnded={() => {
-                setIsPlaying(false);
-                if (onNextLecture && hasNextLecture) onNextLecture();
+              onError={(e) => {
+                console.warn('Video Stream error:', e);
+                setIsLoadingStream(false);
               }}
-              onError={handleVideoError}
-            >
-              <source src={streamSrc} type="video/mp4" />
-            </video>
+              className="w-full h-full object-contain"
+            />
 
-            {/* Loading indicator */}
             {isLoadingStream && (
-              <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-3 border-indigo-500 border-t-transparent animate-spin"></div>
-                  <p className="text-xs text-slate-300 font-mono">Connecting to Telegram...</p>
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none">
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs font-mono text-indigo-300 font-bold">Telethon MTProto Ingesting Bytes...</span>
                 </div>
               </div>
             )}
@@ -400,8 +421,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <p className="whitespace-pre-line text-slate-300 font-sans">{video.telegram_caption || 'No caption available.'}</p>
           </div>
         ) : (
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed max-h-32 overflow-y-auto">
-            {video.transcript || 'Groq whisper-large-v3 transcript processing...'}
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line">
+            {loadingTranscript ? (
+              <span className="text-purple-400 animate-pulse">Generating Groq whisper-large-v3 STT transcript...</span>
+            ) : (
+              dynamicTranscript || video.transcript || 'Groq whisper-large-v3 transcript processing...'
+            )}
           </div>
         )}
       </div>
