@@ -25,7 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const REQUIRED_AUTH_CODE = import.meta.env.VITE_AUTH_SECRET_CODE || 'Zerocheck@8100648132';
+  const REQUIRED_AUTH_CODE = import.meta.env.VITE_AUTH_SECRET_CODE || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +38,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (mode === 'signup') {
-      if (authCode.trim() !== REQUIRED_AUTH_CODE) {
-        setError('Invalid Authorization Code. You must enter the valid student authorization code (Zerocheck@8100648132) to create an account.');
+      if (!authCode || (REQUIRED_AUTH_CODE && authCode.trim() !== REQUIRED_AUTH_CODE)) {
+        setError('Invalid Authorization Code. You must enter a valid student authorization key to create an account.');
         return;
       }
 
@@ -230,16 +230,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-indigo-400" />
                 <input
-                  type="text"
+                  type="password"
                   value={authCode}
                   onChange={(e) => setAuthCode(e.target.value)}
-                  placeholder="Zerocheck@8100648132"
+                  placeholder="Enter secret authorization key"
                   required
                   className="w-full pl-9 pr-4 py-2.5 bg-indigo-950/40 border border-indigo-700/80 rounded-xl text-xs font-mono text-indigo-200 placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/40"
                 />
               </div>
               <p className="text-[10px] text-slate-500 mt-1">
-                Required for registration. Enter secret code <span className="font-mono text-indigo-300 font-bold">Zerocheck@8100648132</span>.
+                Required for registration. Enter your secret authorization key provided in your course enrollment.
               </p>
             </div>
           )}

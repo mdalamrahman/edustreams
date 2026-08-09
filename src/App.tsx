@@ -588,7 +588,7 @@ export function App() {
         />
       )}
 
-      {/* Auth Modal with Zerocheck@8100648132 Gated Signup */}
+      {/* Auth Modal with Mandatory Authorization Code Gated Signup */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
