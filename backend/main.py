@@ -4,8 +4,9 @@ import math
 import asyncio
 import subprocess
 import json
+import base64
 import requests
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +73,7 @@ async def get_client() -> TelegramClient:
                     connection_retries=5,
                     retry_delay=2,
                 )
-                await _telethon_client.start()
+                await _telethon_client.start()  # type: ignore
                 me = await _telethon_client.get_me()
                 print(f"[Telethon User] Connected as: {me.first_name} (@{me.username or me.id})")
             else:
@@ -81,7 +82,7 @@ async def get_client() -> TelegramClient:
                     connection_retries=5,
                     retry_delay=2,
                 )
-                await _telethon_client.start(bot_token=BOT_TOKEN)
+                await _telethon_client.start(bot_token=BOT_TOKEN)  # type: ignore
                 me = await _telethon_client.get_me()
                 print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
 
