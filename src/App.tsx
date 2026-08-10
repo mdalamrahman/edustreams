@@ -328,11 +328,12 @@ export function App() {
     }
   };
 
-  if (authChecking) {
+  if (authChecking || catalogLoading) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center font-sans">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xs font-mono text-slate-400">Verifying Supabase Authentication...</p>
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg shadow-indigo-500/30"></div>
+        <h3 className="text-sm font-bold text-slate-100 mb-1">EduStream AI Platform</h3>
+        <p className="text-xs font-mono text-slate-400">Loading Telegram Ingested Video Catalog & Synchronizing Courses...</p>
       </div>
     );
   }
