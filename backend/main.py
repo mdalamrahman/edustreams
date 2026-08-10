@@ -803,18 +803,18 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                     doc = msg.media.document
-                    print(f"[Groq Whisper STT] Downloading 12MB snippet (offset 0) for msg #{msg_id}...")
+                    print(f"[Groq Whisper STT] Downloading 1.5MB snippet (offset 0) for msg #{msg_id}...")
                     
                     audio_bytes = bytearray()
-                    # Download first 12MB starting at offset 0 (Valid MP4 headers + <25MB Groq limit)
+                    # Fast 1.5MB snippet download starting at offset 0 (Valid MP4 headers, ~6s latency)
                     async for chunk in client.iter_download(
                         doc,
                         offset=0,
-                        request_size=512 * 1024,
+                        request_size=256 * 1024,
                         dc_id=getattr(doc, 'dc_id', None)
                     ):
                         audio_bytes.extend(chunk)
-                        if len(audio_bytes) >= 12000000:
+                        if len(audio_bytes) >= 1500000:
                             break
                     
                     with open(temp_audio_path, "wb") as f:
