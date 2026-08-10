@@ -25,7 +25,7 @@ API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5")
@@ -762,7 +762,29 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     t3 = f"00:{m3:02d}:00" if m3 < 60 else f"{m3//60:02d}:{m3%60:02d}:00"
     t4 = f"00:{m4:02d}:00" if m4 < 60 else f"{m4//60:02d}:{m4%60:02d}:00"
 
-    # Generate an extremely detailed verbatim-style lecture transcript using Mistral AI
+    # 1. Primary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
+    if GROQ_API_KEY:
+        try:
+            prompt = (
+                f"You are an expert Computer Science Professor giving a live, verbatim video lecture on '{clean_title}'. "
+                f"Generate a full-length, detailed, verbatim lecture transcript for a {dur_mins}-minute video. "
+                f"MUST use these exact proportional timestamps: [{t0}], [{t1}], [{t2}], [{t3}], [{t4}]. "
+                f"Explain the core subject with complete C++ / Java code blocks, exact step-by-step logic, architectural trade-offs, and Big-O derivations for '{clean_title}'."
+            )
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2
+            }
+            resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=8)
+            if resp.status_code == 200:
+                txt = resp.json()["choices"][0]["message"]["content"]
+                return {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt, "provider": "Groq Llama-3.3-70b"}
+        except Exception as e:
+            print(f"[Transcript API] Groq notice: {e}")
+
+    # 2. Secondary: Mistral AI Fallback
     if MISTRAL_API_KEY:
         try:
             prompt = (
@@ -777,7 +799,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
             resp = requests.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=payload, timeout=12)
             if resp.status_code == 200:
                 txt = resp.json()["choices"][0]["message"]["content"]
-                return {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt}
+                return {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt, "provider": "Mistral AI"}
         except Exception as e:
             print(f"[Transcript API] Mistral notice: {e}")
 
