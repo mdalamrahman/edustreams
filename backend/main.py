@@ -773,6 +773,8 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     t3 = f"00:{m3:02d}:00" if m3 < 60 else f"{m3//60:02d}:{m3%60:02d}:00"
     t4 = f"00:{m4:02d}:00" if m4 < 60 else f"{m4//60:02d}:{m4%60:02d}:00"
 
+    stt_error_msg: Optional[str] = None
+
     # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video audio snippet & transcribe via Groq Whisper-large-v3
     if GROQ_API_KEY:
         try:
@@ -844,6 +846,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                             else:
                                 print(f"[Groq Whisper STT API Error] Status {resp.status_code}: {resp.text}")
         except Exception as e:
+            stt_error_msg = str(e)
             print(f"[Groq Whisper STT Real Audio Exception]: {e}")
 
     # 1. Secondary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
@@ -864,7 +867,10 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
             resp = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=8)
             if resp.status_code == 200:
                 txt = resp.json()["choices"][0]["message"]["content"]
-                return {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt, "provider": "Groq Llama-3.3-70b"}
+                res = {"chat_id": chat_id, "msg_id": msg_id, "title": clean_title, "transcript": txt, "provider": "Groq Llama-3.3-70b"}
+                if stt_error_msg:
+                    res["stt_notice"] = stt_error_msg
+                return res
         except Exception as e:
             print(f"[Transcript API] Groq notice: {e}")
 
