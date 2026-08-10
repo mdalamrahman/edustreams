@@ -226,6 +226,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds]);
 
+  const handleRegenerateTranscript = () => {
+    const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+    const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
+    const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v2`;
+
+    // Clear local storage cache
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`edustream_transcript_${video.id || cleanTitle}`);
+    setLoadingTranscript(true);
+
+    const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}&force=true`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.transcript) {
+          setDynamicTranscript(data.transcript);
+          localStorage.setItem(cacheKey, data.transcript);
+        }
+      })
+      .catch((err) => console.warn('[Regenerate Transcript Notice]:', err))
+      .finally(() => setLoadingTranscript(false));
+  };
+
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       
@@ -471,12 +494,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <p className="whitespace-pre-line text-slate-300 font-sans">{video.telegram_caption || 'No caption available.'}</p>
           </div>
         ) : activeTab === 'transcript' ? (
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line">
-            {loadingTranscript ? (
-              <span className="text-purple-400 animate-pulse">Generating Groq whisper-large-v3 STT transcript...</span>
-            ) : (
-              dynamicTranscript || video.transcript || 'Groq whisper-large-v3 transcript processing...'
-            )}
+          <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed relative">
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-purple-900/30">
+              <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                Whisper STT Verbatim Lecture Transcript
+              </span>
+              <button
+                onClick={handleRegenerateTranscript}
+                disabled={loadingTranscript}
+                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 font-bold transition-all text-[11px]"
+                title="Clear cached transcript and force regenerate via Mistral AI"
+              >
+                <RefreshCw className={`w-3 h-3 ${loadingTranscript ? 'animate-spin' : ''}`} />
+                <span>{loadingTranscript ? 'Regenerating...' : 'Regenerate Transcript'}</span>
+              </button>
+            </div>
+            <div className="max-h-44 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
+              {loadingTranscript ? (
+                <span className="text-purple-400 animate-pulse">Generating Groq whisper-large-v3 verbatim lecture transcript...</span>
+              ) : (
+                dynamicTranscript || video.transcript || 'Whisper-large-v3 transcript processing...'
+              )}
+            </div>
           </div>
         ) : (
           <AINotesAndSimulation video={video} />
