@@ -803,9 +803,22 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                     doc = msg.media.document
-                    print(f"[Groq Whisper STT] Downloading complete media for msg #{msg_id}...")
-                    # Download full/valid media file starting at offset 0 via Telethon
-                    await client.download_media(msg, file=temp_audio_path)
+                    print(f"[Groq Whisper STT] Downloading 12MB snippet (offset 0) for msg #{msg_id}...")
+                    
+                    audio_bytes = bytearray()
+                    # Download first 12MB starting at offset 0 (Valid MP4 headers + <25MB Groq limit)
+                    async for chunk in client.iter_download(
+                        doc,
+                        offset=0,
+                        request_size=512 * 1024,
+                        dc_id=getattr(doc, 'dc_id', None)
+                    ):
+                        audio_bytes.extend(chunk)
+                        if len(audio_bytes) >= 12000000:
+                            break
+                    
+                    with open(temp_audio_path, "wb") as f:
+                        f.write(audio_bytes)
                     
                     if os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000:
                         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
