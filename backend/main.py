@@ -807,21 +807,21 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     print(f"[Groq Whisper STT] Downloading 6MB video snippet for msg #{msg_id}...")
                     
                     video_bytes = bytearray()
-                    # Download first 6MB starting at offset 0 (contains MP4 headers + audio track)
+                    # Download first 2MB starting at offset 0 (takes ~1s, MP4 headers)
                     async for chunk in client.iter_download(
                         doc,
                         offset=0,
-                        request_size=512 * 1024,
+                        request_size=256 * 1024,
                         dc_id=getattr(doc, 'dc_id', None)
                     ):
                         video_bytes.extend(chunk)
-                        if len(video_bytes) >= 6000000:
+                        if len(video_bytes) >= 2000000:
                             break
                     
                     with open(temp_video_path, "wb") as f:
                         f.write(video_bytes)
                     
-                    # Extract clean standalone 3-minute MP3 audio clip using imageio_ffmpeg / ffmpeg
+                    # Extract clean standalone 1-minute MP3 audio clip using imageio_ffmpeg / ffmpeg
                     try:
                         import imageio_ffmpeg
                         ffmpeg_cmd = imageio_ffmpeg.get_ffmpeg_exe()
@@ -830,11 +830,11 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
                     cmd = [
                         ffmpeg_cmd, "-y", "-i", temp_video_path,
-                        "-t", "180", "-vn", "-acodec", "libmp3lame",
-                        "-ar", "16000", "-ab", "64k", temp_audio_path
+                        "-t", "90", "-vn", "-acodec", "libmp3lame",
+                        "-ar", "16000", "-ab", "48k", temp_audio_path
                     ]
                     print(f"[Groq Whisper STT] Extracting MP3 audio clip via {ffmpeg_cmd}...")
-                    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20)
+                    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
 
                     target_upload_path = temp_audio_path if (os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000) else temp_video_path
                     upload_mime = "audio/mp3" if target_upload_path == temp_audio_path else "video/mp4"
@@ -848,7 +848,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 "model": (None, "whisper-large-v3"),
                                 "response_format": (None, "verbose_json")
                             }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=40)
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=90)
                             if resp.status_code == 200:
                                 stt_json = resp.json()
                                 segments = stt_json.get("segments", [])
