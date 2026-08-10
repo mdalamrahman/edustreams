@@ -224,9 +224,21 @@ TITLE_SEARCH_MAP = {
 }
 
 
+MOCK_CHANNEL_ID_MAP = {
+    "ch-dsa-01": -1004390749731,
+    "ch-sd-02": -1004329144420,
+    "ch-dbms-03": -1004332462419,
+    "ch-cn-04": -1004308430774,
+}
+
+
 async def resolve_channel_peer(chat_id):
     """Resolves a channel chat_id to a Telethon entity with access_hash."""
     client = await get_client()
+
+    # Translate mock channel slugs (ch-sd-02) to real Telegram channel ID integer (-1004329144420)
+    if isinstance(chat_id, str) and chat_id in MOCK_CHANNEL_ID_MAP:
+        chat_id = MOCK_CHANNEL_ID_MAP[chat_id]
 
     try:
         raw_int = int(str(chat_id).strip())
@@ -243,11 +255,15 @@ async def resolve_channel_peer(chat_id):
     if raw_int and raw_int in _entity_cache:
         return _entity_cache[raw_int]
 
-    clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
+    # Safely extract numeric clean_id
+    clean_str = str(chat_id).replace("-100", "").replace("-", "").strip()
+    clean_id = int(clean_str) if clean_str.isdigit() else None
 
-    for target in [raw_int, chat_id, clean_id, PeerChannel(clean_id)]:
-        if target is None:
-            continue
+    targets = [t for t in [raw_int, chat_id, clean_id] if t is not None]
+    if clean_id:
+        targets.append(PeerChannel(clean_id))
+
+    for target in targets:
         try:
             entity = await client.get_entity(target)
             if entity:
@@ -259,7 +275,9 @@ async def resolve_channel_peer(chat_id):
         except Exception:
             pass
 
-    return PeerChannel(clean_id)
+    if clean_id:
+        return PeerChannel(clean_id)
+    return None
 
 
 async def fetch_channel_videos(chat_id: int, limit: int = 0):
