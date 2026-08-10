@@ -224,26 +224,36 @@ TITLE_SEARCH_MAP = {
 }
 
 
-async def resolve_channel_peer(chat_id: int):
+async def resolve_channel_peer(chat_id):
     """Resolves a channel chat_id to a Telethon entity with access_hash."""
     client = await get_client()
 
-    # Title lookup first for migrated group dialogs (contains all 418+ video posts)
-    if chat_id in TITLE_SEARCH_MAP:
-        target_title = TITLE_SEARCH_MAP[chat_id]
+    try:
+        raw_int = int(str(chat_id).strip())
+    except Exception:
+        raw_int = None
+
+    if raw_int and raw_int in TITLE_SEARCH_MAP:
+        target_title = TITLE_SEARCH_MAP[raw_int]
         if target_title in _entity_cache:
             return _entity_cache[target_title]
 
     if chat_id in _entity_cache:
         return _entity_cache[chat_id]
+    if raw_int and raw_int in _entity_cache:
+        return _entity_cache[raw_int]
 
     clean_id = int(str(chat_id).replace("-100", "").replace("-", ""))
 
-    for target in [chat_id, clean_id, PeerChannel(clean_id)]:
+    for target in [raw_int, chat_id, clean_id, PeerChannel(clean_id)]:
+        if target is None:
+            continue
         try:
             entity = await client.get_entity(target)
             if entity:
                 _entity_cache[chat_id] = entity
+                if raw_int:
+                    _entity_cache[raw_int] = entity
                 print(f"[Telethon] Resolved entity for {chat_id}: {getattr(entity, 'title', entity)}")
                 return entity
         except Exception:
@@ -767,8 +777,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     if GROQ_API_KEY:
         try:
             client = await get_client()
-            clean_chat_id = int(str(chat_id).replace("-100", "").replace("-", "")) if str(chat_id).replace("-", "").isdigit() else chat_id
-            channel_peer = await resolve_channel_peer(clean_chat_id if isinstance(clean_chat_id, int) else chat_id)
+            channel_peer = await resolve_channel_peer(chat_id)
             if channel_peer:
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
