@@ -28,6 +28,7 @@ import { DiagnosticCard } from './components/DiagnosticCard';
 import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { AuthModal } from './components/AuthModal';
 import { AskAIChatModal } from './components/AskAIChatModal';
+import { LoadingScreen } from './components/LoadingScreen';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent } from './lib/auth';
@@ -329,13 +330,7 @@ export function App() {
   };
 
   if (authChecking || catalogLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center font-sans">
-        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg shadow-indigo-500/30"></div>
-        <h3 className="text-sm font-bold text-slate-100 mb-1">EduStream AI Platform</h3>
-        <p className="text-xs font-mono text-slate-400">Loading Telegram Ingested Video Catalog & Synchronizing Courses...</p>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {
