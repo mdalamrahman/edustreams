@@ -793,7 +793,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
     stt_error_msg: Optional[str] = None
 
-    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video media & transcribe via Groq Whisper-large-v3
+    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video audio snippet & transcribe via Groq Whisper-large-v3
     if GROQ_API_KEY:
         temp_audio_path = os.path.join(MEDIA_STORAGE_DIR, f"temp_stt_{msg_id}.mp4")
         try:
@@ -802,9 +802,23 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
             if channel_peer:
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
-                    print(f"[Groq Whisper STT] Downloading media for msg #{msg_id}...")
-                    # Download full/valid media file via Telethon
-                    await client.download_media(msg, file=temp_audio_path)
+                    doc = msg.media.document
+                    print(f"[Groq Whisper STT] Downloading 4.5MB snippet for msg #{msg_id}...")
+                    
+                    audio_bytes = bytearray()
+                    # Fast 4.5MB download (takes ~3.5s, avoids 502 gateway timeout)
+                    async for chunk in client.iter_download(
+                        doc,
+                        offset=0,
+                        request_size=512 * 1024,
+                        dc_id=getattr(doc, 'dc_id', None)
+                    ):
+                        audio_bytes.extend(chunk)
+                        if len(audio_bytes) >= 4500000:
+                            break
+                    
+                    with open(temp_audio_path, "wb") as f:
+                        f.write(audio_bytes)
                     
                     if os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000:
                         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
@@ -814,7 +828,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 "model": (None, "whisper-large-v3"),
                                 "response_format": (None, "verbose_json")
                             }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=60)
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=25)
                             if resp.status_code == 200:
                                 stt_json = resp.json()
                                 segments = stt_json.get("segments", [])
