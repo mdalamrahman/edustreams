@@ -806,15 +806,16 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     print(f"[Groq Whisper STT] Downloading 4.5MB snippet for msg #{msg_id}...")
                     
                     audio_bytes = bytearray()
-                    # Fast 2.5MB download (takes ~1.5s, Groq Whisper transcribes in ~10s)
+                    # Skip intro title screen (first 3MB) and download 3.5MB of active spoken audio
+                    offset_bytes = 3 * 1024 * 1024
                     async for chunk in client.iter_download(
                         doc,
-                        offset=0,
+                        offset=offset_bytes,
                         request_size=512 * 1024,
                         dc_id=getattr(doc, 'dc_id', None)
                     ):
                         audio_bytes.extend(chunk)
-                        if len(audio_bytes) >= 2500000:
+                        if len(audio_bytes) >= 3500000:
                             break
                     
                     with open(temp_audio_path, "wb") as f:
