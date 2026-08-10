@@ -15,7 +15,8 @@ import {
   X,
   Sparkles,
   ArrowLeft,
-  BookOpen
+  BookOpen,
+  CheckCircle2
 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { VideoPlayer } from './components/VideoPlayer';
@@ -44,6 +45,34 @@ export function App() {
   const [showMobileGating, setShowMobileGating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
+
+  // Lecture completion tracking
+  const [completedLectures, setCompletedLectures] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('edustream_completed_lectures');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const toggleLectureComplete = (videoId: string) => {
+    setCompletedLectures(prev => {
+      const next = new Set(prev);
+      if (next.has(videoId)) next.delete(videoId); else next.add(videoId);
+      localStorage.setItem('edustream_completed_lectures', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const handleAutoComplete = (videoId: string) => {
+    if (!completedLectures.has(videoId)) {
+      setCompletedLectures(prev => {
+        const next = new Set(prev);
+        next.add(videoId);
+        localStorage.setItem('edustream_completed_lectures', JSON.stringify([...next]));
+        return next;
+      });
+    }
+  };
 
   // Auth State
   const [user, setUser] = useState<any>(null);
@@ -377,7 +406,7 @@ export function App() {
                         </div>
 
                         <h3 className="text-base font-bold text-slate-100 mb-1.5 group-hover:text-indigo-300 transition-colors flex items-center justify-between">
-                          <span>{ch.name}</span>
+                          <span>{ch.category_name}</span>
                           <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
                         </h3>
                         <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{ch.description}</p>
@@ -468,26 +497,40 @@ export function App() {
                         </div>
 
                         <div className="p-4 bg-slate-900/60 border-t border-slate-800/60 flex items-center justify-between">
-                          <button
-                            onClick={() => {
-                              setSelectedVideo(v);
-                              setActiveTab('lesson');
-                            }}
-                            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-current" />
-                            <span>Watch Lecture</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedVideo(v);
+                                setActiveTab('lesson');
+                              }}
+                              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Watch</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedVideo(v);
+                                setIsAskAIOpen(true);
+                              }}
+                              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>AI</span>
+                            </button>
+                          </div>
 
                           <button
-                            onClick={() => {
-                              setSelectedVideo(v);
-                              setIsAskAIOpen(true);
-                            }}
-                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all"
+                            onClick={(e) => { e.stopPropagation(); toggleLectureComplete(v.id); }}
+                            className={`p-1.5 rounded-lg transition-all border ${
+                              completedLectures.has(v.id)
+                                ? 'bg-emerald-950 border-emerald-600 text-emerald-400 shadow-sm shadow-emerald-500/20'
+                                : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                            }`}
+                            title={completedLectures.has(v.id) ? 'Mark as incomplete' : 'Mark as completed'}
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Ask AI</span>
+                            <CheckCircle2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -551,6 +594,7 @@ export function App() {
                   hasNextLecture={hasNextLecture}
                   hasPrevLecture={hasPrevLecture}
                   onOpenAskAI={() => setIsAskAIOpen(true)}
+                  onAutoComplete={handleAutoComplete}
                 />
                 <ResourceCard
                   attachments={selectedVideo.attachments || []}
@@ -561,7 +605,13 @@ export function App() {
 
               {/* Right Column: Code Editor or Video-Specific Mistral Quiz Module */}
               <div className="lg:col-span-5 h-[640px]">
-                {lessonSubTab === 'code' ? (
+                {quizLoading ? (
+                  <div className="h-full flex flex-col items-center justify-center glass-panel rounded-2xl border border-slate-800 space-y-4">
+                    <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-sm font-bold text-slate-300">Generating AI Quiz & Coding Challenges...</p>
+                    <p className="text-xs text-slate-500 font-mono">Mistral AI is creating 5 MCQs + 3 coding challenges from the transcript</p>
+                  </div>
+                ) : lessonSubTab === 'code' ? (
                   <CodeWorkspace
                     question={activeCodingQuestion}
                     allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}

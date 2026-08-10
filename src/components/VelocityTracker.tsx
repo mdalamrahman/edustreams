@@ -40,6 +40,13 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = ({
     { day: 'Today', qpm: speedIndex, questions: totalSolved }
   ];
 
+  // SDE Readiness Score: max 100, from 4 sub-scores (each max 25)
+  const solvingScore = Math.min(25, Math.round(totalSolved * 0.5));
+  const accuracyScore = Math.min(25, Math.round(accuracyPercent * 0.25));
+  const timeScore = Math.min(25, Math.round(parseFloat(totalDedicatedHours) * 2.5));
+  const velocityScore = Math.min(25, Math.round(speedIndex * 10));
+  const sdeReadinessScore = solvingScore + accuracyScore + timeScore + velocityScore;
+
   return (
     <div className="space-y-6">
       {/* 4 Stat Cards */}
@@ -204,6 +211,82 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* AI-Powered SDE Readiness Progress Bar */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400 fill-current" />
+              AI-Powered SDE Interview Readiness
+            </h3>
+            <p className="text-xs text-slate-400">Calculated from solving velocity, accuracy, time invested, and topic coverage</p>
+          </div>
+          <span className={`px-3 py-1 rounded-xl text-xs font-bold border ${
+            sdeReadinessScore >= 80 ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
+            sdeReadinessScore >= 50 ? 'bg-amber-950 border-amber-700 text-amber-300' :
+            sdeReadinessScore >= 25 ? 'bg-indigo-950 border-indigo-700 text-indigo-300' :
+            'bg-slate-900 border-slate-700 text-slate-400'
+          }`}>
+            {sdeReadinessScore >= 80 ? '🚀 SDE Ready' :
+             sdeReadinessScore >= 50 ? '🎯 Interview Ready' :
+             sdeReadinessScore >= 25 ? '📈 Intermediate' :
+             '🌱 Beginner'}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="relative w-full h-5 bg-slate-900 rounded-full overflow-hidden border border-slate-800 mb-3">
+          <div
+            className="h-full rounded-full transition-all duration-1000 ease-out"
+            style={{
+              width: `${Math.min(100, sdeReadinessScore)}%`,
+              background: sdeReadinessScore >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' :
+                          sdeReadinessScore >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' :
+                          sdeReadinessScore >= 25 ? 'linear-gradient(90deg, #6366f1, #818cf8)' :
+                          'linear-gradient(90deg, #475569, #64748b)'
+            }}
+          />
+          {/* Milestone markers */}
+          <div className="absolute inset-0 flex items-center">
+            {[25, 50, 80].map((milestone) => (
+              <div
+                key={milestone}
+                className="absolute h-full border-r border-slate-700/50"
+                style={{ left: `${milestone}%` }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Milestone Labels */}
+        <div className="flex justify-between text-[10px] font-mono text-slate-500 px-1">
+          <span>Beginner</span>
+          <span style={{ position: 'absolute', left: '25%', transform: 'translateX(-50%)' }} className="relative">Intermediate</span>
+          <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }} className="relative">Interview Ready</span>
+          <span>SDE Ready</span>
+        </div>
+
+        {/* Readiness Breakdown */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+          <div className="text-center p-2 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-lg font-black text-slate-100 font-mono">{Math.min(25, Math.round(totalSolved * 0.5))}</div>
+            <div className="text-[10px] text-slate-400">Solving Score</div>
+          </div>
+          <div className="text-center p-2 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-lg font-black text-slate-100 font-mono">{Math.min(25, Math.round(accuracyPercent * 0.25))}</div>
+            <div className="text-[10px] text-slate-400">Accuracy Score</div>
+          </div>
+          <div className="text-center p-2 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-lg font-black text-slate-100 font-mono">{Math.min(25, Math.round(parseFloat(totalDedicatedHours) * 2.5))}</div>
+            <div className="text-[10px] text-slate-400">Time Invested</div>
+          </div>
+          <div className="text-center p-2 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="text-lg font-black text-slate-100 font-mono">{Math.min(25, Math.round(speedIndex * 10))}</div>
+            <div className="text-[10px] text-slate-400">Velocity Score</div>
+          </div>
+        </div>
       </div>
     </div>
   );

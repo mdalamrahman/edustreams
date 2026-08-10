@@ -30,6 +30,7 @@ interface VideoPlayerProps {
   hasNextLecture?: boolean;
   hasPrevLecture?: boolean;
   onOpenAskAI?: () => void;
+  onAutoComplete?: (videoId: string) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -38,7 +39,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onPrevLecture,
   hasNextLecture = true,
   hasPrevLecture = true,
-  onOpenAskAI
+  onOpenAskAI,
+  onAutoComplete
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -173,6 +175,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
   const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
+  const [autoCompleted, setAutoCompleted] = useState(false);
+
+  // Auto-complete lecture when ≥70% of video duration watched
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl || autoCompleted) return;
+    const handleTimeUpdate = () => {
+      const dur = video.duration_seconds || videoEl.duration || 0;
+      if (dur > 0 && videoEl.currentTime >= dur * 0.7 && !autoCompleted) {
+        setAutoCompleted(true);
+        if (onAutoComplete) onAutoComplete(video.id);
+      }
+    };
+    videoEl.addEventListener('timeupdate', handleTimeUpdate);
+    return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [video.id, autoCompleted, onAutoComplete, video.duration_seconds]);
 
   useEffect(() => {
     if (activeTab === 'transcript') {

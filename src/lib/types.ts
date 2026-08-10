@@ -35,6 +35,7 @@ export interface QuizQuestion {
   solution_code?: string;
   explanation?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
+  test_cases?: { input: string; expected_output: string }[];
 }
 
 export interface Video {

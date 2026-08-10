@@ -198,9 +198,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
-  const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta'>('terminal');
+  const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta' | 'test_cases'>('terminal');
   const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [testCaseResults, setTestCaseResults] = useState<{ input: string; expected: string; actual: string; passed: boolean }[]>([]);
 
   // Synchronize starter code whenever question changes
   useEffect(() => {
@@ -254,6 +255,20 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
     setIsExecuting(false);
     setExecutionResult(result);
     setActiveBottomTab('terminal');
+
+    // Validate against Mistral-generated test cases if available
+    if (activeQ?.test_cases && activeQ.test_cases.length > 0 && result.stdout) {
+      const stdoutTrimmed = result.stdout.trim();
+      const tcResults = activeQ.test_cases.map((tc) => {
+        const expectedTrimmed = tc.expected_output.trim();
+        const passed = stdoutTrimmed.includes(expectedTrimmed) || stdoutTrimmed === expectedTrimmed;
+        return { input: tc.input, expected: tc.expected_output, actual: stdoutTrimmed, passed };
+      });
+      setTestCaseResults(tcResults);
+      setActiveBottomTab('test_cases');
+    } else {
+      setTestCaseResults([]);
+    }
 
     // Trigger Mistral AI evaluation for test cases automatically
     setIsAnalyzingAI(true);
@@ -496,6 +511,18 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
               <Sparkles className="w-3.5 h-3.5" />
               <span>Mistral AI Review</span>
             </button>
+
+            {testCaseResults.length > 0 && (
+              <button
+                onClick={() => setActiveBottomTab('test_cases')}
+                className={`flex items-center space-x-1.5 font-mono ${
+                  activeBottomTab === 'test_cases' ? 'text-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Test Cases ({testCaseResults.filter(t => t.passed).length}/{testCaseResults.length})</span>
+              </button>
+            )}
           </div>
 
           {executionResult && (
@@ -513,8 +540,8 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
         <div className="flex-1 p-3 overflow-y-auto font-mono text-xs">
           {activeBottomTab === 'terminal' ? (
             executionResult ? (
-              <div>
-                <div className="flex items-center space-x-2 mb-1">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
                   {executionResult.status === 'SUCCESS' ? (
                     <span className="text-emerald-400 flex items-center gap-1 font-bold">
                       <CheckCircle2 className="w-4 h-4" /> SUCCESS (Exit Code 0)
@@ -533,6 +560,48 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
             ) : (
               <div className="text-slate-500 italic flex items-center justify-center h-full">
                 Press Ctrl+Enter or click "Run Code" to execute via OnlineCompiler.io
+              </div>
+            )
+          ) : activeBottomTab === 'test_cases' ? (
+            testCaseResults.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-bold text-slate-100">Mistral AI Test Case Validation</span>
+                  <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border ${
+                    testCaseResults.every(t => t.passed)
+                      ? 'bg-emerald-950 border-emerald-700 text-emerald-300'
+                      : 'bg-amber-950 border-amber-700 text-amber-300'
+                  }`}>
+                    {testCaseResults.filter(t => t.passed).length}/{testCaseResults.length} Passed
+                  </span>
+                </div>
+                {testCaseResults.map((tc, idx) => (
+                  <div key={idx} className={`p-2 rounded-lg border ${
+                    tc.passed
+                      ? 'bg-emerald-950/30 border-emerald-800/50'
+                      : 'bg-red-950/30 border-red-800/50'
+                  }`}>
+                    <div className="flex items-center gap-2 text-[11px] font-bold mb-1">
+                      {tc.passed ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-red-400" />
+                      )}
+                      <span className={tc.passed ? 'text-emerald-300' : 'text-red-300'}>
+                        Test Case {idx + 1}: {tc.passed ? 'PASSED' : 'FAILED'}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400 space-y-0.5">
+                      <div><span className="text-slate-500">Input:</span> {tc.input || '(stdin)'}</div>
+                      <div><span className="text-slate-500">Expected:</span> <span className="text-emerald-400">{tc.expected}</span></div>
+                      {!tc.passed && <div><span className="text-slate-500">Actual:</span> <span className="text-red-400">{tc.actual.slice(0, 200)}</span></div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-slate-500 italic flex items-center justify-center h-full">
+                Run your code to see test case results.
               </div>
             )
           ) : (

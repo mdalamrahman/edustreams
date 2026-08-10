@@ -90,20 +90,24 @@ export async function requestMistralQuiz(
   } catch (err) {
     console.warn('[AI Cache Check Notice]:', err);
   }
-  const prompt = `You are a Computer Science Professor.
-Create a 4-question quiz for a student who just watched the lecture "${cleanTitle}" (${channelName}).
-Transcript excerpt: "${(transcript || '').slice(0, 2000)}"
+  const prompt = `You are a Computer Science Professor creating a quiz from this lecture transcript.
+Create questions for the lecture "${cleanTitle}" (${channelName}).
+
+TRANSCRIPT (base your questions ONLY on this content):
+"${(transcript || '').slice(0, 3000)}"
 
 Return a JSON object with two keys:
-1. "mcqs": An array of 3 multiple-choice questions. Each question must have:
-   - "question": string
+1. "mcqs": An array of 5 multiple-choice questions. Each MUST be based on concepts from the transcript above. Each question must have:
+   - "question": string (directly related to the transcript content)
    - "options": array of 4 string choices
    - "correct_answer": index (0, 1, 2, or 3)
-   - "explanation": string
-2. "coding_challenge": An object with:
-   - "title": string (matching ${cleanTitle})
-   - "problem_statement": string
-   - "starter_code": string (in C++ by default)
+   - "explanation": string explaining why the answer is correct, referencing the transcript
+2. "coding_challenges": An array of 3 coding challenge objects. Each MUST be related to the lecture topic and have:
+   - "title": string (problem title related to ${cleanTitle})
+   - "problem_statement": string (clear problem description)
+   - "starter_code": string (in C++ by default, with #include headers and main())
+   - "test_cases": array of 3 objects, each with "input" (string) and "expected_output" (string, the exact stdout expected)
+   - "difficulty": "Easy", "Medium", or "Hard"
 
 Return ONLY valid JSON.`;
 
@@ -141,17 +145,25 @@ Return ONLY valid JSON.`;
         });
       }
 
-      if (content.coding_challenge) {
-        const cc = content.coding_challenge;
-        questions.push({
-          id: `code-${Date.now()}`,
-          video_id: cleanTitle,
-          type: 'CODING',
-          question: cc.problem_statement || `Solve the challenge for ${cleanTitle}`,
-          options: [],
-          correct_answer: 0,
-          starter_code: cc.starter_code || `// C++ Solution for ${cleanTitle}\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
-          explanation: `Optimal C++ solution for ${cleanTitle}`
+      // Parse multiple coding challenges
+      const codingArray = content.coding_challenges || (content.coding_challenge ? [content.coding_challenge] : []);
+      if (Array.isArray(codingArray)) {
+        codingArray.forEach((cc: any, idx: number) => {
+          questions.push({
+            id: `code-${Date.now()}-${idx}`,
+            video_id: cleanTitle,
+            type: 'CODING',
+            question: cc.problem_statement || cc.title || `Solve coding challenge ${idx + 1} for ${cleanTitle}`,
+            options: [],
+            correct_answer: 0,
+            starter_code: cc.starter_code || `// C++ Solution for ${cleanTitle}\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your code here\n    return 0;\n}`,
+            explanation: cc.title || `Coding challenge ${idx + 1} for ${cleanTitle}`,
+            difficulty: cc.difficulty || 'Medium',
+            test_cases: Array.isArray(cc.test_cases) ? cc.test_cases.map((tc: any) => ({
+              input: String(tc.input || ''),
+              expected_output: String(tc.expected_output || '')
+            })) : []
+          });
         });
       }
 
