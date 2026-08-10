@@ -863,10 +863,12 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                         "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n[00:00:00] {raw_text}",
                                         "provider": "Groq Whisper-large-v3 STT (Real Audio)"
                                     }
+                                stt_error_msg = f"Groq Whisper returned empty speech text: {stt_json}"
                             else:
+                                stt_error_msg = f"Groq Whisper HTTP {resp.status_code}: {resp.text}"
                                 print(f"[Groq Whisper STT API Error] Status {resp.status_code}: {resp.text}")
         except Exception as e:
-            stt_error_msg = str(e)
+            stt_error_msg = f"Audio download exception: {e}"
             print(f"[Groq Whisper STT Real Audio Exception]: {e}")
         finally:
             # IMMEDIATELY CLEAN UP TEMPORARY FILE SO DISK SPACE DOES NOT INCREASE
