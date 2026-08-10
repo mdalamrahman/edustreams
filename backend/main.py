@@ -793,47 +793,34 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
     stt_error_msg: Optional[str] = None
 
-    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video audio snippet & transcribe via Groq Whisper-large-v3
+    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video media & transcribe via Groq Whisper-large-v3
     if GROQ_API_KEY:
+        temp_audio_path = os.path.join(MEDIA_STORAGE_DIR, f"temp_stt_{msg_id}.mp4")
         try:
             client = await get_client()
             channel_peer = await resolve_channel_peer(chat_id)
             if channel_peer:
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
-                    doc = msg.media.document
-                    temp_audio_path = os.path.join(MEDIA_STORAGE_DIR, f"stt_audio_{msg_id}.mp4")
-                    
-                    if not os.path.exists(temp_audio_path):
-                        audio_bytes = bytearray()
-                        # Download first 1.2MB of video stream (contains audio header & track)
-                        async for chunk in client.iter_download(
-                            doc,
-                            offset=0,
-                            request_size=256 * 1024,
-                            dc_id=getattr(doc, 'dc_id', None)
-                        ):
-                            audio_bytes.extend(chunk)
-                            if len(audio_bytes) >= 1200000:
-                                break
-                        with open(temp_audio_path, "wb") as f:
-                            f.write(audio_bytes)
+                    print(f"[Groq Whisper STT] Downloading media for msg #{msg_id}...")
+                    # Download full/valid media file via Telethon
+                    await client.download_media(msg, file=temp_audio_path)
                     
                     if os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000:
                         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
                         with open(temp_audio_path, "rb") as af:
                             files = {
-                                "file": (f"stt_audio_{msg_id}.mp4", af, "video/mp4"),
+                                "file": (f"stt_video_{msg_id}.mp4", af, "video/mp4"),
                                 "model": (None, "whisper-large-v3"),
                                 "response_format": (None, "verbose_json")
                             }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=45)
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=60)
                             if resp.status_code == 200:
                                 stt_json = resp.json()
                                 segments = stt_json.get("segments", [])
                                 if segments:
                                     stt_lines = []
-                                    for seg in segments[:50]:
+                                    for seg in segments[:60]:
                                         start_s = int(seg.get("start", 0))
                                         m_val, s_val = start_s // 60, start_s % 60
                                         t_label = f"[{m_val:02d}:{s_val:02d}]"
@@ -866,6 +853,14 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
         except Exception as e:
             stt_error_msg = str(e)
             print(f"[Groq Whisper STT Real Audio Exception]: {e}")
+        finally:
+            # IMMEDIATELY CLEAN UP TEMPORARY FILE SO DISK SPACE DOES NOT INCREASE
+            if os.path.exists(temp_audio_path):
+                try:
+                    os.remove(temp_audio_path)
+                    print(f"[Cleanup] Removed temporary STT file {temp_audio_path}")
+                except Exception as ce:
+                    print(f"[Cleanup Notice]: {ce}")
 
     # 1. Secondary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
     if GROQ_API_KEY:
