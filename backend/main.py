@@ -806,7 +806,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     print(f"[Groq Whisper STT] Downloading 4.5MB snippet for msg #{msg_id}...")
                     
                     audio_bytes = bytearray()
-                    # Fast 4.5MB download (takes ~3.5s, avoids 502 gateway timeout)
+                    # Fast 2.5MB download (takes ~1.5s, Groq Whisper transcribes in ~10s)
                     async for chunk in client.iter_download(
                         doc,
                         offset=0,
@@ -814,7 +814,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                         dc_id=getattr(doc, 'dc_id', None)
                     ):
                         audio_bytes.extend(chunk)
-                        if len(audio_bytes) >= 4500000:
+                        if len(audio_bytes) >= 2500000:
                             break
                     
                     with open(temp_audio_path, "wb") as f:
@@ -828,7 +828,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 "model": (None, "whisper-large-v3"),
                                 "response_format": (None, "verbose_json")
                             }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=25)
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=90)
                             if resp.status_code == 200:
                                 stt_json = resp.json()
                                 segments = stt_json.get("segments", [])
