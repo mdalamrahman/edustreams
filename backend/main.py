@@ -763,7 +763,72 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     t3 = f"00:{m3:02d}:00" if m3 < 60 else f"{m3//60:02d}:{m3%60:02d}:00"
     t4 = f"00:{m4:02d}:00" if m4 < 60 else f"{m4//60:02d}:{m4%60:02d}:00"
 
-    # 1. Primary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
+    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video audio snippet & transcribe via Groq Whisper-large-v3
+    if GROQ_API_KEY:
+        try:
+            client = await get_client()
+            clean_chat_id = int(str(chat_id).replace("-100", "").replace("-", "")) if str(chat_id).replace("-", "").isdigit() else chat_id
+            channel_peer = await resolve_channel_peer(clean_chat_id if isinstance(clean_chat_id, int) else chat_id)
+            if channel_peer:
+                msg = await client.get_messages(channel_peer, ids=msg_id)
+                if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
+                    doc = msg.media.document
+                    temp_audio_path = os.path.join(MEDIA_STORAGE_DIR, f"stt_audio_{msg_id}.mp3")
+                    
+                    if not os.path.exists(temp_audio_path):
+                        audio_bytes = bytearray()
+                        # Download first 3.5MB of video stream (contains audio track headers)
+                        async for chunk in client.iter_download(doc, offset=0, request_size=512*1024):
+                            audio_bytes.extend(chunk)
+                            if len(audio_bytes) >= 3500000:
+                                break
+                        with open(temp_audio_path, "wb") as f:
+                            f.write(audio_bytes)
+                    
+                    if os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000:
+                        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                        with open(temp_audio_path, "rb") as af:
+                            files = {
+                                "file": (f"stt_audio_{msg_id}.mp3", af, "audio/mp3"),
+                                "model": (None, "whisper-large-v3"),
+                                "response_format": (None, "verbose_json")
+                            }
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=25)
+                            if resp.status_code == 200:
+                                stt_json = resp.json()
+                                segments = stt_json.get("segments", [])
+                                if segments:
+                                    stt_lines = []
+                                    for seg in segments[:50]:
+                                        start_s = int(seg.get("start", 0))
+                                        m_val, s_val = start_s // 60, start_s % 60
+                                        t_label = f"[{m_val:02d}:{s_val:02d}]"
+                                        text_str = seg.get("text", "").strip()
+                                        if text_str:
+                                            stt_lines.append(f"{t_label} {text_str}")
+                                    if stt_lines:
+                                        real_stt_transcript = "\n\n".join(stt_lines)
+                                        return {
+                                            "chat_id": chat_id,
+                                            "msg_id": msg_id,
+                                            "title": clean_title,
+                                            "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n{real_stt_transcript}",
+                                            "provider": "Groq Whisper-large-v3 STT (Real Audio)"
+                                        }
+                                
+                                raw_text = stt_json.get("text", "").strip()
+                                if raw_text and len(raw_text) > 30:
+                                    return {
+                                        "chat_id": chat_id,
+                                        "msg_id": msg_id,
+                                        "title": clean_title,
+                                        "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n[00:00:00] {raw_text}",
+                                        "provider": "Groq Whisper-large-v3 STT (Real Audio)"
+                                    }
+        except Exception as e:
+            print(f"[Groq Whisper STT Real Audio] Notice: {e}")
+
+    # 1. Secondary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
     if GROQ_API_KEY:
         try:
             prompt = (
