@@ -197,9 +197,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
       const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
 
-      const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v2`;
+      const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v3`;
       const savedTranscript = localStorage.getItem(cacheKey);
-      if (savedTranscript && !savedTranscript.includes('LeetCode workspace problems')) {
+      if (savedTranscript && !savedTranscript.includes('Section 1: Core Principles & Definitions') && !savedTranscript.includes('LeetCode workspace problems') && savedTranscript.length > 200) {
         setDynamicTranscript(savedTranscript);
         setLoadingTranscript(false);
         return;

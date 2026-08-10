@@ -125,6 +125,11 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
   ];
 
   useEffect(() => {
+    setCurrentStep(0);
+    setIsPlayingSim(false);
+  }, [video.id, cleanTitle]);
+
+  useEffect(() => {
     let timer: any;
     if (isPlayingSim) {
       timer = setInterval(() => {

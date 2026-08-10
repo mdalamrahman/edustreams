@@ -742,7 +742,7 @@ def generate_mistral_quiz(transcript: str) -> dict:
 # -------------------------------------------------------------------
 
 @app.get("/api/transcript/{chat_id}/{msg_id}")
-async def get_video_transcript_route(chat_id: int, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15, force: Optional[bool] = False):
+async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15, force: Optional[bool] = False):
     """
     Returns AI-generated Whisper STT lecture transcript with detailed verbatim explanations and timestamps.
     """
