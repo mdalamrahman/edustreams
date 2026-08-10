@@ -786,15 +786,15 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     
                     if not os.path.exists(temp_audio_path):
                         audio_bytes = bytearray()
-                        # Download first 3.5MB of video stream (contains audio/video tracks)
+                        # Download first 1.2MB of video stream (contains audio header & track)
                         async for chunk in client.iter_download(
                             doc,
                             offset=0,
-                            request_size=512 * 1024,
+                            request_size=256 * 1024,
                             dc_id=getattr(doc, 'dc_id', None)
                         ):
                             audio_bytes.extend(chunk)
-                            if len(audio_bytes) >= 3500000:
+                            if len(audio_bytes) >= 1200000:
                                 break
                         with open(temp_audio_path, "wb") as f:
                             f.write(audio_bytes)
@@ -807,7 +807,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 "model": (None, "whisper-large-v3"),
                                 "response_format": (None, "verbose_json")
                             }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=30)
+                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=45)
                             if resp.status_code == 200:
                                 stt_json = resp.json()
                                 segments = stt_json.get("segments", [])
