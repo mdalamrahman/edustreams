@@ -25,10 +25,14 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
 
   if (!questions || questions.length === 0) {
     return (
-      <div className="glass-panel rounded-2xl p-6 text-center border border-slate-800">
-        <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
-        <h3 className="text-sm font-semibold text-slate-200">Generating AI Quiz...</h3>
-        <p className="text-xs text-slate-400 mt-1">Mistral AI is parsing lecture transcript into conceptual MCQs.</p>
+      <div className="glass-panel rounded-2xl p-8 text-center border border-indigo-800/50 space-y-3">
+        <Sparkles className="w-10 h-10 text-indigo-400 mx-auto animate-pulse" />
+        <h3 className="text-base font-bold text-slate-100">Generating AI Quiz MCQs...</h3>
+        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+          Groq & Mistral AI are parsing the video transcript to generate conceptual MCQs.
+          <br />
+          <span className="text-indigo-300 font-medium">Please check back in ~1-2 minutes.</span>
+        </p>
       </div>
     );
   }

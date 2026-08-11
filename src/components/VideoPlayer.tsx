@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
-  BookOpen
+  BookOpen,
+  X
 } from 'lucide-react';
 import { AINotesAndSimulation } from './AINotesAndSimulation';
 import { Video } from '../lib/types';
@@ -226,7 +227,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds]);
 
+  const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
+  const [confirmInput, setConfirmInput] = useState<string>('');
+
   const handleRegenerateTranscript = () => {
+    setShowRegenModal(false);
+    setConfirmInput('');
     const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
     const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
     const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v2`;
@@ -501,10 +507,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 Whisper STT Verbatim Lecture Transcript
               </span>
               <button
-                onClick={handleRegenerateTranscript}
+                onClick={() => setShowRegenModal(true)}
                 disabled={loadingTranscript}
                 className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 font-bold transition-all text-[11px]"
-                title="Clear cached transcript and force regenerate via Mistral AI"
+                title="Force regenerate transcript and AI content (Requires 'i am sure' typing)"
               >
                 <RefreshCw className={`w-3 h-3 ${loadingTranscript ? 'animate-spin' : ''}`} />
                 <span>{loadingTranscript ? 'Regenerating...' : 'Regenerate Transcript'}</span>
@@ -522,6 +528,61 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <AINotesAndSimulation video={video} />
         )}
       </div>
+
+      {/* Regeneration Confirmation Modal ("i am sure") */}
+      {showRegenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <span>Token Preservation Warning</span>
+              </div>
+              <button
+                onClick={() => { setShowRegenModal(false); setConfirmInput(''); }}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Regenerating transcript will consume AI API tokens and overwrite existing stored notes, quiz, and coding problems.
+              <br /><br />
+              To confirm regeneration, please type <strong className="text-amber-300 font-mono">i am sure</strong> below:
+            </p>
+
+            <input
+              type="text"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder="Type 'i am sure' here"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 text-xs font-mono focus:outline-none focus:border-amber-500"
+            />
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                onClick={() => { setShowRegenModal(false); setConfirmInput(''); }}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleRegenerateTranscript}
+                disabled={confirmInput.trim().toLowerCase() !== 'i am sure'}
+                className={`px-4 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                  confirmInput.trim().toLowerCase() === 'i am sure'
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer shadow-lg shadow-amber-500/20'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                }`}
+              >
+                Force Regenerate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
