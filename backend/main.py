@@ -833,8 +833,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     )
 
                     # Feed Telegram video chunks directly into FFmpeg stdin (zero disk writes)
-                    # Cap: stream at most 20MB of video data (enough for several minutes of audio)
-                    MAX_VIDEO_BYTES = 20 * 1024 * 1024  # 20 MB
+                    # NO byte cap — stream the FULL video. At 32kbps mono, even 1hr = ~14MB MP3 (under Groq 25MB limit)
                     bytes_streamed = 0
                     async def _feed_ffmpeg():
                         nonlocal bytes_streamed
@@ -848,9 +847,6 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 process.stdin.write(chunk)
                                 await process.stdin.drain()
                                 bytes_streamed += len(chunk)
-                                if bytes_streamed >= MAX_VIDEO_BYTES:
-                                    print(f"[Groq Whisper STT] Reached {MAX_VIDEO_BYTES // (1024*1024)}MB cap, closing feed")
-                                    break
                         except Exception as feed_err:
                             print(f"[Groq Whisper STT] Streaming feed notice: {feed_err}")
                         finally:
@@ -877,7 +873,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                         }
                         resp = requests.post(
                             "https://api.groq.com/openai/v1/audio/transcriptions",
-                            headers=groq_headers, files=groq_files, data=groq_data, timeout=90
+                            headers=groq_headers, files=groq_files, data=groq_data, timeout=120
                         )
 
                         # Free memory immediately after upload
@@ -887,22 +883,47 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                             stt_json = resp.json()
                             segments = stt_json.get("segments", [])
                             if segments:
-                                stt_lines = []
-                                for seg in segments[:60]:
+                                # ---- Readable paragraph formatting ----
+                                # Group segments into paragraphs: new paragraph every ~2 minutes
+                                PARAGRAPH_GAP_SECONDS = 120
+                                paragraphs = []
+                                current_para_texts = []
+                                current_para_start = 0
+
+                                for seg in segments:
                                     start_s = int(seg.get("start", 0))
-                                    m_val, s_val = start_s // 60, start_s % 60
-                                    t_label = f"[{m_val:02d}:{s_val:02d}]"
                                     text_str = seg.get("text", "").strip()
-                                    if text_str:
-                                        stt_lines.append(f"{t_label} {text_str}")
-                                if stt_lines:
-                                    real_stt_transcript = "\n\n".join(stt_lines)
-                                    print(f"[Groq Whisper STT Success] Transcribed {len(stt_lines)} real speech segments for msg #{msg_id}")
+                                    if not text_str:
+                                        continue
+
+                                    # Start a new paragraph if this segment is ≥2 min after paragraph start
+                                    if current_para_texts and (start_s - current_para_start) >= PARAGRAPH_GAP_SECONDS:
+                                        h, remainder = divmod(current_para_start, 3600)
+                                        m, s = divmod(remainder, 60)
+                                        ts = f"[{h:02d}:{m:02d}:{s:02d}]"
+                                        paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
+                                        current_para_texts = []
+                                        current_para_start = start_s
+
+                                    if not current_para_texts:
+                                        current_para_start = start_s
+                                    current_para_texts.append(text_str)
+
+                                # Flush last paragraph
+                                if current_para_texts:
+                                    h, remainder = divmod(current_para_start, 3600)
+                                    m, s = divmod(remainder, 60)
+                                    ts = f"[{h:02d}:{m:02d}:{s:02d}]"
+                                    paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
+
+                                if paragraphs:
+                                    real_stt_transcript = "\n\n".join(paragraphs)
+                                    print(f"[Groq Whisper STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs for msg #{msg_id}")
                                     return {
                                         "chat_id": chat_id,
                                         "msg_id": msg_id,
                                         "title": clean_title,
-                                        "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n{real_stt_transcript}",
+                                        "transcript": real_stt_transcript,
                                         "provider": "Groq Whisper-large-v3 STT (Real Audio)"
                                     }
 
@@ -913,7 +934,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                     "chat_id": chat_id,
                                     "msg_id": msg_id,
                                     "title": clean_title,
-                                    "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n[00:00:00] {raw_text}",
+                                    "transcript": f"[00:00:00]\n{raw_text}",
                                     "provider": "Groq Whisper-large-v3 STT (Real Audio)"
                                 }
                             stt_error_msg = f"Groq Whisper returned empty speech text: {stt_json}"
