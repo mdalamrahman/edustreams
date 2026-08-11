@@ -833,6 +833,8 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     )
 
                     # Feed Telegram video chunks directly into FFmpeg stdin (zero disk writes)
+                    # Cap: stream at most 20MB of video data (enough for several minutes of audio)
+                    MAX_VIDEO_BYTES = 20 * 1024 * 1024  # 20 MB
                     bytes_streamed = 0
                     async def _feed_ffmpeg():
                         nonlocal bytes_streamed
@@ -846,6 +848,9 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                 process.stdin.write(chunk)
                                 await process.stdin.drain()
                                 bytes_streamed += len(chunk)
+                                if bytes_streamed >= MAX_VIDEO_BYTES:
+                                    print(f"[Groq Whisper STT] Reached {MAX_VIDEO_BYTES // (1024*1024)}MB cap, closing feed")
+                                    break
                         except Exception as feed_err:
                             print(f"[Groq Whisper STT] Streaming feed notice: {feed_err}")
                         finally:
