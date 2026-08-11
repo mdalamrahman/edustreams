@@ -1267,6 +1267,20 @@ async def get_attempts_history(user_id: Optional[str] = "student-1"):
     return []
 
 
+@app.delete("/api/ai/cache")
+@app.post("/api/ai/cache/clear")
+async def clear_all_ai_cache():
+    """Wipes all cached transcripts, notes, quizzes, MCQs, and AI artifacts from backend storage."""
+    try:
+        if os.path.exists(AI_CACHE_FILE):
+            os.remove(AI_CACHE_FILE)
+        if os.path.exists(ATTEMPTS_HISTORY_FILE):
+            os.remove(ATTEMPTS_HISTORY_FILE)
+        return {"status": "ok", "message": "All stored transcripts, MCQs, notes, and AI artifact data deleted successfully."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
