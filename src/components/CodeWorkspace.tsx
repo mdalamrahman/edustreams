@@ -101,6 +101,15 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
     codingProblem?.starter_code_cpp || activeQ?.starter_code || LANGUAGE_STARTERS.cpp
   );
 
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
+  const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
+  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta' | 'test_cases'>('terminal');
+  const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [testCaseResults, setTestCaseResults] = useState<{ input: string; expected: string; actual: string; passed: boolean }[]>([]);
+
   useEffect(() => {
     if (codingProblem) {
       if (language === 'python' && codingProblem.starter_code_python) {
@@ -110,6 +119,15 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
       }
     }
   }, [codingProblem?.title, language]);
+
+  // Synchronize starter code whenever question changes
+  useEffect(() => {
+    if (activeQ?.starter_code) {
+      setCode(activeQ.starter_code);
+      setExecutionResult(null);
+      setAiReview(null);
+    }
+  }, [activeQ?.id, activeQ?.starter_code]);
 
   if (isLoading || (!codingProblem && codingList.length === 0)) {
     return (
@@ -124,24 +142,6 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
       </div>
     );
   }
-
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
-  const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
-  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
-  const [activeBottomTab, setActiveBottomTab] = useState<'terminal' | 'ai_ta' | 'test_cases'>('terminal');
-  const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [testCaseResults, setTestCaseResults] = useState<{ input: string; expected: string; actual: string; passed: boolean }[]>([]);
-
-  // Synchronize starter code whenever question changes
-  useEffect(() => {
-    if (activeQ?.starter_code) {
-      setCode(activeQ.starter_code);
-      setExecutionResult(null);
-      setAiReview(null);
-    }
-  }, [activeQ?.id, activeQ?.starter_code]);
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);

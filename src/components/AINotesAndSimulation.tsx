@@ -35,26 +35,12 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
 
   const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
 
-  if (isLoading || (!videoArtifacts?.notes && (!videoArtifacts?.simulation_steps || videoArtifacts.simulation_steps.length === 0))) {
-    return (
-      <div className="p-8 text-center glass-panel rounded-2xl border border-purple-800/40 space-y-3">
-        <Sparkles className="w-10 h-10 text-purple-400 mx-auto animate-pulse" />
-        <h3 className="text-base font-bold text-slate-100">Generating AI Notes & Visual Simulation...</h3>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-          Groq Whisper STT is extracting real lecture audio. Once complete, AI will generate step-by-step simulation and notes from transcript.
-          <br />
-          <span className="text-purple-300 font-medium">Please check back in ~1-2 minutes.</span>
-        </p>
-      </div>
-    );
-  }
-  const cacheKey = `edustream_ainotes_${video.id || cleanTitle}`;
-
   const isLldTopic = cleanTitle.toLowerCase().includes('design') || cleanTitle.toLowerCase().includes('srp') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('principle');
   const isPrimeTopic = cleanTitle.toLowerCase().includes('prime') || cleanTitle.toLowerCase().includes('sieve') || cleanTitle.toLowerCase().includes('math');
 
   // Dynamic simulation steps tailored to exact lecture domain
-  const simSteps = isLldTopic ? [
+  const rawSimSteps = videoArtifacts?.simulation_steps;
+  const simSteps = (rawSimSteps && rawSimSteps.length > 0) ? rawSimSteps : (isLldTopic ? [
     {
       title: 'Step 1: Monolithic Anti-Pattern Class Inspection',
       desc: `Analyzing naive monolithic class structure for ${cleanTitle}. Class handles data calculations, SQL database persistence, and email logging simultaneously.`,
@@ -82,35 +68,6 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
       array: ['Invoice', 'InvoiceRepo', 'EmailService'],
       activeIndices: [0, 1, 2],
       status: 'COMPLETED — Clean Architecture'
-    }
-  ] : isPrimeTopic ? [
-    {
-      title: 'Step 1: Initialize Sieve Boolean Array [2..15]',
-      desc: `Allocating boolean array initialized to TRUE for prime range L to R. Index represents candidate numbers.`,
-      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      activeIndices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-      status: 'Init Sieve Array'
-    },
-    {
-      title: 'Step 2: Outer Loop Prime p = 2 (Mark Multiples)',
-      desc: `p = 2 is Prime! Marking all composite multiples: 4, 6, 8, 10, 12, 14 as FALSE (Composite).`,
-      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      activeIndices: [2, 4, 6, 8, 10, 12],
-      status: 'Marking Multiples of 2'
-    },
-    {
-      title: 'Step 3: Outer Loop Prime p = 3 (Mark Multiples)',
-      desc: `Next unmarked index p = 3 is Prime! Starting at p*p = 9, marking composite multiples 9, 12, 15 as FALSE.`,
-      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      activeIndices: [7, 10, 13],
-      status: 'Marking Multiples of 3'
-    },
-    {
-      title: 'Step 4: Algorithm Termination & Prime Output',
-      desc: `Outer loop terminates at sqrt(15). Unmarked primes remaining: [2, 3, 5, 7, 11, 13]! Runtime: O(N log log N).`,
-      array: [2, 3, 5, 7, 11, 13],
-      activeIndices: [0, 1, 2, 3, 4, 5],
-      status: 'COMPLETED — Primes Found'
     }
   ] : [
     {
@@ -141,7 +98,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
       activeIndices: [0, 1],
       status: 'COMPLETED - Success'
     }
-  ];
+  ]);
 
   useEffect(() => {
     setCurrentStep(0);
@@ -161,6 +118,20 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
     }
     return () => clearInterval(timer);
   }, [isPlayingSim, simSteps.length]);
+
+  if (isLoading || (!videoArtifacts?.notes && (!videoArtifacts?.simulation_steps || videoArtifacts.simulation_steps.length === 0))) {
+    return (
+      <div className="p-8 text-center glass-panel rounded-2xl border border-purple-800/40 space-y-3">
+        <Sparkles className="w-10 h-10 text-purple-400 mx-auto animate-pulse" />
+        <h3 className="text-base font-bold text-slate-100">Generating AI Notes & Visual Simulation...</h3>
+        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+          Groq Whisper STT is extracting real lecture audio. Once complete, AI will generate step-by-step simulation and notes from transcript.
+          <br />
+          <span className="text-purple-300 font-medium">Please check back in ~1-2 minutes.</span>
+        </p>
+      </div>
+    );
+  }
 
   const renderNotesContent = (isFull: boolean = false) => (
     <div className={`space-y-6 font-sans ${isFull ? 'text-sm max-w-5xl mx-auto' : 'text-xs'}`}>
@@ -408,7 +379,7 @@ int main() {
 
             {/* Visual Memory Blocks Array */}
             <div className="flex justify-center items-center space-x-3 py-6">
-              {simSteps[currentStep].array.map((val, idx) => {
+              {simSteps[currentStep].array.map((val: any, idx: number) => {
                 const isActive = simSteps[currentStep].activeIndices.includes(idx);
                 return (
                   <div
