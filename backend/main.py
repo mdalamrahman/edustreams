@@ -972,42 +972,47 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
             stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
             print(f"[Groq Whisper STT Zero-Disk Exception]: {e}")
 
-    # Fallback to LLM Transcript if STT fails
-    if not real_stt_transcript:
-        provider_name = "Groq Llama-3.3-70b (Fallback)"
-        real_stt_transcript = (
-            f"[{t0}] Welcome to {clean_title}.\n"
-            f"[{t1}] Section 1: Architectural Foundation & Definitions.\n"
-            f"[{t2}] Section 2: Core Algorithm & Code Walkthrough.\n"
-            f"[{t3}] Section 3: Time & Space Complexity Derivation.\n"
-            f"[{t4}] Section 4: Summary & Performance Boundaries ({dur_mins} Mins)."
-        )
+    # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS ONLY IF REAL STT TRANSCRIPT IS READY
+    if real_stt_transcript and len(real_stt_transcript) > 50:
+        artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
 
-    # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS (Notes, MCQs, Coding Problem, Simulation Steps)
-    artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
+        response_data = {
+            "chat_id": chat_id,
+            "msg_id": msg_id,
+            "title": clean_title,
+            "transcript": real_stt_transcript,
+            "provider": provider_name,
+            "notes": artifacts.get("notes"),
+            "mcqs": artifacts.get("mcqs", []),
+            "coding_problem": artifacts.get("coding_problem"),
+            "simulation_steps": artifacts.get("simulation_steps", []),
+            "status": "completed"
+        }
+        if stt_error_msg:
+            response_data["stt_notice"] = stt_error_msg
 
-    response_data = {
+        # SAVE TO PERSISTENT CACHE ONLY WHEN COMPLETED WITH REAL TRANSCRIPT
+        cache = load_ai_cache()
+        cache[cache_key] = response_data
+        cache[f"tg-{chat_id}-{msg_id}"] = response_data
+        cache[clean_title] = response_data
+        save_ai_cache(cache)
+
+        return response_data
+
+    # If STT transcript is not yet ready, return processing status so frontend shows loading screen
+    return {
         "chat_id": chat_id,
         "msg_id": msg_id,
         "title": clean_title,
-        "transcript": real_stt_transcript,
-        "provider": provider_name,
-        "notes": artifacts.get("notes", f"# {clean_title}\n\nLecture notes."),
-        "mcqs": artifacts.get("mcqs", []),
-        "coding_problem": artifacts.get("coding_problem", {}),
-        "simulation_steps": artifacts.get("simulation_steps", []),
-        "status": "completed"
+        "transcript": None,
+        "status": "processing",
+        "message": "Groq Whisper STT is extracting real video audio. Please check back in ~1-2 minutes.",
+        "notes": None,
+        "mcqs": [],
+        "coding_problem": None,
+        "simulation_steps": []
     }
-    if stt_error_msg:
-        response_data["stt_notice"] = stt_error_msg
-
-    # SAVE TO PERSISTENT CACHE
-    cache = load_ai_cache()
-    cache[cache_key] = response_data
-    # Also index by video_id
-    cache[f"tg-{chat_id}-{msg_id}"] = response_data
-    cache[clean_title] = response_data
-    return response_data
 
 
 # -------------------------------------------------------------------

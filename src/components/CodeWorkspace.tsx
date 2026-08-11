@@ -21,6 +21,14 @@ import { LeetCodeWorkspaceModal } from './LeetCodeWorkspaceModal';
 interface CodeWorkspaceProps {
   question?: QuizQuestion;
   allCodingQuestions?: QuizQuestion[];
+  codingProblem?: {
+    title?: string;
+    problem_statement?: string;
+    starter_code_python?: string;
+    starter_code_cpp?: string;
+    solution_code_cpp?: string;
+  } | null;
+  isLoading?: boolean;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
@@ -29,65 +37,24 @@ const LANGUAGE_STARTERS: Record<SupportedLanguage, string> = {
   python: `# EduStream — Python 3.10 Sandbox
 # Solve the problem below and click "Run Code"
 
-def two_sum(nums, target):
-    """Find two indices that add up to target. O(N) using hashmap."""
-    seen = {}
-    for i, num in enumerate(nums):
-        complement = target - num
-        if complement in seen:
-            return [seen[complement], i]
-        seen[num] = i
-    return []
-
-# Test Cases
-print("Test 1:", two_sum([2, 7, 11, 15], 9))   # [0, 1]
-print("Test 2:", two_sum([3, 2, 4], 6))         # [1, 2]
-print("Test 3:", two_sum([3, 3], 6))             # [0, 1]
+def solve():
+    pass
 `,
   java: `// EduStream — Java 17 Sandbox
 import java.util.*;
 
 public class Solution {
-    public static int[] twoSum(int[] nums, int target) {
-        Map<Integer, Integer> seen = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int complement = target - nums[i];
-            if (seen.containsKey(complement)) {
-                return new int[]{seen.get(complement), i};
-            }
-            seen.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-
     public static void main(String[] args) {
-        System.out.println("Test 1: " + Arrays.toString(twoSum(new int[]{2, 7, 11, 15}, 9)));
-        System.out.println("Test 2: " + Arrays.toString(twoSum(new int[]{3, 2, 4}, 6)));
+        System.out.println("EduStream Java Execution Context");
     }
 }
 `,
   cpp: `// EduStream — C++ 20 Sandbox
 #include <iostream>
-#include <vector>
-#include <unordered_map>
 using namespace std;
 
-vector<int> twoSum(vector<int>& nums, int target) {
-    unordered_map<int, int> seen;
-    for (int i = 0; i < (int)nums.size(); i++) {
-        int complement = target - nums[i];
-        if (seen.count(complement)) {
-            return {seen[complement], i};
-        }
-        seen[nums[i]] = i;
-    }
-    return {};
-}
-
 int main() {
-    vector<int> nums = {2, 7, 11, 15};
-    auto result = twoSum(nums, 9);
-    cout << "Two Sum: [" << result[0] << ", " << result[1] << "]" << endl;
+    cout << "EduStream C++ Execution Context" << endl;
     return 0;
 }
 `,
@@ -96,83 +63,20 @@ package main
 
 import "fmt"
 
-func twoSum(nums []int, target int) []int {
-    seen := map[int]int{}
-    for i, num := range nums {
-        complement := target - num
-        if j, ok := seen[complement]; ok {
-            return []int{j, i}
-        }
-        seen[num] = i
-    }
-    return []int{}
-}
-
 func main() {
-    result := twoSum([]int{2, 7, 11, 15}, 9)
-    fmt.Println("Two Sum:", result) // [0, 1]
+    fmt.Println("EduStream Go Execution Context")
 }
 `,
   rust: `// EduStream — Rust 1.75 Sandbox
-use std::collections::HashMap;
-
-fn two_sum(nums: &[i32], target: i32) -> Vec<usize> {
-    let mut seen: HashMap<i32, usize> = HashMap::new();
-    for (i, &num) in nums.iter().enumerate() {
-        let complement = target - num;
-        if let Some(&j) = seen.get(&complement) {
-            return vec![j, i];
-        }
-        seen.insert(num, i);
-    }
-    vec![]
-}
-
 fn main() {
-    let result = two_sum(&[2, 7, 11, 15], 9);
-    println!("Two Sum: {:?}", result); // [0, 1]
+    println!("EduStream Rust Execution Context");
 }
 `,
   javascript: `// EduStream — JavaScript ES2022 Sandbox
-
-function twoSum(nums, target) {
-    const seen = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const complement = target - nums[i];
-        if (seen.has(complement)) {
-            return [seen.get(complement), i];
-        }
-        seen.set(nums[i], i);
-    }
-    return [];
-}
-
-// Test Cases
-console.log("Test 1:", twoSum([2, 7, 11, 15], 9));  // [0, 1]
-console.log("Test 2:", twoSum([3, 2, 4], 6));        // [1, 2]
-console.log("Test 3:", twoSum([3, 3], 6));            // [0, 1]
+console.log("EduStream JS Execution Context");
 `,
   sql: `-- EduStream — PostgreSQL SQL Sandbox
--- Window Functions & CTE Example
-
-WITH ranked_students AS (
-    SELECT
-        student_name,
-        subject,
-        score,
-        RANK() OVER (PARTITION BY subject ORDER BY score DESC) AS rank,
-        AVG(score) OVER (PARTITION BY subject) AS avg_score
-    FROM exam_results
-)
-SELECT
-    student_name,
-    subject,
-    score,
-    rank,
-    ROUND(avg_score, 2) AS avg_score
-FROM ranked_students
-WHERE rank <= 3
-ORDER BY subject, rank;
+SELECT 1;
 `
 };
 
@@ -187,13 +91,40 @@ const MONACO_LANG_MAP: Record<SupportedLanguage, string> = {
   sql: 'sql'
 };
 
-export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodingQuestions = [], onCodeExecuted }) => {
+export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodingQuestions = [], codingProblem, isLoading, onCodeExecuted }) => {
   const codingList = allCodingQuestions.length > 0 ? allCodingQuestions : (question ? [question] : []);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const activeQ = codingList[activeQuestionIdx] || question;
 
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
-  const [code, setCode] = useState<string>(activeQ?.starter_code || LANGUAGE_STARTERS.cpp);
+  const [code, setCode] = useState<string>(
+    codingProblem?.starter_code_cpp || activeQ?.starter_code || LANGUAGE_STARTERS.cpp
+  );
+
+  useEffect(() => {
+    if (codingProblem) {
+      if (language === 'python' && codingProblem.starter_code_python) {
+        setCode(codingProblem.starter_code_python);
+      } else if (codingProblem.starter_code_cpp) {
+        setCode(codingProblem.starter_code_cpp);
+      }
+    }
+  }, [codingProblem?.title, language]);
+
+  if (isLoading || (!codingProblem && codingList.length === 0)) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center glass-panel rounded-2xl border border-indigo-800/40 space-y-3">
+        <Sparkles className="w-10 h-10 text-indigo-400 mx-auto animate-pulse" />
+        <h3 className="text-base font-bold text-slate-100">Generating Coding Challenge from Lecture Transcript...</h3>
+        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+          Groq Whisper STT is extracting real lecture audio. Once complete, AI will build a tailored coding challenge from the transcript.
+          <br />
+          <span className="text-indigo-300 font-medium">Please check back in ~1-2 minutes.</span>
+        </p>
+      </div>
+    );
+  }
+
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);

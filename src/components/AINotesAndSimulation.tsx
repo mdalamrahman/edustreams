@@ -20,15 +20,34 @@ import { Video } from '../lib/types';
 
 interface AINotesAndSimulationProps {
   video: Video;
+  videoArtifacts?: {
+    notes?: string;
+    simulation_steps?: any[];
+  } | null;
+  isLoading?: boolean;
 }
 
-export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ video }) => {
+export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ video, videoArtifacts, isLoading }) => {
   const [activeTab, setActiveTab] = useState<'notes' | 'simulation'>('notes');
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlayingSim, setIsPlayingSim] = useState(false);
   const [isFullscreenNotes, setIsFullscreenNotes] = useState(false);
 
   const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
+
+  if (isLoading || (!videoArtifacts?.notes && (!videoArtifacts?.simulation_steps || videoArtifacts.simulation_steps.length === 0))) {
+    return (
+      <div className="p-8 text-center glass-panel rounded-2xl border border-purple-800/40 space-y-3">
+        <Sparkles className="w-10 h-10 text-purple-400 mx-auto animate-pulse" />
+        <h3 className="text-base font-bold text-slate-100">Generating AI Notes & Visual Simulation...</h3>
+        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+          Groq Whisper STT is extracting real lecture audio. Once complete, AI will generate step-by-step simulation and notes from transcript.
+          <br />
+          <span className="text-purple-300 font-medium">Please check back in ~1-2 minutes.</span>
+        </p>
+      </div>
+    );
+  }
   const cacheKey = `edustream_ainotes_${video.id || cleanTitle}`;
 
   const isLldTopic = cleanTitle.toLowerCase().includes('design') || cleanTitle.toLowerCase().includes('srp') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('principle');

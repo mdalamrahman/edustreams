@@ -601,6 +601,7 @@ export function App() {
               <div className="lg:col-span-7 space-y-6">
                 <VideoPlayer
                   video={selectedVideo}
+                  videoArtifacts={videoArtifacts}
                   onNextLecture={handleNextLecture}
                   onPrevLecture={handlePrevLecture}
                   hasNextLecture={hasNextLecture}
@@ -617,16 +618,12 @@ export function App() {
 
               {/* Right Column: Code Editor or Video-Specific Mistral Quiz Module */}
               <div className="lg:col-span-5 h-[640px]">
-                {quizLoading ? (
-                  <div className="h-full flex flex-col items-center justify-center glass-panel rounded-2xl border border-slate-800 space-y-4">
-                    <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-sm font-bold text-slate-300">Generating AI Quiz & Coding Challenges...</p>
-                    <p className="text-xs text-slate-500 font-mono">Mistral AI is creating 5 MCQs + 3 coding challenges from the transcript</p>
-                  </div>
-                ) : lessonSubTab === 'code' ? (
+                {lessonSubTab === 'code' ? (
                   <CodeWorkspace
+                    codingProblem={videoArtifacts?.coding_problem}
                     question={activeCodingQuestion}
                     allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
+                    isLoading={quizLoading}
                     onCodeExecuted={handleQuestionSolved}
                   />
                 ) : (

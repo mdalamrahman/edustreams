@@ -26,6 +26,7 @@ import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
 interface VideoPlayerProps {
   video: Video;
+  videoArtifacts?: any;
   onNextLecture?: () => void;
   onPrevLecture?: () => void;
   hasNextLecture?: boolean;
@@ -36,6 +37,7 @@ interface VideoPlayerProps {
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   video,
+  videoArtifacts,
   onNextLecture,
   onPrevLecture,
   hasNextLecture = true,
@@ -525,7 +527,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
           </div>
         ) : (
-          <AINotesAndSimulation video={video} />
+          <AINotesAndSimulation video={video} videoArtifacts={videoArtifacts} isLoading={loadingTranscript} />
         )}
       </div>
 
