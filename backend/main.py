@@ -793,10 +793,10 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
     stt_error_msg: Optional[str] = None
 
-    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Download video snippet, extract audio via ffmpeg & transcribe via Groq Whisper-large-v3
+    # 0. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe — stream video chunks
+    #    from Telegram directly into FFmpeg stdin, extract 16kHz mono MP3 to stdout in memory,
+    #    then send audio bytes straight to Groq Whisper. 0 bytes ever touch disk.
     if GROQ_API_KEY:
-        temp_video_path = os.path.join(MEDIA_STORAGE_DIR, f"temp_stt_vid_{msg_id}.mp4")
-        temp_audio_path = os.path.join(MEDIA_STORAGE_DIR, f"temp_stt_aud_{msg_id}.mp3")
         try:
             client = await get_client()
             channel_peer = await resolve_channel_peer(chat_id)
@@ -804,100 +804,123 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                     doc = msg.media.document
-                    print(f"[Groq Whisper STT] Downloading 6MB video snippet for msg #{msg_id}...")
-                    
-                    video_bytes = bytearray()
-                    # Download first 2MB starting at offset 0 (takes ~1s, MP4 headers)
-                    async for chunk in client.iter_download(
-                        doc,
-                        offset=0,
-                        request_size=256 * 1024,
-                        dc_id=getattr(doc, 'dc_id', None)
-                    ):
-                        video_bytes.extend(chunk)
-                        if len(video_bytes) >= 2000000:
-                            break
-                    
-                    with open(temp_video_path, "wb") as f:
-                        f.write(video_bytes)
-                    
-                    # Extract clean standalone 1-minute MP3 audio clip using imageio_ffmpeg / ffmpeg
+
+                    # Resolve ffmpeg binary path (imageio_ffmpeg bundles a static binary)
                     try:
                         import imageio_ffmpeg
-                        ffmpeg_cmd = imageio_ffmpeg.get_ffmpeg_exe()
+                        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
                     except Exception:
-                        ffmpeg_cmd = "ffmpeg"
+                        ffmpeg_exe = "ffmpeg"
 
-                    cmd = [
-                        ffmpeg_cmd, "-y", "-i", temp_video_path,
-                        "-t", "90", "-vn", "-acodec", "libmp3lame",
-                        "-ar", "16000", "-ab", "48k", temp_audio_path
+                    print(f"[Groq Whisper STT] Zero-disk pipe: streaming video → FFmpeg → MP3 in memory for msg #{msg_id}...")
+
+                    # Launch FFmpeg subprocess: reads raw video from stdin pipe, writes MP3 to stdout pipe
+                    ffmpeg_cmd = [
+                        ffmpeg_exe, "-y",
+                        "-i", "pipe:0",        # Read video from stdin pipe
+                        "-vn",                 # Drop video track entirely
+                        "-ar", "16000",        # 16 kHz sample rate (Whisper optimal)
+                        "-ac", "1",            # Mono channel
+                        "-b:a", "32k",         # 32 kbps low bitrate → tiny output
+                        "-f", "mp3",           # Output format
+                        "pipe:1"               # Write MP3 bytes to stdout pipe
                     ]
-                    print(f"[Groq Whisper STT] Extracting MP3 audio clip via {ffmpeg_cmd}...")
-                    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+                    process = await asyncio.create_subprocess_exec(
+                        *ffmpeg_cmd,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.DEVNULL
+                    )
 
-                    target_upload_path = temp_audio_path if (os.path.exists(temp_audio_path) and os.path.getsize(temp_audio_path) > 1000) else temp_video_path
-                    upload_mime = "audio/mp3" if target_upload_path == temp_audio_path else "video/mp4"
-                    upload_fname = f"lecture_{msg_id}.mp3" if target_upload_path == temp_audio_path else f"lecture_{msg_id}.mp4"
+                    # Feed Telegram video chunks directly into FFmpeg stdin (zero disk writes)
+                    bytes_streamed = 0
+                    async def _feed_ffmpeg():
+                        nonlocal bytes_streamed
+                        try:
+                            async for chunk in client.iter_download(
+                                doc,
+                                offset=0,
+                                request_size=128 * 1024,
+                                dc_id=getattr(doc, 'dc_id', None)
+                            ):
+                                process.stdin.write(chunk)
+                                await process.stdin.drain()
+                                bytes_streamed += len(chunk)
+                        except Exception as feed_err:
+                            print(f"[Groq Whisper STT] Streaming feed notice: {feed_err}")
+                        finally:
+                            process.stdin.close()
 
-                    if os.path.exists(target_upload_path) and os.path.getsize(target_upload_path) > 1000:
-                        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-                        with open(target_upload_path, "rb") as af:
-                            files = {
-                                "file": (upload_fname, af, upload_mime),
-                                "model": (None, "whisper-large-v3"),
-                                "response_format": (None, "verbose_json")
-                            }
-                            resp = requests.post("https://api.groq.com/openai/v1/audio/transcriptions", headers=headers, files=files, timeout=90)
-                            if resp.status_code == 200:
-                                stt_json = resp.json()
-                                segments = stt_json.get("segments", [])
-                                if segments:
-                                    stt_lines = []
-                                    for seg in segments[:60]:
-                                        start_s = int(seg.get("start", 0))
-                                        m_val, s_val = start_s // 60, start_s % 60
-                                        t_label = f"[{m_val:02d}:{s_val:02d}]"
-                                        text_str = seg.get("text", "").strip()
-                                        if text_str:
-                                            stt_lines.append(f"{t_label} {text_str}")
-                                    if stt_lines:
-                                        real_stt_transcript = "\n\n".join(stt_lines)
-                                        print(f"[Groq Whisper STT Success] Transcribed {len(stt_lines)} speech segments for msg #{msg_id}")
-                                        return {
-                                            "chat_id": chat_id,
-                                            "msg_id": msg_id,
-                                            "title": clean_title,
-                                            "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n{real_stt_transcript}",
-                                            "provider": "Groq Whisper-large-v3 STT (Real Audio)"
-                                        }
-                                
-                                raw_text = stt_json.get("text", "").strip()
-                                if raw_text and len(raw_text) > 30:
-                                    print(f"[Groq Whisper STT Success] Transcribed raw text for msg #{msg_id}")
+                    # Run feed + capture concurrently
+                    feed_task = asyncio.create_task(_feed_ffmpeg())
+                    audio_bytes, _ = await process.communicate()
+                    await feed_task
+
+                    audio_mb = len(audio_bytes) / (1024 * 1024)
+                    video_mb = bytes_streamed / (1024 * 1024)
+                    print(f"[Groq Whisper STT] Pipe complete: {video_mb:.1f} MB video streamed → {audio_mb:.2f} MB MP3 audio in memory (0 bytes on disk)")
+
+                    # Send in-memory MP3 audio bytes directly to Groq Whisper API
+                    if len(audio_bytes) > 1000:
+                        groq_headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                        groq_files = {
+                            "file": (f"lecture_{msg_id}.mp3", io.BytesIO(audio_bytes), "audio/mpeg"),
+                        }
+                        groq_data = {
+                            "model": "whisper-large-v3",
+                            "response_format": "verbose_json",
+                        }
+                        resp = requests.post(
+                            "https://api.groq.com/openai/v1/audio/transcriptions",
+                            headers=groq_headers, files=groq_files, data=groq_data, timeout=90
+                        )
+
+                        # Free memory immediately after upload
+                        del audio_bytes
+
+                        if resp.status_code == 200:
+                            stt_json = resp.json()
+                            segments = stt_json.get("segments", [])
+                            if segments:
+                                stt_lines = []
+                                for seg in segments[:60]:
+                                    start_s = int(seg.get("start", 0))
+                                    m_val, s_val = start_s // 60, start_s % 60
+                                    t_label = f"[{m_val:02d}:{s_val:02d}]"
+                                    text_str = seg.get("text", "").strip()
+                                    if text_str:
+                                        stt_lines.append(f"{t_label} {text_str}")
+                                if stt_lines:
+                                    real_stt_transcript = "\n\n".join(stt_lines)
+                                    print(f"[Groq Whisper STT Success] Transcribed {len(stt_lines)} real speech segments for msg #{msg_id}")
                                     return {
                                         "chat_id": chat_id,
                                         "msg_id": msg_id,
                                         "title": clean_title,
-                                        "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n[00:00:00] {raw_text}",
+                                        "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n{real_stt_transcript}",
                                         "provider": "Groq Whisper-large-v3 STT (Real Audio)"
                                     }
-                                stt_error_msg = f"Groq Whisper returned empty speech text: {stt_json}"
-                            else:
-                                stt_error_msg = f"Groq Whisper HTTP {resp.status_code}: {resp.text}"
-                                print(f"[Groq Whisper STT API Error] Status {resp.status_code}: {resp.text}")
+
+                            raw_text = stt_json.get("text", "").strip()
+                            if raw_text and len(raw_text) > 30:
+                                print(f"[Groq Whisper STT Success] Transcribed raw text for msg #{msg_id}")
+                                return {
+                                    "chat_id": chat_id,
+                                    "msg_id": msg_id,
+                                    "title": clean_title,
+                                    "transcript": f"🎙️ [Real Groq Whisper-large-v3 Speech-to-Text Transcribed from Telegram Video Audio Track]:\n\n[00:00:00] {raw_text}",
+                                    "provider": "Groq Whisper-large-v3 STT (Real Audio)"
+                                }
+                            stt_error_msg = f"Groq Whisper returned empty speech text: {stt_json}"
+                        else:
+                            stt_error_msg = f"Groq Whisper HTTP {resp.status_code}: {resp.text}"
+                            print(f"[Groq Whisper STT API Error] Status {resp.status_code}: {resp.text}")
+                    else:
+                        stt_error_msg = f"FFmpeg pipe produced only {len(audio_bytes)} bytes of audio"
+                        del audio_bytes
         except Exception as e:
-            stt_error_msg = f"Audio extraction notice: {e}"
-            print(f"[Groq Whisper STT Real Audio Exception]: {e}")
-        finally:
-            # IMMEDIATELY CLEAN UP BOTH TEMP FILES FOR 0 MB DISK STORAGE ACCUMULATION
-            for p in [temp_video_path, temp_audio_path]:
-                if os.path.exists(p):
-                    try:
-                        os.remove(p)
-                        print(f"[Cleanup] Removed temporary STT file {p}")
-                    except Exception:
-                        pass
+            stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
+            print(f"[Groq Whisper STT Zero-Disk Exception]: {e}")
 
     # 1. Secondary: Groq API (llama-3.3-70b-versatile) for ultra-fast, detailed STT transcripts
     if GROQ_API_KEY:
