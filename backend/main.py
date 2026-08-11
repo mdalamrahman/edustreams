@@ -737,7 +737,7 @@ def generate_all_ai_artifacts_from_transcript(transcript: str, title: str) -> di
         prompt = f"""You are a Computer Science Professor. Given the following video lecture transcript titled '{title}', generate educational materials in strict JSON format:
 
 TRANSCRIPT:
-{transcript[:7000]}
+{transcript[:12000]}
 
 Return a JSON object with EXACTLY these keys:
 1. "notes": A comprehensive markdown study note summarizing key concepts, definitions, edge cases, and code examples from the lecture.

@@ -106,6 +106,15 @@ export function App() {
   };
 
   useEffect(() => {
+    // Clear legacy transcript/notes caches from localStorage so everything is freshly generated from real transcripts
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('edustream_transcript_') || key.startsWith('edustream_ainotes_') || key.startsWith('edustream_quiz_')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
+
     // Restore student session on mount
     const student = getCurrentStudent();
     if (student) {
