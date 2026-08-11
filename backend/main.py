@@ -858,7 +858,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
     stt_error_msg: Optional[str] = None
     real_stt_transcript: Optional[str] = None
-    provider_name: str = "Groq Whisper-large-v3 STT (Real Audio)"
+    provider_name: str = "EduStream AI Speech Engine"
 
     # 1. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe
     if GROQ_API_KEY:
@@ -1007,7 +1007,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
         "title": clean_title,
         "transcript": None,
         "status": "processing",
-        "message": "Groq Whisper STT is extracting real video audio. Please check back in ~1-2 minutes.",
+        "message": "EduStream AI Speech Engine is extracting and transcribing lecture audio. Synthesis of study notes, MCQs, and coding challenges in progress...",
         "notes": None,
         "mcqs": [],
         "coding_problem": None,

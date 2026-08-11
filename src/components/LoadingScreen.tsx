@@ -3,9 +3,9 @@ import { Sparkles, Cpu, Layers, Zap, Code2, ShieldCheck, Radio } from 'lucide-re
 
 const INITIALIZATION_STEPS = [
   { label: 'Connecting Telethon MTProto Proxy Streams', icon: Radio },
-  { label: 'Ingesting 600+ Telegram Lecture Posts', icon: Layers },
-  { label: 'Warming Groq Whisper-large-v3 STT Engine', icon: Sparkles },
-  { label: 'Loading Mistral AI Academic Diagnostics', icon: Cpu },
+  { label: 'Connecting Telethon MTProto Stream Channel Proxy', icon: ShieldCheck },
+  { label: 'Warming EduStream Speech & Audio Engine', icon: Sparkles },
+  { label: 'Loading EduStream Academic Diagnostics', icon: Cpu },
   { label: 'Initializing Monaco Sandboxed Code Workspace', icon: Code2 },
   { label: 'Verifying Supabase Auth & Cloud Database Sync', icon: ShieldCheck },
 ];
@@ -114,7 +114,7 @@ export const LoadingScreen: React.FC = () => {
           <span className="text-slate-600">•</span>
           <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">Judge0 Compiler</span>
           <span className="text-slate-600">•</span>
-          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">Groq Whisper</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">EduStream Cloud</span>
         </div>
 
       </div>

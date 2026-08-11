@@ -159,7 +159,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({ isOpen, onClose,
           {isLoading && (
             <div className="flex items-center space-x-2 text-purple-400 font-mono text-xs p-2">
               <RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
-              <span>Mistral AI is analyzing lecture transcript & generating response...</span>
+              <span>EduStream AI is analyzing lecture transcript & generating response...</span>
             </div>
           )}
 

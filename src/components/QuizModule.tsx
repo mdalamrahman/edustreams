@@ -2,19 +2,24 @@ import React, { useState } from 'react';
 import { HelpCircle, CheckCircle2, XCircle, Sparkles, ArrowRight, Award, Maximize2, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { QuizQuestion } from '../lib/types';
+import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 
 interface QuizModuleProps {
   questions: QuizQuestion[];
   onQuizSubmitted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
   onAttemptMoreQuestions?: () => void;
   isGeneratingMore?: boolean;
+  videoTitle?: string;
+  durationSeconds?: number;
 }
 
 export const QuizModule: React.FC<QuizModuleProps> = ({
   questions,
   onQuizSubmitted,
   onAttemptMoreQuestions,
-  isGeneratingMore
+  isGeneratingMore = false,
+  videoTitle = 'Lecture',
+  durationSeconds = 900
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -24,17 +29,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   const [isFullscreenQuiz, setIsFullscreenQuiz] = useState(false);
 
   if (!questions || questions.length === 0) {
-    return (
-      <div className="glass-panel rounded-2xl p-8 text-center border border-indigo-800/50 space-y-3">
-        <Sparkles className="w-10 h-10 text-indigo-400 mx-auto animate-pulse" />
-        <h3 className="text-base font-bold text-slate-100">Generating AI Quiz MCQs...</h3>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-          Groq & Mistral AI are parsing the video transcript to generate conceptual MCQs.
-          <br />
-          <span className="text-indigo-300 font-medium">Please check back in ~1-2 minutes.</span>
-        </p>
-      </div>
-    );
+    return <AIProcessingStatusCard videoTitle={videoTitle} durationSeconds={durationSeconds} />;
   }
 
   const currentQ = questions[currentIndex];
@@ -74,7 +69,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
       <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-4">
         <div className="flex items-center space-x-2">
           <HelpCircle className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-semibold text-slate-100">Mistral AI Conceptual MCQ Quiz</h3>
+          <h3 className="text-sm font-semibold text-slate-100">EduStream AI Conceptual MCQ Quiz</h3>
         </div>
 
         <div className="flex items-center space-x-2 font-mono text-xs">
@@ -160,7 +155,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
       {isAnswered && currentQ.explanation && (
         <div className="p-3.5 rounded-xl bg-slate-950 border border-indigo-900/50 mb-4 text-xs text-slate-300">
           <strong className="text-indigo-400 font-semibold flex items-center gap-1 mb-1">
-            <Sparkles className="w-3.5 h-3.5" /> Mistral AI Explanation:
+            <Sparkles className="w-3.5 h-3.5" /> EduStream AI Explanation:
           </strong>
           {currentQ.explanation}
         </div>
@@ -231,7 +226,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
                 <HelpCircle className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-100">Mistral AI MCQ Quiz — Fullscreen Assessment</h3>
+                <h3 className="text-lg font-bold text-slate-100">EduStream AI MCQ Quiz — Fullscreen Assessment</h3>
                 <p className="text-xs text-slate-400">Question {currentIndex + 1} of {questions.length} • Current Score: {score}</p>
               </div>
             </div>
@@ -287,7 +282,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
             {isAnswered && currentQ.explanation && (
               <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-900/50 text-xs sm:text-sm text-slate-300 space-y-1">
                 <strong className="text-indigo-400 font-semibold flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-300" /> Mistral AI Conceptual Explanation:
+                  <Sparkles className="w-4 h-4 text-amber-300" /> EduStream AI Conceptual Explanation:
                 </strong>
                 <p>{currentQ.explanation}</p>
               </div>

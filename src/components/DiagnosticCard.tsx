@@ -42,7 +42,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              Mistral AI Student Academic Diagnostic
+              EduStream AI Student Academic Diagnostic
             </h3>
             <p className="text-xs text-slate-400">Synthesized velocity analysis & personalized review recommendations</p>
           </div>
@@ -60,7 +60,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
 
       {isLoading ? (
         <div className="py-12 text-center text-slate-400 italic font-mono text-xs">
-          Synthesizing student velocity vector via Mistral AI Engine...
+          Synthesizing student velocity vector via EduStream AI Engine...
         </div>
       ) : report ? (
         <div className="space-y-5">

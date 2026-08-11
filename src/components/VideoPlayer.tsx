@@ -520,9 +520,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
             <div className="max-h-44 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
               {loadingTranscript ? (
-                <span className="text-purple-400 animate-pulse">Generating Groq whisper-large-v3 verbatim lecture transcript...</span>
+                <span className="text-purple-400 animate-pulse">Generating EduStream AI verbatim speech-to-text transcript...</span>
               ) : (
-                dynamicTranscript || video.transcript || 'Whisper-large-v3 transcript processing...'
+                dynamicTranscript || video.transcript || 'EduStream AI Speech Engine processing lecture transcript...'
               )}
             </div>
           </div>

@@ -658,6 +658,8 @@ export function App() {
                 ) : (
                   <QuizModule
                     questions={activeMCQs}
+                    videoTitle={selectedVideo.title}
+                    durationSeconds={selectedVideo.duration_seconds}
                     onQuizSubmitted={handleQuestionSolved}
                     onAttemptMoreQuestions={handleAttemptMoreQuestions}
                     isGeneratingMore={isGeneratingMoreQuiz}
