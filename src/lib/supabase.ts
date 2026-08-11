@@ -59,16 +59,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7121",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 1: Count primes in range L to R",
-      "starter_code": "# Implementation for Count primes in range L to R.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7121",
@@ -96,16 +87,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7120",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 2: Prime factorisation of a Number",
-      "starter_code": "# Implementation for Prime factorisation of a Number.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7120",
@@ -133,16 +115,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7119",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 3: Print all primes till N",
-      "starter_code": "# Implementation for Print all primes till N.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7119",
@@ -170,16 +143,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7118",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 4: Shortest Palindrome",
-      "starter_code": "# Implementation for Shortest Palindrome.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7118",
@@ -207,16 +171,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7117",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 5: KMP Algorithm or LPS array",
-      "starter_code": "# Implementation for KMP Algorithm or LPS array.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7117",
@@ -244,16 +199,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7116",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 6: Z function",
-      "starter_code": "# Implementation for Z function.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7116",
@@ -281,16 +227,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7115",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 7: Rabin Karp Algorithm",
-      "starter_code": "# Implementation for Rabin Karp Algorithm.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7115",
@@ -318,16 +255,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7114",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 8: Count and say",
-      "starter_code": "# Implementation for Count and say.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7114",
@@ -355,16 +283,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7113",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 9: Minimum_number_of_bracket_reversals_to_make_an_expression_balanced",
-      "starter_code": "# Implementation for Minimum_number_of_bracket_reversals_to_make_an_expression_balanced.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7113",
@@ -392,16 +311,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7112",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 10: Reverse every word in a string",
-      "starter_code": "# Implementation for Reverse every word in a string.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7112",
@@ -429,16 +339,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7111",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 11: Maximum Xor with an element from an array",
-      "starter_code": "# Implementation for Maximum Xor with an element from an array.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7111",
@@ -466,16 +367,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7110",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 12: Maximum XOR of two numbers in an array",
-      "starter_code": "# Implementation for Maximum XOR of two numbers in an array.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7110",
@@ -503,16 +395,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7109",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 13: Number of distinct substrings in a string",
-      "starter_code": "# Implementation for Number of distinct substrings in a string.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7109",
@@ -540,16 +423,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7108",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 14: Longest Word with All Prefixes",
-      "starter_code": "# Implementation for Longest Word with All Prefixes.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7108",
@@ -577,16 +451,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7107",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 15: Trie Implementation and Advanced Operations",
-      "starter_code": "# Implementation for Trie Implementation and Advanced Operations.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7107",
@@ -614,16 +479,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7106",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 16: Trie Implementation and Operations",
-      "starter_code": "# Implementation for Trie Implementation and Operations.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7106",
@@ -651,16 +507,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7105",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 17: Palindrome partitioning II",
-      "starter_code": "# Implementation for Palindrome partitioning II.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7105",
@@ -688,16 +535,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:09:42+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7104",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 18: Burst balloons",
-      "starter_code": "# Implementation for Burst balloons.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7104",
@@ -725,16 +563,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7103",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 19: Minimum cost to cut the stick",
-      "starter_code": "# Implementation for Minimum cost to cut the stick.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7103",
@@ -762,16 +591,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7102",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 20: Matrix chain multiplication",
-      "starter_code": "# Implementation for Matrix chain multiplication.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7102",
@@ -799,16 +619,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7101",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 21: Wildcard matching",
-      "starter_code": "# Implementation for Wildcard matching.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7101",
@@ -836,16 +647,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7100",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 22: Edit distance",
-      "starter_code": "# Implementation for Edit distance.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7100",
@@ -873,16 +675,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7099",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 23: Distinct subsequences",
-      "starter_code": "# Implementation for Distinct subsequences.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7099",
@@ -910,16 +703,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7098",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 24: Shortest common supersequence",
-      "starter_code": "# Implementation for Shortest common supersequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7098",
@@ -947,16 +731,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7097",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 25: Minimum insertions or deletions to convert string A to B",
-      "starter_code": "# Implementation for Minimum insertions or deletions to convert string A to B.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7097",
@@ -984,16 +759,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7096",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 26: Minimum insertions to make string palindrome",
-      "starter_code": "# Implementation for Minimum insertions to make string palindrome.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7096",
@@ -1021,16 +787,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7095",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 27: Longest palindromic subsequence",
-      "starter_code": "# Implementation for Longest palindromic subsequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7095",
@@ -1058,16 +815,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7094",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 28: Longest common substring",
-      "starter_code": "# Implementation for Longest common substring.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7094",
@@ -1095,16 +843,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7093",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 29: Longest common subsequence",
-      "starter_code": "# Implementation for Longest common subsequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7093",
@@ -1132,16 +871,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7092",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 30: Number of Longest Increasing Subsequences",
-      "starter_code": "# Implementation for Number of Longest Increasing Subsequences.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7092",
@@ -1169,16 +899,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:45+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7091",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 31: Longest Bitonic Subsequence",
-      "starter_code": "# Implementation for Longest Bitonic Subsequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7091",
@@ -1206,16 +927,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7090",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 32: Longest String Chain",
-      "starter_code": "# Implementation for Longest String Chain.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7090",
@@ -1243,16 +955,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7089",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 33: Largest Divisible Subset",
-      "starter_code": "# Implementation for Largest Divisible Subset.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7089",
@@ -1280,16 +983,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7088",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 34: Print Longest Increasing Subsequence",
-      "starter_code": "# Implementation for Print Longest Increasing Subsequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7088",
@@ -1317,16 +1011,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7087",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 35: Longest Increasing Subsequence",
-      "starter_code": "# Implementation for Longest Increasing Subsequence.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7087",
@@ -1354,16 +1039,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7086",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 36: Rod cutting problem",
-      "starter_code": "# Implementation for Rod cutting problem.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7086",
@@ -1391,16 +1067,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7085",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 37: Unbounded knapsack",
-      "starter_code": "# Implementation for Unbounded knapsack.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7085",
@@ -1428,16 +1095,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7084",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 38: Coin change II",
-      "starter_code": "# Implementation for Coin change II.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7084",
@@ -1465,16 +1123,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7083",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 39: Target sum",
-      "starter_code": "# Implementation for Target sum.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7083",
@@ -1502,16 +1151,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7082",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 40: Minimum coins",
-      "starter_code": "# Implementation for Minimum coins.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7082",
@@ -1539,16 +1179,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7081",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 41: 0 and 1 Knapsack",
-      "starter_code": "# Implementation for 0 and 1 Knapsack.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7081",
@@ -1576,16 +1207,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7080",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 42: Count partitions with given difference",
-      "starter_code": "# Implementation for Count partitions with given difference.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7080",
@@ -1613,16 +1235,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7079",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 43: Count subsets with sum K",
-      "starter_code": "# Implementation for Count subsets with sum K.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7079",
@@ -1650,16 +1263,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7078",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 44: Partition_a_set_into_two_subsets_with_minimum_absolute_sum_difference",
-      "starter_code": "# Implementation for Partition_a_set_into_two_subsets_with_minimum_absolute_sum_difference.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7078",
@@ -1687,16 +1291,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7077",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 45: Partition equal subset sum",
-      "starter_code": "# Implementation for Partition equal subset sum.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7077",
@@ -1724,16 +1319,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7076",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 46: Subset sum equals to target",
-      "starter_code": "# Implementation for Subset sum equals to target.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7076",
@@ -1761,16 +1347,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-06-18T17:08:44+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dsa-7075",
-      "type": "CODING",
-      "question": "Implement solution for DSA Lecture 47: Best time to buy and sell stock with transaction fees",
-      "starter_code": "# Implementation for Best time to buy and sell stock with transaction fees.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dsa-7075",
@@ -1798,16 +1375,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:37+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6048",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 1: 11.10 Task Management System Code",
-      "starter_code": "# Implementation for 11.10 Task Management System Code.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6048",
@@ -1835,16 +1403,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6047",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 2: 11.9 Task Management System Design",
-      "starter_code": "# Implementation for 11.9 Task Management System Design.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6047",
@@ -1872,16 +1431,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6046",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 3: 11.8 Vending Machine Code",
-      "starter_code": "# Implementation for 11.8 Vending Machine Code.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6046",
@@ -1909,16 +1459,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6045",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 4: 11.7 Vending Machine Design",
-      "starter_code": "# Implementation for 11.7 Vending Machine Design.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6045",
@@ -1946,16 +1487,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6044",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 5: 11.6 Traffic Signal System (Code)",
-      "starter_code": "# Implementation for 11.6 Traffic Signal System (Code).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6044",
@@ -1983,16 +1515,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6043",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 6: 11.5 Traffic Signal System (Design)",
-      "starter_code": "# Implementation for 11.5 Traffic Signal System (Design).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6043",
@@ -2020,16 +1543,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6042",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 7: 11.4 Logging Framework (Code)",
-      "starter_code": "# Implementation for 11.4 Logging Framework (Code).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6042",
@@ -2057,16 +1571,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6041",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 8: 11.2 Parking Lot (Code)",
-      "starter_code": "# Implementation for 11.2 Parking Lot (Code).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6041",
@@ -2094,16 +1599,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6040",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 9: 11.1 Parking Lot (Design) (Interview Problems (Part-1)",
-      "starter_code": "# Implementation for 11.1 Parking Lot (Design) (Interview Problems (Part-1).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6040",
@@ -2131,16 +1627,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6039",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 10: 10.3 How to approach a LLD Interview",
-      "starter_code": "# Implementation for 10.3 How to approach a LLD Interview.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6039",
@@ -2168,16 +1655,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6038",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 11: 10.2 Database Design and Integration",
-      "starter_code": "# Implementation for 10.2 Database Design and Integration.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6038",
@@ -2205,16 +1683,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6037",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 12: 10.1 Exceptions and Error Handling (Best practices in LLD)",
-      "starter_code": "# Implementation for 10.1 Exceptions and Error Handling (Best practices in LLD).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6037",
@@ -2242,16 +1711,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6036",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 13: 9.1 Exception Handling (LLD) (Exceptions and Error Handling)",
-      "starter_code": "# Implementation for 9.1 Exception Handling (LLD) (Exceptions and Error Handling).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6036",
@@ -2279,16 +1739,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6035",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 14: 8. Producer Consumer Problem",
-      "starter_code": "# Implementation for 8. Producer Consumer Problem.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6035",
@@ -2316,16 +1767,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6034",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 15: 7_1_Multithreading_and_Concurrency_Multithreading_and_Concurrency",
-      "starter_code": "# Implementation for 7_1_Multithreading_and_Concurrency_Multithreading_and_Concurrency.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6034",
@@ -2353,16 +1795,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6033",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 16: 7.7 Producer Consumer Problem",
-      "starter_code": "# Implementation for 7.7 Producer Consumer Problem.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6033",
@@ -2390,16 +1823,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6032",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 17: 7.6 Locks and Synchronization Mechanism",
-      "starter_code": "# Implementation for 7.6 Locks and Synchronization Mechanism.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6032",
@@ -2427,16 +1851,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6031",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 18: 7.5 Deadlock and Prevention Techniques",
-      "starter_code": "# Implementation for 7.5 Deadlock and Prevention Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6031",
@@ -2464,16 +1879,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6030",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 19: 7.4 Thread Safety and Synchronization",
-      "starter_code": "# Implementation for 7.4 Thread Safety and Synchronization.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6030",
@@ -2501,16 +1907,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6029",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 20: 7.3 Thread Pools and Executors",
-      "starter_code": "# Implementation for 7.3 Thread Pools and Executors.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6029",
@@ -2538,16 +1935,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6028",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 21: 7.2 Creating and Managing Threads",
-      "starter_code": "# Implementation for 7.2 Creating and Managing Threads.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6028",
@@ -2575,16 +1963,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6027",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 22: 6.10 Memento Pattern",
-      "starter_code": "# Implementation for 6.10 Memento Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6027",
@@ -2612,16 +1991,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6026",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 23: 6.9 Mediator Pattern",
-      "starter_code": "# Implementation for 6.9 Mediator Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6026",
@@ -2649,16 +2019,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6025",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 24: 6.8 Visitor Pattern",
-      "starter_code": "# Implementation for 6.8 Visitor Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6025",
@@ -2686,16 +2047,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6024",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 25: 6.7 Chain of Responsibility",
-      "starter_code": "# Implementation for 6.7 Chain of Responsibility.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6024",
@@ -2723,16 +2075,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6023",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 26: 6.6 State Pattern",
-      "starter_code": "# Implementation for 6.6 State Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6023",
@@ -2760,16 +2103,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6022",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 27: 6.5 Template Method",
-      "starter_code": "# Implementation for 6.5 Template Method.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6022",
@@ -2797,16 +2131,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6021",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 28: 6.4 Command Pattern",
-      "starter_code": "# Implementation for 6.4 Command Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6021",
@@ -2834,16 +2159,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6020",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 29: 6.3 Strategy Pattern",
-      "starter_code": "# Implementation for 6.3 Strategy Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6020",
@@ -2871,16 +2187,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6019",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 30: 6.2 Behavioural Design Patterns",
-      "starter_code": "# Implementation for 6.2 Behavioural Design Patterns.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6019",
@@ -2908,16 +2215,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6018",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 31: 6.1 Iterator Pattern (Behavioural Design Patterns)",
-      "starter_code": "# Implementation for 6.1 Iterator Pattern (Behavioural Design Patterns).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6018",
@@ -2945,16 +2243,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6017",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 32: 5.7 Flyweight Pattern",
-      "starter_code": "# Implementation for 5.7 Flyweight Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6017",
@@ -2982,16 +2271,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6016",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 33: 5.6 Bridge Pattern",
-      "starter_code": "# Implementation for 5.6 Bridge Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6016",
@@ -3019,16 +2299,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6015",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 34: 5.5 Proxy Pattern",
-      "starter_code": "# Implementation for 5.5 Proxy Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6015",
@@ -3056,16 +2327,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6014",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 35: 5.4 Composite Pattern",
-      "starter_code": "# Implementation for 5.4 Composite Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6014",
@@ -3093,16 +2355,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6013",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 36: 5.3 Facade Pattern",
-      "starter_code": "# Implementation for 5.3 Facade Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6013",
@@ -3130,16 +2383,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6012",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 37: 5.2 Structural Design Patterns",
-      "starter_code": "# Implementation for 5.2 Structural Design Patterns.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6012",
@@ -3167,16 +2411,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6011",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 38: 5.1 Adapter Pattern (Structural Design Patterns)",
-      "starter_code": "# Implementation for 5.1 Adapter Pattern (Structural Design Patterns).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6011",
@@ -3204,16 +2439,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6010",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 39: 4_1_Introduction_to_Design_Patterns_Creational_Design_Patterns",
-      "starter_code": "# Implementation for 4_1_Introduction_to_Design_Patterns_Creational_Design_Patterns.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6010",
@@ -3241,16 +2467,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6009",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 40: 4.6 Prototype Pattern",
-      "starter_code": "# Implementation for 4.6 Prototype Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6009",
@@ -3278,16 +2495,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6008",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 41: 4.5 Abstract Factory",
-      "starter_code": "# Implementation for 4.5 Abstract Factory.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6008",
@@ -3315,16 +2523,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6007",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 42: 4.4 Builder Pattern",
-      "starter_code": "# Implementation for 4.4 Builder Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6007",
@@ -3352,16 +2551,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6006",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 43: 4.3 Factory Method",
-      "starter_code": "# Implementation for 4.3 Factory Method.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6006",
@@ -3389,16 +2579,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6005",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 44: 4.2 Singleton Design Pattern",
-      "starter_code": "# Implementation for 4.2 Singleton Design Pattern.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6005",
@@ -3426,16 +2607,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6004",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 45: 3.2 Class UML diagrams",
-      "starter_code": "# Implementation for 3.2 Class UML diagrams.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6004",
@@ -3463,16 +2635,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6003",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 46: 3.1 Unified Modeling Language (UML)",
-      "starter_code": "# Implementation for 3.1 Unified Modeling Language (UML).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6003",
@@ -3500,16 +2663,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6002",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 47: 2.5 Dependency Inversion Principle (DIP)",
-      "starter_code": "# Implementation for 2.5 Dependency Inversion Principle (DIP).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6002",
@@ -3537,16 +2691,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-03T11:08:36+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-sd-6001",
-      "type": "CODING",
-      "question": "Implement solution for System Design Lecture 48: 2.4 Interface Segregation Principle (ISP)",
-      "starter_code": "# Implementation for 2.4 Interface Segregation Principle (ISP).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-sd-6001",
@@ -3574,16 +2719,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6144",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 1: 14.3 Event-Driven Architecture",
-      "starter_code": "# Implementation for 14.3 Event-Driven Architecture.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6144",
@@ -3611,16 +2747,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6143",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 2: 14.2 Data Warehousing",
-      "starter_code": "# Implementation for 14.2 Data Warehousing.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6143",
@@ -3648,16 +2775,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6142",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 3: 14.1 Database Migration (Data Warehousing and Migration)",
-      "starter_code": "# Implementation for 14.1 Database Migration (Data Warehousing and Migration).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6142",
@@ -3685,16 +2803,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6141",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 4: 13.3 DBaas (Database as a Service)",
-      "starter_code": "# Implementation for 13.3 DBaas (Database as a Service).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6141",
@@ -3722,16 +2831,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6140",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 5: 13.2 Big Data and DBMS",
-      "starter_code": "# Implementation for 13.2 Big Data and DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6140",
@@ -3759,16 +2859,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6139",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 6: 13.1 Database Scaling (Scalability and Big Data)",
-      "starter_code": "# Implementation for 13.1 Database Scaling (Scalability and Big Data).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6139",
@@ -3796,16 +2887,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6138",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 7: 12.6 RBAC Models",
-      "starter_code": "# Implementation for 12.6 RBAC Models.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6138",
@@ -3833,16 +2915,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6137",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 8: 12.5 RBAC (Role-Based Access Control)",
-      "starter_code": "# Implementation for 12.5 RBAC (Role-Based Access Control).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6137",
@@ -3870,16 +2943,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6136",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 9: 12.4 Data Masking Techniques",
-      "starter_code": "# Implementation for 12.4 Data Masking Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6136",
@@ -3907,16 +2971,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6135",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 10: 12.3 Encryption Techniques in DBMS",
-      "starter_code": "# Implementation for 12.3 Encryption Techniques in DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6135",
@@ -3944,16 +2999,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6134",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 11: 12.2 Database Security",
-      "starter_code": "# Implementation for 12.2 Database Security.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6134",
@@ -3981,16 +3027,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6133",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 12: 12.1 Data Encryption in DBMS (Security and Access Control)",
-      "starter_code": "# Implementation for 12.1 Data Encryption in DBMS (Security and Access Control).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6133",
@@ -4018,16 +3055,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6132",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 13: 11.4 Database Caching Strategies",
-      "starter_code": "# Implementation for 11.4 Database Caching Strategies.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6132",
@@ -4055,16 +3083,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6131",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 14: 11.3 Database Caching",
-      "starter_code": "# Implementation for 11.3 Database Caching.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6131",
@@ -4092,16 +3111,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6130",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 15: 11.2 Performance Tuning",
-      "starter_code": "# Implementation for 11.2 Performance Tuning.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6130",
@@ -4129,16 +3139,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6129",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 16: 11.1 Database Monitoring (Database Monitoring and Caching)",
-      "starter_code": "# Implementation for 11.1 Database Monitoring (Database Monitoring and Caching).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6129",
@@ -4166,16 +3167,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6128",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 17: 10.4 B- and B+ Trees",
-      "starter_code": "# Implementation for 10.4 B- and B+ Trees.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6128",
@@ -4203,16 +3195,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6127",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 18: 10.3 Indexing Techniques",
-      "starter_code": "# Implementation for 10.3 Indexing Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6127",
@@ -4240,16 +3223,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6126",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 19: 10.2 Types of Database Indexing",
-      "starter_code": "# Implementation for 10.2 Types of Database Indexing.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6126",
@@ -4277,16 +3251,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6125",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 20: 10.1 Database Indexing (Indexing and Performance Tuning)",
-      "starter_code": "# Implementation for 10.1 Database Indexing (Indexing and Performance Tuning).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6125",
@@ -4314,16 +3279,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6124",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 21: 9.2 Database Backups",
-      "starter_code": "# Implementation for 9.2 Database Backups.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6124",
@@ -4351,16 +3307,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6123",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 22: 9.1 Database Recovery Management (Recovery and Backup)",
-      "starter_code": "# Implementation for 9.1 Database Recovery Management (Recovery and Backup).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6123",
@@ -4388,16 +3335,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6122",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 23: 8.2 Stored Procedures in Databases",
-      "starter_code": "# Implementation for 8.2 Stored Procedures in Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6122",
@@ -4425,16 +3363,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6121",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 24: 8.1 Triggers in Databases (Triggers and Procedural Features)",
-      "starter_code": "# Implementation for 8.1 Triggers in Databases (Triggers and Procedural Features).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6121",
@@ -4462,16 +3391,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6120",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 25: 7.15 Managing Transaction Consistency and Concurrency",
-      "starter_code": "# Implementation for 7.15 Managing Transaction Consistency and Concurrency.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6120",
@@ -4499,16 +3419,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6119",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 26: 7.14 Isolation Levels",
-      "starter_code": "# Implementation for 7.14 Isolation Levels.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6119",
@@ -4536,16 +3447,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6118",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 27: 7.13 Serialization Graphs in Databases",
-      "starter_code": "# Implementation for 7.13 Serialization Graphs in Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6118",
@@ -4573,16 +3475,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6117",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 28: 7.12 Scheduling in Databases",
-      "starter_code": "# Implementation for 7.12 Scheduling in Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6117",
@@ -4610,16 +3503,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6116",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 29: 7.11 Serialization in Databases",
-      "starter_code": "# Implementation for 7.11 Serialization in Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6116",
@@ -4647,16 +3531,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:21+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6115",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 30: 7.10 Concurrency Control in Distributed Databases",
-      "starter_code": "# Implementation for 7.10 Concurrency Control in Distributed Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6115",
@@ -4684,16 +3559,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6114",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 31: 7.9 Deadlock in DBMS",
-      "starter_code": "# Implementation for 7.9 Deadlock in DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6114",
@@ -4721,16 +3587,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6113",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 32: 7.8 Starvation in DBMS",
-      "starter_code": "# Implementation for 7.8 Starvation in DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6113",
@@ -4758,16 +3615,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6112",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 33: 7.7 Timestamp Ordering Protocols in DBMS",
-      "starter_code": "# Implementation for 7.7 Timestamp Ordering Protocols in DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6112",
@@ -4795,16 +3643,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6111",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 34: 7.6 Locking Protocol (Shared Locks, Exclusive Locks)",
-      "starter_code": "# Implementation for 7.6 Locking Protocol (Shared Locks, Exclusive Locks).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6111",
@@ -4832,16 +3671,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6110",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 35: 7.5 Concurrency Control in Databases",
-      "starter_code": "# Implementation for 7.5 Concurrency Control in Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6110",
@@ -4869,16 +3699,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6109",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 36: 7.4 Database Transactions",
-      "starter_code": "# Implementation for 7.4 Database Transactions.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6109",
@@ -4906,16 +3727,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6108",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 37: 7.3 CAP Theorem",
-      "starter_code": "# Implementation for 7.3 CAP Theorem.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6108",
@@ -4943,16 +3755,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6107",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 38: 7.2 ACID Properties",
-      "starter_code": "# Implementation for 7.2 ACID Properties.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6107",
@@ -4980,16 +3783,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6106",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 39: 7.1 Thomas' Rules (Transactions and Concurrency)",
-      "starter_code": "# Implementation for 7.1 Thomas' Rules (Transactions and Concurrency).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6106",
@@ -5017,16 +3811,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6105",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 40: 6.7 Data Replication Techniques",
-      "starter_code": "# Implementation for 6.7 Data Replication Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6105",
@@ -5054,16 +3839,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6104",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 41: 6.6 Load Balancing in Distributed Databases",
-      "starter_code": "# Implementation for 6.6 Load Balancing in Distributed Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6104",
@@ -5091,16 +3867,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6103",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 42: 6.5 Fault Tolerance in Distributed Databases",
-      "starter_code": "# Implementation for 6.5 Fault Tolerance in Distributed Databases.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6103",
@@ -5128,16 +3895,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6102",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 43: 6.4 Data Distribution Methods",
-      "starter_code": "# Implementation for 6.4 Data Distribution Methods.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6102",
@@ -5165,16 +3923,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6101",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 44: 6.3 Architecture of Distributed Database Systems",
-      "starter_code": "# Implementation for 6.3 Architecture of Distributed Database Systems.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6101",
@@ -5202,16 +3951,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6100",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 45: 6.2 Distributed Database Systems",
-      "starter_code": "# Implementation for 6.2 Distributed Database Systems.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6100",
@@ -5239,16 +3979,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6099",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 46: 6.1 Sharding in DBMS (Distributed Database Systems)",
-      "starter_code": "# Implementation for 6.1 Sharding in DBMS (Distributed Database Systems).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6099",
@@ -5276,16 +4007,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:03:20+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-dbms-6098",
-      "type": "CODING",
-      "question": "Implement solution for DBMS Lecture 47: 5.8 Sharding in DBMS",
-      "starter_code": "# Implementation for 5.8 Sharding in DBMS.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-dbms-6098",
@@ -5313,16 +4035,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6185",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 1: 10.6 Network Reliability and Fault Tolerance",
-      "starter_code": "# Implementation for 10.6 Network Reliability and Fault Tolerance.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6185",
@@ -5350,16 +4063,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6184",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 2: 10.5 Software-Defined Networking (SDN)",
-      "starter_code": "# Implementation for 10.5 Software-Defined Networking (SDN).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6184",
@@ -5387,16 +4091,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6183",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 3: 10.4 Network Virtualization",
-      "starter_code": "# Implementation for 10.4 Network Virtualization.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6183",
@@ -5424,16 +4119,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6182",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 4: 10_3_Load_Balancing_Techniques,_Content_Delivery_Networks_CDNs",
-      "starter_code": "# Implementation for 10_3_Load_Balancing_Techniques,_Content_Delivery_Networks_CDNs.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6182",
@@ -5461,16 +4147,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6181",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 5: 10.2 Network Design Principles and Considerations",
-      "starter_code": "# Implementation for 10.2 Network Design Principles and Considerations.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6181",
@@ -5498,16 +4175,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6180",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 6: 10_1_Client_Server_Vs_Peer_to_Peer_Architectures_Advanced_Networking",
-      "starter_code": "# Implementation for 10_1_Client_Server_Vs_Peer_to_Peer_Architectures_Advanced_Networking.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6180",
@@ -5535,16 +4203,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6179",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 7: 9.6 Network Protocol Analysis Tools (Wireshark, tcpdump)",
-      "starter_code": "# Implementation for 9.6 Network Protocol Analysis Tools (Wireshark, tcpdump).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6179",
@@ -5572,16 +4231,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6178",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 8: 9.5 Network Monitoring and Management",
-      "starter_code": "# Implementation for 9.5 Network Monitoring and Management.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6178",
@@ -5609,16 +4259,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6177",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 9: 9.4 Network Troubleshooting Techniques",
-      "starter_code": "# Implementation for 9.4 Network Troubleshooting Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6177",
@@ -5646,16 +4287,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6176",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 10: 9.3 Network Performance Metrics",
-      "starter_code": "# Implementation for 9.3 Network Performance Metrics.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6176",
@@ -5683,16 +4315,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6175",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 11: 9_2_Quality_of_Service_QoS,_Bandwidth_and_Latency,_Network_Congestion",
-      "starter_code": "# Implementation for 9_2_Quality_of_Service_QoS,_Bandwidth_and_Latency,_Network_Congestion.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6175",
@@ -5720,16 +4343,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6174",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 12: 9_1_Traffic_Management_Techniques_Network_Management_and_Monitoring",
-      "starter_code": "# Implementation for 9_1_Traffic_Management_Techniques_Network_Management_and_Monitoring.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6174",
@@ -5757,16 +4371,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6173",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 13: 8.7 Network Layer and Application Layer Firewalls",
-      "starter_code": "# Implementation for 8.7 Network Layer and Application Layer Firewalls.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6173",
@@ -5794,16 +4399,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6172",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 14: 8.6 Transport Layer Security (TLS) and SSL",
-      "starter_code": "# Implementation for 8.6 Transport Layer Security (TLS) and SSL.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6172",
@@ -5831,16 +4427,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6171",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 15: 8_5_Cryptography_Basics_Symmetric_and_Asymmetric_Encryption",
-      "starter_code": "# Implementation for 8_5_Cryptography_Basics_Symmetric_and_Asymmetric_Encryption.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6171",
@@ -5868,16 +4455,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6170",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 16: 8_4_Virtual_Private_Networks_VPNs_and_Public_Key_Infrastructure",
-      "starter_code": "# Implementation for 8_4_Virtual_Private_Networks_VPNs_and_Public_Key_Infrastructure.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6170",
@@ -5905,16 +4483,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6169",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 17: 8.3 Intrusion Detection and Prevention Systems",
-      "starter_code": "# Implementation for 8.3 Intrusion Detection and Prevention Systems.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6169",
@@ -5942,16 +4511,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6168",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 18: 8.2 Firewall and their Types",
-      "starter_code": "# Implementation for 8.2 Firewall and their Types.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6168",
@@ -5979,16 +4539,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:02+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6167",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 19: 8.1 Network Security Fundamentals (Network Security)",
-      "starter_code": "# Implementation for 8.1 Network Security Fundamentals (Network Security).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6167",
@@ -6016,16 +4567,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6166",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 20: 7.3 Data Link Protocols and Spanning tree Protocol",
-      "starter_code": "# Implementation for 7.3 Data Link Protocols and Spanning tree Protocol.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6166",
@@ -6053,16 +4595,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6165",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 21: 7.2 Ethernet Switching and VLANs",
-      "starter_code": "# Implementation for 7.2 Ethernet Switching and VLANs.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6165",
@@ -6090,16 +4623,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6164",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 22: 7_1_Ethernet_Standards_IEEE_802_3_and_Wireless_Networking_IEEE_802",
-      "starter_code": "# Implementation for 7_1_Ethernet_Standards_IEEE_802_3_and_Wireless_Networking_IEEE_802.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6164",
@@ -6127,16 +4651,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6163",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 23: 6.4 Switching Techniques",
-      "starter_code": "# Implementation for 6.4 Switching Techniques.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6163",
@@ -6164,16 +4679,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6162",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 24: 6_3_Border_Gateway_Protocol_BGP,_Interior_Gateway_Protocols_IGRP",
-      "starter_code": "# Implementation for 6_3_Border_Gateway_Protocol_BGP,_Interior_Gateway_Protocols_IGRP.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6162",
@@ -6201,16 +4707,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6161",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 25: 6.2 Distance Vector and Link State Routing Protocols",
-      "starter_code": "# Implementation for 6.2 Distance Vector and Link State Routing Protocols.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6161",
@@ -6238,16 +4735,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6160",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 26: 6.1 Routing Algorithms (Routing and Switching)",
-      "starter_code": "# Implementation for 6.1 Routing Algorithms (Routing and Switching).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6160",
@@ -6275,16 +4763,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6159",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 27: 5_3_Network_Address_Translation_NAT,_Dynamic_Host_Configuration",
-      "starter_code": "# Implementation for 5_3_Network_Address_Translation_NAT,_Dynamic_Host_Configuration.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6159",
@@ -6312,16 +4791,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6158",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 28: 5_2_Subnetting,_Supernetting_and_Classful_vs_Classless_Addressing",
-      "starter_code": "# Implementation for 5_2_Subnetting,_Supernetting_and_Classful_vs_Classless_Addressing.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6158",
@@ -6349,16 +4819,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6157",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 29: 5_1_IP_Addressing_IPv4_and_IPv6_IP_Addressing_and_Subnetting",
-      "starter_code": "# Implementation for 5_1_IP_Addressing_IPv4_and_IPv6_IP_Addressing_and_Subnetting.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6157",
@@ -6386,16 +4847,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6156",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 30: 4_3_Layer_Functions,_Protocols_and_Connectionless_vs_Connection",
-      "starter_code": "# Implementation for 4_3_Layer_Functions,_Protocols_and_Connectionless_vs_Connection.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6156",
@@ -6423,16 +4875,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6155",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 31: 4.2 Application Layer Protocols (HTTP, FTP, SMTP, SNMP)",
-      "starter_code": "# Implementation for 4.2 Application Layer Protocols (HTTP, FTP, SMTP, SNMP).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6155",
@@ -6460,16 +4903,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6154",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 32: 4.1 Network Protocols (Network Protocols and Communication)",
-      "starter_code": "# Implementation for 4.1 Network Protocols (Network Protocols and Communication).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6154",
@@ -6497,16 +4931,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6153",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 33: 3.3 Ethernet Frame Structure + ARP + NAC",
-      "starter_code": "# Implementation for 3.3 Ethernet Frame Structure + ARP + NAC.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6153",
@@ -6534,16 +4959,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6152",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 34: 3.2 Network Devices",
-      "starter_code": "# Implementation for 3.2 Network Devices.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6152",
@@ -6571,16 +4987,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6151",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 35: 3_1_Network_Cabling_and_Connectors_Networking_Fundamentals_and_Basics",
-      "starter_code": "# Implementation for 3_1_Network_Cabling_and_Connectors_Networking_Fundamentals_and_Basics.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6151",
@@ -6608,16 +5015,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/bunny/movie.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6150",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 36: 2.2 TCP and IP Model and Its Layers + Comparison",
-      "starter_code": "# Implementation for 2.2 TCP and IP Model and Its Layers + Comparison.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6150",
@@ -6645,16 +5043,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6149",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 37: 2.1 OSI Model and Layers (Networking Models)",
-      "starter_code": "# Implementation for 2.1 OSI Model and Layers (Networking Models).mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6149",
@@ -6682,16 +5071,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://media.w3.org/2010/05/video/movie_300.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6148",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 38: 1.3 Network and Logical Topologies",
-      "starter_code": "# Implementation for 1.3 Network and Logical Topologies.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6148",
@@ -6719,16 +5099,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6147",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 39: 1.2 Types of Networks and Interconnected Net",
-      "starter_code": "# Implementation for 1.2 Types of Networks and Interconnected Net.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6147",
@@ -6756,16 +5127,7 @@ export const MOCK_VIDEOS: Video[] = [
   "thumbnail_url": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80",
   "stream_url": "https://www.w3schools.com/html/mov_bbb.mp4",
   "created_at": "2026-03-04T17:05:01+00:00",
-  "quiz_json": [
-    {
-      "id": "q-exact-cn-6146",
-      "type": "CODING",
-      "question": "Implement solution for Computer Networks Lecture 40: 1_1_Introduction_to_Computer_Networks_Introduction_to_Computer_Networks",
-      "starter_code": "# Implementation for 1_1_Introduction_to_Computer_Networks_Introduction_to_Computer_Networks.mp4\ndef solve():\n    pass\n",
-      "solution_code": "def solve():\n    return True\n",
-      "difficulty": "Medium"
-    }
-  ],
+  "quiz_json": [],
   "attachments": [
     {
       "id": "att-exact-cn-6146",

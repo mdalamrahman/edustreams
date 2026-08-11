@@ -244,37 +244,57 @@ export function App() {
   const [videoArtifacts, setVideoArtifacts] = useState<any>(null);
 
   useEffect(() => {
-    if (selectedVideo) {
-      setQuizLoading(true);
-      setActiveVideoQuiz([]);
-      setVideoArtifacts(null);
+    if (!selectedVideo) return;
 
-      const cleanTitle = (selectedVideo.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
-      const durationMins = Math.max(5, Math.round((selectedVideo.duration_seconds || 900) / 60));
-      const channelId = selectedVideo.channel_id || 'ch-sd-02';
-      const msgId = selectedVideo.telegram_message_id || 6004;
+    let isMounted = true;
+    let pollTimer: any = null;
 
+    setQuizLoading(true);
+    setActiveVideoQuiz([]);
+    setVideoArtifacts(null);
+
+    const cleanTitle = (selectedVideo.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+    const durationMins = Math.max(5, Math.round((selectedVideo.duration_seconds || 900) / 60));
+    const channelId = selectedVideo.channel_id || 'ch-sd-02';
+    const msgId = selectedVideo.telegram_message_id || 6004;
+
+    const fetchArtifacts = () => {
       const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
       fetch(url)
         .then((r) => r.json())
         .then((data) => {
+          if (!isMounted) return;
           if (data) {
             setVideoArtifacts(data);
             if (data.transcript) {
               selectedVideo.transcript = data.transcript;
             }
-            if (data.mcqs && data.mcqs.length > 0) {
+            if (data.status === 'completed' && data.mcqs && data.mcqs.length > 0) {
               setActiveVideoQuiz(data.mcqs);
               selectedVideo.quiz_json = data.mcqs;
+              setQuizLoading(false);
+            } else if (data.status === 'processing' || !data.transcript) {
+              // Still processing on backend — keep quizLoading true and poll again in 5s
+              setQuizLoading(true);
+              pollTimer = setTimeout(fetchArtifacts, 5000);
+            } else {
+              setQuizLoading(false);
             }
           }
         })
         .catch((err) => {
           console.warn('[EduStream Artifact Fetch Notice]:', err);
-        })
-        .finally(() => setQuizLoading(false));
-    }
+          if (isMounted) setQuizLoading(false);
+        });
+    };
+
+    fetchArtifacts();
+
+    return () => {
+      isMounted = false;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
   }, [selectedVideo?.id, selectedVideo?.title, selectedVideo?.channel_id, selectedVideo?.telegram_message_id]);
 
   const activeVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
