@@ -231,26 +231,42 @@ export function App() {
       .finally(() => setCatalogLoading(false));
   }, []);
 
-  // Dynamically generate Mistral AI quiz tailored specifically to selectedVideo title & transcript
+  // Dynamically fetch transcript + AI artifacts (MCQs, Notes, Coding, Simulator) generated from REAL transcript
+  const [videoArtifacts, setVideoArtifacts] = useState<any>(null);
+
   useEffect(() => {
     if (selectedVideo) {
-      if (selectedVideo.quiz_json && selectedVideo.quiz_json.length > 0) {
-        setActiveVideoQuiz(selectedVideo.quiz_json);
-      } else {
-        setQuizLoading(true);
-        const chObj = MOCK_CHANNELS.find((c) => c.id === selectedVideo.channel_id);
-        requestMistralQuiz(selectedVideo.title, selectedVideo.transcript, chObj?.name || 'DSA')
-          .then((questions) => {
-            setActiveVideoQuiz(questions);
-            selectedVideo.quiz_json = questions;
-          })
-          .catch(() => {
-            setActiveVideoQuiz([]);
-          })
-          .finally(() => setQuizLoading(false));
-      }
+      setQuizLoading(true);
+      setActiveVideoQuiz([]);
+      setVideoArtifacts(null);
+
+      const cleanTitle = (selectedVideo.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+      const durationMins = Math.max(5, Math.round((selectedVideo.duration_seconds || 900) / 60));
+      const channelId = selectedVideo.channel_id || 'ch-sd-02';
+      const msgId = selectedVideo.telegram_message_id || 6004;
+
+      const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
+
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data) {
+            setVideoArtifacts(data);
+            if (data.transcript) {
+              selectedVideo.transcript = data.transcript;
+            }
+            if (data.mcqs && data.mcqs.length > 0) {
+              setActiveVideoQuiz(data.mcqs);
+              selectedVideo.quiz_json = data.mcqs;
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[EduStream Artifact Fetch Notice]:', err);
+        })
+        .finally(() => setQuizLoading(false));
     }
-  }, [selectedVideo?.id, selectedVideo?.title]);
+  }, [selectedVideo?.id, selectedVideo?.title, selectedVideo?.channel_id, selectedVideo?.telegram_message_id]);
 
   const activeVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
   const filteredVideos = activeVideos.filter((v) => v.channel_id === selectedChannelId);
