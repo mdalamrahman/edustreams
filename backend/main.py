@@ -1411,6 +1411,56 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     }
 
 
+@app.get("/api/transcript/status/{chat_id}/{msg_id}")
+async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15):
+    """
+    Returns lightweight real-time progress status of lecture transcription and synthesis pipeline.
+    Checks RAM, disk cache and Supabase first to return status=completed without token usage.
+    """
+    clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
+    cache_key = f"{chat_id}_{msg_id}"
+
+    cache = load_ai_cache()
+    cached_obj = cache.get(cache_key) or cache.get(f"tg-{chat_id}-{msg_id}") or cache.get(str(msg_id)) or cache.get(clean_title) or cache.get(clean_title.lower())
+    if cached_obj and cached_obj.get("transcript") and len(cached_obj.get("transcript", "").strip()) > 120:
+        return {
+            "status": "completed",
+            "progress_percent": 100.0,
+            "current_part": 30,
+            "total_parts": 30,
+            "stage": "Completed",
+            "has_artifacts": True,
+            "estimated_seconds_left": 0
+        }
+
+    job_info = active_transcription_jobs.get(cache_key)
+    if job_info:
+        return job_info
+
+    # If background task is running
+    if cache_key in active_background_tasks and not active_background_tasks[cache_key].done():
+        return {
+            "status": "processing",
+            "progress_percent": 15.0,
+            "current_part": 2,
+            "total_parts": 30,
+            "stage": "Extracting audio stream in background",
+            "has_artifacts": False,
+            "estimated_seconds_left": 35
+        }
+
+    return {
+        "status": "idle",
+        "progress_percent": 0.0,
+        "current_part": 0,
+        "total_parts": 30,
+        "stage": "Ready to generate",
+        "has_artifacts": False,
+        "estimated_seconds_left": 0
+    }
+
+
+
 # -------------------------------------------------------------------
 # ONLINECOMPILER.IO & MISTRAL AI CODE TA ENDPOINTS
 # -------------------------------------------------------------------

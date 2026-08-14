@@ -235,13 +235,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [video.id, autoCompleted, onAutoComplete, video.duration_seconds]);
 
   useEffect(() => {
-    if (activeTab === 'transcript') {
-      const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
-      const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
+    const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
+    const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
+    const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v3`;
 
-      const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v3`;
+    // 1. If videoArtifacts already has real transcript, use it instantly!
+    if (videoArtifacts?.transcript && videoArtifacts.transcript.length > 50) {
+      setDynamicTranscript(videoArtifacts.transcript);
+      setLoadingTranscript(false);
+      try {
+        localStorage.setItem(cacheKey, videoArtifacts.transcript);
+      } catch {}
+      return;
+    }
+
+    if (activeTab === 'transcript') {
       const savedTranscript = localStorage.getItem(cacheKey);
-      if (savedTranscript && !savedTranscript.includes('Section 1: Core Principles & Definitions') && !savedTranscript.includes('LeetCode workspace problems') && savedTranscript.length > 200) {
+      if (savedTranscript && !savedTranscript.includes('Section 1: Core Principles & Definitions') && savedTranscript.length > 50) {
         setDynamicTranscript(savedTranscript);
         setLoadingTranscript(false);
         return;
@@ -252,21 +262,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       fetch(url)
         .then((r) => r.json())
         .then((data) => {
-          if (data?.transcript) {
+          if (data?.transcript && data.transcript.length > 50) {
             setDynamicTranscript(data.transcript);
-            localStorage.setItem(cacheKey, data.transcript);
-          } else {
-            const fallbackTxt = `[00:00:00] Welcome to ${cleanTitle}.\n[00:02:30] Section 1: Core Principles & Definitions.\n[00:07:15] Section 2: Architectural Walkthrough & Code Implementation.\n[00:11:45] Section 3: Summary & Performance Boundaries (${durationMins} Mins).`;
-            setDynamicTranscript(fallbackTxt);
+            try {
+              localStorage.setItem(cacheKey, data.transcript);
+            } catch {}
           }
         })
-        .catch(() => {
-          const fallbackTxt = `[00:00:00] Welcome to ${cleanTitle}.\n[00:02:30] Section 1: Core Principles & Definitions.\n[00:07:15] Section 2: Architectural Walkthrough & Code Implementation.\n[00:11:45] Section 3: Summary & Performance Boundaries (${durationMins} Mins).`;
-          setDynamicTranscript(fallbackTxt);
+        .catch((err) => {
+          console.warn('[EduStream Transcript Fetch Notice]:', err);
         })
         .finally(() => setLoadingTranscript(false));
     }
-  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds]);
+  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds, videoArtifacts?.transcript]);
 
   const handleRegenerateTranscript = () => {
     setShowRegenModal(false);
@@ -581,7 +589,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {loadingTranscript ? (
                 <span className="text-purple-400 animate-pulse">Generating EduStream AI verbatim speech-to-text transcript...</span>
               ) : (
-                dynamicTranscript || video.transcript || 'EduStream AI Speech Engine processing lecture transcript...'
+                videoArtifacts?.transcript || dynamicTranscript || (video.transcript && !video.transcript.includes('Ingested from Telegram') ? video.transcript : 'EduStream AI Speech Engine processing verbatim lecture transcript...')
               )}
             </div>
           </div>

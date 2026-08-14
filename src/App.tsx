@@ -290,17 +290,22 @@ export function App() {
         .then((statusData) => {
           if (!isMounted) return;
           if (statusData) {
-            setVideoArtifacts((prev: any) => ({
-              ...(prev || {}),
-              ...statusData,
-            }));
-
             if (statusData.status === 'completed' || (typeof statusData.progress_percent === 'number' && statusData.progress_percent >= 100)) {
               // Background task is finished! Fetch complete artifacts
               fetchArtifacts();
             } else {
-              // Continue live progress polling every 1.5 seconds
-              setQuizLoading(true);
+              setVideoArtifacts((prev: any) => {
+                if (prev && prev.notes && prev.transcript) {
+                  return prev; // Keep completed artifacts visible
+                }
+                return {
+                  ...(prev || {}),
+                  ...statusData,
+                };
+              });
+              if (!hasLocalComplete) {
+                setQuizLoading(true);
+              }
               pollTimer = setTimeout(pollStatus, 1500);
             }
           }
@@ -319,12 +324,8 @@ export function App() {
         .then((data) => {
           if (!isMounted) return;
           if (data) {
-            setVideoArtifacts(data);
-            if (data.transcript) {
-              selectedVideo.transcript = data.transcript;
-            }
-            if (data.status === 'completed' && data.mcqs && data.mcqs.length > 0) {
-              const normalizedMCQs = data.mcqs.map((m: any, idx: number) => ({
+            if ((data.status === 'completed' || data.notes) && data.transcript) {
+              const normalizedMCQs = (data.mcqs || []).map((m: any, idx: number) => ({
                 id: m.id || `mcq-${idx + 1}`,
                 type: 'MCQ' as const,
                 question: m.question || `Question ${idx + 1}`,
@@ -332,19 +333,37 @@ export function App() {
                 correct_answer: typeof m.correct_answer === 'number' ? m.correct_answer : 0,
                 explanation: m.explanation || ''
               }));
+              const completeObj = { ...data, mcqs: normalizedMCQs };
+              setVideoArtifacts(completeObj);
+              if (data.transcript) {
+                selectedVideo.transcript = data.transcript;
+              }
               setActiveVideoQuiz(normalizedMCQs);
               selectedVideo.quiz_json = normalizedMCQs;
               setQuizLoading(false);
 
               // Persist into localStorage for instant 0ms access across reloads
               try {
-                localStorage.setItem(localKey, JSON.stringify({ ...data, mcqs: normalizedMCQs }));
+                localStorage.setItem(localKey, JSON.stringify(completeObj));
+                localStorage.setItem(`edustream_artifacts_${selectedVideo.id}`, JSON.stringify(completeObj));
+                localStorage.setItem(`edustream_artifacts_${cleanTitle}`, JSON.stringify(completeObj));
+                localStorage.setItem(`edustream_transcript_${selectedVideo.id || cleanTitle}_v3`, data.transcript);
               } catch (storageErr) {
                 console.warn('[EduStream Local Storage Notice]:', storageErr);
               }
-            } else if (data.status === 'processing' || !data.transcript) {
-              // Backend processing in background — poll status every 1.5s
-              setQuizLoading(true);
+            } else if (data.status === 'processing') {
+              setVideoArtifacts((prev: any) => {
+                if (prev && prev.notes && prev.transcript) {
+                  return prev; // Never overwrite completed state
+                }
+                return {
+                  ...(prev || {}),
+                  ...data,
+                };
+              });
+              if (!hasLocalComplete) {
+                setQuizLoading(true);
+              }
               pollTimer = setTimeout(pollStatus, 1500);
             } else {
               setQuizLoading(false);
@@ -354,7 +373,7 @@ export function App() {
         .catch((err) => {
           console.warn('[EduStream Artifact Fetch Notice]:', err);
           if (isMounted) {
-            pollTimer = setTimeout(pollStatus, 2000);
+            pollTimer = setTimeout(pollStatus, 2500);
           }
         });
     };
