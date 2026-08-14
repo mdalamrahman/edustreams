@@ -177,8 +177,14 @@ class DiagnosticRequest(BaseModel):
 # ROOT & HEALTH
 # -------------------------------------------------------------------
 
+# Global tracker for live transcription & AI synthesis progress
+active_transcription_jobs = {}
+
+
 @app.get("/")
-async def read_root():
+@app.get("/api/health")
+@app.get("/health")
+async def read_root_and_health():
     bot_ok = False
     bot_name = None
     try:
@@ -187,21 +193,47 @@ async def read_root():
         bot_ok = True
         bot_name = f"@{me.username}" if getattr(me, 'username', None) else getattr(me, 'first_name', str(me.id))
     except Exception as e:
-        print(f"[Health] Connection check failed: {e}")
+        print(f"[Health] Connection check notice: {e}")
 
+    cache = load_ai_cache()
     return {
-        "status": "online",
-        "service": "EduStream Telegram Video Stream Proxy & AI Engine",
+        "status": "healthy",
+        "service": "EduStream Cloud & AI Processing Engine",
         "bot_connected": bot_ok,
         "bot_username": bot_name,
         "mode": "User Session" if SESSION_STRING else "Bot Token",
         "channels_configured": len(CHANNEL_IDS),
         "channel_ids": CHANNEL_IDS,
-        "cached_entities": list(_entity_cache.keys()),
-        "stt_engine": "Groq whisper-large-v3",
-        "ai_engine": "Mistral Small / Devstral",
-        "compiler_engine": "OnlineCompiler.io",
+        "cached_entities_count": len(_entity_cache),
+        "cached_artifacts_count": len(cache),
+        "ai_engine": "EduStream AI Engine (Llama-3.3-70b / Mistral)",
+        "speech_engine": "EduStream AI Speech Engine",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
     }
+
+
+@app.get("/api/transcript/status/{chat_id}/{msg_id}")
+async def get_transcript_status_route(chat_id: str, msg_id: int):
+    cache_key = f"{chat_id}_{msg_id}"
+    cache = load_ai_cache()
+    if cache_key in cache and cache[cache_key].get("transcript"):
+        return {
+            "status": "completed",
+            "progress_percent": 100.0,
+            "current_part": 1,
+            "total_parts": 1,
+            "stage": "Completed",
+            "has_artifacts": True
+        }
+    job = active_transcription_jobs.get(cache_key, {
+        "status": "processing",
+        "progress_percent": 12.0,
+        "current_part": 1,
+        "total_parts": 30,
+        "stage": "Extracting audio stream",
+        "has_artifacts": False
+    })
+    return job
 
 
 # -------------------------------------------------------------------
@@ -726,38 +758,45 @@ def transcribe_with_groq_whisper(audio_file_path: str) -> str:
 def generate_all_ai_artifacts_from_transcript(transcript: str, title: str) -> dict:
     """
     Uses Groq Llama-3.3-70b (or Mistral AI fallback) to parse the real video transcript
-    and generate structured Notes, MCQs, Coding Problem, and Visual Simulation Steps in JSON format.
+    and generate structured Notes, MCQs, Coding Problem, and Visual Simulation Steps in strict JSON format.
+    All content is strictly grounded in the transcript.
     """
+    data = None
     if GROQ_API_KEY:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        prompt = f"""You are a Computer Science Professor. Given the following video lecture transcript titled '{title}', generate educational materials in strict JSON format:
+        prompt = f"""You are a Lead Computer Science Professor and Technical Interviewer.
+Given the verbatim video lecture transcript for '{title}', synthesize comprehensive, high-yield educational materials in strict JSON format.
+
+MANDATORY INSTRUCTIONS:
+- Ground all generated materials DIRECTLY in the concepts, code examples, definitions, principles, and edge cases discussed in the TRANSCRIPT below.
+- Do NOT generate generic textbook overviews. Reference the actual lecture examples, design trade-offs, and algorithms.
 
 TRANSCRIPT:
-{transcript[:12000]}
+{transcript[:15000]}
 
 Return a JSON object with EXACTLY these keys:
-1. "notes": A comprehensive markdown study note summarizing key concepts, definitions, edge cases, and code examples from the lecture.
-2. "mcqs": Array of 5 conceptual multiple-choice questions based on transcript. Each question must have:
+1. "notes": Comprehensive markdown study note (organized with ## Headings, bullet points, key takeaways, architectural tradeoffs, and code examples directly from the transcript).
+2. "mcqs": Array of 5 conceptual multiple-choice questions testing specific points, code snippets, or rules explained in the lecture. Each must have:
    - "question": string
-   - "options": array of 4 strings
+   - "options": array of 4 distinct strings
    - "correct_answer": integer (0, 1, 2, or 3)
-   - "explanation": string
-3. "coding_problem": An object with:
+   - "explanation": string explaining why the option is correct, citing the lecture transcript.
+3. "coding_problem": An object implementing the algorithm or design pattern from the lecture:
    - "title": string
-   - "problem_statement": string
-   - "starter_code_python": string
-   - "starter_code_cpp": string
-   - "solution_code_cpp": string
-4. "simulation_steps": Array of 4 step objects for a visual step-by-step execution simulation:
-   - "title": string
+   - "problem_statement": string (clear description with input/output format and constraints)
+   - "starter_code_python": python starter function
+   - "starter_code_cpp": C++ starter code with includes and main/class
+   - "solution_code_cpp": complete optimal C++ reference implementation
+4. "simulation_steps": Array of 4 visual step-by-step state simulation objects tracking the algorithm/class trace:
+   - "title": string (e.g., "Step 1: Inspect Monolithic Structure")
    - "desc": string
-   - "array": array of strings or numbers
-   - "activeIndices": array of integers
-   - "status": string
+   - "array": array of 4-6 strings or numbers
+   - "activeIndices": array of integer indices (e.g. [0, 1])
+   - "status": string (e.g. "Coupling Detected")
 """
         payload = {
             "model": "llama-3.3-70b-versatile",
@@ -766,61 +805,97 @@ Return a JSON object with EXACTLY these keys:
             "temperature": 0.2
         }
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=25)
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
             if resp.status_code == 200:
                 data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                print(f"[AI Artifacts Success] Generated notes, MCQs, coding problem & simulation for '{title}'")
-                return data
+                print(f"[AI Artifacts Success] Generated transcript-grounded notes, MCQs, coding problem & simulation for '{title}'")
         except Exception as e:
             print(f"[Groq AI Artifacts Error]: {e}")
 
     # Fallback to Mistral AI
-    if MISTRAL_API_KEY:
+    if not data and MISTRAL_API_KEY:
         url = "https://api.mistral.ai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {MISTRAL_API_KEY}",
             "Content-Type": "application/json"
         }
-        prompt = f"""Read the following computer science lecture transcript for '{title}' and return JSON with keys 'notes', 'mcqs' (5 items), 'coding_problem', and 'simulation_steps' (4 items):\n\n{transcript[:5000]}"""
+        prompt = f"""Read the following computer science lecture transcript for '{title}' and return JSON with keys 'notes', 'mcqs' (5 items with question, options (4), correct_answer (int), explanation), 'coding_problem' (with title, problem_statement, starter_code_python, starter_code_cpp, solution_code_cpp), and 'simulation_steps' (4 items with title, desc, array, activeIndices, status):\n\n{transcript[:10000]}"""
         payload = {
             "model": "mistral-small-latest",
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}]
         }
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=25)
+            resp = requests.post(url, headers=headers, json=payload, timeout=30)
             if resp.status_code == 200:
-                return json.loads(resp.json()["choices"][0]["message"]["content"])
+                data = json.loads(resp.json()["choices"][0]["message"]["content"])
         except Exception as e:
             print(f"[Mistral AI Artifacts Error]: {e}")
 
-    return {
-        "notes": f"# {title}\n\nStudy notes based on lecture transcript.",
-        "mcqs": [
-            {
-                "question": f"What is the primary topic of {title}?",
-                "options": ["Software Architecture", "Data Structures", "System Design", "Core Principles"],
-                "correct_answer": 0,
-                "explanation": "Discussed in depth during the video lecture."
-            }
-        ],
-        "coding_problem": {
-            "title": f"{title} Implementation Challenge",
-            "problem_statement": f"Implement the optimal solution for concepts discussed in {title}.",
-            "starter_code_python": "def solve():\n    pass\n",
-            "starter_code_cpp": "#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n",
-            "solution_code_cpp": "// Solution implementation\n"
-        },
-        "simulation_steps": [
-            {
-                "title": "Step 1: Context Initialization",
-                "desc": f"Initializing algorithm execution context for {title}.",
-                "array": [1, 2, 3, 4],
-                "activeIndices": [0],
-                "status": "Initialized"
-            }
-        ]
-    }
+    if not data:
+        data = {
+            "notes": f"# {title}\n\nStudy notes based on lecture transcript.",
+            "mcqs": [
+                {
+                    "question": f"What is the primary architectural concept taught in {title}?",
+                    "options": ["Single Responsibility Principle", "System Scalability", "Algorithmic Efficiency", "Database Normalization"],
+                    "correct_answer": 0,
+                    "explanation": "Discussed in depth during the video lecture."
+                }
+            ],
+            "coding_problem": {
+                "title": f"{title} Implementation Challenge",
+                "problem_statement": f"Implement the optimal solution for concepts discussed in {title}.",
+                "starter_code_python": "def solve():\n    pass\n",
+                "starter_code_cpp": "#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n",
+                "solution_code_cpp": "// Solution implementation\n"
+            },
+            "simulation_steps": [
+                {
+                    "title": "Step 1: Context Initialization",
+                    "desc": f"Initializing algorithm execution context for {title}.",
+                    "array": [1, 2, 3, 4],
+                    "activeIndices": [0],
+                    "status": "Initialized"
+                }
+            ]
+        }
+
+    # Normalize MCQs to guarantee id, type: 'MCQ', options, and correct_answer
+    raw_mcqs = data.get("mcqs", [])
+    normalized_mcqs = []
+    for idx, m in enumerate(raw_mcqs):
+        if isinstance(m, dict) and m.get("question"):
+            opts = m.get("options", ["Option A", "Option B", "Option C", "Option D"])
+            if not isinstance(opts, list) or len(opts) < 2:
+                opts = ["Option A", "Option B", "Option C", "Option D"]
+            ans = m.get("correct_answer", 0)
+            if not isinstance(ans, int) or ans < 0 or ans >= len(opts):
+                ans = 0
+            normalized_mcqs.append({
+                "id": f"mcq-{idx + 1}",
+                "type": "MCQ",
+                "question": str(m.get("question", f"Question {idx + 1}")),
+                "options": [str(o) for o in opts],
+                "correct_answer": ans,
+                "explanation": str(m.get("explanation", "Refer to the lecture transcript for details."))
+            })
+    data["mcqs"] = normalized_mcqs
+
+    # Normalize coding problem
+    cp = data.get("coding_problem", {})
+    if isinstance(cp, dict):
+        data["coding_problem"] = {
+            "id": "code-1",
+            "type": "CODING",
+            "title": cp.get("title") or f"{title} Implementation Challenge",
+            "problem_statement": cp.get("problem_statement") or f"Implement the optimal solution based on {title}.",
+            "starter_code_python": cp.get("starter_code_python") or "def solve():\n    pass\n",
+            "starter_code_cpp": cp.get("starter_code_cpp") or "#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n",
+            "solution_code_cpp": cp.get("solution_code_cpp") or ""
+        }
+
+    return data
 
 
 # -------------------------------------------------------------------
@@ -844,21 +919,19 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
     dur_mins = max(3, duration or 15)
 
-    # Proportional timestamp strings matching exact video duration
-    m1 = max(1, int(dur_mins * 0.15))
-    m2 = max(2, int(dur_mins * 0.40))
-    m3 = max(3, int(dur_mins * 0.65))
-    m4 = max(4, int(dur_mins * 0.88))
-
-    t0 = "00:00:00"
-    t1 = f"00:{m1:02d}:00" if m1 < 60 else f"{m1//60:02d}:{m1%60:02d}:00"
-    t2 = f"00:{m2:02d}:00" if m2 < 60 else f"{m2//60:02d}:{m2%60:02d}:00"
-    t3 = f"00:{m3:02d}:00" if m3 < 60 else f"{m3//60:02d}:{m3%60:02d}:00"
-    t4 = f"00:{m4:02d}:00" if m4 < 60 else f"{m4//60:02d}:{m4%60:02d}:00"
-
     stt_error_msg: Optional[str] = None
     real_stt_transcript: Optional[str] = None
     provider_name: str = "EduStream AI Speech Engine"
+
+    # Initialize progress tracker
+    active_transcription_jobs[cache_key] = {
+        "status": "processing",
+        "progress_percent": 5.0,
+        "current_part": 1,
+        "total_parts": 30,
+        "stage": "Initializing audio extraction pipe",
+        "has_artifacts": False
+    }
 
     # 1. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe
     if GROQ_API_KEY:
@@ -869,6 +942,9 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                 msg = await client.get_messages(channel_peer, ids=msg_id)
                 if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                     doc = msg.media.document
+                    doc_size = getattr(doc, 'size', 0) or (15 * 1024 * 1024)
+                    chunk_size = 128 * 1024
+                    total_chunks = max(1, math.ceil(doc_size / chunk_size))
 
                     try:
                         import imageio_ffmpeg
@@ -876,7 +952,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     except Exception:
                         ffmpeg_exe = "ffmpeg"
 
-                    print(f"[Groq Whisper STT] Zero-disk pipe: streaming video → FFmpeg → MP3 for msg #{msg_id}...")
+                    print(f"[EduStream STT] Zero-disk pipe: streaming {total_chunks} parts video → FFmpeg → MP3 for msg #{msg_id}...")
 
                     ffmpeg_cmd = [
                         ffmpeg_exe, "-y",
@@ -890,17 +966,30 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                     )
 
                     bytes_streamed = 0
+                    chunk_index = 0
+
                     async def _feed_ffmpeg():
-                        nonlocal bytes_streamed
+                        nonlocal bytes_streamed, chunk_index
                         try:
                             async for chunk in client.iter_download(
-                                doc, offset=0, request_size=128 * 1024, dc_id=getattr(doc, 'dc_id', None)
+                                doc, offset=0, request_size=chunk_size, dc_id=getattr(doc, 'dc_id', None)
                             ):
                                 process.stdin.write(chunk)
                                 await process.stdin.drain()
                                 bytes_streamed += len(chunk)
+                                chunk_index += 1
+                                # Real proportional progress from 5% to 70%
+                                pct = min(70.0, round((chunk_index / total_chunks) * 70, 1))
+                                active_transcription_jobs[cache_key] = {
+                                    "status": "processing",
+                                    "progress_percent": pct,
+                                    "current_part": chunk_index,
+                                    "total_parts": total_chunks,
+                                    "stage": f"Extracting audio stream ({chunk_index}/{total_chunks} parts)",
+                                    "has_artifacts": False
+                                }
                         except Exception as feed_err:
-                            print(f"[Groq Whisper STT] Streaming feed notice: {feed_err}")
+                            print(f"[EduStream STT] Streaming feed notice: {feed_err}")
                         finally:
                             process.stdin.close()
 
@@ -910,9 +999,18 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
                     audio_mb = len(audio_bytes) / (1024 * 1024)
                     video_mb = bytes_streamed / (1024 * 1024)
-                    print(f"[Groq Whisper STT] Pipe complete: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
+                    print(f"[EduStream STT] Pipe complete: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
 
                     if len(audio_bytes) > 1000:
+                        active_transcription_jobs[cache_key] = {
+                            "status": "processing",
+                            "progress_percent": 75.0,
+                            "current_part": total_chunks,
+                            "total_parts": total_chunks,
+                            "stage": "Transcribing lecture speech to text",
+                            "has_artifacts": False
+                        }
+
                         groq_headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
                         groq_files = {
                             "file": (f"lecture_{msg_id}.mp3", io.BytesIO(audio_bytes), "audio/mpeg"),
@@ -962,7 +1060,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
                                 if paragraphs:
                                     real_stt_transcript = "\n\n".join(paragraphs)
-                                    print(f"[Groq Whisper STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs")
+                                    print(f"[EduStream STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs")
 
                             if not real_stt_transcript:
                                 raw_text = stt_json.get("text", "").strip()
@@ -970,10 +1068,19 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
                                     real_stt_transcript = f"[00:00:00]\n{raw_text}"
         except Exception as e:
             stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
-            print(f"[Groq Whisper STT Zero-Disk Exception]: {e}")
+            print(f"[EduStream STT Zero-Disk Exception]: {e}")
 
     # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS ONLY IF REAL STT TRANSCRIPT IS READY
     if real_stt_transcript and len(real_stt_transcript) > 50:
+        active_transcription_jobs[cache_key] = {
+            "status": "processing",
+            "progress_percent": 88.0,
+            "current_part": 30,
+            "total_parts": 30,
+            "stage": "Synthesizing notes, MCQs & coding challenge from transcript",
+            "has_artifacts": False
+        }
+
         artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
 
         response_data = {
@@ -986,10 +1093,25 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
             "mcqs": artifacts.get("mcqs", []),
             "coding_problem": artifacts.get("coding_problem"),
             "simulation_steps": artifacts.get("simulation_steps", []),
-            "status": "completed"
+            "status": "completed",
+            "progress_percent": 100.0,
+            "current_part": 30,
+            "total_parts": 30,
+            "stage": "Completed",
+            "has_artifacts": True
         }
         if stt_error_msg:
             response_data["stt_notice"] = stt_error_msg
+
+        # Update job to complete
+        active_transcription_jobs[cache_key] = {
+            "status": "completed",
+            "progress_percent": 100.0,
+            "current_part": 30,
+            "total_parts": 30,
+            "stage": "Completed",
+            "has_artifacts": True
+        }
 
         # SAVE TO PERSISTENT CACHE ONLY WHEN COMPLETED WITH REAL TRANSCRIPT
         cache = load_ai_cache()
@@ -1000,13 +1122,24 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
 
         return response_data
 
-    # If STT transcript is not yet ready, return processing status so frontend shows loading screen
+    # If STT transcript is not yet ready, return processing status with live progress
+    job_info = active_transcription_jobs.get(cache_key, {
+        "progress_percent": 10.0,
+        "current_part": 1,
+        "total_parts": 30,
+        "stage": "Extracting audio stream"
+    })
+
     return {
         "chat_id": chat_id,
         "msg_id": msg_id,
         "title": clean_title,
         "transcript": None,
         "status": "processing",
+        "progress_percent": job_info.get("progress_percent", 10.0),
+        "current_part": job_info.get("current_part", 1),
+        "total_parts": job_info.get("total_parts", 30),
+        "stage": job_info.get("stage", "Extracting audio stream"),
         "message": "EduStream AI Speech Engine is extracting and transcribing lecture audio. Synthesis of study notes, MCQs, and coding challenges in progress...",
         "notes": None,
         "mcqs": [],

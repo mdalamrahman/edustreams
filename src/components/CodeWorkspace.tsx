@@ -31,6 +31,10 @@ interface CodeWorkspaceProps {
     solution_code_cpp?: string;
   } | null;
   isLoading?: boolean;
+  progressPercent?: number;
+  currentPart?: number;
+  totalParts?: number;
+  stage?: string;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
@@ -93,7 +97,17 @@ const MONACO_LANG_MAP: Record<SupportedLanguage, string> = {
   sql: 'sql'
 };
 
-export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodingQuestions = [], codingProblem, isLoading, onCodeExecuted }) => {
+export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ 
+  question, 
+  allCodingQuestions = [], 
+  codingProblem, 
+  isLoading, 
+  progressPercent,
+  currentPart,
+  totalParts,
+  stage,
+  onCodeExecuted 
+}) => {
   const codingList = allCodingQuestions.length > 0 ? allCodingQuestions : (question ? [question] : []);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const activeQ = codingList[activeQuestionIdx] || question;
@@ -132,7 +146,16 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({ question, allCodin
   }, [activeQ?.id, activeQ?.starter_code]);
 
   if (isLoading || (!codingProblem && codingList.length === 0)) {
-    return <AIProcessingStatusCard videoTitle={codingProblem?.title || activeQ?.question || 'Lecture Coding Challenge'} durationSeconds={900} />;
+    return (
+      <AIProcessingStatusCard 
+        videoTitle={codingProblem?.title || activeQ?.question || 'Lecture Coding Challenge'} 
+        durationSeconds={900} 
+        progressPercent={progressPercent}
+        currentPart={currentPart}
+        totalParts={totalParts}
+        stage={stage}
+      />
+    );
   }
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {

@@ -271,13 +271,21 @@ export function App() {
               selectedVideo.transcript = data.transcript;
             }
             if (data.status === 'completed' && data.mcqs && data.mcqs.length > 0) {
-              setActiveVideoQuiz(data.mcqs);
-              selectedVideo.quiz_json = data.mcqs;
+              const normalizedMCQs = data.mcqs.map((m: any, idx: number) => ({
+                id: m.id || `mcq-${idx + 1}`,
+                type: 'MCQ' as const,
+                question: m.question || `Question ${idx + 1}`,
+                options: Array.isArray(m.options) ? m.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+                correct_answer: typeof m.correct_answer === 'number' ? m.correct_answer : 0,
+                explanation: m.explanation || ''
+              }));
+              setActiveVideoQuiz(normalizedMCQs);
+              selectedVideo.quiz_json = normalizedMCQs;
               setQuizLoading(false);
             } else if (data.status === 'processing' || !data.transcript) {
-              // Still processing on backend — keep quizLoading true and poll again in 5s
+              // Still processing on backend — keep quizLoading true and poll again in 4s
               setQuizLoading(true);
-              pollTimer = setTimeout(fetchArtifacts, 5000);
+              pollTimer = setTimeout(fetchArtifacts, 4000);
             } else {
               setQuizLoading(false);
             }
@@ -388,8 +396,26 @@ export function App() {
     );
   }
 
-  const activeCodingQuestion = activeVideoQuiz.find((q) => q.type === 'CODING');
-  const activeMCQs = activeVideoQuiz.filter((q) => q.type === 'MCQ');
+  const rawMCQs = activeVideoQuiz.length > 0 ? activeVideoQuiz : (videoArtifacts?.mcqs || []);
+  const activeMCQs: QuizQuestion[] = rawMCQs.map((q: any, idx: number) => ({
+    id: q.id || `mcq-${idx + 1}`,
+    type: 'MCQ' as const,
+    question: q.question || `Question ${idx + 1}`,
+    options: Array.isArray(q.options) ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+    correct_answer: typeof q.correct_answer === 'number' ? q.correct_answer : 0,
+    explanation: q.explanation || ''
+  }));
+
+  const activeCodingQuestion: QuizQuestion | undefined = videoArtifacts?.coding_problem
+    ? {
+        id: 'code-1',
+        type: 'CODING' as const,
+        question: videoArtifacts.coding_problem.problem_statement || videoArtifacts.coding_problem.title || 'Lecture Challenge',
+        starter_code: videoArtifacts.coding_problem.starter_code_cpp || videoArtifacts.coding_problem.starter_code_python,
+        solution_code: videoArtifacts.coding_problem.solution_code_cpp,
+        explanation: videoArtifacts.coding_problem.title
+      }
+    : activeVideoQuiz.find((q) => q.type === 'CODING');
   const activeChannelObj = MOCK_CHANNELS.find((c) => c.id === selectedChannelId) || MOCK_CHANNELS[0];
 
   return (
@@ -653,6 +679,10 @@ export function App() {
                     question={activeCodingQuestion}
                     allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
                     isLoading={quizLoading}
+                    progressPercent={videoArtifacts?.progress_percent}
+                    currentPart={videoArtifacts?.current_part}
+                    totalParts={videoArtifacts?.total_parts}
+                    stage={videoArtifacts?.stage}
                     onCodeExecuted={handleQuestionSolved}
                   />
                 ) : (
@@ -660,6 +690,10 @@ export function App() {
                     questions={activeMCQs}
                     videoTitle={selectedVideo.title}
                     durationSeconds={selectedVideo.duration_seconds}
+                    progressPercent={videoArtifacts?.progress_percent}
+                    currentPart={videoArtifacts?.current_part}
+                    totalParts={videoArtifacts?.total_parts}
+                    stage={videoArtifacts?.stage}
                     onQuizSubmitted={handleQuestionSolved}
                     onAttemptMoreQuestions={handleAttemptMoreQuestions}
                     isGeneratingMore={isGeneratingMoreQuiz}

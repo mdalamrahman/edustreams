@@ -46,6 +46,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onAutoComplete
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -56,6 +57,43 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'notes_sim'>('caption');
   const [streamError, setStreamError] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const hideControlsTimer = useRef<any>(null);
+
+  const triggerShowControls = () => {
+    setShowControls(true);
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = setTimeout(() => {
+      if (isPlaying) setShowControls(false);
+    }, 3500);
+  };
+
+  const handleToggleFullscreen = () => {
+    const videoEl = videoRef.current as any;
+    const containerEl = containerRef.current as any;
+
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+      return;
+    }
+
+    if (videoEl?.webkitEnterFullscreen) {
+      // iOS Safari native video fullscreen
+      videoEl.webkitEnterFullscreen();
+    } else if (containerEl?.requestFullscreen) {
+      containerEl.requestFullscreen().catch(() => {
+        if (videoEl?.requestFullscreen) videoEl.requestFullscreen().catch(() => {});
+      });
+    } else if (containerEl?.webkitRequestFullscreen) {
+      containerEl.webkitRequestFullscreen();
+    } else if (videoEl?.requestFullscreen) {
+      videoEl.requestFullscreen().catch(() => {});
+    }
+  };
 
   // Build the real Telegram stream URL from channel_id + message_id via HF backend
   const streamSrc = getStreamUrl(video.channel_id, video.telegram_message_id || 0);
@@ -317,18 +355,32 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           )}
 
           <button
+            onClick={handleToggleFullscreen}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all shadow-md active:scale-95"
+            title="Toggle Fullscreen Video"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Fullscreen</span>
+          </button>
+
+          <button
             onClick={handleDownloadVideoFile}
             className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-all shadow-md"
             title="Download Video File directly to disk"
           >
             <DownloadCloud className="w-3.5 h-3.5" />
-            <span>Download .MP4 File</span>
+            <span className="hidden sm:inline">Download</span>
           </button>
         </div>
       </div>
 
-      {/* Main Video Viewport — REAL TELEGRAM VIDEO via HF Telethon Backend */}
-      <div className="relative aspect-video bg-black group">
+      {/* Main Video Viewport — REAL TELEGRAM VIDEO via Telethon MTProto Stream */}
+      <div
+        ref={containerRef}
+        onClick={triggerShowControls}
+        onMouseMove={triggerShowControls}
+        className="relative aspect-video bg-black group overflow-hidden select-none"
+      >
         {streamError || !streamSrc ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-slate-300 p-6 text-center">
             <div className="w-14 h-14 rounded-full bg-indigo-950 border-2 border-indigo-600 flex items-center justify-center text-indigo-400 mb-4 animate-pulse">
@@ -343,7 +395,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Telethon Connection</span>
+              <span>Retry Connection</span>
             </button>
           </div>
         ) : (
@@ -375,21 +427,29 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none">
                 <div className="flex flex-col items-center space-y-2">
                   <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-mono text-indigo-300 font-bold">Telethon MTProto Ingesting Bytes...</span>
+                  <span className="text-xs font-mono text-indigo-300 font-bold">EduStream Streaming Bytes...</span>
                 </div>
               </div>
             )}
 
             {!isPlaying && !streamError && !isLoadingStream && (
-              <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center cursor-pointer" onClick={togglePlay}>
+              <div
+                className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  togglePlay();
+                }}
+              >
                 <div className="w-16 h-16 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center text-white shadow-2xl shadow-indigo-600/50 transition-transform transform hover:scale-110">
                   <Play className="w-8 h-8 fill-current ml-1" />
                 </div>
               </div>
             )}
 
-            {/* Overlay Video Controls */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Overlay Video Controls (Mobile-aware touch toggle & hover) */}
+            <div className={`absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent transition-all duration-300 ${
+              showControls || !isPlaying ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none md:group-hover:opacity-100 md:group-hover:translate-y-0 md:group-hover:pointer-events-auto'
+            }`}>
               <input
                 type="range"
                 min="0"
@@ -397,46 +457,47 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 step="0.1"
                 value={currentTime}
                 onChange={handleSeek}
-                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 mb-3"
+                className="w-full h-2 bg-slate-700/80 rounded-lg appearance-none cursor-pointer accent-indigo-500 mb-3"
               />
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <button onClick={togglePlay} className="text-slate-200 hover:text-white transition-colors">
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors"
+                  >
+                    {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
 
-                  <button onClick={() => setIsMuted(!isMuted)} className="text-slate-200 hover:text-white transition-colors">
-                    {isMuted ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5" />}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors"
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
 
-                  <span className="text-xs text-slate-300 font-mono">
+                  <span className="text-[11px] sm:text-xs text-slate-300 font-mono">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1 bg-slate-900 border border-slate-800 rounded-lg px-2 py-0.5 text-xs text-slate-300">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="flex items-center space-x-0.5 bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-0.5 text-xs text-slate-300">
                     {[1, 1.25, 1.5, 2].map((speed) => (
                       <button
                         key={speed}
-                        onClick={() => handleSpeedChange(speed)}
-                        className={`px-1.5 py-0.5 rounded font-mono ${playbackSpeed === speed ? 'bg-indigo-600 text-white font-bold' : 'hover:text-slate-100'}`}
+                        onClick={(e) => { e.stopPropagation(); handleSpeedChange(speed); }}
+                        className={`px-1.5 py-0.5 rounded font-mono text-[11px] sm:text-xs ${playbackSpeed === speed ? 'bg-indigo-600 text-white font-bold' : 'hover:text-slate-100'}`}
                       >
                         {speed}x
                       </button>
                     ))}
                   </div>
 
-                  {/* Render Backend connection indicator */}
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400" title={`Streaming via ${TELEGRAM_BACKEND_URL}`}>
-                    <Wifi className="w-3 h-3" />
-                    <span className="hidden xl:inline">Render Live</span>
-                  </div>
-
                   <button
-                    onClick={() => videoRef.current?.requestFullscreen()}
-                    className="text-slate-300 hover:text-white transition-colors"
+                    onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }}
+                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-indigo-600 text-slate-200 hover:text-white transition-colors border border-slate-700"
+                    title="Fullscreen"
                   >
                     <Maximize className="w-4 h-4" />
                   </button>

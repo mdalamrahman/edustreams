@@ -4,28 +4,49 @@ import { Sparkles, Clock, CheckCircle2, Loader2, Cpu, Mic, BookOpen } from 'luci
 interface AIProcessingStatusCardProps {
   videoTitle: string;
   durationSeconds?: number;
+  progressPercent?: number;
+  currentPart?: number;
+  totalParts?: number;
+  stage?: string;
 }
 
-export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({ videoTitle, durationSeconds = 900 }) => {
+export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({
+  videoTitle,
+  durationSeconds = 900,
+  progressPercent: serverProgress,
+  currentPart,
+  totalParts = 30,
+  stage: serverStage
+}) => {
   // Estimated total processing time: ~30 to 90 seconds based on video duration
   const totalEstimatedSeconds = Math.max(30, Math.min(120, Math.round(durationSeconds / 15)));
-  const [secondsRemaining, setSecondsRemaining] = useState(totalEstimatedSeconds);
-  const [progressPercent, setProgressPercent] = useState(10);
+  const [localSecondsRemaining, setLocalSecondsRemaining] = useState(totalEstimatedSeconds);
+  const [localProgressPercent, setLocalProgressPercent] = useState(10);
 
   useEffect(() => {
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const remaining = Math.max(0, totalEstimatedSeconds - elapsed);
-      setSecondsRemaining(remaining);
+      setLocalSecondsRemaining(remaining);
 
-      // Smooth progress calculation from 10% to 92% (leaves room for completion)
-      const calculatedProgress = Math.min(92, Math.round(10 + (elapsed / totalEstimatedSeconds) * 82));
-      setProgressPercent(calculatedProgress);
+      // Smooth progress calculation from 10% to 95%
+      const calculatedProgress = Math.min(95, Math.round(10 + (elapsed / totalEstimatedSeconds) * 85));
+      setLocalProgressPercent(calculatedProgress);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [totalEstimatedSeconds]);
+
+  // Use server progress if available, otherwise use smooth local progress
+  const displayProgress = typeof serverProgress === 'number' && serverProgress > 0
+    ? Math.min(100, Math.round(serverProgress))
+    : localProgressPercent;
+
+  // Calculate estimated seconds remaining based on actual parts or time
+  const secondsRemaining = (currentPart && totalParts && totalParts > 0)
+    ? Math.max(3, Math.round(((totalParts - currentPart) / totalParts) * totalEstimatedSeconds))
+    : localSecondsRemaining;
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -34,7 +55,7 @@ export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({ 
   };
 
   // Compute current active step based on progress
-  const step = progressPercent < 45 ? 1 : progressPercent < 80 ? 2 : 3;
+  const step = displayProgress < 70 ? 1 : displayProgress < 85 ? 2 : 3;
 
   return (
     <div className="h-full flex flex-col justify-center items-center p-6 sm:p-8 glass-panel rounded-3xl border border-indigo-500/30 bg-gradient-to-b from-slate-900/90 via-indigo-950/40 to-slate-950 shadow-2xl relative overflow-hidden text-center space-y-6">
@@ -55,30 +76,43 @@ export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({ 
           Transcribing & Synthesizing AI Artifacts
         </h3>
         <p className="text-xs text-slate-400 leading-relaxed font-sans">
-          Extracting speech from <span className="text-indigo-300 font-semibold">{videoTitle}</span> and creating lecture notes, 5 conceptual MCQs, and coding challenges.
+          {serverStage ? (
+            <span className="text-indigo-300 font-semibold">{serverStage}</span>
+          ) : (
+            <>Extracting speech from <span className="text-indigo-300 font-semibold">{videoTitle}</span> and synthesizing study materials.</>
+          )}
         </p>
       </div>
 
-      {/* Live Estimated Countdown Counter */}
-      <div className="flex items-center justify-center space-x-3 bg-slate-950/80 px-5 py-2.5 rounded-2xl border border-slate-800 shadow-lg">
-        <Clock className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
-        <span className="text-xs text-slate-300 font-mono">Estimated Time Remaining:</span>
-        <span className="text-sm font-mono font-extrabold text-amber-300 tracking-wider">
-          {formatTime(secondsRemaining)}
-        </span>
+      {/* Live Estimated Countdown Counter & Parts Badge */}
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <div className="flex items-center space-x-2.5 bg-slate-950/80 px-4 py-2 rounded-2xl border border-slate-800 shadow-lg">
+          <Clock className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+          <span className="text-xs text-slate-300 font-mono">Estimated Time:</span>
+          <span className="text-sm font-mono font-extrabold text-amber-300 tracking-wider">
+            ~{formatTime(secondsRemaining)}
+          </span>
+        </div>
+
+        {currentPart && totalParts && (
+          <div className="flex items-center space-x-2 bg-indigo-950/70 border border-indigo-700/50 px-3.5 py-2 rounded-2xl text-xs font-mono text-indigo-300 shadow-lg">
+            <span className="font-bold text-indigo-200">Part {currentPart} of {totalParts}</span>
+            <span className="text-slate-500">({(100 / totalParts).toFixed(1)}% / part)</span>
+          </div>
+        )}
       </div>
 
       {/* Animated Step Progress Bar */}
       <div className="w-full max-w-sm space-y-2">
         <div className="flex justify-between items-center text-xs font-mono font-bold text-slate-400 px-1">
           <span>Processing Step {step} of 3</span>
-          <span className="text-indigo-400">{progressPercent}%</span>
+          <span className="text-indigo-400 font-extrabold text-sm">{displayProgress}%</span>
         </div>
         
-        <div className="w-full h-3 rounded-full bg-slate-950 border border-slate-800 p-0.5 overflow-hidden relative">
+        <div className="w-full h-3.5 rounded-full bg-slate-950 border border-slate-800 p-0.5 overflow-hidden relative">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 transition-all duration-700 shadow-md shadow-indigo-500/30 relative"
-            style={{ width: `${progressPercent}%` }}
+            className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 transition-all duration-500 shadow-md shadow-indigo-500/30 relative"
+            style={{ width: `${displayProgress}%` }}
           >
             <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
           </div>

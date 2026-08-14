@@ -25,6 +25,10 @@ interface AINotesAndSimulationProps {
   videoArtifacts?: {
     notes?: string;
     simulation_steps?: any[];
+    progress_percent?: number;
+    current_part?: number;
+    total_parts?: number;
+    stage?: string;
   } | null;
   isLoading?: boolean;
 }
@@ -58,47 +62,76 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
       status: 'Refactoring Required'
     },
     {
-      title: 'Step 3: Refactoring into Single-Responsibility Classes',
-      desc: `Decomposing into 3 SRP-compliant classes: Invoice (Business Data), InvoiceRepository (Persistence), and EmailService (Notifications).`,
-      array: ['Invoice', 'InvoiceRepo', 'EmailService'],
-      activeIndices: [0, 1, 2],
-      status: 'SRP Decomposition'
+      title: 'Step 3: Extracting Database Persistence Layer',
+      desc: `Separated InvoiceDao class created with saveToDatabase() method. Database changes no longer alter Invoice core logic.`,
+      array: ['Invoice', 'InvoiceDao', 'Email'],
+      activeIndices: [1],
+      status: 'Database Decoupled'
     },
     {
-      title: 'Step 4: Clean Architecture & Unit Test Isolation Verified',
-      desc: `Each class has exactly 1 reason to change. Independent mock testing and modular extension achieved!`,
-      array: ['Invoice', 'InvoiceRepo', 'EmailService'],
+      title: 'Step 4: Extracting Notification Service',
+      desc: `Separated InvoiceNotification class created. Each class now has ONLY ONE reason to change. Full SRP adherence achieved!`,
+      array: ['Invoice', 'InvoiceDao', 'Notification'],
       activeIndices: [0, 1, 2],
-      status: 'COMPLETED — Clean Architecture'
+      status: 'SRP Compliant (Optimal)'
+    }
+  ] : isPrimeTopic ? [
+    {
+      title: 'Step 1: Sieve Array Initialization',
+      desc: 'Creating boolean array is_prime of size N+1 initialized to true. Marking 0 and 1 as non-prime.',
+      array: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      activeIndices: [0, 1],
+      status: 'Initialized'
+    },
+    {
+      title: 'Step 2: Processing Prime P = 2',
+      desc: '2 is prime! Eliminating all multiples of 2: 4, 6, 8, 10, 12, 14, 16.',
+      array: [2, 3, 'X', 5, 'X', 7, 'X', 9, 'X', 11, 'X', 13, 'X', 15, 'X'],
+      activeIndices: [2, 4, 6, 8, 10, 12, 14],
+      status: 'Multiples of 2 Marked'
+    },
+    {
+      title: 'Step 3: Processing Prime P = 3',
+      desc: '3 is prime! Starting elimination at 3² = 9. Marking 9, 15 as composite.',
+      array: [2, 3, 'X', 5, 'X', 7, 'X', 'X', 'X', 11, 'X', 13, 'X', 'X', 'X'],
+      activeIndices: [7, 13],
+      status: 'Multiples of 3 Marked'
+    },
+    {
+      title: 'Step 4: Final Prime Set Extracted',
+      desc: 'All remaining unmarked numbers are guaranteed prime: [2, 3, 5, 7, 11, 13]. Overall time complexity: O(N log log N).',
+      array: [2, 3, '—', 5, '—', 7, '—', '—', '—', 11, '—', 13, '—', '—', '—'],
+      activeIndices: [0, 1, 3, 5, 9, 11],
+      status: 'Algorithm Finished'
     }
   ] : [
     {
-      title: 'Step 1: Input Memory Allocation & Pointer Initialization',
-      desc: `Allocating contiguous memory blocks for ${cleanTitle}. Pointers initialized at boundaries.`,
-      array: [2, 7, 11, 15],
-      activeIndices: [0, 3],
-      status: 'Searching'
-    },
-    {
-      title: 'Step 2: Subproblem State Lookup',
-      desc: `Checking memoized state table for subproblem parameters.`,
-      array: [2, 7, 11, 15],
+      title: 'Step 1: Problem Definition & Constraints',
+      desc: `Setting up runtime invariant and boundary checks for ${cleanTitle}.`,
+      array: ['Init', 'Setup', 'State'],
       activeIndices: [0],
-      status: 'State Processing'
+      status: 'Memory Allocated'
     },
     {
-      title: 'Step 3: State Transition Evaluation',
-      desc: `Applying recurrence relation and updating optimal boundary values.`,
-      array: [2, 7, 11, 15],
-      activeIndices: [0, 1],
-      status: 'State Verified'
+      title: 'Step 2: Processing & Iteration',
+      desc: `Traversing data structure and computing optimal sub-problem solutions for ${cleanTitle}.`,
+      array: ['Init', 'Process', 'State'],
+      activeIndices: [1],
+      status: 'Computing'
     },
     {
-      title: 'Step 4: Algorithm Termination & Optimal Output',
-      desc: `Execution completed with O(N) time and O(1) auxiliary space optimization.`,
-      array: [2, 7, 11, 15],
-      activeIndices: [0, 1],
-      status: 'COMPLETED - Success'
+      title: 'Step 3: Verification & Invariant Checks',
+      desc: 'Validating optimal state transitions and checking memory safety.',
+      array: ['Init', 'Process', 'Verified'],
+      activeIndices: [2],
+      status: 'Invariants Validated'
+    },
+    {
+      title: 'Step 4: Solution Finalized',
+      desc: `Returning optimal result for ${cleanTitle} with minimal time/space overhead.`,
+      array: ['Done', 'Done', 'Optimal'],
+      activeIndices: [0, 1, 2],
+      status: 'Completed'
     }
   ]);
 
@@ -111,58 +144,80 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
     let timer: any;
     if (isPlayingSim) {
       timer = setInterval(() => {
-        setCurrentStep((prev) => {
-          if (prev < simSteps.length - 1) return prev + 1;
-          setIsPlayingSim(false);
-          return prev;
-        });
-      }, 1500);
+        setCurrentStep((prev) => (prev + 1) % simSteps.length);
+      }, 2500);
     }
     return () => clearInterval(timer);
   }, [isPlayingSim, simSteps.length]);
 
   if (isLoading || (!videoArtifacts?.notes && (!videoArtifacts?.simulation_steps || videoArtifacts.simulation_steps.length === 0))) {
-    return <AIProcessingStatusCard videoTitle={cleanTitle} durationSeconds={video.duration_seconds || 900} />;
+    return (
+      <AIProcessingStatusCard
+        videoTitle={cleanTitle}
+        durationSeconds={video.duration_seconds || 900}
+        progressPercent={videoArtifacts?.progress_percent}
+        currentPart={videoArtifacts?.current_part}
+        totalParts={videoArtifacts?.total_parts}
+        stage={videoArtifacts?.stage}
+      />
+    );
   }
 
-  const renderNotesContent = (isFull: boolean = false) => (
-    <div className={`space-y-6 font-sans ${isFull ? 'text-sm max-w-5xl mx-auto' : 'text-xs'}`}>
-      
-      {/* Chapter 1: Foundational Concept & Analogy */}
-      <div className="p-5 rounded-2xl bg-slate-950 border border-purple-900/50 space-y-3">
-        <h4 className="font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2 text-xs sm:text-sm">
-          <BookOpen className="w-4 h-4 text-purple-400" />
-          Chapter 1: Foundational Concept & Real-World Analogy
-        </h4>
-        <p className="text-slate-200 leading-relaxed">
-          Welcome to <strong>{cleanTitle}</strong>! Think of this concept like managing a high-efficiency registry. Rather than repeatedly recreating expensive resources or searching line-by-line, we establish a single point of truth and reusable state bounds.
-        </p>
-        <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/40 text-purple-200 text-xs">
-          <strong>💡 Beginner Tip:</strong> If you are new to {cleanTitle}, focus first on understanding the inputs, outputs, and why a naive nested loop takes O(N²) while our optimized approach takes O(N).
+  const renderNotesContent = (isFull: boolean = false) => {
+    if (videoArtifacts?.notes && videoArtifacts.notes.length > 50) {
+      return (
+        <div className={`space-y-6 font-sans text-slate-200 ${isFull ? 'text-sm max-w-5xl mx-auto' : 'text-xs'}`}>
+          <div className="p-6 rounded-2xl bg-slate-950/90 border border-purple-900/50 space-y-4 shadow-xl">
+            <div className="flex items-center gap-2 pb-3 border-b border-purple-900/40 text-purple-300 font-bold text-sm">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>EduStream AI Synthesis Notes</span>
+            </div>
+            <div className="prose prose-invert prose-purple max-w-none space-y-3 leading-relaxed whitespace-pre-wrap text-slate-300 font-sans">
+              {videoArtifacts.notes}
+            </div>
+          </div>
         </div>
-      </div>
+      );
+    }
 
-      {/* Chapter 2: Step-by-Step Beginner Blueprint */}
-      <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-        <h4 className="font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2 text-xs sm:text-sm">
-          <Zap className="w-4 h-4" />
-          Chapter 2: Step-by-Step Beginner Blueprint
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-indigo-400 font-mono font-bold text-xs">1. Setup & Init</span>
-            <p className="text-slate-300 text-xs">Initialize variables, stack/heap structures, or static references cleanly.</p>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-indigo-400 font-mono font-bold text-xs">2. Core Processing</span>
-            <p className="text-slate-300 text-xs">Iterate through elements while maintaining invariant invariants and checks.</p>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-            <span className="text-indigo-400 font-mono font-bold text-xs">3. Termination</span>
-            <p className="text-slate-300 text-xs">Return optimal result or release locked resources back to system memory.</p>
+    return (
+      <div className={`space-y-6 font-sans ${isFull ? 'text-sm max-w-5xl mx-auto' : 'text-xs'}`}>
+        
+        {/* Chapter 1: Foundational Concept & Analogy */}
+        <div className="p-5 rounded-2xl bg-slate-950 border border-purple-900/50 space-y-3">
+          <h4 className="font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2 text-xs sm:text-sm">
+            <BookOpen className="w-4 h-4 text-purple-400" />
+            Chapter 1: Foundational Concept & Real-World Analogy
+          </h4>
+          <p className="text-slate-200 leading-relaxed">
+            Welcome to <strong>{cleanTitle}</strong>! Think of this concept like managing a high-efficiency registry. Rather than repeatedly recreating expensive resources or searching line-by-line, we establish a single point of truth and reusable state bounds.
+          </p>
+          <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/40 text-purple-200 text-xs">
+            <strong>💡 Beginner Tip:</strong> If you are new to {cleanTitle}, focus first on understanding the inputs, outputs, and why a naive nested loop takes O(N²) while our optimized approach takes O(N).
           </div>
         </div>
-      </div>
+
+        {/* Chapter 2: Step-by-Step Beginner Blueprint */}
+        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <h4 className="font-bold text-sky-400 uppercase tracking-wider flex items-center gap-2 text-xs sm:text-sm">
+            <Zap className="w-4 h-4" />
+            Chapter 2: Step-by-Step Beginner Blueprint
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <span className="text-indigo-400 font-mono font-bold text-xs">1. Setup & Init</span>
+              <p className="text-slate-300 text-xs">Initialize variables, stack/heap structures, or static references cleanly.</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <span className="text-indigo-400 font-mono font-bold text-xs">2. Core Processing</span>
+              <p className="text-slate-300 text-xs">Iterate through elements while maintaining invariant invariants and checks.</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <span className="text-indigo-400 font-mono font-bold text-xs">3. Termination</span>
+              <p className="text-slate-300 text-xs">Return optimal result or release locked resources back to system memory.</p>
+            </div>
+          </div>
+        </div>
 
       {/* Chapter 3: Intermediate Implementation Code (C++ / Java / Python) */}
       <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 font-mono">
@@ -266,7 +321,8 @@ int main() {
       </div>
 
     </div>
-  );
+    );
+  };
 
   return (
     <div className="glass-panel p-5 rounded-2xl border border-slate-800 shadow-xl space-y-4">

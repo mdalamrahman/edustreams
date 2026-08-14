@@ -11,6 +11,10 @@ interface QuizModuleProps {
   isGeneratingMore?: boolean;
   videoTitle?: string;
   durationSeconds?: number;
+  progressPercent?: number;
+  currentPart?: number;
+  totalParts?: number;
+  stage?: string;
 }
 
 export const QuizModule: React.FC<QuizModuleProps> = ({
@@ -19,7 +23,11 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   onAttemptMoreQuestions,
   isGeneratingMore = false,
   videoTitle = 'Lecture',
-  durationSeconds = 900
+  durationSeconds = 900,
+  progressPercent,
+  currentPart,
+  totalParts,
+  stage
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -29,7 +37,16 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   const [isFullscreenQuiz, setIsFullscreenQuiz] = useState(false);
 
   if (!questions || questions.length === 0) {
-    return <AIProcessingStatusCard videoTitle={videoTitle} durationSeconds={durationSeconds} />;
+    return (
+      <AIProcessingStatusCard
+        videoTitle={videoTitle}
+        durationSeconds={durationSeconds}
+        progressPercent={progressPercent}
+        currentPart={currentPart}
+        totalParts={totalParts}
+        stage={stage}
+      />
+    );
   }
 
   const currentQ = questions[currentIndex];
