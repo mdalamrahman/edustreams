@@ -951,8 +951,10 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                     if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                         doc = msg.media.document
                         doc_size = getattr(doc, 'size', 0) or (15 * 1024 * 1024)
-                        chunk_size = 128 * 1024
-                        total_chunks = max(1, math.ceil(doc_size / chunk_size))
+                        chunk_size = 512 * 1024  # 512KB high-speed MTProto chunks
+                        max_stream_bytes = 25 * 1024 * 1024  # 25MB captures full lecture speech
+                        stream_target_bytes = min(doc_size, max_stream_bytes)
+                        total_chunks = max(1, math.ceil(stream_target_bytes / chunk_size))
 
                         try:
                             import imageio_ffmpeg
@@ -960,7 +962,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                         except Exception:
                             ffmpeg_exe = "ffmpeg"
 
-                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts for '{clean_title}' (msg #{msg_id})...")
+                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts (512KB each) for '{clean_title}' (msg #{msg_id})...")
 
                         ffmpeg_cmd = [
                             ffmpeg_exe, "-y",
@@ -987,7 +989,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                     bytes_streamed += len(chunk)
                                     chunk_index += 1
                                     pct = min(70.0, round((chunk_index / total_chunks) * 70, 1))
-                                    secs_left = max(5, int((total_chunks - chunk_index) * 0.35) + 12)
+                                    secs_left = max(3, int((total_chunks - chunk_index) * 0.25) + 8)
                                     active_transcription_jobs[cache_key] = {
                                         "status": "processing",
                                         "progress_percent": pct,
@@ -997,6 +999,8 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                         "has_artifacts": False,
                                         "estimated_seconds_left": secs_left
                                     }
+                                    if bytes_streamed >= max_stream_bytes:
+                                        break
                             except Exception as feed_err:
                                 print(f"[EduStream STT Feed Notice]: {feed_err}")
                             finally:
