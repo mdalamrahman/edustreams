@@ -700,7 +700,7 @@ export function App() {
                   }`}
                 >
                   <HelpCircle className="w-4 h-4" />
-                  <span>Mistral AI MCQ Quiz</span>
+                  <span>EduStream MCQ Quiz</span>
                 </button>
               </div>
 
@@ -733,8 +733,8 @@ export function App() {
                 />
               </div>
 
-              {/* Right Column: Code Editor or Video-Specific Mistral Quiz Module */}
-              <div className="lg:col-span-5 h-[640px]">
+              {/* Right Column: Code Editor or Video-Specific MCQ Quiz Module */}
+              <div className="lg:col-span-5 min-h-[460px] lg:h-[640px]">
                 {lessonSubTab === 'code' ? (
                   <CodeWorkspace
                     codingProblem={videoArtifacts?.coding_problem}

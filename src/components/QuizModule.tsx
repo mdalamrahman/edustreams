@@ -86,13 +86,13 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   return (
     <div className="glass-panel rounded-2xl p-5 border border-slate-800/80 shadow-xl">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80 mb-4">
         <div className="flex items-center space-x-2">
           <HelpCircle className="w-5 h-5 text-indigo-400" />
           <h3 className="text-sm font-semibold text-slate-100">EduStream AI Conceptual MCQ Quiz</h3>
         </div>
 
-        <div className="flex items-center space-x-2 font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
           <button
             onClick={() => setIsFullscreenQuiz(true)}
             className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 font-bold transition-all text-xs shadow-sm"
@@ -113,10 +113,10 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
             </button>
           )}
 
-          <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
-            Question {currentIndex + 1} of {questions.length}
+          <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-[11px]">
+            Q {currentIndex + 1}/{questions.length}
           </span>
-          <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-300 font-bold">
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-300 font-bold text-[11px]">
             Score: {score}
           </span>
         </div>

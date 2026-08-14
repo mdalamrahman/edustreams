@@ -11,7 +11,10 @@ import {
   Maximize2, 
   Code,
   RotateCcw,
-  History
+  History,
+  Laptop,
+  Copy,
+  Check
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, CodeTAReview } from '../lib/mistral';
@@ -289,16 +292,88 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     setIsAnalyzingAI(false);
   };
 
+  const [isCopiedStarter, setIsCopiedStarter] = useState(false);
+
+  const handleCopyStarter = (codeText: string) => {
+    navigator.clipboard.writeText(codeText);
+    setIsCopiedStarter(true);
+    setTimeout(() => setIsCopiedStarter(false), 2000);
+  };
+
   return (
     <div className="flex flex-col h-full glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       
-      {/* Top Toolbar */}
-      <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs">
-            <Code className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="font-mono text-slate-300">Monaco Editor</span>
+      {/* MOBILE RESTRICTION VIEW (Screens < 768px): Inform user to switch to laptop */}
+      <div className="block md:hidden p-4 sm:p-6 space-y-5 bg-slate-950/95 font-sans">
+        
+        {/* Desktop Required Alert Card */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-indigo-950/90 via-slate-900 to-purple-950/80 border border-indigo-500/40 text-center space-y-4 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center mx-auto text-indigo-400 shadow-lg">
+            <Laptop className="w-7 h-7 animate-pulse text-indigo-300" />
           </div>
+
+          <div className="space-y-1.5">
+            <span className="inline-block px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-xs font-mono font-bold">
+              DESKTOP WORKSPACE REQUIRED
+            </span>
+            <h3 className="text-base font-extrabold text-slate-100 tracking-tight">
+              Switch to Laptop to Use the Code Compiler
+            </h3>
+            <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+              The Monaco SDE Code Compiler, real-time runtime judge, and live debugging terminal require a physical keyboard and larger display. Open EduStream on your laptop or PC to run test cases and submit solutions.
+            </p>
+          </div>
+        </div>
+
+        {/* Problem Statement Card for Mobile */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Code className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-mono font-bold text-indigo-300">
+                {codingProblem?.title || activeQ?.question || 'Algorithmic Challenge'}
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-lg bg-indigo-950 border border-indigo-700/60 text-[10px] font-mono text-indigo-300">
+              SDE Practice
+            </span>
+          </div>
+
+          <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-line font-sans border-t border-slate-800/80 pt-2.5">
+            {codingProblem?.problem_statement || activeQ?.question || 'Implement the optimal algorithmic solution based on the lecture invariants.'}
+          </div>
+        </div>
+
+        {/* Starter Code Viewer with Copy Button on Mobile */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-lg space-y-2">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs font-mono">
+            <span className="text-slate-400 font-bold">Starter Code Preview</span>
+            <button
+              onClick={() => handleCopyStarter(code)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all"
+            >
+              {isCopiedStarter ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopiedStarter ? 'Copied' : 'Copy Code'}</span>
+            </button>
+          </div>
+          <pre className="p-3.5 text-[11px] font-mono text-indigo-200 overflow-x-auto max-h-52 bg-slate-950/80 leading-relaxed">
+            <code>{code}</code>
+          </pre>
+        </div>
+
+      </div>
+
+      {/* DESKTOP FULL WORKSPACE (Screens >= 768px): Full Monaco IDE */}
+      <div className="hidden md:flex flex-col flex-1 h-full">
+        {/* Top Toolbar */}
+        <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+              <Code className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="font-mono text-slate-300">Monaco Editor</span>
+            </div>
 
           {codingList.length > 1 && (
             <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
@@ -577,6 +652,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
             )
           )}
         </div>
+      </div>
       </div>
 
       {/* LeetCode Fullscreen Workspace Modal */}

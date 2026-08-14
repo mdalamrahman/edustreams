@@ -319,7 +319,7 @@ export const AlgomasterNotesRenderer: React.FC<AlgomasterNotesRendererProps> = (
   };
 
   return (
-    <div className={`space-y-6 ${isFullscreen ? 'max-w-5xl mx-auto py-4 px-2 sm:px-6' : ''}`}>
+    <div className={`space-y-6 ${isFullscreen ? 'w-full px-3 sm:px-8 md:px-12 py-4' : ''}`}>
       
       {/* SDE Mastery Top Banner Card */}
       <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/60 to-purple-950/40 border border-indigo-500/30 shadow-2xl relative overflow-hidden">
@@ -366,7 +366,7 @@ export const AlgomasterNotesRenderer: React.FC<AlgomasterNotesRendererProps> = (
       </div>
 
       {/* Main Formatted Notes Content Container */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-slate-950/90 border border-slate-800 shadow-2xl font-sans text-slate-200 space-y-2">
+      <div className="p-4 sm:p-8 rounded-3xl bg-slate-950/90 border border-slate-800 shadow-2xl font-sans text-slate-200 space-y-2 overflow-x-hidden">
         {renderFormattedMarkdown(content)}
       </div>
 
