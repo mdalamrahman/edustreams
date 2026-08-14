@@ -29,9 +29,12 @@ API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5")
+
+# Supabase Configuration for Multi-User Global Persistence
+SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://edustream-demo.supabase.co"
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or ""
 
 # Media Storage Directory (saves downloaded videos locally for instant range seeking)
 MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", r"C:\Users\User\Desktop\edustreamfiles")
@@ -41,6 +44,120 @@ except Exception:
     MEDIA_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "media_storage")
     os.makedirs(MEDIA_STORAGE_DIR, exist_ok=True)
 print(f"[Media Storage] Active video storage directory: {MEDIA_STORAGE_DIR}")
+
+# Shared Global In-Memory & Disk AI Cache
+AI_CACHE_FILE = os.path.join(MEDIA_STORAGE_DIR, "ai_cache.json")
+BACKUP_CACHE_FILE = os.path.join(os.path.dirname(__file__), "ai_cache.json")
+ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
+
+_GLOBAL_AI_CACHE = {}
+
+def load_ai_cache() -> dict:
+    """Loads cache merging RAM with all on-disk cache files and Supabase."""
+    global _GLOBAL_AI_CACHE
+    if not _GLOBAL_AI_CACHE:
+        for cpath in [AI_CACHE_FILE, BACKUP_CACHE_FILE, "ai_cache.json"]:
+            if os.path.exists(cpath):
+                try:
+                    with open(cpath, "r", encoding="utf-8") as f:
+                        loaded = json.load(f)
+                        if isinstance(loaded, dict):
+                            _GLOBAL_AI_CACHE.update(loaded)
+                except Exception:
+                    pass
+    return _GLOBAL_AI_CACHE
+
+def save_ai_cache(cache_data: dict):
+    """Saves AI cache to RAM and all disk mirrors for zero-data-loss persistence."""
+    global _GLOBAL_AI_CACHE
+    _GLOBAL_AI_CACHE.update(cache_data)
+    for cpath in [AI_CACHE_FILE, BACKUP_CACHE_FILE, "ai_cache.json"]:
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(cpath)), exist_ok=True)
+            with open(cpath, "w", encoding="utf-8") as f:
+                json.dump(_GLOBAL_AI_CACHE, f, indent=2)
+        except Exception:
+            pass
+
+def sync_artifacts_to_supabase(data: dict):
+    """Saves completed transcript, MCQs, coding problem, and Algomaster notes into Supabase database."""
+    if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
+        return
+    try:
+        chat_id = data.get("chat_id")
+        msg_id = data.get("msg_id")
+        title = data.get("title")
+        transcript = data.get("transcript")
+        if not transcript or len(transcript.strip()) < 120:
+            return  # Incomplete transcript — do not store
+        
+        file_id = f"{chat_id}_{msg_id}"
+        payload = {
+            "telegram_file_id": file_id,
+            "title": title,
+            "transcript": transcript,
+            "duration_seconds": 900,
+            "quiz_json": {
+                "mcqs": data.get("mcqs", []),
+                "coding_problem": data.get("coding_problem"),
+                "simulation_steps": data.get("simulation_steps", []),
+                "notes": data.get("notes")
+            }
+        }
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+        }
+        url = f"{SUPABASE_URL}/rest/v1/videos"
+        resp = requests.post(url, headers=headers, json=payload, timeout=5)
+        if resp.status_code in [200, 201]:
+            print(f"[Supabase Cloud Sync] Successfully persisted artifacts for {file_id} in Supabase")
+    except Exception as e:
+        print(f"[Supabase Cloud Sync Notice]: {e}")
+
+def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Optional[dict]:
+    """Fetches previously stored transcript and artifacts from Supabase database."""
+    if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
+        return None
+    try:
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}"
+        }
+        file_id = f"{chat_id}_{msg_id}"
+        url = f"{SUPABASE_URL}/rest/v1/videos?telegram_file_id=eq.{file_id}&select=*"
+        resp = requests.get(url, headers=headers, timeout=4)
+        if resp.status_code == 200:
+            rows = resp.json()
+            if rows and len(rows) > 0:
+                row = rows[0]
+                tr = row.get("transcript")
+                qj = row.get("quiz_json") or {}
+                if tr and len(tr.strip()) > 120:
+                    print(f"[Supabase DB Hit] Loaded stored transcript & AI artifacts for {file_id}")
+                    return {
+                        "chat_id": chat_id,
+                        "msg_id": msg_id,
+                        "title": row.get("title") or title,
+                        "transcript": tr,
+                        "provider": "EduStream AI Speech Engine",
+                        "notes": qj.get("notes") if isinstance(qj, dict) else row.get("notes"),
+                        "mcqs": qj.get("mcqs", []) if isinstance(qj, dict) else (qj if isinstance(qj, list) else []),
+                        "coding_problem": qj.get("coding_problem") if isinstance(qj, dict) else None,
+                        "simulation_steps": qj.get("simulation_steps", []) if isinstance(qj, dict) else [],
+                        "status": "completed",
+                        "progress_percent": 100.0,
+                        "current_part": 30,
+                        "total_parts": 30,
+                        "stage": "Completed",
+                        "has_artifacts": True,
+                        "estimated_seconds_left": 0
+                    }
+    except Exception as e:
+        print(f"[Supabase DB Query Notice]: {e}")
+    return None
 
 # Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX)
 CHANNEL_IDS = {
@@ -223,7 +340,17 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
     dur_mins = max(3, duration or 15)
 
     cache = load_ai_cache()
-    if cache_key in cache and cache[cache_key].get("transcript"):
+    cached_obj = cache.get(cache_key) or cache.get(f"tg-{chat_id}-{msg_id}") or cache.get(str(msg_id)) or cache.get(clean_title) or cache.get(clean_title.lower())
+    
+    if not cached_obj:
+        cached_obj = fetch_artifacts_from_supabase(chat_id, msg_id, clean_title)
+        if cached_obj:
+            cache[cache_key] = cached_obj
+            cache[f"tg-{chat_id}-{msg_id}"] = cached_obj
+            cache[clean_title] = cached_obj
+            save_ai_cache(cache)
+
+    if cached_obj and cached_obj.get("transcript") and len(cached_obj.get("transcript", "").strip()) > 120:
         return {
             "status": "completed",
             "progress_percent": 100.0,
@@ -965,8 +1092,8 @@ Return a JSON object with EXACTLY these 4 keys:
 async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: str, dur_mins: int):
     """
     Executes in the background independently of any HTTP request.
-    Streams video chunks → extracts audio via zero-disk FFmpeg pipe → Groq Whisper STT → LLM synthesis.
-    Saves results to persistent cache upon completion.
+    Streams complete video audio → zero-disk FFmpeg pipe → Groq Whisper STT → Mistral AI synthesis.
+    Saves complete results to persistent cache & Supabase database upon completion.
     """
     cache_key = f"{chat_id}_{msg_id}"
     provider_name = "EduStream AI Speech Engine"
@@ -979,12 +1106,12 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
             "progress_percent": 5.0,
             "current_part": 1,
             "total_parts": 30,
-            "stage": "Initializing audio extraction pipe",
+            "stage": "Initializing full audio extraction pipe",
             "has_artifacts": False,
             "estimated_seconds_left": 40
         }
 
-        # 1. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe
+        # 1. REAL TELEGRAM VIDEO FULL AUDIO WHISPER STT: Zero-disk FFmpeg pipe
         if GROQ_API_KEY:
             try:
                 client = await get_client()
@@ -993,10 +1120,10 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                     msg = await client.get_messages(channel_peer, ids=msg_id)
                     if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
                         doc = msg.media.document
-                        doc_size = getattr(doc, 'size', 0) or (15 * 1024 * 1024)
+                        doc_size = getattr(doc, 'size', 0) or (20 * 1024 * 1024)
                         chunk_size = 512 * 1024  # 512KB high-speed MTProto chunks
-                        max_stream_bytes = 25 * 1024 * 1024  # 25MB captures full lecture speech
-                        stream_target_bytes = min(doc_size, max_stream_bytes)
+                        # Stream FULL video file into FFmpeg to extract complete speech without cut-off
+                        stream_target_bytes = min(doc_size, 180 * 1024 * 1024)
                         total_chunks = max(1, math.ceil(stream_target_bytes / chunk_size))
 
                         try:
@@ -1005,7 +1132,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                         except Exception:
                             ffmpeg_exe = "ffmpeg"
 
-                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts (512KB each) for '{clean_title}' (msg #{msg_id})...")
+                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts for '{clean_title}' (msg #{msg_id}, {doc_size / (1024*1024):.1f} MB)...")
 
                         ffmpeg_cmd = [
                             ffmpeg_exe, "-y",
@@ -1031,18 +1158,18 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                     await process.stdin.drain()
                                     bytes_streamed += len(chunk)
                                     chunk_index += 1
-                                    pct = min(70.0, round((chunk_index / total_chunks) * 70, 1))
-                                    secs_left = max(3, int((total_chunks - chunk_index) * 0.25) + 8)
+                                    pct = min(75.0, round((chunk_index / total_chunks) * 75, 1))
+                                    secs_left = max(3, int((total_chunks - chunk_index) * 0.2) + 8)
                                     active_transcription_jobs[cache_key] = {
                                         "status": "processing",
                                         "progress_percent": pct,
                                         "current_part": chunk_index,
                                         "total_parts": total_chunks,
-                                        "stage": f"Extracting audio stream ({chunk_index}/{total_chunks} parts)",
+                                        "stage": f"Extracting full audio stream ({chunk_index}/{total_chunks} parts)",
                                         "has_artifacts": False,
                                         "estimated_seconds_left": secs_left
                                     }
-                                    if bytes_streamed >= max_stream_bytes:
+                                    if bytes_streamed >= stream_target_bytes:
                                         break
                             except Exception as feed_err:
                                 print(f"[EduStream STT Feed Notice]: {feed_err}")
@@ -1057,10 +1184,10 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                         video_mb = bytes_streamed / (1024 * 1024)
                         print(f"[EduStream STT Pipe Complete]: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
 
-                        if len(audio_bytes) > 1000:
+                        if len(audio_bytes) > 2000:
                             active_transcription_jobs[cache_key] = {
                                 "status": "processing",
-                                "progress_percent": 75.0,
+                                "progress_percent": 80.0,
                                 "current_part": total_chunks,
                                 "total_parts": total_chunks,
                                 "stage": "Transcribing speech with EduStream Speech Engine",
@@ -1117,26 +1244,26 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
 
                                     if paragraphs:
                                         real_stt_transcript = "\n\n".join(paragraphs)
-                                        print(f"[EduStream STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs")
+                                        print(f"[EduStream STT Success] Transcribed full lecture ({len(segments)} segments, {len(paragraphs)} paragraphs)")
 
                                 if not real_stt_transcript:
                                     raw_text = stt_json.get("text", "").strip()
-                                    if raw_text and len(raw_text) > 30:
+                                    if raw_text and len(raw_text) > 50:
                                         real_stt_transcript = f"[00:00:00]\n{raw_text}"
             except Exception as e:
                 stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
                 print(f"[EduStream STT Zero-Disk Exception]: {e}")
 
-        # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS ONLY IF REAL STT TRANSCRIPT IS READY
-        if real_stt_transcript and len(real_stt_transcript) > 50:
+        # 2. VALIDATION: DO NOT STORE OR FINALIZE IF TRANSCRIPT IS INCOMPLETE (<120 characters)
+        if real_stt_transcript and len(real_stt_transcript.strip()) > 120:
             active_transcription_jobs[cache_key] = {
                 "status": "processing",
-                "progress_percent": 88.0,
+                "progress_percent": 90.0,
                 "current_part": 30,
                 "total_parts": 30,
-                "stage": "Synthesizing lecture notes, 5 MCQs & coding challenge",
+                "stage": "Synthesizing Algomaster SDE notes, 5 MCQs & coding challenge",
                 "has_artifacts": False,
-                "estimated_seconds_left": 5
+                "estimated_seconds_left": 4
             }
 
             artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
@@ -1162,12 +1289,17 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
             if stt_error_msg:
                 response_data["stt_notice"] = stt_error_msg
 
-            # SAVE TO PERSISTENT CACHE
+            # 1. SAVE TO MULTI-KEY PERSISTENT DISK & RAM CACHE
             cache = load_ai_cache()
             cache[cache_key] = response_data
             cache[f"tg-{chat_id}-{msg_id}"] = response_data
+            cache[str(msg_id)] = response_data
             cache[clean_title] = response_data
+            cache[clean_title.lower()] = response_data
             save_ai_cache(cache)
+
+            # 2. SYNC TO SUPABASE CLOUD DATABASE
+            sync_artifacts_to_supabase(response_data)
 
             active_transcription_jobs[cache_key] = {
                 "status": "completed",
@@ -1178,15 +1310,16 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                 "has_artifacts": True,
                 "estimated_seconds_left": 0
             }
-            print(f"[EduStream Background Job Done] Saved all artifacts for {cache_key}")
+            print(f"[EduStream Background Job Done] Persisted complete artifacts for {cache_key} in RAM, Disk & Supabase")
             return response_data
         else:
+            print(f"[EduStream STT Incomplete] Real transcript not ready or too short for {cache_key}. Not storing corrupt state.")
             active_transcription_jobs[cache_key] = {
                 "status": "error",
                 "progress_percent": 0.0,
                 "current_part": 0,
                 "total_parts": 30,
-                "stage": "Audio extraction or STT incomplete",
+                "stage": "Audio extraction or STT incomplete. Please try again.",
                 "has_artifacts": False,
                 "estimated_seconds_left": 0
             }
@@ -1213,14 +1346,27 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
 async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15, force: Optional[bool] = False):
     """
     Returns AI-generated Whisper STT lecture transcript + auto-generated Notes, MCQs, Coding Problem & Visual Simulation.
-    Stores all artifacts in cache to preserve tokens.
+    Stores all artifacts in cache & Supabase to preserve tokens and enable instant loads for all users.
     """
     clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
     cache_key = f"{chat_id}_{msg_id}"
     dur_mins = max(3, duration or 15)
 
-    # 0. CHECK PERSISTENT CACHE FIRST (Zero token consumption)
+    # 0. CHECK PERSISTENT CACHE & SUPABASE FIRST (Zero token consumption)
     cache = load_ai_cache()
+    cached_obj = cache.get(cache_key) or cache.get(f"tg-{chat_id}-{msg_id}") or cache.get(str(msg_id)) or cache.get(clean_title) or cache.get(clean_title.lower())
+    
+    if not cached_obj and not force:
+        cached_obj = fetch_artifacts_from_supabase(chat_id, msg_id, clean_title)
+        if cached_obj:
+            cache[cache_key] = cached_obj
+            cache[f"tg-{chat_id}-{msg_id}"] = cached_obj
+            cache[clean_title] = cached_obj
+            save_ai_cache(cache)
+
+    if not force and cached_obj and cached_obj.get("transcript") and len(cached_obj.get("transcript", "").strip()) > 120:
+        print(f"[AI Cache Hit] Returning stored complete transcript & artifacts for {cache_key} (0 tokens used)")
+        return cached_obj
     if not force and cache_key in cache and cache[cache_key].get("transcript"):
         print(f"[AI Cache Hit] Returning stored transcript & artifacts for {cache_key} (0 tokens used)")
         return cache[cache_key]

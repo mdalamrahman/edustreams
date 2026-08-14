@@ -249,14 +249,38 @@ export function App() {
     let isMounted = true;
     let pollTimer: any = null;
 
-    setQuizLoading(true);
-    setActiveVideoQuiz([]);
-    setVideoArtifacts(null);
-
     const cleanTitle = (selectedVideo.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
     const durationMins = Math.max(5, Math.round((selectedVideo.duration_seconds || 900) / 60));
     const channelId = selectedVideo.channel_id || 'ch-sd-02';
     const msgId = selectedVideo.telegram_message_id || 6004;
+    const localKey = `edustream_artifacts_${channelId}_${msgId}`;
+
+    // Instant Pre-hydration from Local / Browser Storage (0ms instant load for any previously viewed lecture)
+    let hasLocalComplete = false;
+    try {
+      const cachedRaw = localStorage.getItem(localKey);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached && cached.transcript && cached.notes) {
+          hasLocalComplete = true;
+          setVideoArtifacts(cached);
+          selectedVideo.transcript = cached.transcript;
+          if (cached.mcqs && cached.mcqs.length > 0) {
+            setActiveVideoQuiz(cached.mcqs);
+            selectedVideo.quiz_json = cached.mcqs;
+            setQuizLoading(false);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[EduStream Local Cache Notice]:', e);
+    }
+
+    if (!hasLocalComplete) {
+      setQuizLoading(true);
+      setActiveVideoQuiz([]);
+      setVideoArtifacts(null);
+    }
 
     const pollStatus = () => {
       const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
@@ -311,6 +335,13 @@ export function App() {
               setActiveVideoQuiz(normalizedMCQs);
               selectedVideo.quiz_json = normalizedMCQs;
               setQuizLoading(false);
+
+              // Persist into localStorage for instant 0ms access across reloads
+              try {
+                localStorage.setItem(localKey, JSON.stringify({ ...data, mcqs: normalizedMCQs }));
+              } catch (storageErr) {
+                console.warn('[EduStream Local Storage Notice]:', storageErr);
+              }
             } else if (data.status === 'processing' || !data.transcript) {
               // Backend processing in background — poll status every 1.5s
               setQuizLoading(true);
