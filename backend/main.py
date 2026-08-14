@@ -774,47 +774,109 @@ def transcribe_with_groq_whisper(audio_file_path: str) -> str:
 
 def generate_all_ai_artifacts_from_transcript(transcript: str, title: str) -> dict:
     """
-    Uses Groq Llama-3.3-70b (or Mistral AI fallback) to parse the real video transcript
-    and generate structured Notes, MCQs, Coding Problem, and Visual Simulation Steps in strict JSON format.
+    Uses Mistral AI primarily (with Groq Llama-3.3-70b fallback) to parse the real video transcript
+    and generate Algomaster.io-grade SDE Study Notes, 5 MCQs, Detailed Coding Problem, and Visual Simulation Steps in strict JSON format.
     All content is strictly grounded in the transcript.
     """
     data = None
-    if GROQ_API_KEY:
+
+    prompt = f"""You are a Principal Software Engineer & FAANG Interview Prep Lead at Algomaster.io.
+Given the verbatim lecture transcript for '{title}', generate high-yield, interview-grade educational artifacts in strict JSON format.
+
+MANDATORY GUIDELINES:
+- Ground everything DIRECTLY in the concepts, code examples, trade-offs, and edge cases from the TRANSCRIPT.
+- Notes MUST be formatted like Algomaster.io / ByteByteGo SDE study guides (detailed, beautifully structured in Markdown, practical, with clear sections).
+- Coding challenge must have complete problem statements, input/output formats, constraints, and both Python and C++ solutions.
+- Simulation steps must contain 4-6 interactive state steps representing the algorithm/system trace.
+
+TRANSCRIPT:
+{transcript[:15000]}
+
+Return a JSON object with EXACTLY these 4 keys:
+
+1. "notes": Comprehensive Algomaster-style markdown note containing:
+   # 📘 {title} — SDE Mastery Guide
+   > [!NOTE]
+   > Executive Summary: 2-3 sentence overview of the core problem, why naive approaches fail, and the optimal solution taught in the lecture.
+
+   ## 💡 1. Core Intuition & Mental Model
+   - **The Problem**: What real-world / software engineering bottleneck does this solve?
+   - **Real-World Analogy**: A concrete analogy that makes the concept unforgettable.
+   - **Key Invariants**: The fundamental rules and guarantees that always hold.
+
+   ## 🧠 2. Deep Dive & Architectural / Algorithmic Breakdown
+   - Step-by-step breakdown of how the pattern/algorithm operates.
+   - Component responsibilities and decoupling strategy.
+
+   ## 💻 3. Production-Ready Code Implementation
+   Include clean, documented implementation in C++ and Python with inline commentary explaining the critical design choices.
+
+   ## ⚡ 4. Complexity & Trade-Off Analysis
+   Provide a detailed markdown comparison table:
+   | Metric | Complexity | Technical Justification |
+   | :--- | :--- | :--- |
+   | **Time Complexity** | `O(...)` | ... |
+   | **Space Complexity** | `O(...)` | ... |
+
+   ## ⚠️ 5. Common Traps, Anti-Patterns & Edge Cases
+   - Highlight 2-3 critical pitfalls developers make.
+
+   ## 🏢 6. FAANG SDE Interview Follow-Ups & Real-World Scaling
+   - 2 practical interview follow-up questions with sample answers.
+
+2. "mcqs": Array of 5 conceptual multiple-choice questions testing specific points, code snippets, or rules explained in the lecture. Each with:
+   - "question": string
+   - "options": array of 4 distinct strings
+   - "correct_answer": integer (0, 1, 2, or 3)
+   - "explanation": string explaining why the option is correct, citing the lecture transcript.
+
+3. "coding_problem": Object implementing the algorithm or design pattern from the lecture:
+   - "title": string
+   - "problem_statement": string (detailed description with Example 1, Example 2, Input format, Output format, Constraints)
+   - "starter_code_python": string (starter function)
+   - "starter_code_cpp": string (starter C++ code)
+   - "solution_code_cpp": string (complete optimal C++ implementation with comments)
+
+4. "simulation_steps": Array of 4-6 visual step-by-step state simulation objects tracking the algorithm/class trace:
+   - "step_number": integer
+   - "title": string (e.g., "Step 1: Monolithic Invoice Inspection")
+   - "desc": string (detailed narrative of what happens in this step)
+   - "array": array of 4-6 strings or numbers representing the data structure / component states (e.g. ["InvoiceModel", "SQL_DB", "EmailService"] or [2, 3, 5, 7, 11])
+   - "activeIndices": array of integer indices currently active / highlighted (e.g. [0, 1])
+   - "status": string (e.g. "Violation: 3 Reasons to Change", "Extracting Persistence Layer", "Optimal Decoupled State")
+   - "variables": key-value dict showing live state (e.g. {{"Coupling": "High", "Responsibilities": 3, "State": "Refactoring"}})
+   - "code_line": string showing the relevant code/action for this step
+"""
+
+    # 1. PRIMARY PROVIDER: Mistral AI
+    if MISTRAL_API_KEY:
+        url = "https://api.mistral.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {MISTRAL_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "mistral-small-latest",
+            "response_format": {"type": "json_object"},
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2
+        }
+        try:
+            print(f"[EduStream AI Engine] Synthesizing SDE notes & simulation via Mistral AI for '{title}'...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=45)
+            if resp.status_code == 200:
+                data = json.loads(resp.json()["choices"][0]["message"]["content"])
+                print(f"[EduStream AI Engine Success] Mistral generated Algomaster-grade notes, MCQs & simulation for '{title}'")
+        except Exception as e:
+            print(f"[Mistral AI Generation Notice]: {e}")
+
+    # 2. FALLBACK PROVIDER: Groq Llama-3.3-70b
+    if not data and GROQ_API_KEY:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        prompt = f"""You are a Lead Computer Science Professor and Technical Interviewer.
-Given the verbatim video lecture transcript for '{title}', synthesize comprehensive, high-yield educational materials in strict JSON format.
-
-MANDATORY INSTRUCTIONS:
-- Ground all generated materials DIRECTLY in the concepts, code examples, definitions, principles, and edge cases discussed in the TRANSCRIPT below.
-- Do NOT generate generic textbook overviews. Reference the actual lecture examples, design trade-offs, and algorithms.
-
-TRANSCRIPT:
-{transcript[:15000]}
-
-Return a JSON object with EXACTLY these keys:
-1. "notes": Comprehensive markdown study note (organized with ## Headings, bullet points, key takeaways, architectural tradeoffs, and code examples directly from the transcript).
-2. "mcqs": Array of 5 conceptual multiple-choice questions testing specific points, code snippets, or rules explained in the lecture. Each must have:
-   - "question": string
-   - "options": array of 4 distinct strings
-   - "correct_answer": integer (0, 1, 2, or 3)
-   - "explanation": string explaining why the option is correct, citing the lecture transcript.
-3. "coding_problem": An object implementing the algorithm or design pattern from the lecture:
-   - "title": string
-   - "problem_statement": string (clear description with input/output format and constraints)
-   - "starter_code_python": python starter function
-   - "starter_code_cpp": C++ starter code with includes and main/class
-   - "solution_code_cpp": complete optimal C++ reference implementation
-4. "simulation_steps": Array of 4 visual step-by-step state simulation objects tracking the algorithm/class trace:
-   - "title": string (e.g., "Step 1: Inspect Monolithic Structure")
-   - "desc": string
-   - "array": array of 4-6 strings or numbers
-   - "activeIndices": array of integer indices (e.g. [0, 1])
-   - "status": string (e.g. "Coupling Detected")
-"""
         payload = {
             "model": "llama-3.3-70b-versatile",
             "response_format": {"type": "json_object"},
@@ -822,32 +884,13 @@ Return a JSON object with EXACTLY these keys:
             "temperature": 0.2
         }
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            print(f"[EduStream AI Engine Fallback] Synthesizing via Groq Llama-3.3-70b for '{title}'...")
+            resp = requests.post(url, headers=headers, json=payload, timeout=35)
             if resp.status_code == 200:
                 data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                print(f"[AI Artifacts Success] Generated transcript-grounded notes, MCQs, coding problem & simulation for '{title}'")
+                print(f"[EduStream AI Engine Success] Groq fallback generated notes & simulation for '{title}'")
         except Exception as e:
-            print(f"[Groq AI Artifacts Error]: {e}")
-
-    # Fallback to Mistral AI
-    if not data and MISTRAL_API_KEY:
-        url = "https://api.mistral.ai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        prompt = f"""Read the following computer science lecture transcript for '{title}' and return JSON with keys 'notes', 'mcqs' (5 items with question, options (4), correct_answer (int), explanation), 'coding_problem' (with title, problem_statement, starter_code_python, starter_code_cpp, solution_code_cpp), and 'simulation_steps' (4 items with title, desc, array, activeIndices, status):\n\n{transcript[:10000]}"""
-        payload = {
-            "model": "mistral-small-latest",
-            "response_format": {"type": "json_object"},
-            "messages": [{"role": "user", "content": prompt}]
-        }
-        try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
-            if resp.status_code == 200:
-                data = json.loads(resp.json()["choices"][0]["message"]["content"])
-        except Exception as e:
-            print(f"[Mistral AI Artifacts Error]: {e}")
+            print(f"[Groq AI Fallback Notice]: {e}")
 
     if not data:
         data = {
