@@ -121,9 +121,21 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const activeQ = codingList[activeQuestionIdx] || question;
 
-  const [language, setLanguage] = useState<SupportedLanguage>('python');
+  const initialDetectedLang: SupportedLanguage = (() => {
+    if (codingProblem?.starter_code_python) return 'python';
+    if (codingProblem?.starter_code_cpp) return 'cpp';
+    if (activeQ?.starter_code) {
+      if (/^#include|using namespace std|std::|int main\(\)/.test(activeQ.starter_code)) return 'cpp';
+      if (/public class|import java\./.test(activeQ.starter_code)) return 'java';
+    }
+    return 'python';
+  })();
+
+  const [language, setLanguage] = useState<SupportedLanguage>(initialDetectedLang);
   const [code, setCode] = useState<string>(
-    codingProblem?.starter_code_python || activeQ?.starter_code || LANGUAGE_STARTERS.python
+    (initialDetectedLang === 'python' ? codingProblem?.starter_code_python : codingProblem?.starter_code_cpp) ||
+    activeQ?.starter_code || 
+    LANGUAGE_STARTERS[initialDetectedLang]
   );
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -140,7 +152,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     if (codingProblem) {
       if (language === 'python' && codingProblem.starter_code_python) {
         setCode(codingProblem.starter_code_python);
-      } else if (codingProblem.starter_code_cpp) {
+      } else if (language === 'cpp' && codingProblem.starter_code_cpp) {
         setCode(codingProblem.starter_code_cpp);
       }
     }
@@ -171,13 +183,27 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    setCode(LANGUAGE_STARTERS[newLang]);
+    if (newLang === 'python' && codingProblem?.starter_code_python) {
+      setCode(codingProblem.starter_code_python);
+    } else if (newLang === 'cpp' && codingProblem?.starter_code_cpp) {
+      setCode(codingProblem.starter_code_cpp);
+    } else {
+      setCode(LANGUAGE_STARTERS[newLang]);
+    }
     setExecutionResult(null);
     setAiReview(null);
   };
 
   const handleResetCode = () => {
-    setCode(question?.starter_code || LANGUAGE_STARTERS[language]);
+    if (language === 'python' && codingProblem?.starter_code_python) {
+      setCode(codingProblem.starter_code_python);
+    } else if (language === 'cpp' && codingProblem?.starter_code_cpp) {
+      setCode(codingProblem.starter_code_cpp);
+    } else if (activeQ?.starter_code) {
+      setCode(activeQ.starter_code);
+    } else {
+      setCode(LANGUAGE_STARTERS[language]);
+    }
     setExecutionResult(null);
     setAiReview(null);
   };
@@ -658,9 +684,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
       {isLeetCodeFullscreen && (
         <LeetCodeWorkspaceModal
           question={question}
-          problemTitle={question?.question || 'Algorithm Practice Challenge'}
+          problemTitle={codingProblem?.title || question?.question || 'Algorithm Practice Challenge'}
           initialLanguage={language}
           initialCode={code}
+          codingProblem={codingProblem}
           onClose={() => setIsLeetCodeFullscreen(false)}
           onCodeExecuted={onCodeExecuted}
         />
