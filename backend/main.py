@@ -179,8 +179,9 @@ class DiagnosticRequest(BaseModel):
 # ROOT & HEALTH
 # -------------------------------------------------------------------
 
-# Global tracker for live transcription & AI synthesis progress
+# Global trackers for background transcription & AI synthesis tasks
 active_transcription_jobs = {}
+active_background_tasks = {}
 
 
 @app.get("/")
@@ -208,6 +209,7 @@ async def read_root_and_health():
         "channel_ids": CHANNEL_IDS,
         "cached_entities_count": len(_entity_cache),
         "cached_artifacts_count": len(cache),
+        "active_background_tasks_count": len(active_background_tasks),
         "ai_engine": "EduStream AI Engine (Llama-3.3-70b / Mistral)",
         "speech_engine": "EduStream AI Speech Engine",
         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -215,25 +217,38 @@ async def read_root_and_health():
 
 
 @app.get("/api/transcript/status/{chat_id}/{msg_id}")
-async def get_transcript_status_route(chat_id: str, msg_id: int):
+async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional[str] = None, duration: Optional[int] = 15):
     cache_key = f"{chat_id}_{msg_id}"
+    clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
+    dur_mins = max(3, duration or 15)
+
     cache = load_ai_cache()
     if cache_key in cache and cache[cache_key].get("transcript"):
         return {
             "status": "completed",
             "progress_percent": 100.0,
-            "current_part": 1,
-            "total_parts": 1,
+            "current_part": 30,
+            "total_parts": 30,
             "stage": "Completed",
-            "has_artifacts": True
+            "has_artifacts": True,
+            "estimated_seconds_left": 0
         }
+
+    # If background task is not yet running, spawn it in the background!
+    if cache_key not in active_background_tasks or active_background_tasks[cache_key].done():
+        print(f"[EduStream Background Start] Auto-starting background pipeline for {cache_key}...")
+        active_background_tasks[cache_key] = asyncio.create_task(
+            process_lecture_pipeline_task(chat_id, msg_id, clean_title, dur_mins)
+        )
+
     job = active_transcription_jobs.get(cache_key, {
         "status": "processing",
-        "progress_percent": 12.0,
+        "progress_percent": 5.0,
         "current_part": 1,
         "total_parts": 30,
-        "stage": "Extracting audio stream",
-        "has_artifacts": False
+        "stage": "Initializing audio extraction pipe",
+        "has_artifacts": False,
+        "estimated_seconds_left": 40
     })
     return job
 
@@ -901,6 +916,249 @@ Return a JSON object with EXACTLY these keys:
 
 
 # -------------------------------------------------------------------
+# ASYNC BACKGROUND PIPELINE WORKER (Keeps running even if user leaves page)
+# -------------------------------------------------------------------
+
+async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: str, dur_mins: int):
+    """
+    Executes in the background independently of any HTTP request.
+    Streams video chunks → extracts audio via zero-disk FFmpeg pipe → Groq Whisper STT → LLM synthesis.
+    Saves results to persistent cache upon completion.
+    """
+    cache_key = f"{chat_id}_{msg_id}"
+    provider_name = "EduStream AI Speech Engine"
+    stt_error_msg = None
+    real_stt_transcript = None
+
+    try:
+        active_transcription_jobs[cache_key] = {
+            "status": "processing",
+            "progress_percent": 5.0,
+            "current_part": 1,
+            "total_parts": 30,
+            "stage": "Initializing audio extraction pipe",
+            "has_artifacts": False,
+            "estimated_seconds_left": 40
+        }
+
+        # 1. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe
+        if GROQ_API_KEY:
+            try:
+                client = await get_client()
+                channel_peer = await resolve_channel_peer(chat_id)
+                if channel_peer:
+                    msg = await client.get_messages(channel_peer, ids=msg_id)
+                    if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
+                        doc = msg.media.document
+                        doc_size = getattr(doc, 'size', 0) or (15 * 1024 * 1024)
+                        chunk_size = 128 * 1024
+                        total_chunks = max(1, math.ceil(doc_size / chunk_size))
+
+                        try:
+                            import imageio_ffmpeg
+                            ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+                        except Exception:
+                            ffmpeg_exe = "ffmpeg"
+
+                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts for '{clean_title}' (msg #{msg_id})...")
+
+                        ffmpeg_cmd = [
+                            ffmpeg_exe, "-y",
+                            "-i", "pipe:0", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k", "-f", "mp3", "pipe:1"
+                        ]
+                        process = await asyncio.create_subprocess_exec(
+                            *ffmpeg_cmd,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.DEVNULL
+                        )
+
+                        bytes_streamed = 0
+                        chunk_index = 0
+
+                        async def _feed_ffmpeg():
+                            nonlocal bytes_streamed, chunk_index
+                            try:
+                                async for chunk in client.iter_download(
+                                    doc, offset=0, request_size=chunk_size, dc_id=getattr(doc, 'dc_id', None)
+                                ):
+                                    process.stdin.write(chunk)
+                                    await process.stdin.drain()
+                                    bytes_streamed += len(chunk)
+                                    chunk_index += 1
+                                    pct = min(70.0, round((chunk_index / total_chunks) * 70, 1))
+                                    secs_left = max(5, int((total_chunks - chunk_index) * 0.35) + 12)
+                                    active_transcription_jobs[cache_key] = {
+                                        "status": "processing",
+                                        "progress_percent": pct,
+                                        "current_part": chunk_index,
+                                        "total_parts": total_chunks,
+                                        "stage": f"Extracting audio stream ({chunk_index}/{total_chunks} parts)",
+                                        "has_artifacts": False,
+                                        "estimated_seconds_left": secs_left
+                                    }
+                            except Exception as feed_err:
+                                print(f"[EduStream STT Feed Notice]: {feed_err}")
+                            finally:
+                                process.stdin.close()
+
+                        feed_task = asyncio.create_task(_feed_ffmpeg())
+                        audio_bytes, _ = await process.communicate()
+                        await feed_task
+
+                        audio_mb = len(audio_bytes) / (1024 * 1024)
+                        video_mb = bytes_streamed / (1024 * 1024)
+                        print(f"[EduStream STT Pipe Complete]: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
+
+                        if len(audio_bytes) > 1000:
+                            active_transcription_jobs[cache_key] = {
+                                "status": "processing",
+                                "progress_percent": 75.0,
+                                "current_part": total_chunks,
+                                "total_parts": total_chunks,
+                                "stage": "Transcribing speech with EduStream Speech Engine",
+                                "has_artifacts": False,
+                                "estimated_seconds_left": 10
+                            }
+
+                            groq_headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+                            groq_files = {
+                                "file": (f"lecture_{msg_id}.mp3", io.BytesIO(audio_bytes), "audio/mpeg"),
+                            }
+                            groq_data = {
+                                "model": "whisper-large-v3",
+                                "response_format": "verbose_json",
+                            }
+                            resp = requests.post(
+                                "https://api.groq.com/openai/v1/audio/transcriptions",
+                                headers=groq_headers, files=groq_files, data=groq_data, timeout=120
+                            )
+                            del audio_bytes
+
+                            if resp.status_code == 200:
+                                stt_json = resp.json()
+                                segments = stt_json.get("segments", [])
+                                if segments:
+                                    PARAGRAPH_GAP_SECONDS = 120
+                                    paragraphs = []
+                                    current_para_texts = []
+                                    current_para_start = 0
+
+                                    for seg in segments:
+                                        start_s = int(seg.get("start", 0))
+                                        text_str = seg.get("text", "").strip()
+                                        if not text_str:
+                                            continue
+
+                                        if current_para_texts and (start_s - current_para_start) >= PARAGRAPH_GAP_SECONDS:
+                                            h, remainder = divmod(current_para_start, 3600)
+                                            m, s = divmod(remainder, 60)
+                                            ts = f"[{h:02d}:{m:02d}:{s:02d}]"
+                                            paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
+                                            current_para_texts = []
+                                            current_para_start = start_s
+
+                                        if not current_para_texts:
+                                            current_para_start = start_s
+                                        current_para_texts.append(text_str)
+
+                                    if current_para_texts:
+                                        h, remainder = divmod(current_para_start, 3600)
+                                        m, s = divmod(remainder, 60)
+                                        ts = f"[{h:02d}:{m:02d}:{s:02d}]"
+                                        paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
+
+                                    if paragraphs:
+                                        real_stt_transcript = "\n\n".join(paragraphs)
+                                        print(f"[EduStream STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs")
+
+                                if not real_stt_transcript:
+                                    raw_text = stt_json.get("text", "").strip()
+                                    if raw_text and len(raw_text) > 30:
+                                        real_stt_transcript = f"[00:00:00]\n{raw_text}"
+            except Exception as e:
+                stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
+                print(f"[EduStream STT Zero-Disk Exception]: {e}")
+
+        # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS ONLY IF REAL STT TRANSCRIPT IS READY
+        if real_stt_transcript and len(real_stt_transcript) > 50:
+            active_transcription_jobs[cache_key] = {
+                "status": "processing",
+                "progress_percent": 88.0,
+                "current_part": 30,
+                "total_parts": 30,
+                "stage": "Synthesizing lecture notes, 5 MCQs & coding challenge",
+                "has_artifacts": False,
+                "estimated_seconds_left": 5
+            }
+
+            artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
+
+            response_data = {
+                "chat_id": chat_id,
+                "msg_id": msg_id,
+                "title": clean_title,
+                "transcript": real_stt_transcript,
+                "provider": provider_name,
+                "notes": artifacts.get("notes"),
+                "mcqs": artifacts.get("mcqs", []),
+                "coding_problem": artifacts.get("coding_problem"),
+                "simulation_steps": artifacts.get("simulation_steps", []),
+                "status": "completed",
+                "progress_percent": 100.0,
+                "current_part": 30,
+                "total_parts": 30,
+                "stage": "Completed",
+                "has_artifacts": True,
+                "estimated_seconds_left": 0
+            }
+            if stt_error_msg:
+                response_data["stt_notice"] = stt_error_msg
+
+            # SAVE TO PERSISTENT CACHE
+            cache = load_ai_cache()
+            cache[cache_key] = response_data
+            cache[f"tg-{chat_id}-{msg_id}"] = response_data
+            cache[clean_title] = response_data
+            save_ai_cache(cache)
+
+            active_transcription_jobs[cache_key] = {
+                "status": "completed",
+                "progress_percent": 100.0,
+                "current_part": 30,
+                "total_parts": 30,
+                "stage": "Completed",
+                "has_artifacts": True,
+                "estimated_seconds_left": 0
+            }
+            print(f"[EduStream Background Job Done] Saved all artifacts for {cache_key}")
+            return response_data
+        else:
+            active_transcription_jobs[cache_key] = {
+                "status": "error",
+                "progress_percent": 0.0,
+                "current_part": 0,
+                "total_parts": 30,
+                "stage": "Audio extraction or STT incomplete",
+                "has_artifacts": False,
+                "estimated_seconds_left": 0
+            }
+    except Exception as job_err:
+        print(f"[EduStream Background Task Exception]: {job_err}")
+        active_transcription_jobs[cache_key] = {
+            "status": "error",
+            "progress_percent": 0.0,
+            "current_part": 0,
+            "total_parts": 30,
+            "stage": f"Error: {job_err}",
+            "has_artifacts": False,
+            "estimated_seconds_left": 0
+        }
+    finally:
+        active_background_tasks.pop(cache_key, None)
+
+
+# -------------------------------------------------------------------
 # WHISPER STT TRANSCRIPTION API
 # -------------------------------------------------------------------
 
@@ -912,6 +1170,7 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
     """
     clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
     cache_key = f"{chat_id}_{msg_id}"
+    dur_mins = max(3, duration or 15)
 
     # 0. CHECK PERSISTENT CACHE FIRST (Zero token consumption)
     cache = load_ai_cache()
@@ -919,217 +1178,25 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
         print(f"[AI Cache Hit] Returning stored transcript & artifacts for {cache_key} (0 tokens used)")
         return cache[cache_key]
 
-    dur_mins = max(3, duration or 15)
+    # If force or not currently running in background, trigger background task
+    if force or cache_key not in active_background_tasks or active_background_tasks[cache_key].done():
+        if force:
+            cache.pop(cache_key, None)
+            cache.pop(f"tg-{chat_id}-{msg_id}", None)
+            cache.pop(clean_title, None)
+            save_ai_cache(cache)
+        print(f"[EduStream Background Start] Triggering background pipeline for {cache_key}...")
+        active_background_tasks[cache_key] = asyncio.create_task(
+            process_lecture_pipeline_task(chat_id, msg_id, clean_title, dur_mins)
+        )
 
-    stt_error_msg: Optional[str] = None
-    real_stt_transcript: Optional[str] = None
-    provider_name: str = "EduStream AI Speech Engine"
-
-    # Initialize progress tracker
-    active_transcription_jobs[cache_key] = {
-        "status": "processing",
+    # If STT transcript is not yet ready, return immediate processing status with live progress
+    job_info = active_transcription_jobs.get(cache_key, {
         "progress_percent": 5.0,
         "current_part": 1,
         "total_parts": 30,
         "stage": "Initializing audio extraction pipe",
-        "has_artifacts": False
-    }
-
-    # 1. REAL TELEGRAM VIDEO AUDIO WHISPER STT: Zero-disk FFmpeg pipe
-    if GROQ_API_KEY:
-        try:
-            client = await get_client()
-            channel_peer = await resolve_channel_peer(chat_id)
-            if channel_peer:
-                msg = await client.get_messages(channel_peer, ids=msg_id)
-                if msg and msg.media and isinstance(msg.media, MessageMediaDocument):
-                    doc = msg.media.document
-                    doc_size = getattr(doc, 'size', 0) or (15 * 1024 * 1024)
-                    chunk_size = 128 * 1024
-                    total_chunks = max(1, math.ceil(doc_size / chunk_size))
-
-                    try:
-                        import imageio_ffmpeg
-                        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-                    except Exception:
-                        ffmpeg_exe = "ffmpeg"
-
-                    print(f"[EduStream STT] Zero-disk pipe: streaming {total_chunks} parts video → FFmpeg → MP3 for msg #{msg_id}...")
-
-                    ffmpeg_cmd = [
-                        ffmpeg_exe, "-y",
-                        "-i", "pipe:0", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k", "-f", "mp3", "pipe:1"
-                    ]
-                    process = await asyncio.create_subprocess_exec(
-                        *ffmpeg_cmd,
-                        stdin=asyncio.subprocess.PIPE,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.DEVNULL
-                    )
-
-                    bytes_streamed = 0
-                    chunk_index = 0
-
-                    async def _feed_ffmpeg():
-                        nonlocal bytes_streamed, chunk_index
-                        try:
-                            async for chunk in client.iter_download(
-                                doc, offset=0, request_size=chunk_size, dc_id=getattr(doc, 'dc_id', None)
-                            ):
-                                process.stdin.write(chunk)
-                                await process.stdin.drain()
-                                bytes_streamed += len(chunk)
-                                chunk_index += 1
-                                # Real proportional progress from 5% to 70%
-                                pct = min(70.0, round((chunk_index / total_chunks) * 70, 1))
-                                active_transcription_jobs[cache_key] = {
-                                    "status": "processing",
-                                    "progress_percent": pct,
-                                    "current_part": chunk_index,
-                                    "total_parts": total_chunks,
-                                    "stage": f"Extracting audio stream ({chunk_index}/{total_chunks} parts)",
-                                    "has_artifacts": False
-                                }
-                        except Exception as feed_err:
-                            print(f"[EduStream STT] Streaming feed notice: {feed_err}")
-                        finally:
-                            process.stdin.close()
-
-                    feed_task = asyncio.create_task(_feed_ffmpeg())
-                    audio_bytes, _ = await process.communicate()
-                    await feed_task
-
-                    audio_mb = len(audio_bytes) / (1024 * 1024)
-                    video_mb = bytes_streamed / (1024 * 1024)
-                    print(f"[EduStream STT] Pipe complete: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
-
-                    if len(audio_bytes) > 1000:
-                        active_transcription_jobs[cache_key] = {
-                            "status": "processing",
-                            "progress_percent": 75.0,
-                            "current_part": total_chunks,
-                            "total_parts": total_chunks,
-                            "stage": "Transcribing lecture speech to text",
-                            "has_artifacts": False
-                        }
-
-                        groq_headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-                        groq_files = {
-                            "file": (f"lecture_{msg_id}.mp3", io.BytesIO(audio_bytes), "audio/mpeg"),
-                        }
-                        groq_data = {
-                            "model": "whisper-large-v3",
-                            "response_format": "verbose_json",
-                        }
-                        resp = requests.post(
-                            "https://api.groq.com/openai/v1/audio/transcriptions",
-                            headers=groq_headers, files=groq_files, data=groq_data, timeout=120
-                        )
-                        del audio_bytes
-
-                        if resp.status_code == 200:
-                            stt_json = resp.json()
-                            segments = stt_json.get("segments", [])
-                            if segments:
-                                PARAGRAPH_GAP_SECONDS = 120
-                                paragraphs = []
-                                current_para_texts = []
-                                current_para_start = 0
-
-                                for seg in segments:
-                                    start_s = int(seg.get("start", 0))
-                                    text_str = seg.get("text", "").strip()
-                                    if not text_str:
-                                        continue
-
-                                    if current_para_texts and (start_s - current_para_start) >= PARAGRAPH_GAP_SECONDS:
-                                        h, remainder = divmod(current_para_start, 3600)
-                                        m, s = divmod(remainder, 60)
-                                        ts = f"[{h:02d}:{m:02d}:{s:02d}]"
-                                        paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
-                                        current_para_texts = []
-                                        current_para_start = start_s
-
-                                    if not current_para_texts:
-                                        current_para_start = start_s
-                                    current_para_texts.append(text_str)
-
-                                if current_para_texts:
-                                    h, remainder = divmod(current_para_start, 3600)
-                                    m, s = divmod(remainder, 60)
-                                    ts = f"[{h:02d}:{m:02d}:{s:02d}]"
-                                    paragraphs.append(f"{ts}\n{' '.join(current_para_texts)}")
-
-                                if paragraphs:
-                                    real_stt_transcript = "\n\n".join(paragraphs)
-                                    print(f"[EduStream STT Success] Transcribed {len(segments)} segments → {len(paragraphs)} paragraphs")
-
-                            if not real_stt_transcript:
-                                raw_text = stt_json.get("text", "").strip()
-                                if raw_text and len(raw_text) > 30:
-                                    real_stt_transcript = f"[00:00:00]\n{raw_text}"
-        except Exception as e:
-            stt_error_msg = f"Zero-disk STT pipeline notice: {e}"
-            print(f"[EduStream STT Zero-Disk Exception]: {e}")
-
-    # 2. AUTO-GENERATE ALL DEPENDENT AI ARTIFACTS ONLY IF REAL STT TRANSCRIPT IS READY
-    if real_stt_transcript and len(real_stt_transcript) > 50:
-        active_transcription_jobs[cache_key] = {
-            "status": "processing",
-            "progress_percent": 88.0,
-            "current_part": 30,
-            "total_parts": 30,
-            "stage": "Synthesizing notes, MCQs & coding challenge from transcript",
-            "has_artifacts": False
-        }
-
-        artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
-
-        response_data = {
-            "chat_id": chat_id,
-            "msg_id": msg_id,
-            "title": clean_title,
-            "transcript": real_stt_transcript,
-            "provider": provider_name,
-            "notes": artifacts.get("notes"),
-            "mcqs": artifacts.get("mcqs", []),
-            "coding_problem": artifacts.get("coding_problem"),
-            "simulation_steps": artifacts.get("simulation_steps", []),
-            "status": "completed",
-            "progress_percent": 100.0,
-            "current_part": 30,
-            "total_parts": 30,
-            "stage": "Completed",
-            "has_artifacts": True
-        }
-        if stt_error_msg:
-            response_data["stt_notice"] = stt_error_msg
-
-        # Update job to complete
-        active_transcription_jobs[cache_key] = {
-            "status": "completed",
-            "progress_percent": 100.0,
-            "current_part": 30,
-            "total_parts": 30,
-            "stage": "Completed",
-            "has_artifacts": True
-        }
-
-        # SAVE TO PERSISTENT CACHE ONLY WHEN COMPLETED WITH REAL TRANSCRIPT
-        cache = load_ai_cache()
-        cache[cache_key] = response_data
-        cache[f"tg-{chat_id}-{msg_id}"] = response_data
-        cache[clean_title] = response_data
-        save_ai_cache(cache)
-
-        return response_data
-
-    # If STT transcript is not yet ready, return processing status with live progress
-    job_info = active_transcription_jobs.get(cache_key, {
-        "progress_percent": 10.0,
-        "current_part": 1,
-        "total_parts": 30,
-        "stage": "Extracting audio stream"
+        "estimated_seconds_left": 40
     })
 
     return {
@@ -1138,11 +1205,12 @@ async def get_video_transcript_route(chat_id: str, msg_id: int, title: Optional[
         "title": clean_title,
         "transcript": None,
         "status": "processing",
-        "progress_percent": job_info.get("progress_percent", 10.0),
+        "progress_percent": job_info.get("progress_percent", 5.0),
         "current_part": job_info.get("current_part", 1),
         "total_parts": job_info.get("total_parts", 30),
         "stage": job_info.get("stage", "Extracting audio stream"),
-        "message": "EduStream AI Speech Engine is extracting and transcribing lecture audio. Synthesis of study notes, MCQs, and coding challenges in progress...",
+        "estimated_seconds_left": job_info.get("estimated_seconds_left", 40),
+        "message": "EduStream AI Speech Engine is extracting and transcribing lecture audio in background. Synthesis of study notes, MCQs, and coding challenges in progress...",
         "notes": None,
         "mcqs": [],
         "coding_problem": None,

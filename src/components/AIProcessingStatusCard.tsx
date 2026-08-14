@@ -8,6 +8,7 @@ interface AIProcessingStatusCardProps {
   currentPart?: number;
   totalParts?: number;
   stage?: string;
+  estimatedSecondsLeft?: number;
 }
 
 export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({
@@ -16,37 +17,20 @@ export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({
   progressPercent: serverProgress,
   currentPart,
   totalParts = 30,
-  stage: serverStage
+  stage: serverStage,
+  estimatedSecondsLeft: serverSecsLeft
 }) => {
-  // Estimated total processing time: ~30 to 90 seconds based on video duration
-  const totalEstimatedSeconds = Math.max(30, Math.min(120, Math.round(durationSeconds / 15)));
-  const [localSecondsRemaining, setLocalSecondsRemaining] = useState(totalEstimatedSeconds);
-  const [localProgressPercent, setLocalProgressPercent] = useState(10);
+  // Use real server progress directly (no fake simulated timers)
+  const displayProgress = typeof serverProgress === 'number'
+    ? Math.max(5, Math.min(100, Math.round(serverProgress)))
+    : (currentPart && totalParts && totalParts > 0 ? Math.max(5, Math.round((currentPart / totalParts) * 70)) : 5);
 
-  useEffect(() => {
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = Math.max(0, totalEstimatedSeconds - elapsed);
-      setLocalSecondsRemaining(remaining);
-
-      // Smooth progress calculation from 10% to 95%
-      const calculatedProgress = Math.min(95, Math.round(10 + (elapsed / totalEstimatedSeconds) * 85));
-      setLocalProgressPercent(calculatedProgress);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [totalEstimatedSeconds]);
-
-  // Use server progress if available, otherwise use smooth local progress
-  const displayProgress = typeof serverProgress === 'number' && serverProgress > 0
-    ? Math.min(100, Math.round(serverProgress))
-    : localProgressPercent;
-
-  // Calculate estimated seconds remaining based on actual parts or time
-  const secondsRemaining = (currentPart && totalParts && totalParts > 0)
-    ? Math.max(3, Math.round(((totalParts - currentPart) / totalParts) * totalEstimatedSeconds))
-    : localSecondsRemaining;
+  // Exact estimated seconds remaining from backend or calculated from parts left
+  const secondsRemaining = typeof serverSecsLeft === 'number'
+    ? serverSecsLeft
+    : (currentPart && totalParts && totalParts > 0
+        ? Math.max(3, Math.round(((totalParts - currentPart) / totalParts) * 40) + 10)
+        : 35);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);

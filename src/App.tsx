@@ -258,6 +258,35 @@ export function App() {
     const channelId = selectedVideo.channel_id || 'ch-sd-02';
     const msgId = selectedVideo.telegram_message_id || 6004;
 
+    const pollStatus = () => {
+      const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
+
+      fetch(statusUrl)
+        .then((r) => r.json())
+        .then((statusData) => {
+          if (!isMounted) return;
+          if (statusData) {
+            setVideoArtifacts((prev: any) => ({
+              ...(prev || {}),
+              ...statusData,
+            }));
+
+            if (statusData.status === 'completed' || (typeof statusData.progress_percent === 'number' && statusData.progress_percent >= 100)) {
+              // Background task is finished! Fetch complete artifacts
+              fetchArtifacts();
+            } else {
+              // Continue live progress polling every 1.5 seconds
+              setQuizLoading(true);
+              pollTimer = setTimeout(pollStatus, 1500);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[EduStream Status Poll Notice]:', err);
+          if (isMounted) pollTimer = setTimeout(pollStatus, 2500);
+        });
+    };
+
     const fetchArtifacts = () => {
       const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
@@ -283,9 +312,9 @@ export function App() {
               selectedVideo.quiz_json = normalizedMCQs;
               setQuizLoading(false);
             } else if (data.status === 'processing' || !data.transcript) {
-              // Still processing on backend — keep quizLoading true and poll again in 4s
+              // Backend processing in background — poll status every 1.5s
               setQuizLoading(true);
-              pollTimer = setTimeout(fetchArtifacts, 4000);
+              pollTimer = setTimeout(pollStatus, 1500);
             } else {
               setQuizLoading(false);
             }
@@ -293,7 +322,9 @@ export function App() {
         })
         .catch((err) => {
           console.warn('[EduStream Artifact Fetch Notice]:', err);
-          if (isMounted) setQuizLoading(false);
+          if (isMounted) {
+            pollTimer = setTimeout(pollStatus, 2000);
+          }
         });
     };
 
@@ -683,6 +714,7 @@ export function App() {
                     currentPart={videoArtifacts?.current_part}
                     totalParts={videoArtifacts?.total_parts}
                     stage={videoArtifacts?.stage}
+                    estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
                     onCodeExecuted={handleQuestionSolved}
                   />
                 ) : (
@@ -694,6 +726,7 @@ export function App() {
                     currentPart={videoArtifacts?.current_part}
                     totalParts={videoArtifacts?.total_parts}
                     stage={videoArtifacts?.stage}
+                    estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
                     onQuizSubmitted={handleQuestionSolved}
                     onAttemptMoreQuestions={handleAttemptMoreQuestions}
                     isGeneratingMore={isGeneratingMoreQuiz}

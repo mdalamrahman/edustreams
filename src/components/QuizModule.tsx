@@ -15,6 +15,7 @@ interface QuizModuleProps {
   currentPart?: number;
   totalParts?: number;
   stage?: string;
+  estimatedSecondsLeft?: number;
 }
 
 export const QuizModule: React.FC<QuizModuleProps> = ({
@@ -27,7 +28,8 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
   progressPercent,
   currentPart,
   totalParts,
-  stage
+  stage,
+  estimatedSecondsLeft
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
@@ -45,6 +47,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
         currentPart={currentPart}
         totalParts={totalParts}
         stage={stage}
+        estimatedSecondsLeft={estimatedSecondsLeft}
       />
     );
   }

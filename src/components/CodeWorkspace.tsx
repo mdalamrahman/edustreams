@@ -35,6 +35,7 @@ interface CodeWorkspaceProps {
   currentPart?: number;
   totalParts?: number;
   stage?: string;
+  estimatedSecondsLeft?: number;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
@@ -49,18 +50,19 @@ def solve():
   java: `// EduStream — Java 17 Sandbox
 import java.util.*;
 
-public class Solution {
+public class Main {
     public static void main(String[] args) {
-        System.out.println("EduStream Java Execution Context");
+        System.out.println("Hello, EduStream!");
     }
 }
 `,
   cpp: `// EduStream — C++ 20 Sandbox
 #include <iostream>
+#include <vector>
 using namespace std;
 
 int main() {
-    cout << "EduStream C++ Execution Context" << endl;
+    cout << "Hello, EduStream!" << endl;
     return 0;
 }
 `,
@@ -78,8 +80,11 @@ fn main() {
     println!("EduStream Rust Execution Context");
 }
 `,
-  javascript: `// EduStream — JavaScript ES2022 Sandbox
-console.log("EduStream JS Execution Context");
+  javascript: `// EduStream — Node.js Sandbox
+function solve() {
+    console.log("Hello, EduStream!");
+}
+solve();
 `,
   sql: `-- EduStream — PostgreSQL SQL Sandbox
 SELECT 1;
@@ -101,20 +106,21 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   question, 
   allCodingQuestions = [], 
   codingProblem, 
-  isLoading, 
+  isLoading = false, 
   progressPercent,
   currentPart,
   totalParts,
   stage,
+  estimatedSecondsLeft,
   onCodeExecuted 
 }) => {
   const codingList = allCodingQuestions.length > 0 ? allCodingQuestions : (question ? [question] : []);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const activeQ = codingList[activeQuestionIdx] || question;
 
-  const [language, setLanguage] = useState<SupportedLanguage>('cpp');
+  const [language, setLanguage] = useState<SupportedLanguage>('python');
   const [code, setCode] = useState<string>(
-    codingProblem?.starter_code_cpp || activeQ?.starter_code || LANGUAGE_STARTERS.cpp
+    codingProblem?.starter_code_python || activeQ?.starter_code || LANGUAGE_STARTERS.python
   );
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -154,6 +160,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
         currentPart={currentPart}
         totalParts={totalParts}
         stage={stage}
+        estimatedSecondsLeft={estimatedSecondsLeft}
       />
     );
   }

@@ -29,6 +29,7 @@ interface AINotesAndSimulationProps {
     current_part?: number;
     total_parts?: number;
     stage?: string;
+    estimated_seconds_left?: number;
   } | null;
   isLoading?: boolean;
 }
@@ -159,6 +160,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
         currentPart={videoArtifacts?.current_part}
         totalParts={videoArtifacts?.total_parts}
         stage={videoArtifacts?.stage}
+        estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
       />
     );
   }
