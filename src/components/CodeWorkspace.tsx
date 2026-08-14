@@ -134,6 +134,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   const [isLeetCodeFullscreen, setIsLeetCodeFullscreen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [testCaseResults, setTestCaseResults] = useState<{ input: string; expected: string; actual: string; passed: boolean }[]>([]);
+  const [isCopiedStarter, setIsCopiedStarter] = useState(false);
 
   useEffect(() => {
     if (codingProblem) {
@@ -291,8 +292,6 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     setAiReview(review);
     setIsAnalyzingAI(false);
   };
-
-  const [isCopiedStarter, setIsCopiedStarter] = useState(false);
 
   const handleCopyStarter = (codeText: string) => {
     navigator.clipboard.writeText(codeText);

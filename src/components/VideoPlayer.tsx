@@ -58,6 +58,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [streamError, setStreamError] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
+  const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
+  const [autoCompleted, setAutoCompleted] = useState(false);
+  const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
+  const [confirmInput, setConfirmInput] = useState<string>('');
   const hideControlsTimer = useRef<any>(null);
 
   const triggerShowControls = () => {
@@ -214,10 +219,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
-  const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
-  const [autoCompleted, setAutoCompleted] = useState(false);
-
   // Auto-complete lecture when ≥70% of video duration watched
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -266,9 +267,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         .finally(() => setLoadingTranscript(false));
     }
   }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds]);
-
-  const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
-  const [confirmInput, setConfirmInput] = useState<string>('');
 
   const handleRegenerateTranscript = () => {
     setShowRegenModal(false);
