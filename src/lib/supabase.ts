@@ -4,7 +4,24 @@ import { Channel, Video } from './types';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_-b4G7T-uPojtUC3nDGD_JQ_xR2UzNO3';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://edustream-demo.supabase.co';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/**
+ * Single Responsibility Principle (SRP) Singleton Supabase Client:
+ * Reuses a single HTTP/Auth connection pool without opening unused Realtime WebSockets.
+ */
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined
+  },
+  global: {
+    headers: {
+      'x-application-name': 'sdetube',
+      'Connection': 'keep-alive'
+    }
+  }
+});
 
 export const MOCK_CHANNELS: Channel[] = [
   {

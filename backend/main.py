@@ -195,8 +195,54 @@ def save_ai_cache(cache_data: dict):
         if isinstance(v, dict) and v.get("transcript"):
             save_to_sqlite(v)
 
+class SupabaseConnectionManager:
+    """
+    Single Responsibility Principle (SRP) Database Connection Pool Manager:
+    Reuses a single persistent HTTP Session with Keep-Alive connection pooling
+    to prevent connection bloat and minimize open connections to Supabase.
+    """
+    _instance = None
+    _session = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(SupabaseConnectionManager, cls).__new__(cls)
+            cls._instance._init_session()
+        return cls._instance
+
+    def _init_session(self):
+        self._session = requests.Session()
+        from urllib3.util.retry import Retry
+        from requests.adapters import HTTPAdapter
+        retry_strategy = Retry(
+            total=2,
+            backoff_factor=0.3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "POST"]
+        )
+        adapter = HTTPAdapter(
+            pool_connections=1,
+            pool_maxsize=2,
+            max_retries=retry_strategy
+        )
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
+        if SUPABASE_KEY:
+            self._session.headers.update({
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Connection": "keep-alive"
+            })
+
+    def get_session(self) -> requests.Session:
+        if self._session is None:
+            self._init_session()
+        return self._session
+
+_supabase_conn_manager = SupabaseConnectionManager()
+
 def sync_artifacts_to_supabase(data: dict):
-    """Saves completed transcript, MCQs, coding problem, and Algomaster notes into Supabase database."""
+    """Saves completed transcript, MCQs, coding problem, and Algomaster notes into Supabase database via reused connection."""
     save_to_sqlite(data)
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return
@@ -222,20 +268,19 @@ def sync_artifacts_to_supabase(data: dict):
             }
         }
         headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json",
             "Prefer": "resolution=merge-duplicates"
         }
         url = f"{SUPABASE_URL}/rest/v1/videos"
-        resp = requests.post(url, headers=headers, json=payload, timeout=5)
+        session = _supabase_conn_manager.get_session()
+        resp = session.post(url, headers=headers, json=payload, timeout=5)
         if resp.status_code in [200, 201]:
-            print(f"[Supabase Cloud Sync] Successfully persisted artifacts for {file_id} in Supabase")
+            print(f"[Supabase Cloud Sync] Successfully persisted artifacts for {file_id} in Supabase (Connection Reused)")
     except Exception as e:
         print(f"[Supabase Cloud Sync Notice]: {e}")
 
 def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Optional[dict]:
-    """Fetches previously stored transcript and artifacts from SQLite DB and Supabase database."""
+    """Fetches previously stored transcript and artifacts from SQLite DB and Supabase database using connection pool."""
     # Check SQLite first (instant 0ms retrieval)
     sqlite_hit = fetch_from_sqlite(chat_id, msg_id, title)
     if sqlite_hit:
@@ -244,21 +289,19 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return None
     try:
-        headers = {
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}"
-        }
         file_id = f"{chat_id}_{msg_id}"
         clean_title = (title or "").strip()
+        session = _supabase_conn_manager.get_session()
+        
         # Search by file_id OR title
         url = f"{SUPABASE_URL}/rest/v1/videos?telegram_file_id=eq.{file_id}&select=*"
-        resp = requests.get(url, headers=headers, timeout=4)
+        resp = session.get(url, timeout=4)
         if resp.status_code == 200:
             rows = resp.json()
             if not rows or len(rows) == 0:
                 # Fallback: search by title
                 url_title = f"{SUPABASE_URL}/rest/v1/videos?title=ilike.*{requests.utils.quote(clean_title)}*&select=*"
-                resp_title = requests.get(url_title, headers=headers, timeout=4)
+                resp_title = session.get(url_title, timeout=4)
                 if resp_title.status_code == 200:
                     rows = resp_title.json()
 
@@ -267,7 +310,7 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
                 tr = row.get("transcript")
                 qj = row.get("quiz_json") or {}
                 if tr and len(tr.strip()) > 120:
-                    print(f"[Supabase DB Hit] Loaded stored transcript & AI artifacts for {file_id}")
+                    print(f"[Supabase DB Hit] Loaded stored transcript & AI artifacts for {file_id} (Connection Reused)")
                     result_obj = {
                         "chat_id": chat_id,
                         "msg_id": msg_id,
