@@ -25,7 +25,8 @@ import {
   Layers,
   Building2,
   HelpCircle,
-  Maximize2
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -93,7 +94,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });
 
-  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'video' | 'solutions' | 'submissions' | 'ask_ai' | 'aireview'>('description');
+  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'video' | 'solutions' | 'submissions' | 'aireview'>('description');
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
@@ -101,8 +102,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [executionTime, setExecutionTime] = useState<number>(0);
-  const [copiedCode, setCopiedCode] = useState<boolean>(false);
   
+  // Copy states
+  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [copiedDescription, setCopiedDescription] = useState<boolean>(false);
+  const [copiedReviewText, setCopiedReviewText] = useState<boolean>(false);
+  const [copiedHints, setCopiedHints] = useState<boolean>(false);
+  const [copiedEditorial, setCopiedEditorial] = useState<boolean>(false);
+  const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
+  
+  // Slide-out Ask AI popup on the RIGHT
+  const [isRightAskAiOpen, setIsRightAskAiOpen] = useState<boolean>(false);
+
   // AI Review state
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
@@ -120,80 +131,108 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return [
       {
         role: 'assistant',
-        content: `Hello! I'm your SDETube Coding Teaching Assistant for **${cleanTitle}**.\nI already have your problem statement, code in **${language.toUpperCase()}**, and active testcases loaded in context.\n\nHow can I help you ace this question?`
+        content: `Hi! I'm your dedicated SDETube Teaching Assistant for **${cleanTitle}**.\n\nI have complete context of the lecture transcript, starter code, and active test harness. Ask me anything!`
       }
     ];
   });
 
-  // Save chat to localStorage on update
+  const [aiInputText, setAiInputText] = useState<string>('');
+  const [isAiReplying, setIsAiReplying] = useState<boolean>(false);
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     try {
       localStorage.setItem(chatStorageKey, JSON.stringify(aiChatMessages));
     } catch {}
   }, [aiChatMessages, chatStorageKey]);
 
-  const [aiInputText, setAiInputText] = useState('');
-  const [isAiReplying, setIsAiReplying] = useState(false);
-  const chatScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isRightAskAiOpen) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [aiChatMessages, isRightAskAiOpen]);
 
-  // Submissions tracking
-  const [submissionsList, setSubmissionsList] = useState<Array<{
+  // Submission History State
+  const [submissionsList, setSubmissionsList] = useState<{
     timestamp: string;
     status: string;
     runtime: string;
     memory: string;
     lang: string;
-  }>>([]);
+  }[]>([]);
 
-  const editorRef = useRef<any>(null);
-  const handleEditorDidMount: OnMount = (editor) => {
-    editorRef.current = editor;
-  };
-
-  // Switch Approach
-  const handleSelectApproach = (approach: ProblemApproach) => {
-    setSelectedApproachId(approach.id);
-    const starter = approach.starters[language] || approach.starters.cpp;
-    if (starter) {
-      setCode(starter);
-    }
-  };
-
-  // Sync testcases and starter code when language changes
+  // Update starter code when language or approach changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    const currentApproach = problemTemplate.approaches?.find(a => a.id === selectedApproachId);
-    if (currentApproach && currentApproach.starters[newLang]) {
-      setCode(currentApproach.starters[newLang]);
+    if (problemTemplate.approaches && problemTemplate.approaches.length > 0) {
+      const curApp = problemTemplate.approaches.find(a => a.id === selectedApproachId) || problemTemplate.approaches[0];
+      setCode(curApp.starters[newLang] || problemTemplate.starters[newLang]);
     } else {
-      const newStarter = problemTemplate.starters[newLang];
-      if (newStarter) setCode(newStarter);
+      setCode(problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
     }
   };
 
-  // Switch testcase
-  const handleSelectTestCase = (idx: number) => {
-    setActiveTestCaseIdx(idx);
-    setTestInput(problemTemplate.testCases[idx] || problemTemplate.testCases[0] || '');
+  const handleSelectApproach = (approach: ProblemApproach) => {
+    setSelectedApproachId(approach.id);
+    if (approach.starters[language]) {
+      setCode(approach.starters[language]);
+    }
   };
 
-  // Scroll AI chat
-  useEffect(() => {
-    if (chatScrollRef.current) {
-      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-    }
-  }, [aiChatMessages, leftTab]);
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
 
-  // Execute or Submit Code
-  const handleRunCode = async (isSubmission = false) => {
-    if (isExecuting) return;
+  const handleCopyDescription = () => {
+    navigator.clipboard.writeText(problemTemplate.description);
+    setCopiedDescription(true);
+    setTimeout(() => setCopiedDescription(false), 2000);
+  };
+
+  const handleCopyReviewText = () => {
+    if (!aiReview) return;
+    const reportText = `AI Code Review: ${cleanTitle}\nStatus: ${aiReview.status}\nTime Complexity: ${aiReview.time_complexity}\nSpace Complexity: ${aiReview.space_complexity}\n\nSummary:\n${aiReview.review_summary}\n\nOptimization Tips:\n${aiReview.suggestions.join('\n')}`;
+    navigator.clipboard.writeText(reportText);
+    setCopiedReviewText(true);
+    setTimeout(() => setCopiedReviewText(false), 2000);
+  };
+
+  const handleCopyHints = () => {
+    const hintsText = "Hint 1: State & Invariant Analysis\nThink about what state needs to be preserved. Can you use in-place markers or hash tables to eliminate unnecessary iterations?\n\nHint 2: Two-Pointer & Reverse Pass\nTo avoid overwriting active markers, perform updates in reverse direction or keep boundary flags.";
+    navigator.clipboard.writeText(hintsText);
+    setCopiedHints(true);
+    setTimeout(() => setCopiedHints(false), 2000);
+  };
+
+  const handleCopyEditorial = () => {
+    const editContent = `Optimal Approach Walkthrough:\n1. Traverse the input data and identify invariant state boundaries.\n2. Use constant variables or first elements to record flags in-place.\n3. Perform the secondary pass in reverse or directional order to prevent overwriting active markers.\n\nTime Complexity: O(N) / O(M*N)\nSpace Complexity: O(1) Auxiliary`;
+    navigator.clipboard.writeText(editContent);
+    setCopiedEditorial(true);
+    setTimeout(() => setCopiedEditorial(false), 2000);
+  };
+
+  const handleClearChat = () => {
+    const initialMsg: ChatMessage = {
+      role: 'assistant',
+      content: `Chat history reset. How can I assist you with **${cleanTitle}**?`
+    };
+    setAiChatMessages([initialMsg]);
+    try {
+      localStorage.removeItem(chatStorageKey);
+    } catch {}
+  };
+
+  // Run Code / Submit
+  const handleExecute = async (isSubmission: boolean = false) => {
     setIsExecuting(true);
     setConsoleTab('result');
+    const start = Date.now();
 
-    const startTime = performance.now();
     try {
       const result = await executeCode(code, language, testInput, cleanTitle);
-      const elapsedMs = Math.round(performance.now() - startTime);
+      const elapsedMs = Date.now() - start;
       setExecutionTime(elapsedMs);
       setExecutionResult(result);
 
@@ -299,127 +338,81 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     } catch (err) {
       setAiChatMessages(prev => [
         ...prev,
-        {
-          role: 'assistant',
-          content: `Here is the algorithmic hint for **${cleanTitle}**:\nConsider optimizing from brute force to **${problemTemplate.difficulty === 'Easy' ? 'O(N)' : 'O(N log N) or O(N)'}** time complexity. Ensure boundary conditions and edge cases are handled.`
-        }
+        { role: 'assistant', content: 'Could not fetch AI reasoning. Please check your internet connection or API quota.' }
       ]);
     } finally {
       setIsAiReplying(false);
     }
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-  };
-
-  const handleResetCode = () => {
-    const currentApproach = problemTemplate.approaches?.find(a => a.id === selectedApproachId);
-    if (currentApproach && currentApproach.starters[language]) {
-      setCode(currentApproach.starters[language]);
-    } else {
-      setCode(problemTemplate.starters[language] || problemTemplate.starters.cpp);
-    }
-  };
-
-  const difficulty = problemTemplate.difficulty;
-  const companies = codingProblem?.companies || ['Google', 'Amazon', 'Microsoft', 'Meta'];
+  const difficulty = codingProblem?.difficulty || problemTemplate.difficulty || 'Medium';
+  const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col font-sans text-slate-100 animate-fadeIn select-none">
+    <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden">
       
       {/* ========================================================================= */}
-      {/* 1. TOP LEETCODE-STYLE NAVBAR WITH SDESTREAM / SDETUBE LOGO                */}
+      {/* 1. TOP LEETCODE NAVBAR                                                    */}
       {/* ========================================================================= */}
-      <header className="h-14 px-3 sm:px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
+      <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between flex-shrink-0 z-10">
         
-        {/* Left: SDEStream / SDETube Brand & Problem Title */}
-        <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
-          
-          {/* SDEStream Brand Logo & Name - Click returns to homepage / SDE sheet */}
-          <div 
-            onClick={() => {
-              onClose();
-              window.location.hash = '#/sde-sheet';
-            }}
-            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0 group"
-            title="Return to SDEStream / SDETube Home"
+        {/* Brand & Problem Title */}
+        <div className="flex items-center space-x-3 truncate">
+          <button
+            onClick={onClose}
+            className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer"
+            title="Return to SDE Sheet"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 p-0.5 shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center">
-                <Tv className="w-4 h-4 text-purple-400" />
-              </div>
+            <div className="p-1.5 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-md">
+              <Tv className="w-4 h-4 text-purple-200" />
             </div>
-            <div className="flex items-center space-x-1.5">
-              <span className="font-black text-sm sm:text-base tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
-                SDEStream
-              </span>
-              <span className="text-slate-600 font-bold hidden sm:inline">/</span>
-            </div>
-          </div>
-
-          {/* Problem Title & Difficulty Badge */}
-          <div className="flex items-center space-x-2 truncate">
-            <span className="text-white font-extrabold text-xs sm:text-sm tracking-tight truncate max-w-[140px] sm:max-w-xs md:max-w-md">
-              {cleanTitle}
+            <span className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-300 group-hover:opacity-90">
+              SDEStream
             </span>
+          </button>
 
-            <span className={`px-2 py-0.2 rounded-full text-[10px] sm:text-xs font-bold font-mono border flex-shrink-0 ${
+          <span className="text-slate-600 font-mono">/</span>
+
+          <div className="flex items-center space-x-2 truncate">
+            <h1 className="text-xs sm:text-sm font-bold text-slate-100 truncate max-w-xs sm:max-w-md">
+              {cleanTitle}
+            </h1>
+            <span className={`hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
               difficulty === 'Easy'
-                ? 'bg-emerald-950/90 text-emerald-400 border-emerald-700/60'
+                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
                 : difficulty === 'Hard'
-                ? 'bg-rose-950/90 text-rose-400 border-rose-700/60'
-                : 'bg-amber-950/90 text-amber-400 border-amber-700/60'
+                ? 'bg-rose-950/80 text-rose-400 border-rose-700/60'
+                : 'bg-amber-950/80 text-amber-400 border-amber-700/60'
             }`}>
               {difficulty}
             </span>
           </div>
-
         </div>
 
-        {/* Center: Run, Submit, AI Review Buttons */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2">
+        {/* Action Controls */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
           
-          {/* Run Code */}
+          {/* Ask AI Popup Trigger on Top */}
           <button
-            onClick={() => handleRunCode(false)}
-            disabled={isExecuting}
-            className="flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-            title="Run Code on Cloud Compiler"
+            onClick={() => setIsRightAskAiOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600 hover:to-indigo-600 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer"
+            title="Open AI Teaching Assistant on the right"
           >
-            <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
-            <span className="hidden sm:inline">{isExecuting ? 'Running...' : 'Run'}</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>Ask AI</span>
           </button>
 
-          {/* Submit Solution */}
-          <button
-            onClick={() => handleRunCode(true)}
-            disabled={isExecuting}
-            className="flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/40 transition-all active:scale-95 disabled:opacity-50 border border-emerald-400/40 cursor-pointer"
-            title="Submit Solution & Validate Testcases"
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-            <span>Submit</span>
-          </button>
-
-          {/* AI Review */}
+          {/* AI Review Button */}
           <button
             onClick={handleAIReview}
             disabled={isReviewing}
-            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-700/60 text-xs font-bold transition-all cursor-pointer shadow-sm"
-            title="AI Complexity & Optimization Review"
+            className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+            title="Generate AI Code Review & Complexity Report"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span className="hidden md:inline">{isReviewing ? 'Analyzing...' : 'AI Review'}</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>{isReviewing ? 'Analyzing...' : 'AI Review'}</span>
           </button>
 
-        </div>
-
-        {/* Right: Language Picker & Close */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          
           {/* Language Selector */}
           <select
             value={language}
@@ -452,7 +445,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden relative">
         
         {/* ----------------------------------------------------------------------- */}
-        {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, ASK AI, AI REVIEW     */}
+        {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, SOLUTIONS, AI REVIEW   */}
         {/* ----------------------------------------------------------------------- */}
         <div className="lg:col-span-5 bg-slate-900/90 border-r border-slate-800 flex flex-col overflow-hidden">
           
@@ -495,17 +488,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <span>Editorial</span>
             </button>
 
-            {/* Video Lecture Tab */}
             <button
               onClick={() => setLeftTab('video')}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 leftTab === 'video'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <VideoIcon className="w-3.5 h-3.5" />
-              <span>Video Lecture</span>
+              <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
+              <span>Video</span>
             </button>
 
             <button
@@ -516,21 +508,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Code className="w-3.5 h-3.5 text-emerald-400" />
+              <FileCode className="w-3.5 h-3.5 text-emerald-400" />
               <span>Solutions</span>
             </button>
 
-            {/* ASK AI TAB */}
             <button
-              onClick={() => setLeftTab('ask_ai')}
+              onClick={() => setLeftTab('submissions')}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                leftTab === 'ask_ai'
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'text-cyan-400 hover:text-cyan-200 hover:bg-indigo-950/40'
+                leftTab === 'submissions'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Bot className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Ask AI</span>
+              <Clock className="w-3.5 h-3.5 text-sky-400" />
+              <span>Submissions ({submissionsList.length})</span>
             </button>
 
             {/* AI REVIEW TAB */}
@@ -551,7 +542,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </div>
 
           {/* Left Panel Content Body */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans">
+          <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans select-text">
             
             {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
@@ -614,9 +605,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 )}
 
-                {/* Problem Statement */}
+                {/* Problem Statement with Copy Button */}
                 <div className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Description</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Description</h3>
+                    <button
+                      onClick={handleCopyDescription}
+                      className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
+                      title="Copy Problem Statement"
+                    >
+                      {copiedDescription ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedDescription ? 'Copied' : 'Copy Description'}</span>
+                    </button>
+                  </div>
                   <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
                     <FormattedChatText text={problemTemplate.description} />
                   </div>
@@ -656,7 +657,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {/* TAB 2: HINTS */}
             {leftTab === 'hints' && (
               <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Step-by-Step Hints</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Step-by-Step Hints</h3>
+                  <button
+                    onClick={handleCopyHints}
+                    className="flex items-center space-x-1 text-xs text-amber-400 hover:text-amber-300 font-bold cursor-pointer"
+                  >
+                    {copiedHints ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedHints ? 'Copied' : 'Copy Hints'}</span>
+                  </button>
+                </div>
                 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="font-bold text-amber-400 flex items-center gap-1.5">
@@ -681,7 +691,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {/* TAB 3: EDITORIAL */}
             {leftTab === 'editorial' && (
               <div className="space-y-4 font-sans">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Algorithmic Editorial & Complexity</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Algorithmic Editorial</h3>
+                  <button
+                    onClick={handleCopyEditorial}
+                    className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 font-bold cursor-pointer"
+                  >
+                    {copiedEditorial ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedEditorial ? 'Copied' : 'Copy Editorial'}</span>
+                  </button>
+                </div>
                 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="font-bold text-indigo-300 text-sm">Optimal Approach Walkthrough</div>
@@ -729,14 +748,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     />
                   </div>
                 ) : (
-                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-950/60 flex items-center justify-center mx-auto text-purple-400">
-                      <VideoIcon className="w-6 h-6" />
-                    </div>
-                    <div className="font-bold text-slate-200 text-sm">{cleanTitle} Video Lecture</div>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Available in SDEStream Video Catalog. Watch anytime with integrated AI notes.
-                    </p>
+                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 text-slate-400">
+                    <VideoIcon className="w-8 h-8 mx-auto text-slate-600" />
+                    <p className="text-xs">No direct video stream attached to this specific problem item.</p>
                   </div>
                 )}
               </div>
@@ -764,93 +778,43 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 6: ASK AI (CLEAN FORMATTING & PERSISTENT HISTORY) */}
-            {leftTab === 'ask_ai' && (
-              <div className="h-[460px] flex flex-col justify-between space-y-3">
+            {/* TAB 6: SUBMISSIONS */}
+            {leftTab === 'submissions' && (
+              <div className="space-y-3 font-sans">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Run & Submission History</h3>
                 
-                {/* Chat Messages Log */}
-                <div 
-                  ref={chatScrollRef}
-                  className="flex-1 overflow-y-auto space-y-3 pr-1"
-                >
-                  {aiChatMessages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-start space-x-2.5 ${
-                        msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                      }`}
-                    >
-                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs flex-shrink-0 ${
-                        msg.role === 'user'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-purple-950 border border-purple-800 text-purple-300'
-                      }`}>
-                        {msg.role === 'user' ? 'You' : <Bot className="w-4 h-4" />}
+                {submissionsList.length === 0 ? (
+                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-slate-500 text-xs">
+                    No submissions recorded yet in this workspace session.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {submissionsList.map((sub, idx) => (
+                      <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                            sub.status === 'Accepted'
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/60'
+                              : 'bg-rose-950 text-rose-400 border border-rose-700/60'
+                          }`}>
+                            {sub.status}
+                          </span>
+                          <span className="text-slate-400 font-mono">{sub.lang}</span>
+                        </div>
+
+                        <div className="flex items-center space-x-4 text-slate-400 font-mono text-[11px]">
+                          <span>{sub.runtime}</span>
+                          <span>{sub.memory}</span>
+                          <span className="text-slate-500">{sub.timestamp}</span>
+                        </div>
                       </div>
-
-                      <div className={`p-3 rounded-2xl text-xs max-w-[88%] leading-relaxed ${
-                        msg.role === 'user'
-                          ? 'bg-indigo-600 text-white font-medium'
-                          : 'bg-slate-950 border border-slate-800 text-slate-200 font-sans'
-                      }`}>
-                        <FormattedChatText text={msg.content} />
-                      </div>
-                    </div>
-                  ))}
-
-                  {isAiReplying && (
-                    <div className="flex items-center space-x-2 text-xs text-purple-400 animate-pulse">
-                      <Bot className="w-4 h-4" />
-                      <span>Formulating clean answer with your code context...</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Quick Action Prompt Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
-                  <button
-                    onClick={() => handleSendAiMessage("How do I optimize the time complexity to O(N)?")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-indigo-300 transition-colors cursor-pointer"
-                  >
-                    ⚡ Optimize Complexity
-                  </button>
-                  <button
-                    onClick={() => handleSendAiMessage("Why might my code fail on edge cases?")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-amber-300 transition-colors cursor-pointer"
-                  >
-                    🐞 Check Edge Cases
-                  </button>
-                  <button
-                    onClick={() => handleSendAiMessage("Explain the test case logic step by step.")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-emerald-300 transition-colors cursor-pointer"
-                  >
-                    📝 Explain Testcase
-                  </button>
-                </div>
-
-                {/* Input Bar */}
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={aiInputText}
-                    onChange={(e) => setAiInputText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendAiMessage()}
-                    placeholder="Ask any question about this problem or code..."
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    onClick={() => handleSendAiMessage()}
-                    disabled={isAiReplying || !aiInputText.trim()}
-                    className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-colors cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* TAB 7: AI REVIEW REPORT */}
+            {/* TAB 7: AI REVIEW REPORT (CLEAN NO * OR # FORMATTING + COPY REPORT) */}
             {leftTab === 'aireview' && aiReview && (
               <div className="space-y-4 font-sans animate-fadeIn">
                 <div className="flex items-center justify-between pb-2 border-b border-purple-900/40">
@@ -858,9 +822,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
                     <span>AI Code Review & Complexity Report</span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700 text-purple-300 text-[10px] font-mono">
-                    {aiReview.status}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700 text-purple-300 text-[10px] font-mono">
+                      {aiReview.status}
+                    </span>
+                    <button
+                      onClick={handleCopyReviewText}
+                      className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
+                    >
+                      {copiedReviewText ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedReviewText ? 'Copied' : 'Copy Report'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -876,7 +849,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="font-bold text-slate-200">Review Summary</div>
-                  <p className="text-xs text-slate-300 leading-relaxed">{aiReview.review_summary}</p>
+                  <div className="text-xs text-slate-300 leading-relaxed font-sans">
+                    <FormattedChatText text={aiReview.review_summary} />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -885,7 +860,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     {aiReview.suggestions.map((sug, idx) => (
                       <li key={idx} className="p-3 rounded-xl bg-purple-950/20 border border-purple-900/40 flex items-start gap-2 text-slate-300 text-xs">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span>{sug}</span>
+                        <div className="flex-1">
+                          <FormattedChatText text={sug} />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -899,106 +876,112 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         {/* ----------------------------------------------------------------------- */}
         {/* RIGHT PANEL: MONACO CODE EDITOR & TESTCASES / RESULTS CONSOLE           */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-950 relative">
+        <div className="lg:col-span-7 bg-slate-950 flex flex-col overflow-hidden relative">
           
-          {/* Editor Header Bar */}
-          <div className="h-10 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center space-x-2 text-xs font-mono font-bold text-slate-300">
-              <FileCode className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Solution.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language === 'java' ? 'java' : language === 'javascript' ? 'js' : language === 'go' ? 'go' : 'rs'}</span>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleCopyCode}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                title="Copy Code"
-              >
-                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-              <button
-                onClick={handleResetCode}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                title="Reset Code"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
           {/* Monaco Editor Container */}
-          <div className="flex-1 min-h-[300px] relative">
+          <div className="flex-1 min-h-[300px] border-b border-slate-800 relative">
             <Editor
               height="100%"
-              language={language === 'cpp' ? 'cpp' : language === 'python' ? 'python' : language === 'java' ? 'java' : language === 'javascript' ? 'javascript' : language === 'go' ? 'go' : 'rust'}
-              theme="vs-dark"
+              language={language === 'rust' ? 'rust' : language === 'go' ? 'go' : language}
               value={code}
+              theme="vs-dark"
               onChange={(val) => setCode(val || '')}
-              onMount={handleEditorDidMount}
               options={{
                 fontSize: 13,
-                fontFamily: "'Fira Code', 'JetBrains Mono', Consolas, monospace",
+                fontFamily: "'Fira Code', 'Courier New', monospace",
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
+                padding: { top: 12, bottom: 12 },
                 lineNumbers: 'on',
                 automaticLayout: true,
-                tabSize: 4,
-                cursorBlinking: 'smooth',
-                cursorSmoothCaretAnimation: 'on',
-                padding: { top: 12, bottom: 12 }
+                tabSize: 4
               }}
             />
+
+            {/* Quick Actions overlay on top-right of Editor */}
+            <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
+              <button
+                onClick={handleCopyCode}
+                className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
+                title="Copy editor code"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedCode ? 'Copied' : 'Copy Code'}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Bottom Resizable Console: Testcase & Result Tabs */}
-          <div className="h-56 bg-slate-900 border-t border-slate-800 flex flex-col flex-shrink-0">
+          {/* Testcases & Console Bottom Split */}
+          <div className="h-64 sm:h-72 bg-slate-900/90 flex flex-col flex-shrink-0">
             
-            {/* Console Header Bar */}
-            <div className="h-9 px-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center space-x-2 text-xs font-bold">
+            {/* Console Header / Action Tabs */}
+            <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800">
+              
+              <div className="flex items-center space-x-1.5">
                 <button
                   onClick={() => setConsoleTab('testcase')}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     consoleTab === 'testcase'
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  &gt;_ Testcase
+                  Test Cases
                 </button>
                 <button
                   onClick={() => setConsoleTab('result')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer ${
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     consoleTab === 'result'
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Terminal className="w-3 h-3 text-emerald-400" />
+                  <Terminal className="w-3.5 h-3.5 text-purple-400" />
                   <span>Test Result</span>
+                  {executionResult && (
+                    <span className={`w-2 h-2 rounded-full ${executionResult.stderr ? 'bg-rose-500' : 'bg-emerald-400'}`} />
+                  )}
                 </button>
               </div>
 
-              {executionTime > 0 && (
-                <div className="flex items-center space-x-3 text-[11px] font-mono text-slate-400">
-                  <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-indigo-400" /> {executionTime} ms</span>
-                  <span className="flex items-center gap-1"><Cpu className="w-3 h-3 text-purple-400" /> {executionResult?.memory_used_kb || 3420} KB</span>
-                </div>
-              )}
+              {/* Execution Run & Submit Buttons */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleExecute(false)}
+                  disabled={isExecuting}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 text-emerald-400 fill-current" />
+                  <span>{isExecuting ? 'Running...' : 'Run'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleExecute(true)}
+                  disabled={isExecuting}
+                  className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <CheckCircle className="w-3.5 h-3.5 fill-current" />
+                  <span>{isExecuting ? 'Submitting...' : 'Submit'}</span>
+                </button>
+              </div>
+
             </div>
 
-            {/* Console Body */}
-            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs text-slate-300">
+            {/* Console Content */}
+            <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
               
-              {/* CASE SELECTOR & INPUT */}
+              {/* TAB A: TESTCASES */}
               {consoleTab === 'testcase' && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center space-x-2">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 overflow-x-auto pb-1">
                     {problemTemplate.testCases.map((tc, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleSelectTestCase(idx)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        onClick={() => {
+                          setActiveTestCaseIdx(idx);
+                          setTestInput(tc);
+                        }}
+                        className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                           activeTestCaseIdx === idx
                             ? 'bg-indigo-600 text-white shadow-md'
                             : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -1009,71 +992,51 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     ))}
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase text-slate-500">Test Input:</div>
-                    <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300">
-                      {testInput}
-                    </div>
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">Input:</div>
+                    <textarea
+                      value={testInput}
+                      onChange={(e) => setTestInput(e.target.value)}
+                      rows={3}
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
                 </div>
               )}
 
-              {/* TEST RESULT & STDOUT / STDERR */}
+              {/* TAB B: TEST RESULT */}
               {consoleTab === 'result' && (
-                <div>
-                  {isExecuting ? (
-                    <div className="flex items-center justify-center py-6 text-indigo-400 space-x-2">
-                      <Terminal className="w-4 h-4 animate-spin" />
-                      <span>Compiling and executing code on SDEStream Cloud Engine...</span>
-                    </div>
-                  ) : executionResult ? (
+                <div className="space-y-3 font-sans">
+                  {executionResult ? (
                     <div className="space-y-3">
-                      {/* Top Status & Metrics */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          {executionResult.status === 'SUCCESS' && !executionResult.stderr ? (
-                            <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Accepted
-                            </span>
+                      
+                      {/* Status Header */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div className="flex items-center space-x-2 font-black text-sm">
+                          {executionResult.stderr ? (
+                            <>
+                              <XCircle className="w-5 h-5 text-rose-400" />
+                              <span className="text-rose-400">Runtime Error</span>
+                            </>
                           ) : (
-                            <span className="px-3 py-1 rounded-full bg-rose-950 border border-rose-700 text-rose-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
-                              <XCircle className="w-3.5 h-3.5" /> {executionResult.stderr ? 'Runtime / Compilation Error' : 'Wrong Answer'}
-                            </span>
+                            <>
+                              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                              <span className="text-emerald-400">Accepted</span>
+                            </>
                           )}
                         </div>
-                        <span className="text-[11px] font-mono text-slate-400">Runtime: <strong className="text-emerald-400">{executionTime} ms</strong></span>
-                      </div>
 
-                      {/* Case selector tabs */}
-                      <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
-                        {problemTemplate.testCases.map((tc, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleSelectTestCase(idx)}
-                            className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono transition-all ${
-                              activeTestCaseIdx === idx
-                                ? 'bg-slate-800 text-white ring-1 ring-slate-600'
-                                : 'bg-slate-950 text-slate-400 hover:text-slate-200'
-                            }`}
-                          >
-                            Case {idx + 1}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Input Box */}
-                      <div className="space-y-1">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase">Input:</div>
-                        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs">
-                          {testInput}
+                        <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
+                          <span>Runtime: <strong className="text-slate-200">{executionTime} ms</strong></span>
+                          <span>Memory: <strong className="text-slate-200">{executionResult.memory_used_kb || 3420} KB</strong></span>
                         </div>
                       </div>
 
-                      {/* Output Box */}
+                      {/* Stdout Output Box */}
                       {executionResult.stdout && (
                         <div className="space-y-1">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase">Output:</div>
-                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-xs whitespace-pre-wrap">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">Stdout Output:</div>
+                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-xs whitespace-pre-wrap">
                             {executionResult.stdout}
                           </div>
                         </div>
@@ -1115,7 +1078,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           {/* FLOATING ASK AI ACTION BUTTON AT BOTTOM-RIGHT OF CODING WORKSPACE     */}
           {/* ===================================================================== */}
           <button
-            onClick={() => setLeftTab('ask_ai')}
+            onClick={() => setIsRightAskAiOpen(true)}
             className="absolute bottom-4 right-4 z-20 flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-xl shadow-purple-600/50 border border-purple-300/40 hover:scale-105 transition-all duration-300 cursor-pointer group"
             title="Ask AI Teaching Assistant on this Problem & Code"
           >
@@ -1126,6 +1089,139 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* 3. SLIDE-OUT ASK AI TEACHING ASSISTANT POPUP (DOCKED ALWAYS ON THE RIGHT)  */}
+      {/* ========================================================================= */}
+      {isRightAskAiOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg h-full bg-slate-950 border-l border-purple-500/40 shadow-2xl flex flex-col font-sans relative overflow-hidden animate-slideInRight">
+            
+            {/* Drawer Header */}
+            <div className="p-4 bg-gradient-to-r from-slate-900 via-purple-950/70 to-slate-950 border-b border-purple-500/30 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-inner">
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    Ask AI Teaching Assistant
+                  </h3>
+                  <p className="text-[10px] text-purple-300 font-mono line-clamp-1">
+                    Problem: {cleanTitle} ({language.toUpperCase()})
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {aiChatMessages.length > 0 && (
+                  <button
+                    onClick={handleClearChat}
+                    className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors text-[10px] font-mono"
+                    title="Clear Chat History"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsRightAskAiOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors border border-slate-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Question Chips */}
+            <div className="px-3.5 py-2 bg-slate-950 border-b border-slate-800/80 flex items-center gap-2 overflow-x-auto text-[11px] font-mono no-scrollbar">
+              <span className="text-purple-400 font-bold flex-shrink-0 flex items-center gap-1">
+                <Lightbulb className="w-3 h-3 text-amber-400" /> Prompts:
+              </span>
+              {[
+                "Debug my code",
+                "Explain Approach 1",
+                "Time & Space Complexity",
+                "Edge cases"
+              ].map((chip, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSendAiMessage(chip)}
+                  className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-purple-950 border border-slate-800 hover:border-purple-700/60 text-slate-300 hover:text-purple-200 transition-all text-[11px] cursor-pointer"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            {/* Messages Scroll Area */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3.5 text-xs select-text">
+              {aiChatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-6 h-6 rounded-lg bg-purple-600/20 border border-purple-500/30 text-purple-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Bot className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[88%] p-3 rounded-2xl relative leading-relaxed select-text ${
+                      msg.role === 'user'
+                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md'
+                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
+                    }`}
+                  >
+                    <div className="font-sans pr-6">
+                      <FormattedChatText text={msg.content} />
+                    </div>
+                    {msg.role === 'assistant' && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.content);
+                          setCopiedMsgIdx(idx);
+                          setTimeout(() => setCopiedMsgIdx(null), 2000);
+                        }}
+                        className="absolute top-2 right-2 p-1 text-slate-500 hover:text-purple-300 transition-colors cursor-pointer"
+                        title="Copy message text"
+                      >
+                        {copiedMsgIdx === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isAiReplying && (
+                <div className="flex gap-2.5 items-center text-slate-400 text-xs font-mono">
+                  <Bot className="w-4 h-4 text-purple-400 animate-spin" />
+                  <span>AI is thinking & analyzing code...</span>
+                </div>
+              )}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center space-x-2">
+              <input
+                type="text"
+                value={aiInputText}
+                onChange={(e) => setAiInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendAiMessage()}
+                placeholder="Ask about this problem, code, or testcases..."
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 font-sans"
+              />
+              <button
+                onClick={() => handleSendAiMessage()}
+                disabled={isAiReplying || !aiInputText.trim()}
+                className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-colors cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
