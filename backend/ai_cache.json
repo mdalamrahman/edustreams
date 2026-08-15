@@ -1,0 +1,1577 @@
+{
+  "ch-sd-02_5999": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "-1004329144420_5999": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "5999": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "tg-ch-sd-02-5999": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "tg--1004329144420-5999": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "2.2 Open Closed Principle (OCP) (Solid Principles)": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "2.2 Open Closed Principle": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "Open Closed Principle": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  },
+  "2.2 Open Closed Principle (OCP) (Solid Principles).mp4": {
+    "chat_id": "ch-sd-02",
+    "msg_id": 5999,
+    "title": "2.2 Open Closed Principle (OCP) (Solid Principles)",
+    "transcript": "[00:00:00]\nWelcome back everyone. In this session, we are diving deep into the second principle of SOLID design: the Open-Closed Principle, commonly known as OCP.\n\n[00:01:45]\nThe formal definition introduced by Bertrand Meyer states: Software entities\u2014including classes, modules, and functions\u2014should be open for extension, but closed for modification. What does this mean in practical software engineering? It means that when requirements change or when you need to add a new feature, you should be able to extend the behavior of the system without modifying existing, tested, and deployed source code.\n\n[00:04:10]\nLet us look at a classic anti-pattern that violates OCP. Suppose you have an Invoice or Payment processing class. Inside that class, you have a method calculateDiscount or processPayment that takes a string paymentType and executes a massive switch-case or series of if-else ladders: if type is CreditCard do X, else if type is UPI do Y, else if type is PayPal do Z.\n\n[00:07:30]\nWhy is this dangerous in production? Every single time your business decides to accept a new payment method, say Apple Pay or Crypto, a developer must open that exact same existing file, add another else-if branch, and re-test all previous payment paths. If you introduce a typo or logical bug, you risk breaking existing, working credit card payments!\n\n[00:10:50]\nHow do we refactor this to strictly satisfy OCP? We introduce polymorphism and abstraction. We define an abstract interface or base class, for instance IPaymentStrategy or IDiscountCalculator, with a pure virtual method executePayment or calculateDiscount. Each specific payment method becomes its own independent concrete class: CreditCardPayment, UPIPayment, PayPalPayment.\n\n[00:13:40]\nNow, the core PaymentProcessor only holds a pointer or reference to IPaymentStrategy. When a new payment method like ApplePay is introduced tomorrow, you write a brand new class ApplePayPayment implementing IPaymentStrategy without touching a single line of PaymentProcessor! The system was extended without modifying existing code. That is the essence of the Open-Closed Principle.",
+    "provider": "EduStream AI Speech Engine",
+    "notes": "# \ud83d\udcd8 2.2 Open-Closed Principle (OCP) \u2014 SDE Mastery Guide\n\n---\n\n## 1. Core Mental Model & Definition\nThe **Open-Closed Principle (OCP)** states:\n> **\"Software entities (classes, modules, functions) should be open for extension, but closed for modification.\"**\n\n- **Open for Extension**: The behavior of the module can be extended to satisfy new business requirements.\n- **Closed for Modification**: Extending behavior does not require modifying existing, verified, and unit-tested source code.\n\n```\n       \u274c VIOLATION (If-Else Ladder)            \u2705 OCP COMPLIANT (Polymorphic Interface)\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510              \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n  \u2502      PaymentProcessor        \u2502              \u2502       PaymentProcessor       \u2502\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524              \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n  \u2502 if (type == \"UPI\") ...       \u2502              \u2502 IPaymentStrategy* strategy   \u2502\n  \u2502 else if (type == \"Card\") ... \u2502\u2500\u2500\u25b6 Modifies  \u2502 strategy->process(amount)    \u2502\n  \u2502 else if (type == \"Crypto\")...\u2502    Existing  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518      Code                   \u2502\n                                                               \u25bc (Interface)\n                                                \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                                \u2502     <<IPaymentStrategy>>     \u2502\n                                                \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\n                                                \u2502 + processPayment(amount)     \u2502\n                                                \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n                                                       \u2502       \u2502       \u2502\n                                          \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518       \u2502       \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                          \u25bc                    \u25bc                    \u25bc\n                                    \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n                                    \u2502 UPIPay    \u2502        \u2502 CardPay   \u2502        \u2502 CryptoPay \u2502\n                                    \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\n---\n\n## 2. Code Implementation & Anti-Pattern Refactoring\n\n### \u274c Anti-Pattern (Violates OCP)\n```cpp\n// Every new invoice type requires modifying this function!\nclass InvoicePersistence {\npublic:\n    void save(const Invoice& invoice, string target) {\n        if (target == \"DB\") {\n            // Save to MySQL DB\n        } else if (target == \"FILE\") {\n            // Save to Local File\n        } else if (target == \"S3\") {\n            // Save to AWS S3 Bucket\n        }\n    }\n};\n```\n\n### \u2705 Production-Grade OCP Design\n```cpp\n#include <iostream>\n#include <memory>\nusing namespace std;\n\n// 1. Abstract Interface (Closed for Modification)\nclass IInvoiceDao {\npublic:\n    virtual void save(const Invoice& invoice) = 0;\n    virtual ~IInvoiceDao() = default;\n};\n\n// 2. Concrete Extensions (Open for Extension)\nclass DatabaseInvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[DB] Invoice successfully persisted to PostgreSQL.\" << endl;\n    }\n};\n\nclass S3InvoiceDao : public IInvoiceDao {\npublic:\n    void save(const Invoice& invoice) override {\n        cout << \"[S3] Invoice uploaded to AWS S3 storage.\" << endl;\n    }\n};\n\n// 3. High-Level Consumer (Never Modified)\nclass InvoiceService {\nprivate:\n    unique_ptr<IInvoiceDao> dao;\npublic:\n    InvoiceService(unique_ptr<IInvoiceDao> daoInstance) : dao(move(daoInstance)) {}\n    void persist(const Invoice& invoice) {\n        dao->save(invoice);\n    }\n};\n```\n\n---\n\n## 3. Trade-off Matrix & Engineering Analysis\n\n| Dimension | Monolithic If-Else Ladder | OCP Polymorphic Abstraction |\n| :--- | :--- | :--- |\n| **Code Modifiability** | High Risk of Breaking Existing Logic | Zero Risk (Purely Additive Code) |\n| **Unit Testability** | Requires Regression Testing All Paths | Only New Extension Class Needs Tests |\n| **Complexity Overhead** | Simple initially, Unmaintainable later | Requires Interface Design & Factories |\n| **Design Patterns Used** | Anti-Pattern | Strategy, Factory, Decorator Pattern |\n\n---\n\n## 4. FAANG Interview Traps & Key Takeaways\n1. **Abstraction Overhead Trap**: Do not create interfaces for things that will never change. Apply OCP where requirements are volatile or expanding.\n2. **Strategy Pattern Synergy**: OCP is most commonly implemented using the **Strategy Pattern** combined with **Dependency Injection**.\n",
+    "mcqs": [
+      {
+        "id": "ocp-mcq-1",
+        "type": "MCQ",
+        "question": "What is the primary objective of the Open-Closed Principle (OCP)?",
+        "options": [
+          "Allow systems to extend behavior without modifying existing tested source code",
+          "Make all class variables public for open access",
+          "Ensure classes have only one method",
+          "Prevent any new features from being added to existing classes"
+        ],
+        "correct_answer": 0,
+        "explanation": "OCP ensures that software modules are open for extension (adding new behaviors) but closed for modification (not editing existing, working code)."
+      },
+      {
+        "id": "ocp-mcq-2",
+        "type": "MCQ",
+        "question": "Which design pattern is most commonly used to adhere to the Open-Closed Principle?",
+        "options": [
+          "Singleton Pattern",
+          "Strategy Pattern with Polymorphic Interfaces",
+          "Monostate Pattern",
+          "God Object Pattern"
+        ],
+        "correct_answer": 1,
+        "explanation": "The Strategy Pattern enables dynamic substitution of algorithms via interfaces without changing the consumer class, directly fulfilling OCP."
+      },
+      {
+        "id": "ocp-mcq-3",
+        "type": "MCQ",
+        "question": "Why is an if-else ladder based on type codes considered a violation of OCP?",
+        "options": [
+          "It executes slower on CPU branch predictors",
+          "Adding a new type requires modifying and re-testing the existing conditional logic",
+          "It cannot compile in modern C++",
+          "If-else statements are deprecated in object-oriented programming"
+        ],
+        "correct_answer": 1,
+        "explanation": "Every new variant forces developers to edit the existing conditional file, risking regressions in previously working branches."
+      },
+      {
+        "id": "ocp-mcq-4",
+        "type": "MCQ",
+        "question": "In C++, how is 'Closed for Modification' achieved while remaining 'Open for Extension'?",
+        "options": [
+          "Using pure virtual abstract base classes and inheritance",
+          "Declaring all methods static and private",
+          "Disabling compiler warnings with pragma directives",
+          "Using inline global functions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Abstract base classes establish an unmodifiable contract while subclasses implement new behaviors polymorphically."
+      },
+      {
+        "id": "ocp-mcq-5",
+        "type": "MCQ",
+        "question": "When should you NOT aggressively apply OCP?",
+        "options": [
+          "When requirements are completely stable and no future variations are anticipated",
+          "In high-concurrency distributed systems",
+          "When building enterprise financial software",
+          "When writing unit test assertions"
+        ],
+        "correct_answer": 0,
+        "explanation": "Over-engineering with premature abstractions for components that never change adds unnecessary indirection without benefit."
+      }
+    ],
+    "coding_problem": {
+      "title": "Design an Extensible Notification Engine (OCP Compliance)",
+      "difficulty": "Medium",
+      "problem_statement": "Design an extensible notification service that can dispatch messages across multiple channels (Email, SMS, Slack, Discord). The system MUST adhere to OCP: adding a new notification channel must NOT modify existing dispatch logic.",
+      "starter_code_cpp": "#include <iostream>\n#include <vector>\n#include <memory>\n#include <string>\nusing namespace std;\n\n// 1. Base Notification Strategy Interface\nclass INotificationStrategy {\npublic:\n    virtual void sendNotification(const string& recipient, const string& message) = 0;\n    virtual ~INotificationStrategy() = default;\n};\n\n// 2. Concrete Implementation for Email\nclass EmailNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[Email] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 3. Concrete Implementation for SMS\nclass SMSNotification : public INotificationStrategy {\npublic:\n    void sendNotification(const string& recipient, const string& message) override {\n        cout << \"[SMS] Sent to \" << recipient << \": \" << message << endl;\n    }\n};\n\n// 4. Extensible Notification Dispatcher (Never Modified)\nclass NotificationService {\nprivate:\n    vector<shared_ptr<INotificationStrategy>> strategies;\npublic:\n    void addChannel(shared_ptr<INotificationStrategy> channel) {\n        strategies.push_back(channel);\n    }\n    \n    void broadcast(const string& recipient, const string& message) {\n        for (auto& channel : strategies) {\n            channel->sendNotification(recipient, message);\n        }\n    }\n};\n\nint main() {\n    NotificationService service;\n    service.addChannel(make_shared<EmailNotification>());\n    service.addChannel(make_shared<SMSNotification>());\n    \n    service.broadcast(\"user@edustream.com\", \"System Alert: CPU load > 90%\");\n    return 0;\n}",
+      "starter_code_python": "class INotificationStrategy:\n    def send(self, recipient: str, message: str):\n        raise NotImplementedError\n\nclass EmailNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[Email] Sent to {recipient}: {message}\")\n\nclass SMSNotification(INotificationStrategy):\n    def send(self, recipient: str, message: str):\n        print(f\"[SMS] Sent to {recipient}: {message}\")\n\nclass NotificationService:\n    def __init__(self):\n        self.channels = []\n        \n    def add_channel(self, channel: INotificationStrategy):\n        self.channels.append(channel)\n        \n    def broadcast(self, recipient: str, message: str):\n        for ch in self.channels:\n            ch.send(recipient, message)\n\nif __name__ == '__main__':\n    service = NotificationService()\n    service.add_channel(EmailNotification())\n    service.add_channel(SMSNotification())\n    service.broadcast('user@edustream.com', 'System Alert: OCP Compliant')"
+    },
+    "simulation_steps": [
+      {
+        "step_number": 1,
+        "title": "Step 1: Identifying Anti-Pattern (If-Else Ladder)",
+        "desc": "Single monolithic function handles Email, SMS, and WhatsApp using conditional branches. Adding Slack requires modifying existing code.",
+        "array": [
+          "EmailBranch",
+          "SMSBranch",
+          "WhatsAppBranch",
+          "MonolithicService"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Tight Coupling Detected (OCP Violation)",
+        "variables": {
+          "Coupling": "High",
+          "Extensibility": "Rigid",
+          "Regression Risk": "Severe"
+        }
+      },
+      {
+        "step_number": 2,
+        "title": "Step 2: Defining Abstract INotification Interface",
+        "desc": "Extracting abstract contract INotificationStrategy with virtual send() method. Establishing boundary closed for modification.",
+        "array": [
+          "<<INotificationStrategy>>",
+          "EmailHandler",
+          "SMSHandler",
+          "WhatsAppHandler"
+        ],
+        "activeIndices": [
+          0
+        ],
+        "status": "Abstract Contract Established",
+        "variables": {
+          "Contract": "send()",
+          "Polymorphism": "Enabled",
+          "Indirection": "Clean"
+        }
+      },
+      {
+        "step_number": 3,
+        "title": "Step 3: Creating Independent Concrete Channels",
+        "desc": "EmailNotification and SMSNotification become isolated classes implementing INotificationStrategy without cross-dependencies.",
+        "array": [
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy (NEW)"
+        ],
+        "activeIndices": [
+          0,
+          1,
+          2
+        ],
+        "status": "Decoupled Strategy Classes",
+        "variables": {
+          "Unit Testable": "100%",
+          "Side Effects": "Zero",
+          "OCP Status": "Satisfied"
+        }
+      },
+      {
+        "step_number": 4,
+        "title": "Step 4: Extension Without Modification",
+        "desc": "Adding new SlackNotification class requires ZERO changes to NotificationService or existing Email/SMS handlers.",
+        "array": [
+          "NotificationDispatcher",
+          "EmailStrategy",
+          "SMSStrategy",
+          "SlackStrategy"
+        ],
+        "activeIndices": [
+          0,
+          3
+        ],
+        "status": "Pure Additive Extension Verified",
+        "variables": {
+          "Extension": "Seamless",
+          "Existing Code Touched": "0 Lines",
+          "OCP Compliance": "100%"
+        }
+      }
+    ],
+    "status": "completed",
+    "progress_percent": 100.0,
+    "current_part": 30,
+    "total_parts": 30,
+    "stage": "Completed",
+    "has_artifacts": true,
+    "estimated_seconds_left": 0
+  }
+}

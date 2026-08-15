@@ -46,14 +46,10 @@ export function App() {
   const [showMobileGating, setShowMobileGating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
-  const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code'>('video');
+  const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
-    if (mode) {
-      setAskAIMode(mode);
-    } else {
-      setAskAIMode(lessonSubTab === 'quiz' ? 'quiz' : (lessonSubTab === 'code' ? 'code' : 'video'));
-    }
+    setAskAIMode(mode);
     setIsAskAIOpen(true);
   };
 
