@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { AINotesAndSimulation } from './AINotesAndSimulation';
+import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { Video } from '../lib/types';
 import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
@@ -260,47 +261,83 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
   }, [video.id, autoCompleted, onAutoComplete, video.duration_seconds]);
 
+  // Quick Check: If transcript / payload exists, render immediately; otherwise show realtime progress across all tabs
   useEffect(() => {
     const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '');
     const durationMins = Math.max(5, Math.round((video.duration_seconds || 900) / 60));
     const cacheKey = `edustream_transcript_${video.id || cleanTitle}_v3`;
 
-    // 1. If videoArtifacts already has real transcript, use it instantly!
+    // 1. Instant Memory / Props Check
     if (videoArtifacts?.transcript && videoArtifacts.transcript.length > 50) {
       setDynamicTranscript(videoArtifacts.transcript);
       setLoadingTranscript(false);
-      try {
-        localStorage.setItem(cacheKey, videoArtifacts.transcript);
-      } catch {}
+      try { localStorage.setItem(cacheKey, videoArtifacts.transcript); } catch {}
       return;
     }
 
-    if (activeTab === 'transcript') {
-      const savedTranscript = localStorage.getItem(cacheKey);
-      if (savedTranscript && !savedTranscript.includes('Section 1: Core Principles & Definitions') && savedTranscript.length > 50) {
-        setDynamicTranscript(savedTranscript);
-        setLoadingTranscript(false);
-        return;
-      }
-
-      setLoadingTranscript(true);
-      const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
-      fetch(url)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data?.transcript && data.transcript.length > 50) {
-            setDynamicTranscript(data.transcript);
-            try {
-              localStorage.setItem(cacheKey, data.transcript);
-            } catch {}
-          }
-        })
-        .catch((err) => {
-          console.warn('[EduStream Transcript Fetch Notice]:', err);
-        })
-        .finally(() => setLoadingTranscript(false));
+    if (video.transcript && video.transcript.length > 50 && !video.transcript.includes('Ingested from')) {
+      setDynamicTranscript(video.transcript);
+      setLoadingTranscript(false);
+      try { localStorage.setItem(cacheKey, video.transcript); } catch {}
+      return;
     }
-  }, [activeTab, video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds, videoArtifacts?.transcript]);
+
+    // 2. Instant Local Storage Check
+    const savedTranscript = localStorage.getItem(cacheKey);
+    if (savedTranscript && !savedTranscript.includes('Section 1: Core Principles & Definitions') && savedTranscript.length > 50) {
+      setDynamicTranscript(savedTranscript);
+      setLoadingTranscript(false);
+      return;
+    }
+
+    // 3. Fast Backend / Cloudflare R2 / SQLite Check
+    setLoadingTranscript(true);
+    let isCancelled = false;
+    let pollInterval: any = null;
+
+    const fetchTranscript = async () => {
+      try {
+        const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        
+        if (!isCancelled && data?.transcript && data.transcript.length > 50) {
+          setDynamicTranscript(data.transcript);
+          setLoadingTranscript(false);
+          try { localStorage.setItem(cacheKey, data.transcript); } catch {}
+          if (pollInterval) clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.warn('[EduStream Fast Transcript Notice]:', err);
+      }
+    };
+
+    fetchTranscript();
+
+    // Poll status while loading to update live progress bar
+    pollInterval = setInterval(async () => {
+      if (isCancelled) return;
+      try {
+        const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
+        const resp = await fetch(statusUrl);
+        if (resp.ok) {
+          const statusData = await resp.json();
+          if (statusData?.transcript && statusData.transcript.length > 50) {
+            setDynamicTranscript(statusData.transcript);
+            setLoadingTranscript(false);
+            try { localStorage.setItem(cacheKey, statusData.transcript); } catch {}
+            clearInterval(pollInterval);
+          }
+        }
+      } catch {}
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds, videoArtifacts?.transcript, video.transcript]);
 
   const handleRegenerateTranscript = () => {
     setShowRegenModal(false);
@@ -611,9 +648,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 <span>{loadingTranscript ? 'Regenerating...' : 'Regenerate Transcript'}</span>
               </button>
             </div>
-            <div className="max-h-44 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
+            <div className="max-h-72 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
               {loadingTranscript ? (
-                <span className="text-purple-400 animate-pulse">Generating SDETube AI verbatim speech-to-text transcript...</span>
+                <AIProcessingStatusCard 
+                  videoTitle={video.title || 'Lecture'} 
+                  durationSeconds={video.duration_seconds || 900} 
+                  progressPercent={videoArtifacts?.progress_percent}
+                  currentPart={videoArtifacts?.current_part}
+                  totalParts={videoArtifacts?.total_parts}
+                  stage={videoArtifacts?.stage}
+                  estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
+                />
               ) : (
                 videoArtifacts?.transcript || dynamicTranscript || (video.transcript && !video.transcript.includes('Ingested from') ? video.transcript : 'SDETube AI Speech Engine processing verbatim lecture transcript...')
               )}
