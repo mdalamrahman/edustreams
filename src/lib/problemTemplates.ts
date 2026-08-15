@@ -35,6 +35,115 @@ export const normalizeProblemTitle = (title: string): string => {
 
 // Handcrafted specific templates for core SDE sheet problems with Multi-Approach support
 export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
+  'sortcolors': {
+    name: 'Sort an Array of 0s, 1s and 2s',
+    category: 'Arrays',
+    difficulty: 'Medium',
+    description: 'Given an array nums with n objects colored red, white, or blue, sort them in-place so that objects of the same color are adjacent, with the colors in the order 0s, 1s, and 2s.',
+    examples: [
+      {
+        input: 'nums = [2,0,2,1,1,0]',
+        output: '[0,0,1,1,2,2]',
+        explanation: 'Sorted using Dutch National Flag 3-pointer algorithm.'
+      }
+    ],
+    constraints: [
+      '1 <= nums.length <= 10^5',
+      'nums[i] is either 0, 1, or 2'
+    ],
+    testCases: [
+      'nums = [2, 0, 2, 1, 1, 0]',
+      'nums = [2, 0, 1]',
+      'nums = [0]'
+    ],
+    expectedOutputs: [
+      '[0,0,1,1,2,2]',
+      '[0,1,2]',
+      '[0]'
+    ],
+    approaches: [
+      {
+        id: 'dutchflag',
+        name: 'Approach 1: Dutch National Flag 3-Pointer (Optimal O(N))',
+        timeComplexity: 'O(N)',
+        spaceComplexity: 'O(1)',
+        description: 'Maintain 3 pointers: low, mid, and high to sort in single pass.',
+        starters: {
+          cpp: `class Solution {\npublic:\n    void sortColors(vector<int>& nums) {\n        \n    }\n};`,
+          python: `class Solution:\n    def sortColors(self, nums: List[int]) -> None:\n        """\n        Do not return anything, modify nums in-place instead.\n        """\n        pass`,
+          java: `class Solution {\n    public void sortColors(int[] nums) {\n        \n    }\n}`,
+          javascript: `var sortColors = function(nums) {\n    \n};`,
+          go: `func sortColors(nums []int) { }`,
+          rust: `impl Solution { pub fn sort_colors(nums: &mut Vec<i32>) { } }`,
+          sql: `-- Solution`
+        }
+      }
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    void sortColors(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def sortColors(self, nums: List[int]) -> None:\n        pass`,
+      java: `class Solution {\n    public void sortColors(int[] nums) {\n        \n    }\n}`,
+      javascript: `var sortColors = function(nums) {\n    \n};`,
+      go: `func sortColors(nums []int) { }`,
+      rust: `impl Solution { pub fn sort_colors(nums: &mut Vec<i32>) { } }`,
+      sql: `-- Solution`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    void sortColors(vector<int>& nums) {\n        int low = 0, mid = 0, high = nums.size() - 1;\n        while (mid <= high) {\n            if (nums[mid] == 0) swap(nums[low++], nums[mid++]);\n            else if (nums[mid] == 1) mid++;\n            else swap(nums[mid], nums[high--]);\n        }\n    }\n};`,
+      python: `class Solution:\n    def sortColors(self, nums: List[int]) -> None:\n        low, mid, high = 0, 0, len(nums) - 1\n        while mid <= high:\n            if nums[mid] == 0:\n                nums[low], nums[mid] = nums[mid], nums[low]\n                low += 1\n                mid += 1\n            elif nums[mid] == 1:\n                mid += 1\n            else:\n                nums[mid], nums[high] = nums[high], nums[mid]\n                high -= 1`,
+      java: `class Solution {\n    public void sortColors(int[] nums) {\n        int low = 0, mid = 0, high = nums.length - 1;\n        while (mid <= high) {\n            if (nums[mid] == 0) { int t = nums[low]; nums[low++] = nums[mid]; nums[mid++] = t; }\n            else if (nums[mid] == 1) mid++;\n            else { int t = nums[mid]; nums[mid] = nums[high]; nums[high--] = t; }\n        }\n    }\n}`,
+      javascript: `var sortColors = function(nums) {\n    let low = 0, mid = 0, high = nums.length - 1;\n    while (mid <= high) {\n        if (nums[mid] === 0) { [nums[low], nums[mid]] = [nums[mid], nums[low]]; low++; mid++; }\n        else if (nums[mid] === 1) mid++;\n        else { [nums[mid], nums[high]] = [nums[high], nums[mid]]; high--; }\n    }\n};`,
+      go: `func sortColors(nums []int) { }`,
+      rust: `impl Solution { pub fn sort_colors(nums: &mut Vec<i32>) { } }`,
+      sql: `-- Solution`
+    }
+  },
+  'sortanarrayof0s1sand2s': {
+    name: 'Sort an Array of 0s, 1s and 2s',
+    category: 'Arrays',
+    difficulty: 'Medium',
+    description: 'Given an array nums with n objects colored red, white, or blue, sort them in-place so that objects of the same color are adjacent, with the colors in the order 0s, 1s, and 2s.',
+    examples: [
+      {
+        input: 'nums = [2,0,2,1,1,0]',
+        output: '[0,0,1,1,2,2]',
+        explanation: 'Sorted using Dutch National Flag algorithm.'
+      }
+    ],
+    constraints: [
+      '1 <= nums.length <= 10^5',
+      'nums[i] is either 0, 1, or 2'
+    ],
+    testCases: [
+      'nums = [2, 0, 2, 1, 1, 0]',
+      'nums = [2, 0, 1]',
+      'nums = [0]'
+    ],
+    expectedOutputs: [
+      '[0,0,1,1,2,2]',
+      '[0,1,2]',
+      '[0]'
+    ],
+    approaches: [],
+    starters: {
+      cpp: `class Solution {\npublic:\n    void sortColors(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def sortColors(self, nums: List[int]) -> None:\n        pass`,
+      java: `class Solution {\n    public void sortColors(int[] nums) {\n        \n    }\n}`,
+      javascript: `var sortColors = function(nums) {\n    \n};`,
+      go: `func sortColors(nums []int) { }`,
+      rust: `impl Solution { pub fn sort_colors(nums: &mut Vec<i32>) { } }`,
+      sql: `-- Solution`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    void sortColors(vector<int>& nums) {\n        int low = 0, mid = 0, high = nums.size() - 1;\n        while (mid <= high) {\n            if (nums[mid] == 0) swap(nums[low++], nums[mid++]);\n            else if (nums[mid] == 1) mid++;\n            else swap(nums[mid], nums[high--]);\n        }\n    }\n};`,
+      python: `class Solution:\n    def sortColors(self, nums: List[int]) -> None:\n        low, mid, high = 0, 0, len(nums) - 1\n        while mid <= high:\n            if nums[mid] == 0:\n                nums[low], nums[mid] = nums[mid], nums[low]\n                low += 1\n                mid += 1\n            elif nums[mid] == 1:\n                mid += 1\n            else:\n                nums[mid], nums[high] = nums[high], nums[mid]\n                high -= 1`,
+      java: `class Solution { public void sortColors(int[] nums) {} }`,
+      javascript: `var sortColors = function(nums) {};`,
+      go: `func sortColors(nums []int) { }`,
+      rust: `impl Solution { pub fn sort_colors(nums: &mut Vec<i32>) { } }`,
+      sql: `-- Solution`
+    }
+  },
   'setmatrixzeroes': {
     name: 'Set Matrix Zeroes',
     category: 'Arrays',

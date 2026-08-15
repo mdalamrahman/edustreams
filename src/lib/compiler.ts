@@ -80,7 +80,7 @@ export function wrapLeetCodeExecutableCode(
     }
     cout << "]" << endl;
 `;
-    } else if (normTitle.includes('sortcolors') || normTitle.includes('dutchflag')) {
+    } else if (normTitle.includes('sortcolors') || normTitle.includes('dutchflag') || normTitle.includes('sortanarray') || normTitle.includes('0s1s') || normTitle.includes('012')) {
       testExecution = `
     vector<int> nums = {2, 0, 2, 1, 1, 0};
     sol.sortColors(nums);

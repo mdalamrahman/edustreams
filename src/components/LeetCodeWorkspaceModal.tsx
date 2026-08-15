@@ -29,7 +29,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  GripVertical
+  GripVertical,
+  GripHorizontal
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -106,9 +107,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [executionTime, setExecutionTime] = useState<number>(0);
   
-  // Resizable Split Pane state
+  // Resizable Horizontal Split Pane (Left vs Right)
   const [splitPercent, setSplitPercent] = useState<number>(42);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  // Resizable Vertical Console Height (Editor vs Bottom Testcases)
+  const [consoleHeight, setConsoleHeight] = useState<number>(270);
+  const [isVerticalDragging, setIsVerticalDragging] = useState<boolean>(false);
 
   // Minimizable console state
   const [isConsoleMinimized, setIsConsoleMinimized] = useState<boolean>(false);
@@ -128,7 +133,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
 
-  // Dragging handlers for resizable split pane
+  // Dragging handlers for horizontal split pane
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -157,6 +162,36 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging]);
+
+  // Dragging handlers for vertical console resizer
+  const handleVerticalMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsVerticalDragging(true);
+  };
+
+  useEffect(() => {
+    const handleVerticalMouseMove = (e: MouseEvent) => {
+      if (!isVerticalDragging) return;
+      const windowHeight = window.innerHeight;
+      const newHeight = windowHeight - e.clientY;
+      if (newHeight >= 100 && newHeight <= windowHeight - 160) {
+        setConsoleHeight(newHeight);
+      }
+    };
+
+    const handleVerticalMouseUp = () => {
+      setIsVerticalDragging(false);
+    };
+
+    if (isVerticalDragging) {
+      window.addEventListener('mousemove', handleVerticalMouseMove);
+      window.addEventListener('mouseup', handleVerticalMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleVerticalMouseMove);
+      window.removeEventListener('mouseup', handleVerticalMouseUp);
+    };
+  }, [isVerticalDragging]);
 
   // Persistent Ask AI Chat state
   const chatStorageKey = `sdetube_chat_history_${cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -264,6 +299,32 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     } catch {}
   };
 
+  // Strict Output Validation Logic (Prevents empty or wrong solutions from getting Accepted)
+  const currentExpectedOutput = useMemo(() => {
+    return problemTemplate.expectedOutputs?.[activeTestCaseIdx] || problemTemplate.expectedOutputs?.[0] || '';
+  }, [problemTemplate, activeTestCaseIdx]);
+
+  const normalizeOutput = (str: string) => {
+    return (str || '')
+      .trim()
+      .replace(/\r\n/g, '\n')
+      .replace(/\s+/g, '')
+      .toLowerCase();
+  };
+
+  const isOutputValid = (stdout: string, stderr: string): boolean => {
+    if (stderr && stderr.trim().length > 0) return false;
+    if (!stdout || !stdout.trim()) return false;
+    
+    // If output is default placeholder string without real logic execution
+    if (stdout.includes('Solution executed successfully with test input') && currentExpectedOutput && !currentExpectedOutput.includes('Solution executed')) {
+      return false;
+    }
+    
+    if (!currentExpectedOutput) return stdout.trim().length > 0;
+    return normalizeOutput(stdout) === normalizeOutput(currentExpectedOutput);
+  };
+
   // Run Code / Submit
   const handleExecute = async (isSubmission: boolean = false) => {
     setIsExecuting(true);
@@ -277,13 +338,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       setExecutionTime(elapsedMs);
       setExecutionResult(result);
 
-      const isSuccess = result.status === 'SUCCESS' && !result.stderr;
+      // Strict Acceptance Check
+      const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr);
 
       if (isSubmission) {
         setSubmissionsList(prev => [
           {
             timestamp: new Date().toLocaleTimeString(),
-            status: isSuccess ? 'Accepted' : 'Runtime Error',
+            status: isSuccess ? 'Accepted' : result.stderr ? 'Runtime Error' : 'Wrong Answer',
             runtime: `${elapsedMs} ms`,
             memory: `${result.memory_used_kb || 3420} KB`,
             lang: language.toUpperCase()
@@ -390,10 +452,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
 
   return (
-    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
+    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
       
       {/* ========================================================================= */}
-      {/* 1. TOP LEETCODE NAVBAR                                                    */}
+      {/* 1. TOP NAVBAR                                                             */}
       {/* ========================================================================= */}
       <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between flex-shrink-0 z-10">
         
@@ -920,7 +982,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         </div>
 
         {/* ----------------------------------------------------------------------- */}
-        {/* DRAGGABLE RESIZER HANDLE                                                */}
+        {/* DRAGGABLE HORIZONTAL RESIZER HANDLE (LEFT VS RIGHT)                     */}
         {/* ----------------------------------------------------------------------- */}
         <div
           onMouseDown={handleMouseDown}
@@ -939,7 +1001,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         >
           
           {/* Monaco Editor Container */}
-          <div className={`flex-1 border-b border-slate-800 relative transition-all ${isConsoleMinimized ? 'h-full' : 'min-h-[260px]'}`}>
+          <div className="flex-1 min-h-[160px] relative overflow-hidden">
             <Editor
               height="100%"
               language={language === 'rust' ? 'rust' : language === 'go' ? 'go' : language}
@@ -971,11 +1033,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </div>
           </div>
 
-          {/* Testcases & Console Bottom Split (Minimizable) */}
-          <div className={`${isConsoleMinimized ? 'h-10' : 'h-64 sm:h-72'} bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-200 border-t border-slate-800`}>
+          {/* --------------------------------------------------------------------- */}
+          {/* DRAGGABLE VERTICAL RESIZER HANDLE (EDITOR VS TESTCASE CONSOLE)        */}
+          {/* --------------------------------------------------------------------- */}
+          {!isConsoleMinimized && (
+            <div
+              onMouseDown={handleVerticalMouseDown}
+              className="w-full h-2 hover:h-2.5 bg-slate-900 hover:bg-indigo-600/80 cursor-row-resize flex items-center justify-center transition-all z-20 border-y border-slate-800/80 group"
+              title="Drag up or down to adjust Testcases console height"
+            >
+              <div className="w-10 h-0.5 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />
+            </div>
+          )}
+
+          {/* Testcases & Console Bottom Split (Minimizable & Height-Adjustable) */}
+          <div 
+            style={{ height: isConsoleMinimized ? 40 : consoleHeight }}
+            className="bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-75 border-t border-slate-800 overflow-hidden"
+          >
             
             {/* Console Header / Action Tabs */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800">
+            <div className="h-10 flex items-center justify-between px-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
               
               <div className="flex items-center space-x-1.5">
                 <button
@@ -1005,7 +1083,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <Terminal className="w-3.5 h-3.5 text-purple-400" />
                   <span>Test Result</span>
                   {executionResult && (
-                    <span className={`w-2 h-2 rounded-full ${executionResult.stderr ? 'bg-rose-500' : 'bg-emerald-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${
+                      executionResult.stderr || !isOutputValid(executionResult.stdout, executionResult.stderr) 
+                        ? 'bg-rose-500' 
+                        : 'bg-emerald-400'
+                    }`} />
                   )}
                 </button>
               </div>
@@ -1033,7 +1115,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 {/* Minimize Console Button to get Full Height Code Screen */}
                 <button
                   onClick={() => setIsConsoleMinimized(!isConsoleMinimized)}
-                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-colors ml-1"
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-colors ml-1 cursor-pointer"
                   title={isConsoleMinimized ? "Expand Testcases Console" : "Minimize Console to expand Editor"}
                 >
                   {isConsoleMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1086,7 +1168,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     {executionResult ? (
                       <div className="space-y-3">
                         
-                        {/* Status Header */}
+                        {/* Status Header with Strict Correctness Evaluation */}
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                           <div className="flex items-center space-x-2 font-black text-sm">
                             {executionResult.stderr ? (
@@ -1094,10 +1176,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 <XCircle className="w-5 h-5 text-rose-400" />
                                 <span className="text-rose-400">Runtime Error</span>
                               </>
-                            ) : (
+                            ) : isOutputValid(executionResult.stdout, executionResult.stderr) ? (
                               <>
                                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                                <span className="text-emerald-400">Accepted</span>
+                                <span className="text-emerald-400">Accepted (Case {activeTestCaseIdx + 1})</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-5 h-5 text-amber-400" />
+                                <span className="text-amber-400">Wrong Answer (Case {activeTestCaseIdx + 1})</span>
                               </>
                             )}
                           </div>
@@ -1112,18 +1199,22 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {executionResult.stdout && (
                           <div className="space-y-1">
                             <div className="text-[10px] text-slate-400 font-bold uppercase">Stdout Output:</div>
-                            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-xs whitespace-pre-wrap">
+                            <div className={`p-2.5 rounded-xl bg-slate-950 border text-mono text-xs whitespace-pre-wrap ${
+                              isOutputValid(executionResult.stdout, executionResult.stderr)
+                                ? 'border-emerald-800/80 text-emerald-400'
+                                : 'border-amber-800/80 text-amber-300'
+                            }`}>
                               {executionResult.stdout}
                             </div>
                           </div>
                         )}
 
-                        {/* Expected Box */}
-                        {problemTemplate.expectedOutputs && problemTemplate.expectedOutputs[activeTestCaseIdx] && (
+                        {/* Expected Output Box */}
+                        {currentExpectedOutput && (
                           <div className="space-y-1">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Expected:</div>
+                            <div className="text-[10px] text-indigo-400 font-bold uppercase">Expected Output:</div>
                             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
-                              {problemTemplate.expectedOutputs[activeTestCaseIdx]}
+                              {currentExpectedOutput}
                             </div>
                           </div>
                         )}
@@ -1270,7 +1361,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         className="absolute top-2 right-2 p-1 text-slate-500 hover:text-purple-300 transition-colors cursor-pointer"
                         title="Copy message text"
                       >
-                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     )}
                   </div>

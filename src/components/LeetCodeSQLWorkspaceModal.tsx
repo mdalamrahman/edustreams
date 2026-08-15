@@ -115,6 +115,39 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     };
   }, [isDragging]);
 
+  // Resizable Vertical Console Height (Editor vs Bottom Testcases)
+  const [consoleHeight, setConsoleHeight] = useState<number>(270);
+  const [isVerticalDragging, setIsVerticalDragging] = useState<boolean>(false);
+
+  const handleVerticalMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsVerticalDragging(true);
+  };
+
+  useEffect(() => {
+    const handleVerticalMouseMove = (e: MouseEvent) => {
+      if (!isVerticalDragging) return;
+      const windowHeight = window.innerHeight;
+      const newHeight = windowHeight - e.clientY;
+      if (newHeight >= 100 && newHeight <= windowHeight - 160) {
+        setConsoleHeight(newHeight);
+      }
+    };
+
+    const handleVerticalMouseUp = () => {
+      setIsVerticalDragging(false);
+    };
+
+    if (isVerticalDragging) {
+      window.addEventListener('mousemove', handleVerticalMouseMove);
+      window.addEventListener('mouseup', handleVerticalMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleVerticalMouseMove);
+      window.removeEventListener('mouseup', handleVerticalMouseUp);
+    };
+  }, [isVerticalDragging]);
+
   // Ask AI Drawer on the Right
   const [isRightAskAiOpen, setIsRightAskAiOpen] = useState<boolean>(false);
   const chatStorageKey = `sdetube_sql_chat_${cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -579,7 +612,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         >
           
           {/* Monaco SQL Editor */}
-          <div className={`flex-1 border-b border-slate-800 relative transition-all ${isConsoleMinimized ? 'h-full' : 'min-h-[260px]'}`}>
+          <div className="flex-1 min-h-[160px] relative overflow-hidden">
             <Editor
               height="100%"
               language="sql"
@@ -611,11 +644,27 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
             </div>
           </div>
 
-          {/* Bottom Console with Multiple Test Cases (Minimizable) */}
-          <div className={`${isConsoleMinimized ? 'h-10' : 'h-64 sm:h-72'} bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-200 border-t border-slate-800`}>
+          {/* --------------------------------------------------------------------- */}
+          {/* DRAGGABLE VERTICAL RESIZER HANDLE (EDITOR VS SQL TESTCASE CONSOLE)    */}
+          {/* --------------------------------------------------------------------- */}
+          {!isConsoleMinimized && (
+            <div
+              onMouseDown={handleVerticalMouseDown}
+              className="w-full h-2 hover:h-2.5 bg-slate-900 hover:bg-cyan-600/80 cursor-row-resize flex items-center justify-center transition-all z-20 border-y border-slate-800/80 group"
+              title="Drag up or down to adjust SQL Testcases console height"
+            >
+              <div className="w-10 h-0.5 bg-slate-600 group-hover:text-white rounded-full transition-colors" />
+            </div>
+          )}
+
+          {/* Bottom Console with Multiple Test Cases (Minimizable & Height-Adjustable) */}
+          <div 
+            style={{ height: isConsoleMinimized ? 40 : consoleHeight }}
+            className="bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-75 border-t border-slate-800 overflow-hidden"
+          >
             
             {/* Console Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800">
+            <div className="h-10 flex items-center justify-between px-4 bg-slate-950 border-b border-slate-800 flex-shrink-0">
               
               <div className="flex items-center space-x-1.5">
                 <button
