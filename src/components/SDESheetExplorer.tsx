@@ -13,7 +13,11 @@ import {
   Sparkles,
   Terminal,
   Filter,
-  Check
+  Check,
+  Flame,
+  Zap,
+  Trophy,
+  ArrowRight
 } from 'lucide-react';
 import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
 
@@ -23,6 +27,8 @@ interface SDESheetExplorerProps {
 }
 
 const STORAGE_SOLVED_KEY = 'sdetube_sde_sheet_solved_ids';
+const STORAGE_POTD_DATE_KEY = 'sdetube_potd_date';
+const STORAGE_POTD_ID_KEY = 'sdetube_potd_problem_id';
 
 export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
@@ -30,7 +36,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 }) => {
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_SOLVED_KEY) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
+      const saved = localStorage.getItem(STORAGE_SOLVED_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -43,6 +49,31 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
+
+  // POTD (Problem of the Day) Generator
+  const potdProblem = useMemo<SDEProblem>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const savedDate = localStorage.getItem(STORAGE_POTD_DATE_KEY);
+    const savedId = localStorage.getItem(STORAGE_POTD_ID_KEY);
+
+    if (savedDate === today && savedId) {
+      const p = SDE_SHEET_DATA.find((item) => item.id === Number(savedId));
+      if (p) return p;
+    }
+
+    // Deterministic pseudo-random generation based on today's date
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+      hash = (hash * 31 + today.charCodeAt(i)) % SDE_SHEET_DATA.length;
+    }
+    const selected = SDE_SHEET_DATA[Math.abs(hash) % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+
+    localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
+    localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
+    return selected;
+  }, []);
+
+  const isPotdSolved = solvedIds.includes(potdProblem.id);
 
   useEffect(() => {
     try {
@@ -146,30 +177,107 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div className="w-full space-y-6 animate-fadeIn pb-12">
       
-      {/* Top Header */}
-      <div className="glass-panel rounded-3xl p-6 border border-slate-800 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/90 to-purple-950/40">
+      {/* ========================================================================= */}
+      {/* 1. EXPANSIVE FULL-WIDTH TOP HEADER WITH LEETCODE POTD ON TOP-RIGHT         */}
+      {/* ========================================================================= */}
+      <div className="w-full glass-panel rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-slate-900/95 to-purple-950/50">
+        
+        {/* Left: Title & Subtitle */}
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-purple-600/30 border border-purple-400/40 flex-shrink-0">
-            <Code className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-purple-600/30 border border-purple-400/40 flex-shrink-0">
+            <Code className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-100 flex flex-wrap items-center gap-2.5">
               <span>SDETube SDE Mastery Sheet</span>
-              <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-600/20 text-purple-300 border border-purple-500/40">
-                191 Problems
+              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-inner">
+                191 Top FAANG Problems
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              FAANG Coding Interview Problems with In-Workspace Video Solutions & Fullscreen LeetCode IDE
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
+              Complete Coding Interview Preparation with In-Workspace Video Lectures & Fullscreen LeetCode IDE
             </p>
           </div>
         </div>
+
+        {/* Right: LEETCODE-STYLE PROBLEM OF THE DAY (POTD) CARD */}
+        <div className="flex-shrink-0 w-full lg:w-auto">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950/40 to-slate-950 border border-purple-500/30 shadow-xl relative overflow-hidden group hover:border-purple-500/60 transition-all">
+            
+            <div className="flex items-center justify-between gap-4 pb-2 border-b border-purple-900/40">
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Flame className="w-4 h-4 fill-amber-400 animate-pulse" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">
+                  Problem of the Day (POTD)
+                </span>
+              </div>
+
+              {isPotdSolved ? (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Solved Today!
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 font-mono text-[10px] font-bold">
+                  Daily Challenge
+                </span>
+              )}
+            </div>
+
+            <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                  <span className="line-clamp-1">{potdProblem.name}</span>
+                  <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold border ${
+                    potdProblem.difficulty === 'Easy'
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                      : potdProblem.difficulty === 'Hard'
+                      ? 'bg-rose-950 text-rose-300 border-rose-800'
+                      : 'bg-amber-950 text-amber-300 border-amber-800'
+                  }`}>
+                    {potdProblem.difficulty}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  {potdProblem.category} • {potdProblem.companies.slice(0, 2).join(', ')}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {onOpenCodingFullscreen && (
+                  <button
+                    onClick={() => onOpenCodingFullscreen(potdProblem)}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 flex items-center space-x-1.5 active:scale-95 border border-purple-400/40"
+                  >
+                    <Terminal className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>{isPotdSolved ? 'Review POTD' : 'Solve POTD'}</span>
+                  </button>
+                )}
+
+                {onSelectVideoByTopic && (
+                  <button
+                    onClick={() => onSelectVideoByTopic(potdProblem.name)}
+                    className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-slate-800 transition-colors"
+                    title="Watch Video Solution for POTD"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ========================================================================= */}
+      {/* 2. EXPANDED FULL-WIDTH STATS BAR                                          */}
+      {/* ========================================================================= */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Total Problems */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-purple-500/40 transition-colors">
@@ -178,7 +286,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total SDE Problems</span>
           <div className="text-3xl font-black text-white mt-1">{totalCount}</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">Top Coding Interview Curriculum</div>
+          <div className="text-[11px] text-slate-400 mt-2 font-mono">Curated FAANG Coding Interview Questions</div>
         </div>
 
         {/* Solved Status */}
@@ -216,17 +324,19 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Companies Covered</span>
           <div className="text-3xl font-black text-blue-400 mt-1">{allCompanies.length}+</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">Google, Meta, Amazon, Microsoft & more</div>
+          <div className="text-[11px] text-slate-400 mt-2 font-mono">Google, Meta, Amazon, Microsoft, Apple & more</div>
         </div>
 
       </div>
 
-      {/* Filter Controls & Topic Pills */}
-      <div className="glass-panel rounded-3xl p-6 border border-slate-800 shadow-xl space-y-5 bg-slate-900/90">
+      {/* ========================================================================= */}
+      {/* 3. FULL-WIDTH FILTER CONTROLS & TOPIC PILLS                               */}
+      {/* ========================================================================= */}
+      <div className="w-full glass-panel rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 bg-slate-900/90">
         
         {/* Quick Topic Filter Pills */}
         <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
             1-Click Topic Filter
           </label>
           <div className="flex flex-wrap items-center gap-2">
@@ -234,7 +344,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
               <button
                 key={pill.value}
                 onClick={() => handlePillClick(pill.value)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   activeTopicPill === pill.value
                     ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400'
                     : 'bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
@@ -246,8 +356,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
         </div>
 
-        {/* Inputs Grid with Company Filter */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-800">
+        {/* Dropdowns & Search Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-3 border-t border-slate-800">
           
           {/* Search Input */}
           <div className="relative">
@@ -258,7 +368,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name..."
+                placeholder="Search problem or company..."
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all font-sans"
               />
             </div>
@@ -330,7 +440,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         </div>
 
         {/* Filter Summary & Reset */}
-        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center justify-between pt-2.5 border-t border-slate-800 text-xs text-slate-400">
           <div className="font-mono">
             Showing <span className="font-bold text-purple-400">{filteredProblems.length}</span> of {totalCount} problems
           </div>
@@ -345,8 +455,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
       </div>
 
-      {/* Main Problems Table */}
-      <div className="glass-panel rounded-3xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-900/90">
+      {/* ========================================================================= */}
+      {/* 4. EXPANSIVE FULL-WIDTH PROBLEMS TABLE                                    */}
+      {/* ========================================================================= */}
+      <div className="w-full glass-panel rounded-3xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-900/90">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse font-sans text-xs">
             <thead>
@@ -363,15 +475,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             <tbody className="divide-y divide-slate-800/60">
               {filteredProblems.map((item) => {
                 const isSolved = solvedIds.includes(item.id);
+                const isPotd = item.id === potdProblem.id;
+
                 return (
                   <tr
                     key={item.id}
                     className={`hover:bg-slate-800/50 transition-colors ${
-                      isSolved ? 'bg-slate-950/40' : ''
+                      isPotd ? 'bg-purple-950/20 ring-1 ring-inset ring-purple-500/30' : isSolved ? 'bg-slate-950/40' : ''
                     }`}
                   >
                     {/* Checkbox */}
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3.5 px-4 text-center">
                       <input
                         type="checkbox"
                         checked={isSolved}
@@ -381,21 +495,28 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                     </td>
 
                     {/* Category */}
-                    <td className="py-3 px-4 font-medium text-slate-400 whitespace-nowrap">
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
+                    <td className="py-3.5 px-4 font-medium text-slate-400 whitespace-nowrap">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono">
                         {item.category}
                       </span>
                     </td>
 
-                    {/* Name */}
-                    <td className="py-3 px-4">
-                      <div className={`font-bold ${isSolved ? 'line-through text-slate-500' : 'text-slate-100'}`}>
-                        {item.name}
+                    {/* Problem Name & POTD Badge */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-sm ${isSolved ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                          {item.name}
+                        </span>
+                        {isPotd && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1">
+                            <Flame className="w-3 h-3 fill-amber-400" /> POTD
+                          </span>
+                        )}
                       </div>
                     </td>
 
                     {/* Difficulty */}
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
                         item.difficulty === 'Easy'
                           ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60'
@@ -408,9 +529,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                     </td>
 
                     {/* Companies */}
-                    <td className="py-3 px-4">
-                      <div className="flex flex-wrap gap-1 items-center max-w-xs">
-                        {item.companies.slice(0, 3).map((comp) => (
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-wrap gap-1 items-center max-w-sm">
+                        {item.companies.slice(0, 4).map((comp) => (
                           <span
                             key={comp}
                             className="bg-slate-950 border border-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-md font-mono"
@@ -418,16 +539,16 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                             {comp}
                           </span>
                         ))}
-                        {item.companies.length > 3 && (
+                        {item.companies.length > 4 && (
                           <span className="text-[10px] text-slate-500 font-mono">
-                            +{item.companies.length - 3}
+                            +{item.companies.length - 4}
                           </span>
                         )}
                       </div>
                     </td>
 
                     {/* Importance Rating */}
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className={`font-mono text-[11px] font-bold ${
                         item.rating.includes('Must Do')
                           ? 'text-amber-400 font-extrabold flex items-center gap-1'
@@ -439,14 +560,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                     </td>
 
                     {/* Actions & Links */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center space-x-2">
                         
                         {/* 1. MATCHING VIDEO IN SDETUBE CATALOG */}
                         {onSelectVideoByTopic && (
                           <button
                             onClick={() => onSelectVideoByTopic(item.name)}
-                            className="inline-flex items-center space-x-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all shadow-sm group"
+                            className="inline-flex items-center space-x-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm group"
                             title="Play matching video lecture in SDETube"
                           >
                             <Play className="w-3 h-3 fill-current group-hover:scale-110 transition-transform" />
@@ -458,7 +579,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                         {onOpenCodingFullscreen && (
                           <button
                             onClick={() => onOpenCodingFullscreen(item)}
-                            className="inline-flex items-center space-x-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all shadow-sm group"
+                            className="inline-flex items-center space-x-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm group"
                             title="Solve in SDETube Fullscreen IDE / LeetCode Arena"
                           >
                             <Terminal className="w-3 h-3 text-cyan-300" />
@@ -471,7 +592,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                           href={item.leetcode}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold px-2 py-1 rounded-xl transition-colors"
+                          className="inline-flex items-center space-x-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition-colors"
                           title="Solve on LeetCode"
                         >
                           <ExternalLink className="w-3 h-3" />
@@ -483,7 +604,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                           href={item.gfg}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-2 py-1 rounded-xl transition-colors"
+                          className="inline-flex items-center space-x-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition-colors"
                           title="Solve on GeeksforGeeks"
                         >
                           <ExternalLink className="w-3 h-3" />

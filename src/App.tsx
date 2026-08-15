@@ -510,6 +510,19 @@ export function App() {
     setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
     if (isCorrect) setCorrectAttempts((prev) => prev + 1);
 
+    // Auto-solve in SDE Sheet / POTD
+    if (isCorrect && sdeFullscreenProblem) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+        if (!saved.includes(sdeFullscreenProblem.id)) {
+          saved.push(sdeFullscreenProblem.id);
+          localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(saved));
+        }
+      } catch (e) {
+        console.warn('[SDETube SDE Sheet Auto-solve Error]:', e);
+      }
+    }
+
     if (lessonSubTab === 'code') {
       setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ ...prev, codingMins: Math.round(prev.codingMins + mins) }));
     } else {
@@ -583,8 +596,8 @@ export function App() {
         }}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Content Area: Expansive Full Horizontal Width for SDE Sheet */}
+      <main className={`flex-1 w-full mx-auto py-6 ${activeTab === 'sde_sheet' ? 'max-w-[98%] px-2 sm:px-4' : 'max-w-7xl px-4 sm:px-6 lg:px-8'}`}>
         
         {/* VIEW 1: TELEGRAM CHANNELS OVERVIEW & DEDICATED CHANNEL PAGES */}
         {activeTab === 'channels' && (
