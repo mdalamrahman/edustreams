@@ -31,6 +31,7 @@ import { AskAIChatModal } from './components/AskAIChatModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { SDESheetExplorer } from './components/SDESheetExplorer';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
+import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
@@ -65,6 +66,7 @@ export function App() {
   const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
     setAskAIMode(mode);
@@ -1039,30 +1041,35 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                   <span>Ask AI</span>
                 </button>
 
-                {/* Show Open Coding IDE for DSA and System Design / LLD! For pure CN & DBMS theory, show Practice MCQ Quiz only */}
-                {!(activeChannelObj?.id === 'ch-cn-04' || 
-                   activeChannelObj?.id === 'ch-dbms-03' ||
-                   Boolean(activeChannelObj?.name && (
-                     activeChannelObj.name.toLowerCase().includes('network') ||
-                     activeChannelObj.name.toLowerCase().includes('dbms') ||
-                     activeChannelObj.name.toLowerCase().includes('database')
-                   ))) && 
-                 (activeChannelObj?.id === 'ch-dsa-01' || 
-                  activeChannelObj?.id === 'ch-sys-design' ||
-                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('system design')) ||
-                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('lld')) ||
-                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('design')) ||
-                  selectedVideo.title.toLowerCase().includes('dsa') ||
-                  selectedVideo.title.toLowerCase().includes('array') ||
-                  selectedVideo.title.toLowerCase().includes('tree') ||
-                  selectedVideo.title.toLowerCase().includes('graph') ||
-                  selectedVideo.title.toLowerCase().includes('solid') ||
-                  selectedVideo.title.toLowerCase().includes('srp') ||
-                  selectedVideo.title.toLowerCase().includes('ocp') ||
-                  selectedVideo.title.toLowerCase().includes('pattern') ||
-                  selectedVideo.title.toLowerCase().includes('design') ||
-                  selectedVideo.title.toLowerCase().includes('leetcode') ||
-                  Boolean(videoArtifacts?.coding_problem)) ? (
+                {/* Mode Selector: SQL Arena for DBMS/SQL, Coding IDE for DSA/LLD, MCQ Quiz for Computer Networks */}
+                {(activeChannelObj?.id === 'ch-dbms-03' ||
+                  Boolean(activeChannelObj?.name && (activeChannelObj.name.toLowerCase().includes('dbms') || activeChannelObj.name.toLowerCase().includes('sql') || activeChannelObj.name.toLowerCase().includes('database'))) ||
+                  selectedVideo.title.toLowerCase().includes('sql') ||
+                  selectedVideo.title.toLowerCase().includes('dbms') ||
+                  selectedVideo.title.toLowerCase().includes('query') ||
+                  selectedVideo.title.toLowerCase().includes('join') ||
+                  selectedVideo.title.toLowerCase().includes('database')) ? (
+                  <button
+                    onClick={() => setIsSqlModalOpen(true)}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 via-sky-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-cyan-400/40 cursor-pointer"
+                  >
+                    <Database className="w-4 h-4 text-cyan-200" />
+                    <span>Open SQL Compiler</span>
+                  </button>
+                ) : (activeChannelObj?.id === 'ch-dsa-01' || 
+                     activeChannelObj?.id === 'ch-sys-design' ||
+                     Boolean(activeChannelObj?.name && (activeChannelObj.name.toLowerCase().includes('system design') || activeChannelObj.name.toLowerCase().includes('lld') || activeChannelObj.name.toLowerCase().includes('design') || activeChannelObj.name.toLowerCase().includes('dsa'))) ||
+                     selectedVideo.title.toLowerCase().includes('dsa') ||
+                     selectedVideo.title.toLowerCase().includes('array') ||
+                     selectedVideo.title.toLowerCase().includes('tree') ||
+                     selectedVideo.title.toLowerCase().includes('graph') ||
+                     selectedVideo.title.toLowerCase().includes('solid') ||
+                     selectedVideo.title.toLowerCase().includes('srp') ||
+                     selectedVideo.title.toLowerCase().includes('ocp') ||
+                     selectedVideo.title.toLowerCase().includes('pattern') ||
+                     selectedVideo.title.toLowerCase().includes('design') ||
+                     selectedVideo.title.toLowerCase().includes('leetcode') ||
+                     Boolean(videoArtifacts?.coding_problem)) ? (
                   <button
                     onClick={() => {
                       const cleanName = selectedVideo.title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
@@ -1191,8 +1198,19 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         />
       )}
 
+      {/* Fullscreen In-Browser WebAssembly SQL Arena for DBMS Lectures */}
+      {isSqlModalOpen && selectedVideo && (
+        <LeetCodeSQLWorkspaceModal
+          problemTitle={selectedVideo.title}
+          transcript={videoArtifacts?.transcript || selectedVideo.telegram_caption}
+          notes={videoArtifacts?.notes}
+          onClose={() => setIsSqlModalOpen(false)}
+          onCodeExecuted={handleQuestionSolved}
+        />
+      )}
+
       {/* Floating Circular Ask AI Assistant Action Button ONLY on lesson workspace page */}
-      {activeTab === 'lesson' && !sdeFullscreenProblem && (
+      {activeTab === 'lesson' && !sdeFullscreenProblem && !isSqlModalOpen && (
         <button
           onClick={() => openAskAIWithMode()}
           className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"

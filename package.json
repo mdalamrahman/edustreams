@@ -11,6 +11,7 @@
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
     "@supabase/supabase-js": "^2.39.8",
+    "alasql": "^4.17.3",
     "canvas-confetti": "^1.9.2",
     "lucide-react": "^0.359.0",
     "react": "^18.2.0",
