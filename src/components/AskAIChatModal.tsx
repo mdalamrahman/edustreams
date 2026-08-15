@@ -212,7 +212,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
   const quickQuestions = getQuickQuestions();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-start bg-slate-950/80 backdrop-blur-sm p-2 sm:p-4 animate-fadeIn">
       
       {/* Sliding Drawer */}
       <div className="w-full max-w-xl h-[92vh] glass-panel rounded-3xl border border-purple-500/40 bg-slate-950 flex flex-col shadow-2xl overflow-hidden relative font-sans">

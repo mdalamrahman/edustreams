@@ -11,7 +11,7 @@ export const MOCK_CHANNELS: Channel[] = [
     id: 'ch-dsa-01',
     telegram_channel_id: -1004390749731,
     category_name: 'DSA',
-    description: 'Striver DSA Sheet, LeetCode Patterns, Dynamic Programming, Graphs & Trees (418 Real Telegram Videos)',
+    description: 'Striver DSA Sheet, LeetCode Patterns, Dynamic Programming, Graphs & Trees (418 Cloud HD Lectures)',
     icon: 'code-2',
     created_at: new Date().toISOString(),
     post_count: 418
@@ -20,7 +20,7 @@ export const MOCK_CHANNELS: Channel[] = [
     id: 'ch-sd-02',
     telegram_channel_id: -1004329144420,
     category_name: 'System Design',
-    description: 'STRIVER LLD: Low Level Design, Microservices, Caching & Distributed Consensus (53 Real Telegram Videos)',
+    description: 'STRIVER LLD: Low Level Design, Microservices, SOLID Principles & Design Patterns (53 HD Lectures)',
     icon: 'cpu',
     created_at: new Date().toISOString(),
     post_count: 53
@@ -29,7 +29,7 @@ export const MOCK_CHANNELS: Channel[] = [
     id: 'ch-dbms-03',
     telegram_channel_id: -1004332462419,
     category_name: 'DBMS',
-    description: 'Striver DBMS: Relational Algebra, B+ Trees, SQL Optimization & MVCC Locks (94 Real Telegram Videos)',
+    description: 'Striver DBMS: Relational Algebra, B+ Trees, SQL Optimization & MVCC Locks (94 HD Lectures)',
     icon: 'database',
     created_at: new Date().toISOString(),
     post_count: 94
@@ -38,7 +38,7 @@ export const MOCK_CHANNELS: Channel[] = [
     id: 'ch-cn-04',
     telegram_channel_id: -1004308430774,
     category_name: 'Computer Networks',
-    description: 'Striver CN: TCP/IP Stack, Subnetting, Socket Programming & HTTP/3 Traces (40 Real Telegram Videos)',
+    description: 'Striver CN: TCP/IP Stack, Subnetting, Socket Programming & HTTP/3 Traces (40 HD Lectures)',
     icon: 'network',
     created_at: new Date().toISOString(),
     post_count: 40

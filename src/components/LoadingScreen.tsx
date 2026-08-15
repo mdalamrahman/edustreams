@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, Cpu, Layers, Zap, Code2, ShieldCheck, Radio } from 'lucide-react';
 
 const INITIALIZATION_STEPS = [
-  { label: 'Connecting Telethon MTProto Proxy Streams', icon: Radio },
-  { label: 'Connecting Telethon MTProto Stream Channel Proxy', icon: ShieldCheck },
-  { label: 'Warming SDETube Speech & Audio Engine', icon: Sparkles },
-  { label: 'Loading SDETube Academic Diagnostics', icon: Cpu },
-  { label: 'Initializing Monaco Sandboxed Code Workspace', icon: Code2 },
-  { label: 'Verifying Supabase Auth & Cloud Database Sync', icon: ShieldCheck },
+  { label: 'Connecting Cloud Video Stream Channels', icon: Radio },
+  { label: 'Syncing High-Definition Lecture Buffers', icon: ShieldCheck },
+  { label: 'Warming SDETube Speech STT & AI Engine', icon: Sparkles },
+  { label: 'Loading SDE Sheet Curated Curricula', icon: Cpu },
+  { label: 'Initializing Sandboxed LeetCode Compiler & IDE', icon: Code2 },
+  { label: 'Verifying Academic Progress & Cloud Diagnostics', icon: ShieldCheck },
 ];
 
 export const LoadingScreen: React.FC = () => {

@@ -5,25 +5,16 @@ import {
   Play, 
   Pause, 
   RotateCcw, 
-  ChevronRight, 
-  ChevronLeft,
   CheckCircle2, 
-  Code, 
-  Cpu, 
-  ShieldAlert, 
   Maximize2, 
   X,
-  Zap, 
   HelpCircle,
-  Layers,
-  Terminal,
-  Activity,
-  Sliders,
-  Check
+  Cpu
 } from 'lucide-react';
-import { Video } from '../lib/types';
+import { Video, QuizQuestion } from '../lib/types';
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { AlgomasterNotesRenderer } from './AlgomasterNotesRenderer';
+import { QuizModule } from './QuizModule';
 
 interface AINotesAndSimulationProps {
   video: Video;
@@ -35,13 +26,28 @@ interface AINotesAndSimulationProps {
     total_parts?: number;
     stage?: string;
     estimated_seconds_left?: number;
+    mcqs?: any[];
   } | null;
+  questions?: QuizQuestion[];
   isLoading?: boolean;
   onOpenAskAI?: (mode?: 'video' | 'notes' | 'quiz' | 'code') => void;
+  onQuizSubmitted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
+  onAttemptMoreQuestions?: () => void;
+  isGeneratingMoreQuiz?: boolean;
 }
 
-export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ video, videoArtifacts, isLoading, onOpenAskAI }) => {
-  const [activeTab, setActiveTab] = useState<'notes' | 'simulation'>('notes');
+export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ 
+  video, 
+  videoArtifacts, 
+  questions = [],
+  isLoading, 
+  onOpenAskAI,
+  onQuizSubmitted,
+  onAttemptMoreQuestions,
+  isGeneratingMoreQuiz
+}) => {
+  // Default to 'quiz' (MCQ Quiz) in all cases so it's always immediately front-and-center
+  const [activeTab, setActiveTab] = useState<'quiz' | 'notes' | 'simulation'>('quiz');
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlayingSim, setIsPlayingSim] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
@@ -100,82 +106,82 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
   ] : isPrimeTopic ? [
     {
       step_number: 1,
-      title: 'Step 1: Sieve Boolean Array Initialization',
-      desc: 'Creating boolean array is_prime of size N+1 initialized to true. Marking indices 0 and 1 as non-prime.',
-      array: ['2:T', '3:T', '4:T', '5:T', '6:T', '7:T', '8:T', '9:T', '10:T', '11:T', '12:T', '13:T', '14:T', '15:T', '16:T'],
+      title: 'Step 1: Initialize Sieve State Table',
+      desc: `Setting up prime state array for ${cleanTitle}. Mark 0 and 1 as non-prime (false), and assume all numbers from 2 to N are prime (true).`,
+      array: ['0:F', '1:F', '2:T', '3:T', '4:T', '5:T', '6:T', '7:T', '8:T', '9:T', '10:T', '11:T'],
       activeIndices: [0, 1],
-      status: 'Array Initialized (All True)',
-      variables: { "P": "2", "N": "16", "Active Sieve Phase": "Init" },
+      status: 'State Table Initialized',
+      variables: { "Current Prime (p)": "None", "Limit (N)": "11", "Time Complexity": "O(N log log N)" },
       code_line: 'vector<bool> isPrime(N + 1, true); isPrime[0] = isPrime[1] = false;'
     },
     {
       step_number: 2,
-      title: 'Step 2: Eliminating Multiples of Prime P = 2',
-      desc: '2 is prime! Starting at 2² = 4, eliminating all multiples of 2 (4, 6, 8, 10, 12, 14, 16) by marking them false.',
-      array: ['2:T', '3:T', '4:F', '5:T', '6:F', '7:T', '8:F', '9:T', '10:F', '11:T', '12:F', '13:T', '14:F', '15:T', '16:F'],
-      activeIndices: [2, 4, 6, 8, 10, 12, 14],
-      status: 'Multiples of 2 Marked Composite',
-      variables: { "P": "2", "Multiples Marked": "7", "Next Prime": "3" },
-      code_line: 'for (int j = p * p; j <= N; j += p) isPrime[j] = false;'
+      title: 'Step 2: Cross out Multiples of 2',
+      desc: 'Prime p = 2 found. Marking all composites 4, 6, 8, 10 as non-prime (false).',
+      array: ['0:F', '1:F', '2:T', '3:T', '4:F', '5:T', '6:F', '7:T', '8:F', '9:T', '10:F', '11:T'],
+      activeIndices: [4, 6, 8, 10],
+      status: 'Multiples of 2 Filtered',
+      variables: { "Current Prime (p)": "2", "Multiples Crossed": "4, 6, 8, 10", "Next Candidate": "3" },
+      code_line: 'for (int i = 2 * 2; i <= N; i += 2) isPrime[i] = false;'
     },
     {
       step_number: 3,
-      title: 'Step 3: Eliminating Multiples of Prime P = 3',
-      desc: '3 is prime! Starting at 3² = 9, marking 9 and 15 composite. Multiples 6 and 12 were already eliminated by 2.',
-      array: ['2:T', '3:T', '4:F', '5:T', '6:F', '7:T', '8:F', '9:F', '10:F', '11:T', '12:F', '13:T', '14:F', '15:F', '16:F'],
-      activeIndices: [7, 13],
-      status: 'Multiples of 3 Marked Composite',
-      variables: { "P": "3", "P² Start": "9", "Multiples Marked": "2" },
-      code_line: 'for (int j = 3 * 3; j <= 16; j += 2 * 3) isPrime[j] = false;'
+      title: 'Step 3: Cross out Multiples of 3',
+      desc: 'Prime p = 3 found. Crossing out composites starting from 3*3 = 9.',
+      array: ['0:F', '1:F', '2:T', '3:T', '4:F', '5:T', '6:F', '7:T', '8:F', '9:F', '10:F', '11:T'],
+      activeIndices: [9],
+      status: 'Multiples of 3 Filtered',
+      variables: { "Current Prime (p)": "3", "Multiples Crossed": "9", "Next Candidate": "5" },
+      code_line: 'for (int i = 3 * 3; i <= N; i += 3) isPrime[i] = false;'
     },
     {
       step_number: 4,
-      title: 'Step 4: Sieve Termination at √N = 4',
-      desc: 'Since next prime P = 5 > √16 (4), the Sieve terminates. Remaining true values [2, 3, 5, 7, 11, 13] are all the prime numbers up to N!',
-      array: ['2:T', '3:T', '4:F', '5:T', '6:F', '7:T', '8:F', '9:F', '10:F', '11:T', '12:F', '13:T', '14:F', '15:F', '16:F'],
-      activeIndices: [0, 1, 3, 5, 9, 11],
-      status: 'Sieve Complete in O(N log log N)',
-      variables: { "Primes Found": "2, 3, 5, 7, 11, 13", "Time Complexity": "O(N log log N)" },
-      code_line: '// Sieve executed in O(N log log N) with bitset space optimization.'
+      title: 'Step 4: Final Sieve Table Complete',
+      desc: 'Remaining numbers [2, 3, 5, 7, 11] are guaranteed primes in O(N log log N) time.',
+      array: ['2:T', '3:T', '5:T', '7:T', '11:T'],
+      activeIndices: [0, 1, 2, 3, 4],
+      status: 'Primes Identified: [2, 3, 5, 7, 11]',
+      variables: { "Total Primes": "5", "Space Complexity": "O(N)", "Query Time": "O(1)" },
+      code_line: '// Sieve execution complete. Query range [L, R] in O(1) via prefix sum array.'
     }
   ] : [
     {
       step_number: 1,
-      title: 'Step 1: Problem Invariants & Initial Pointers',
-      desc: `Setting up initial search pointers, sliding window boundaries, or recursion base cases for ${cleanTitle}.`,
-      array: ['Low:0', 'Mid:3', 'High:6', 'Target:X', 'Ans:None'],
-      activeIndices: [0, 2],
-      status: 'Initialization Phase',
-      variables: { "Left": "0", "Right": "6", "Mid": "3", "Status": "Searching" },
+      title: 'Step 1: Input Data Inspection',
+      desc: `Visualizing input execution buffer for ${cleanTitle}. Initializing boundary pointers and auxiliary registers.`,
+      array: ['12', '45', '7', '89', '23', '56'],
+      activeIndices: [0, 1],
+      status: 'Analyzing Pointers',
+      variables: { "Left Index": "0", "Right Index": "5", "Active Value": "12" },
       code_line: 'int left = 0, right = n - 1;'
     },
     {
       step_number: 2,
-      title: 'Step 2: Core Algorithm Decision Transition',
-      desc: 'Evaluating middle element against invariant constraints to discard half the search space in logarithmic time.',
-      array: ['Low:0', 'Mid:3', 'High:6', 'Condition:Met', 'Ans:Candidate'],
-      activeIndices: [1, 3],
-      status: 'Constraint Evaluated',
-      variables: { "MidVal": "Arr[mid]", "Direction": "Shift Right", "Candidate": "Updated" },
-      code_line: 'if (isValid(mid)) { ans = mid; left = mid + 1; }'
+      title: 'Step 2: Processing & Invariant Maintenance',
+      desc: 'Comparing values and updating optimal intermediate state in-place.',
+      array: ['7', '12', '23', '45', '56', '89'],
+      activeIndices: [2, 3],
+      status: 'Partitioning & Sorting Elements',
+      variables: { "Swaps": "3", "Comparisons": "5", "Current Target": "45" },
+      code_line: 'if (nums[i] > nums[j]) swap(nums[i], nums[j]);'
     },
     {
       step_number: 3,
-      title: 'Step 3: Convergence & Optimal State',
-      desc: 'Pointers meet at the optimal solution boundary. Monotonic invariant guarantees globally optimal result.',
-      array: ['Low:4', 'High:4', 'Optimal:Found', 'Time:O(log N)'],
-      activeIndices: [0, 1, 2],
-      status: 'Optimal Solution Reached',
-      variables: { "Result": "Optimal Found", "Operations": "O(log N)", "Space": "O(1)" },
-      code_line: 'return ans; // Optimal logarithmic convergence verified.'
+      title: 'Step 3: State Convergence & Output Validation',
+      desc: 'All invariants verified. Solution is optimal with minimum time and auxiliary space complexity.',
+      array: ['7', '12', '23', '45', '56', '89'],
+      activeIndices: [0, 1, 2, 3, 4, 5],
+      status: 'Algorithm Executed Successfully',
+      variables: { "Result": "Verified", "Time Complexity": "O(N log N)", "Space": "O(1)" },
+      code_line: 'return result;'
     }
   ]);
 
-  // Auto-play timer effect
+  // Simulation timer loop
   useEffect(() => {
     let timer: any = null;
     if (isPlayingSim) {
-      const intervalMs = Math.round(2400 / playbackSpeed);
+      const intervalMs = Math.round(1600 / playbackSpeed);
       timer = setInterval(() => {
         setCurrentStep((prev) => {
           if (prev >= simSteps.length - 1) {
@@ -191,7 +197,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
     };
   }, [isPlayingSim, simSteps.length, playbackSpeed]);
 
-  if (isLoading || (!videoArtifacts?.notes && (!videoArtifacts?.simulation_steps || videoArtifacts.simulation_steps.length === 0))) {
+  if (isLoading && (!questions || questions.length === 0)) {
     return (
       <AIProcessingStatusCard 
         videoTitle={cleanTitle} 
@@ -260,16 +266,16 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
           ))}
         </div>
 
-        {/* Speed Selector */}
-        <div className="flex items-center space-x-1 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800 text-xs font-mono">
-          <span className="text-slate-500 text-[10px] pr-1">Speed:</span>
+        {/* Speed Controls */}
+        <div className="flex items-center space-x-1 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800 text-[11px] font-mono">
+          <span className="text-slate-500 mr-1 hidden sm:inline">Speed:</span>
           {[0.5, 1, 2].map((spd) => (
             <button
               key={spd}
               onClick={() => setPlaybackSpeed(spd)}
-              className={`px-2 py-0.5 rounded-lg transition-all ${
+              className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
                 playbackSpeed === spd
-                  ? 'bg-indigo-600 text-white font-bold'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -279,207 +285,210 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
         </div>
       </div>
 
-      {/* Main Visual Simulation Stage Container */}
-      <div className={`p-4 sm:p-6 rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border border-indigo-900/40 space-y-6 shadow-2xl relative overflow-hidden ${isFull ? 'min-h-[70vh]' : ''}`}>
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-        {/* Step Header & Live Status Badge */}
-        <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 font-mono font-bold text-xs">
-              {currentStep + 1} / {simSteps.length}
+      {/* Main Interactive Stage */}
+      <div className={`p-4 sm:p-6 rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900/60 to-slate-950 border border-indigo-500/30 shadow-2xl relative overflow-hidden space-y-5 ${isFull ? 'min-h-[400px]' : ''}`}>
+        
+        {/* Step Title & Status Badge */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-bold">
+              Simulation Stage {currentStep + 1} of {simSteps.length}
             </div>
-            <h4 className="font-extrabold text-slate-100 text-sm sm:text-base tracking-tight">
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-100 mt-0.5">
               {currentSimStep.title}
-            </h4>
+            </h3>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-600/50 text-xs font-mono font-extrabold text-indigo-200 shadow-md">
-              {currentSimStep.status}
-            </span>
+          <div className="px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold flex items-center gap-1.5 shadow-inner">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>{currentSimStep.status || 'Active State'}</span>
           </div>
         </div>
 
-        {/* Narrative Explanation */}
-        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-slate-300 leading-relaxed text-xs sm:text-sm font-sans shadow-inner">
+        {/* Step Description */}
+        <p className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800/80">
           {currentSimStep.desc}
-        </div>
+        </p>
 
-        {/* Interactive Visual Element Blocks (Memory / Class Components) */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center px-1 text-[11px] font-mono text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              <span>State Invariants & Data Memory Layout (Click any block to inspect):</span>
-            </span>
-            <span className="text-indigo-300">{currentSimStep.array.length} Elements</span>
-          </div>
+        {/* Visual Array / Register Blocks */}
+        {currentSimStep.array && currentSimStep.array.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+              Memory Array & State Buffers
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-center py-3 bg-slate-950/90 rounded-2xl border border-slate-800/80 p-3">
+              {currentSimStep.array.map((val: string, idx: number) => {
+                const isActive = (currentSimStep.activeIndices || []).includes(idx);
+                const isSelected = selectedBlockIdx === idx;
+                const isFalseFlag = String(val).endsWith(':F');
+                const isTrueFlag = String(val).endsWith(':T');
 
-          <div className="flex flex-wrap justify-center items-center gap-2.5 sm:gap-3 py-4 bg-slate-950/90 rounded-2xl p-3 sm:p-4 border border-slate-800/80">
-            {currentSimStep.array.map((val: any, idx: number) => {
-              const isActive = currentSimStep.activeIndices?.includes(idx);
-              const isSelected = selectedBlockIdx === idx;
-
-              return (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedBlockIdx(isSelected ? null : idx)}
-                  className={`min-w-[64px] sm:min-w-[70px] h-18 sm:h-20 px-3 py-2 rounded-2xl flex flex-col items-center justify-center font-mono font-bold text-xs transition-all duration-300 shadow-lg relative ${
-                    isActive
-                      ? 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 text-white scale-105 border-2 border-indigo-300 shadow-indigo-500/40 ring-4 ring-indigo-500/20 animate-pulse'
-                      : 'bg-slate-900/90 text-slate-300 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800'
-                  } ${isSelected ? 'ring-2 ring-amber-400 border-amber-400' : ''}`}
-                >
-                  <span className="text-xs font-black truncate max-w-[110px] sm:max-w-[120px]">{String(val)}</span>
-                  <span className="text-[10px] font-normal text-slate-300/80 mt-1">idx {idx}</span>
-                  {isActive && (
-                    <span className="absolute -top-2 -right-1 px-1.5 py-0.2 rounded-full bg-emerald-500 text-[9px] font-bold text-slate-950 shadow-sm">
-                      active
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedBlockIdx(idx)}
+                    className={`flex flex-col items-center justify-center min-w-[54px] sm:min-w-[64px] h-14 sm:h-16 px-2 rounded-2xl font-mono transition-all duration-300 cursor-pointer shadow-lg select-none relative group ${
+                      isSelected
+                        ? 'bg-purple-600 text-white ring-4 ring-purple-400/50 scale-105'
+                        : isActive
+                        ? isFalseFlag
+                          ? 'bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-rose-500/20 scale-105'
+                          : isTrueFlag
+                          ? 'bg-emerald-950/80 border-2 border-emerald-500 text-emerald-200 shadow-emerald-500/20 scale-105'
+                          : 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-indigo-500/40 ring-2 ring-indigo-400/50 scale-105'
+                        : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-[10px] text-slate-400 font-mono absolute top-1 left-1.5 opacity-70">
+                      [{idx}]
                     </span>
-                  )}
-                </button>
-              );
-            })}
+                    <span className="text-xs sm:text-sm font-extrabold tracking-tight mt-1">
+                      {val}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Live State & Variable Inspector Panel */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-          {/* Variable Key-Values */}
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-            <span className="text-[11px] font-mono font-bold text-indigo-300 flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Live Variable & Invariant Watcher</span>
-            </span>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              {Object.entries(stepVariables).map(([k, v]) => (
-                <div key={k} className="p-2 rounded-xl bg-slate-900/90 border border-slate-800/80">
-                  <span className="text-slate-500 text-[10px] block">{k}:</span>
-                  <span className="text-slate-100 font-bold">{String(v)}</span>
+        {/* Live Variable Tracker Matrix */}
+        {Object.keys(stepVariables).length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+              Execution Registers & Metrics
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {Object.entries(stepVariables).map(([k, v]: [string, any], idx) => (
+                <div key={idx} className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 font-mono">
+                  <div className="text-[10px] text-slate-400 truncate">{k}</div>
+                  <div className="text-xs font-black text-indigo-300 truncate mt-0.5">{String(v)}</div>
                 </div>
               ))}
-              {Object.keys(stepVariables).length === 0 && (
-                <div className="col-span-2 text-slate-500 text-xs py-1">
-                  Step {currentStep + 1} processing active transitions.
-                </div>
-              )}
             </div>
           </div>
+        )}
 
-          {/* Code Line Execution Highlight */}
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-            <span className="text-[11px] font-mono font-bold text-emerald-400 flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Executing Action / Code Invariant</span>
-            </span>
-            <pre className="p-2.5 rounded-xl bg-slate-900/90 text-emerald-300 font-mono text-xs overflow-x-auto border border-emerald-950/60 leading-relaxed">
-              <code>{currentSimStep.code_line || `// Executing step ${currentStep + 1} for ${cleanTitle}`}</code>
-            </pre>
+        {/* Code Snippet Highlight */}
+        {currentSimStep.code_line && (
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+              Executing Code Segment
+            </div>
+            <div className="p-3 rounded-xl bg-slate-950 border border-indigo-900/50 font-mono text-[11px] text-emerald-300 overflow-x-auto">
+              <code>{currentSimStep.code_line}</code>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Previous & Next Stepper Buttons */}
-        <div className="flex justify-between items-center pt-2 border-t border-slate-900">
-          <button
-            disabled={currentStep === 0}
-            onClick={() => {
-              setCurrentStep(currentStep - 1);
-              setIsPlayingSim(false);
-              setSelectedBlockIdx(null);
-            }}
-            className="flex items-center gap-1 px-3.5 sm:px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-slate-300 text-xs font-bold transition-all border border-slate-800"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Previous</span>
-          </button>
-
-          <span className="text-xs font-mono text-slate-500">
-            Step {currentStep + 1} of {simSteps.length}
-          </span>
-
-          <button
-            disabled={currentStep === simSteps.length - 1}
-            onClick={() => {
-              setCurrentStep(currentStep + 1);
-              setIsPlayingSim(false);
-              setSelectedBlockIdx(null);
-            }}
-            className="flex items-center gap-1 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-md"
-          >
-            <span>Next</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-4">
-      {/* Top Header & Navigation Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-950 p-2 sm:p-3 rounded-2xl border border-slate-800">
-        <div className="flex items-center space-x-2">
+    <div className="glass-panel rounded-3xl p-4 sm:p-5 border border-slate-800/90 shadow-2xl space-y-4 font-sans">
+      
+      {/* Top Header: Tab Switcher (MCQ Quiz, SDE Study Notes, Visual Simulator) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+        
+        {/* Navigation Tabs */}
+        <div className="flex items-center space-x-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+          
+          {/* Tab 1: MCQ Quiz (Primary Default) */}
+          <button
+            onClick={() => setActiveTab('quiz')}
+            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'quiz'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <HelpCircle className="w-4 h-4 text-emerald-300" />
+            <span>MCQ Quiz ({questions.length})</span>
+          </button>
+
+          {/* Tab 2: SDE Study Notes */}
           <button
             onClick={() => setActiveTab('notes')}
-            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'notes'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            <span>Algomaster SDE Notes</span>
+            <BookOpen className="w-4 h-4 text-purple-300" />
+            <span>SDE Notes</span>
           </button>
 
+          {/* Tab 3: Visual Simulator */}
           <button
             onClick={() => setActiveTab('simulation')}
-            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'simulation'
                 ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Sparkles className="w-4 h-4 text-cyan-400" />
+            <Cpu className="w-4 h-4 text-cyan-300" />
             <span>Visual Simulator</span>
           </button>
         </div>
 
+        {/* Top Right Actions */}
         <div className="flex items-center space-x-2">
           {onOpenAskAI && (
             <button
-              onClick={() => onOpenAskAI(activeTab === 'notes' ? 'notes' : 'video')}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md border border-purple-400/30"
-              title="Ask AI Teaching Assistant about these notes"
+              onClick={() => onOpenAskAI(activeTab === 'quiz' ? 'quiz' : activeTab === 'notes' ? 'notes' : 'video')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md border border-purple-400/30 cursor-pointer"
+              title="Ask AI Teaching Assistant"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
               <span className="hidden sm:inline">Ask AI</span>
             </button>
           )}
 
-          {activeTab === 'notes' ? (
+          {activeTab === 'notes' && (
             <button
               onClick={() => setIsFullscreenNotes(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-md"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-md cursor-pointer"
               title="Read Notes in Fullscreen Focus Mode"
             >
               <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Fullscreen Focus</span>
+              <span className="hidden sm:inline">Fullscreen</span>
             </button>
-          ) : (
+          )}
+
+          {activeTab === 'simulation' && (
             <button
               onClick={() => setIsFullscreenSim(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all shadow-md"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all shadow-md cursor-pointer"
               title="Open Simulator in Fullscreen Focus Mode"
             >
               <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Fullscreen Focus</span>
+              <span className="hidden sm:inline">Fullscreen</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* TAB 1: ALGOMASTER SDE NOTES */}
+      {/* TAB 1: MCQ QUIZ (DEFAULT PRIMARY VIEW) */}
+      {activeTab === 'quiz' && (
+        <QuizModule
+          questions={questions}
+          onQuizSubmitted={onQuizSubmitted}
+          onAttemptMoreQuestions={onAttemptMoreQuestions}
+          isGeneratingMore={isGeneratingMoreQuiz}
+          videoTitle={cleanTitle}
+          durationSeconds={video.duration_seconds || 900}
+          progressPercent={videoArtifacts?.progress_percent}
+          currentPart={videoArtifacts?.current_part}
+          totalParts={videoArtifacts?.total_parts}
+          stage={videoArtifacts?.stage}
+          estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
+        />
+      )}
+
+      {/* TAB 2: ALGOMASTER SDE NOTES */}
       {activeTab === 'notes' && (
         <AlgomasterNotesRenderer
           content={videoArtifacts?.notes || `# 📘 ${cleanTitle} — SDE Study Notes\n\nStudy notes based on lecture transcript.`}
@@ -488,10 +497,10 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
         />
       )}
 
-      {/* TAB 2: INTERACTIVE MULTI-STATE VISUAL SIMULATOR */}
+      {/* TAB 3: INTERACTIVE MULTI-STATE VISUAL SIMULATOR */}
       {activeTab === 'simulation' && renderSimulationStage(false)}
 
-      {/* FULLSCREEN AI NOTES MODAL (FULL HORIZONTAL SCREEN) */}
+      {/* FULLSCREEN AI NOTES MODAL */}
       {isFullscreenNotes && (
         <div className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-2xl p-3 sm:p-8 overflow-y-auto space-y-6">
           <div className="w-full flex items-center justify-between border-b border-slate-800 pb-4 px-2 sm:px-6">
@@ -534,13 +543,13 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
         </div>
       )}
 
-      {/* FULLSCREEN VISUAL SIMULATOR MODAL (FULL HORIZONTAL & VERTICAL SCREEN) */}
+      {/* FULLSCREEN VISUAL SIMULATOR MODAL */}
       {isFullscreenSim && (
         <div className="fixed inset-0 z-50 bg-slate-950/98 backdrop-blur-2xl p-3 sm:p-8 overflow-y-auto space-y-6">
           <div className="w-full flex items-center justify-between border-b border-slate-800 pb-4 px-2 sm:px-6">
             <div className="flex items-center space-x-3">
               <div className="p-2.5 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 shadow-lg">
-                <Sparkles className="w-6 h-6 text-cyan-300" />
+                <Cpu className="w-6 h-6 text-cyan-300" />
               </div>
               <div>
                 <h2 className="text-base sm:text-xl font-black text-slate-100">{cleanTitle} — Visual Simulator</h2>

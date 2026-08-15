@@ -204,6 +204,19 @@ export function App() {
     }
   };
 
+  const handleQuizSubmitted = (timeTakenSeconds: number, isCorrect: boolean) => {
+    if (isCorrect) {
+      setCorrectAttempts((prev) => prev + 1);
+      setTotalSolved((prev) => prev + 1);
+    }
+    const mins = Math.max(0.1, Number((timeTakenSeconds / 60).toFixed(1)));
+    setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
+    setTimeBreakdown((prev: any) => ({
+      ...prev,
+      quizzesMins: Number(((prev?.quizzesMins || 0) + mins).toFixed(1))
+    }));
+  };
+
   useEffect(() => {
     // Clear legacy transcript/notes caches from localStorage so everything is freshly generated from real transcripts
     try {
@@ -1107,13 +1120,17 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                 />
               </div>
 
-              {/* Right Column: Algomaster SDE Notes & Interactive Simulation */}
+              {/* Right Column: MCQ Quiz Primary View with SDE Study Notes & Simulation Tabs */}
               <div className="lg:col-span-6 xl:col-span-6 min-h-[500px]">
                 <AINotesAndSimulation
                   video={selectedVideo}
                   videoArtifacts={videoArtifacts}
+                  questions={activeMCQs}
                   isLoading={catalogLoading}
                   onOpenAskAI={openAskAIWithMode}
+                  onQuizSubmitted={handleQuizSubmitted}
+                  onAttemptMoreQuestions={handleAttemptMoreQuestions}
+                  isGeneratingMoreQuiz={isGeneratingMoreQuiz}
                 />
               </div>
 
