@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Code, 
-  FileSpreadsheet, 
   CheckCircle2, 
   ListChecks, 
   Star, 
@@ -10,7 +9,6 @@ import {
   RotateCcw, 
   ExternalLink, 
   Play, 
-  Maximize2, 
   FolderOpen,
   Sparkles,
   Terminal,
@@ -24,7 +22,7 @@ interface SDESheetExplorerProps {
   onOpenCodingFullscreen?: (problem: SDEProblem) => void;
 }
 
-const STORAGE_SOLVED_KEY = 'tilitube_sde_sheet_solved_ids';
+const STORAGE_SOLVED_KEY = 'sdetube_sde_sheet_solved_ids';
 
 export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
@@ -32,7 +30,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 }) => {
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_SOLVED_KEY);
+      const saved = localStorage.getItem(STORAGE_SOLVED_KEY) || localStorage.getItem('tilitube_sde_sheet_solved_ids');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -41,6 +39,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedCompany, setSelectedCompany] = useState('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
@@ -49,7 +48,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     try {
       localStorage.setItem(STORAGE_SOLVED_KEY, JSON.stringify(solvedIds));
     } catch (e) {
-      console.warn('[TiliTube SDE Sheet Storage]:', e);
+      console.warn('[SDETube SDE Sheet Storage]:', e);
     }
   }, [solvedIds]);
 
@@ -63,10 +62,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     return Array.from(new Set(SDE_SHEET_DATA.map((p) => p.category)));
   }, []);
 
-  const allCompaniesCount = useMemo(() => {
+  const allCompanies = useMemo(() => {
     const companies = new Set<string>();
-    SDE_SHEET_DATA.forEach((p) => p.companies.forEach((c) => companies.add(c)));
-    return companies.size;
+    SDE_SHEET_DATA.forEach((p) => p.companies.forEach((c) => companies.add(c.trim())));
+    return Array.from(companies).sort();
   }, []);
 
   const topicPills = [
@@ -86,7 +85,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     if (val === 'ALL') {
       setSelectedCategory('ALL');
     } else if (val === 'Tree') {
-      setSelectedCategory('ALL'); // Will be filtered by text inclusion in filter
+      setSelectedCategory('ALL');
     } else {
       setSelectedCategory('ALL');
     }
@@ -103,6 +102,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
       // Category dropdown match
       const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
+
+      // Company dropdown match
+      const matchesCompany = selectedCompany === 'ALL' || p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
 
       // Topic pill match
       let matchesTopicPill = true;
@@ -124,9 +126,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       if (selectedStatus === 'UNSOLVED') matchesStatus = !isSolved;
       if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
 
-      return matchesSearch && matchesCategory && matchesTopicPill && matchesDifficulty && matchesStatus;
+      return matchesSearch && matchesCategory && matchesCompany && matchesTopicPill && matchesDifficulty && matchesStatus;
     });
-  }, [searchQuery, selectedCategory, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds]);
+  }, [searchQuery, selectedCategory, selectedCompany, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds]);
 
   // Statistics calculation
   const totalCount = SDE_SHEET_DATA.length;
@@ -134,36 +136,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const mustDoCount = SDE_SHEET_DATA.filter((p) => p.rating.includes('Must Do')).length;
   const progressPercent = Math.round((solvedCount / totalCount) * 100) || 0;
 
-  // Export to CSV Function
-  const handleExportCSV = () => {
-    const headers = ["ID", "Category", "Name of Question", "LeetCode Link", "GFG Link", "Company Names", "Difficulty", "Importance Rating", "Solved Status"];
-    const rows = SDE_SHEET_DATA.map((item) => [
-      item.id,
-      `"${item.category.replace(/"/g, '""')}"`,
-      `"${item.name.replace(/"/g, '""')}"`,
-      `"${item.leetcode}"`,
-      `"${item.gfg}"`,
-      `"${item.companies.join(', ')}"`,
-      `"${item.difficulty}"`,
-      `"${item.rating}"`,
-      solvedIds.includes(item.id) ? "Solved" : "Unsolved"
-    ]);
-
-    const csvString = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'tilitube_sde_sheet.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('ALL');
+    setSelectedCompany('ALL');
     setSelectedDifficulty('ALL');
     setSelectedStatus('ALL');
     setActiveTopicPill('ALL');
@@ -172,7 +148,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       
-      {/* Top Header & CSV Export */}
+      {/* Top Header */}
       <div className="glass-panel rounded-3xl p-6 border border-slate-800 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/90 to-purple-950/40">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-purple-600/30 border border-purple-400/40 flex-shrink-0">
@@ -180,25 +156,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-100 flex items-center gap-2">
-              <span>TiliTube SDE Mastery Sheet</span>
+              <span>SDETube SDE Mastery Sheet</span>
               <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-600/20 text-purple-300 border border-purple-500/40">
                 191 Problems
               </span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              Curated FAANG Coding Interview Problems with Direct Video Lectures & Fullscreen Monaco IDE
+              FAANG Coding Interview Problems with In-Workspace Video Solutions & Fullscreen LeetCode IDE
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-900/40 transition-all hover:scale-105 active:scale-95 border border-emerald-400/30"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Download CSV</span>
-          </button>
         </div>
       </div>
 
@@ -212,7 +178,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total SDE Problems</span>
           <div className="text-3xl font-black text-white mt-1">{totalCount}</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">Curated FAANG Interview Prep</div>
+          <div className="text-[11px] text-slate-400 mt-2 font-mono">Top Coding Interview Curriculum</div>
         </div>
 
         {/* Solved Status */}
@@ -249,7 +215,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             <Building2 className="w-20 h-20 text-blue-900/30" />
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Companies Covered</span>
-          <div className="text-3xl font-black text-blue-400 mt-1">{allCompaniesCount}+</div>
+          <div className="text-3xl font-black text-blue-400 mt-1">{allCompanies.length}+</div>
           <div className="text-[11px] text-slate-400 mt-2 font-mono">Google, Meta, Amazon, Microsoft & more</div>
         </div>
 
@@ -280,22 +246,37 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
         </div>
 
-        {/* Inputs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 pt-3 border-t border-slate-800">
+        {/* Inputs Grid with Company Filter */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-800">
           
           {/* Search Input */}
-          <div className="lg:col-span-2 relative">
-            <label className="block text-xs font-bold text-slate-400 mb-1">Search Problem / Company</label>
+          <div className="relative">
+            <label className="block text-xs font-bold text-slate-400 mb-1">Search Problem</label>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, company (e.g. Google, Amazon)..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all font-sans"
+                placeholder="Search by name..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all font-sans"
               />
             </div>
+          </div>
+
+          {/* Company Filter Dropdown */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 mb-1">Filter by Company</label>
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
+            >
+              <option value="ALL">All Companies ({allCompanies.length})</option>
+              {allCompanies.map((comp) => (
+                <option key={comp} value={comp}>{comp}</option>
+              ))}
+            </select>
           </div>
 
           {/* Category Dropdown */}
@@ -461,24 +442,24 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                     <td className="py-3 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center space-x-2">
                         
-                        {/* 1. MATCHING VIDEO IN TILITUBE DSA CATALOG */}
+                        {/* 1. MATCHING VIDEO IN SDETUBE CATALOG */}
                         {onSelectVideoByTopic && (
                           <button
                             onClick={() => onSelectVideoByTopic(item.name)}
                             className="inline-flex items-center space-x-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all shadow-sm group"
-                            title="Play matching video lecture in TiliTube"
+                            title="Play matching video lecture in SDETube"
                           >
                             <Play className="w-3 h-3 fill-current group-hover:scale-110 transition-transform" />
                             <span>Video</span>
                           </button>
                         )}
 
-                        {/* 2. SOLVE IN FULLSCREEN MONACO IDE */}
+                        {/* 2. SOLVE IN FULLSCREEN LEETCODE IDE */}
                         {onOpenCodingFullscreen && (
                           <button
                             onClick={() => onOpenCodingFullscreen(item)}
                             className="inline-flex items-center space-x-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all shadow-sm group"
-                            title="Solve in TiliTube Fullscreen IDE / LeetCode Arena"
+                            title="Solve in SDETube Fullscreen IDE / LeetCode Arena"
                           >
                             <Terminal className="w-3 h-3 text-cyan-300" />
                             <span>Solve (IDE)</span>

@@ -6,16 +6,18 @@ import {
   HardDrive, 
   Smartphone, 
   Laptop, 
-  BookOpen,
-  UserCheck,
-  LogOut,
-  KeyRound
+  BookOpen, 
+  UserCheck, 
+  LogOut, 
+  KeyRound,
+  Terminal,
+  HelpCircle
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 
 interface NavbarProps {
-  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings') => void;
+  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings';
+  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -38,26 +40,26 @@ export const Navbar: React.FC<NavbarProps> = ({
         
         {/* Brand Logo */}
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('channels')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 p-0.5 shadow-lg shadow-indigo-500/20">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 p-0.5 shadow-lg shadow-purple-500/20">
             <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Tv className="w-5 h-5 text-indigo-400" />
+              <Tv className="w-5 h-5 text-purple-400" />
             </div>
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
-                TiliTube
+                SDETube
               </span>
               <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-700/60">
                 SDE Arena
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">AI-Powered Video & SDE Coding Platform</p>
+            <p className="text-[11px] text-slate-400 hidden sm:block">AI-Powered Video Lectures & SDE Preparation</p>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center space-x-1 sm:space-x-2">
+        <nav className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('channels')}
             className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
@@ -67,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span className="hidden sm:inline">Channels</span>
+            <span className="hidden md:inline">Channels</span>
           </button>
 
           <button
@@ -89,9 +91,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
+            title="Video Lecture + SDE Notes Side-by-Side"
           >
-            <Tv className="w-4 h-4" />
-            <span className="hidden sm:inline">Workspace</span>
+            <Tv className="w-4 h-4 text-sky-400" />
+            <span>Video & Notes</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('code')}
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'code'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+            title="Monaco SDE Coding IDE"
+          >
+            <Terminal className="w-4 h-4 text-cyan-300" />
+            <span>Coding IDE</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('quiz')}
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'quiz'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+            title="Conceptual MCQ Quiz Arena"
+          >
+            <HelpCircle className="w-4 h-4 text-amber-300" />
+            <span>MCQ Quiz</span>
           </button>
 
           <button

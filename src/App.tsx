@@ -31,6 +31,7 @@ import { AskAIChatModal } from './components/AskAIChatModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { SDESheetExplorer } from './components/SDESheetExplorer';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
+import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { SDEProblem } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
@@ -39,9 +40,17 @@ import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
 
+const sanitizeCaption = (cap?: string) => {
+  if (!cap) return '';
+  return cap
+    .replace(/Follow Now:\s*https?:\/\/[^\s\n]+/gi, '')
+    .replace(/https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9_]+/gi, '')
+    .trim();
+};
+
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings'>('channels');
+  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
   const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
@@ -221,11 +230,11 @@ export function App() {
               channel_id: channelId,
               telegram_file_id: v.file_id || '',
               telegram_message_id: v.msg_id,
-              sender_username: '@EduStreamBot',
-              title: (v.file_name || `Video ${v.msg_id}`).replace(/\.(mp4|mkv|webm|avi|mov|flv)$/i, ''),
-              telegram_caption: v.caption || `📌 [Telegram Post #${v.msg_id} | Size: ${v.size_mb} MB]\nFile: ${v.file_name}`,
+              sender_username: '@SDETubeBot',
+              title: (v.file_name || `Lecture ${v.msg_id}`).replace(/\.(mp4|mkv|webm|avi|mov|flv)$/i, ''),
+              telegram_caption: sanitizeCaption(v.caption) || `📌 [SDETube Lecture #${v.msg_id} | Size: ${v.size_mb} MB]\nFile: ${v.file_name}`,
               duration_seconds: v.duration || 0,
-              transcript: `Ingested from Telegram Post #${v.msg_id} (${v.file_name}). Stream powered by Telethon MTProto.`,
+              transcript: `SDETube Lecture #${v.msg_id} (${v.file_name}). Stream powered by SDETube Cloud Engine.`,
               thumbnail_url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=80',
               stream_url: `${TELEGRAM_BACKEND_URL}${v.stream_url}`,
               created_at: v.date || new Date().toISOString(),
@@ -671,7 +680,7 @@ export function App() {
                             <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-800/60 font-bold text-indigo-300">
                               Post #{v.telegram_message_id}
                             </span>
-                            <span>{v.sender_username || '@EduStreamBot'}</span>
+                            <span>{v.sender_username || '@SDETubeBot'}</span>
                           </div>
 
                           <h4 className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-2">
@@ -730,50 +739,45 @@ export function App() {
           </div>
         )}
 
-        {/* VIEW 2: LESSON WORKSPACE (VIDEO PLAYER + MISTRAL QUIZ & LEETCODE WORKSPACE) */}
+        {/* VIEW 2: LECTURE WORKSPACE (VIDEO PLAYER + SDE STUDY NOTES SIDE-BY-SIDE) */}
         {activeTab === 'lesson' && (
           <div className="space-y-6">
             
-            {/* Top Workspace Navigation Tabs */}
-            <div className="flex items-center justify-between bg-slate-900/80 p-2 rounded-2xl border border-slate-800">
-              <div className="flex space-x-2">
-                <button
-                  onClick={handleOpenCodeTab}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
-                    lessonSubTab === 'code'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Code2 className="w-4 h-4" />
-                  <span>LeetCode Code Workspace</span>
-                </button>
-
-                <button
-                  onClick={() => setLessonSubTab('quiz')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${
-                    lessonSubTab === 'quiz'
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  <span>EduStream MCQ Quiz</span>
-                </button>
+            {/* Top Workspace Lecture Banner */}
+            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
+                  Lecture: {selectedVideo.title}
+                </span>
+                <span className="text-xs text-slate-400 hidden sm:inline font-mono">
+                  Channel: {activeChannelObj.name}
+                </span>
               </div>
 
-              <div className="hidden sm:flex items-center space-x-2">
-                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
-                  Topic: {selectedVideo.title}
-                </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openAskAIWithMode('notes')}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Ask AI on Notes</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md"
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>Open Coding IDE</span>
+                </button>
               </div>
             </div>
 
-            {/* Split Screen Grid */}
+            {/* Split Screen Grid: Left Video, Right Algomaster SDE Notes & Simulation */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Left Column: Video Player with Next/Prev Controls */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="lg:col-span-6 xl:col-span-6 space-y-6">
                 <VideoPlayer
                   video={selectedVideo}
                   videoArtifacts={videoArtifacts}
@@ -791,40 +795,87 @@ export function App() {
                 />
               </div>
 
-              {/* Right Column: Code Editor or Video-Specific MCQ Quiz Module */}
-              <div className="lg:col-span-5 min-h-[460px] lg:h-[640px]">
-                {lessonSubTab === 'code' ? (
-                  <CodeWorkspace
-                    codingProblem={videoArtifacts?.coding_problem}
-                    question={activeCodingQuestion}
-                    allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
-                    isLoading={quizLoading}
-                    progressPercent={videoArtifacts?.progress_percent}
-                    currentPart={videoArtifacts?.current_part}
-                    totalParts={videoArtifacts?.total_parts}
-                    stage={videoArtifacts?.stage}
-                    estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
-                    onCodeExecuted={handleQuestionSolved}
-                  />
-                ) : (
-                  <QuizModule
-                    questions={activeMCQs}
-                    videoTitle={selectedVideo.title}
-                    durationSeconds={selectedVideo.duration_seconds}
-                    progressPercent={videoArtifacts?.progress_percent}
-                    currentPart={videoArtifacts?.current_part}
-                    totalParts={videoArtifacts?.total_parts}
-                    stage={videoArtifacts?.stage}
-                    estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
-                    onQuizSubmitted={handleQuestionSolved}
-                    onAttemptMoreQuestions={handleAttemptMoreQuestions}
-                    isGeneratingMore={isGeneratingMoreQuiz}
-                  />
-                )}
+              {/* Right Column: Algomaster SDE Notes & Interactive Simulation */}
+              <div className="lg:col-span-6 xl:col-span-6 min-h-[500px]">
+                <AINotesAndSimulation
+                  video={selectedVideo}
+                  videoArtifacts={videoArtifacts}
+                  isLoading={catalogLoading}
+                  onOpenAskAI={openAskAIWithMode}
+                />
               </div>
 
             </div>
 
+          </div>
+        )}
+
+        {/* VIEW 2.2: DEDICATED SDE CODING IDE WORKSPACE */}
+        {activeTab === 'code' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
+                  Coding Challenge: {videoArtifacts?.coding_problem?.title || selectedVideo.title}
+                </span>
+              </div>
+              <button
+                onClick={() => setActiveTab('lesson')}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Video</span>
+              </button>
+            </div>
+
+            <div className="h-[750px]">
+              <CodeWorkspace
+                codingProblem={videoArtifacts?.coding_problem}
+                question={activeCodingQuestion}
+                allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
+                isLoading={quizLoading}
+                progressPercent={videoArtifacts?.progress_percent}
+                currentPart={videoArtifacts?.current_part}
+                totalParts={videoArtifacts?.total_parts}
+                stage={videoArtifacts?.stage}
+                estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
+                onCodeExecuted={handleQuestionSolved}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2.4: DEDICATED MCQ QUIZ ARENA */}
+        {activeTab === 'quiz' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-amber-300 font-mono font-bold px-3 py-1 rounded-xl bg-amber-950 border border-amber-700/50">
+                  Quiz Assessment: {selectedVideo.title}
+                </span>
+              </div>
+              <button
+                onClick={() => setActiveTab('lesson')}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Video</span>
+              </button>
+            </div>
+
+            <QuizModule
+              questions={activeMCQs}
+              videoTitle={selectedVideo.title}
+              durationSeconds={selectedVideo.duration_seconds}
+              progressPercent={videoArtifacts?.progress_percent}
+              currentPart={videoArtifacts?.current_part}
+              totalParts={videoArtifacts?.total_parts}
+              stage={videoArtifacts?.stage}
+              estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
+              onQuizSubmitted={handleQuestionSolved}
+              onAttemptMoreQuestions={handleAttemptMoreQuestions}
+              isGeneratingMore={isGeneratingMoreQuiz}
+            />
           </div>
         )}
 

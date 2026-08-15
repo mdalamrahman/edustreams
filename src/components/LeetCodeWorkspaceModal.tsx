@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { 
   Play, 
@@ -20,11 +20,19 @@ import {
   CheckCircle,
   FileCode,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Video as VideoIcon,
+  Send,
+  HelpCircle,
+  ChevronRight,
+  ChevronDown,
+  Layers,
+  Building2,
+  ListOrdered
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, CodeTAReview } from '../lib/mistral';
-import { CodeExecutionResult, QuizQuestion } from '../lib/types';
+import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import confetti from 'canvas-confetti';
 
 interface LeetCodeWorkspaceModalProps {
@@ -33,37 +41,41 @@ interface LeetCodeWorkspaceModalProps {
   initialLanguage?: SupportedLanguage;
   initialCode?: string;
   codingProblem?: any;
+  matchingVideo?: Video;
   onClose: () => void;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
-// Language-specific fallback starter templates
 const LC_STARTERS: Record<SupportedLanguage, string> = {
-  python: `# TiliTube AI Algorithm Sandbox
+  python: `# SDETube LeetCode Arena
 class Solution:
-    def solve(self) -> None:
+    def solve(self, nums: list[int] = None) -> any:
         """
         Implement optimal solution below.
+        Time Complexity: O(N)
+        Space Complexity: O(1)
         """
         pass
 
-# Driver / Test Runner
+# Test execution
 if __name__ == "__main__":
     sol = Solution()
-    sol.solve()
-    print("Solution executed successfully.")
+    result = sol.solve([2, 7, 11, 15])
+    print("Execution Output:", result)
 `,
-  cpp: `#include <iostream>
+  cpp: `// SDETube LeetCode Arena
+#include <iostream>
 #include <vector>
 #include <string>
-#include <memory>
+#include <algorithm>
+#include <unordered_map>
 using namespace std;
 
 class Solution {
 public:
     void solve() {
         // Implement optimal solution below
-        cout << "Solution executed successfully." << endl;
+        cout << "Optimal solution executed successfully." << endl;
     }
 };
 
@@ -78,7 +90,7 @@ int main() {
 public class Solution {
     public void solve() {
         // Implement optimal solution below
-        System.out.println("Solution executed successfully.");
+        System.out.println("Optimal solution executed successfully.");
     }
 
     public static void main(String[] args) {
@@ -88,12 +100,12 @@ public class Solution {
 }
 `,
   javascript: `/**
- * EduStream AI Algorithm Sandbox
+ * SDETube LeetCode Arena
  */
 class Solution {
-    solve() {
+    solve(nums = []) {
         // Implement optimal solution below
-        console.log("Solution executed successfully.");
+        console.log("Optimal solution executed successfully.");
     }
 }
 
@@ -108,7 +120,7 @@ type Solution struct{}
 
 func (s *Solution) Solve() {
     // Implement optimal solution below
-    fmt.Println("Solution executed successfully.")
+    fmt.Println("Optimal solution executed successfully.")
 }
 
 func main() {
@@ -120,8 +132,7 @@ func main() {
 
 impl Solution {
     pub fn solve() {
-        // Implement optimal solution below
-        println!("Solution executed successfully.");
+        println!("Optimal solution executed successfully.");
     }
 }
 
@@ -129,210 +140,9 @@ fn main() {
     Solution::solve();
 }
 `,
-  sql: `-- EduStream AI SQL Query Workspace
-SELECT 
-    'Solution executed successfully.' AS status;
+  sql: `-- SDETube SQL Workspace
+SELECT 1 AS result;
 `
-};
-
-const MONACO_LANG_MAP: Record<SupportedLanguage, string> = {
-  python: 'python',
-  java: 'java',
-  cpp: 'cpp',
-  go: 'go',
-  rust: 'rust',
-  javascript: 'javascript',
-  sql: 'sql'
-};
-
-// Automatic language detection from code content
-function detectLanguageFromCode(codeSnippet: string): SupportedLanguage {
-  if (!codeSnippet) return 'python';
-  if (/^#include|using namespace std|std::|int main\(\)/.test(codeSnippet)) return 'cpp';
-  if (/public class|import java\./.test(codeSnippet)) return 'java';
-  if (/package main|func main/.test(codeSnippet)) return 'go';
-  if (/fn main|use std::/.test(codeSnippet)) return 'rust';
-  if (/function\s+\w+|const\s+\w+\s*=|var\s+\w+/.test(codeSnippet) && !/def\s+/.test(codeSnippet)) return 'javascript';
-  if (/SELECT\s+|FROM\s+/i.test(codeSnippet)) return 'sql';
-  return 'python';
-}
-
-/**
- * Clean, comfortable Markdown Problem Description Renderer for LeetCode
- * Converts raw markdown into soft, readable paragraphs without jarring eye-straining bold weights.
- */
-const ProblemDescriptionRenderer: React.FC<{ rawText: string; title: string }> = ({ rawText, title }) => {
-  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
-
-  const handleCopyCode = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCodeId(id);
-    setTimeout(() => setCopiedCodeId(null), 2000);
-  };
-
-  // Helper to parse inline formatting (**bold**, `code`) safely
-  const formatInlineText = (text: string) => {
-    // First split by backticks for inline code
-    const codeParts = text.split(/(`[^`]+`)/g);
-    return codeParts.map((part, pIdx) => {
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-        return (
-          <code key={pIdx} className="px-1.5 py-0.5 rounded-md bg-slate-800/80 border border-slate-700/60 text-indigo-300 font-mono text-[11px] font-normal mx-0.5">
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-
-      // Inside normal text, parse **bold**
-      const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
-      return boldParts.map((bPart, bIdx) => {
-        if (bPart.startsWith('**') && bPart.endsWith('**') && bPart.length > 4) {
-          return (
-            <strong key={`${pIdx}-${bIdx}`} className="font-semibold text-slate-100">
-              {bPart.slice(2, -2)}
-            </strong>
-          );
-        }
-        return <span key={`${pIdx}-${bIdx}`}>{bPart}</span>;
-      });
-    });
-  };
-
-  // Parse structured blocks from the raw text
-  const blocks = useMemo(() => {
-    if (!rawText) return [];
-
-    // Normalize newlines
-    let text = rawText.replace(/\r\n/g, '\n');
-
-    // Split code blocks out
-    const segments = text.split(/(```[\s\S]*?```)/g);
-    const parsed: Array<{ type: 'paragraph' | 'heading' | 'code' | 'list' | 'example'; content: any; lang?: string }> = [];
-
-    segments.forEach((segment) => {
-      if (segment.startsWith('```') && segment.endsWith('```')) {
-        const firstLineEnd = segment.indexOf('\n');
-        const lang = firstLineEnd !== -1 ? segment.slice(3, firstLineEnd).trim() : 'code';
-        const codeContent = firstLineEnd !== -1 ? segment.slice(firstLineEnd + 1, -3).trim() : segment.slice(3, -3).trim();
-        parsed.push({ type: 'code', content: codeContent, lang: lang || 'plaintext' });
-      } else {
-        const lines = segment.split('\n');
-        let currentList: string[] = [];
-
-        lines.forEach((line) => {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            if (currentList.length > 0) {
-              parsed.push({ type: 'list', content: currentList });
-              currentList = [];
-            }
-            return;
-          }
-
-          if (trimmed.startsWith('###') || trimmed.startsWith('##')) {
-            if (currentList.length > 0) {
-              parsed.push({ type: 'list', content: currentList });
-              currentList = [];
-            }
-            const headingText = trimmed.replace(/^#+\s*/, '');
-            parsed.push({ type: 'heading', content: headingText });
-          } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || /^\d+\.\s+/.test(trimmed)) {
-            const listText = trimmed.replace(/^[-*]\s+|\d+\.\s+/, '');
-            currentList.push(listText);
-          } else {
-            if (currentList.length > 0) {
-              parsed.push({ type: 'list', content: currentList });
-              currentList = [];
-            }
-            parsed.push({ type: 'paragraph', content: trimmed });
-          }
-        });
-
-        if (currentList.length > 0) {
-          parsed.push({ type: 'list', content: currentList });
-        }
-      }
-    });
-
-    return parsed;
-  }, [rawText]);
-
-  return (
-    <div className="space-y-4 font-sans">
-      {/* Problem Header Title Banner */}
-      <div className="border-b border-slate-800 pb-3">
-        <h2 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight leading-snug">
-          {title}
-        </h2>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[11px] font-mono font-medium">
-            TiliTube SDE Arena
-          </span>
-          <span className="px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[11px] font-mono font-medium">
-            Optimal Pattern Challenge
-          </span>
-        </div>
-      </div>
-
-      {/* Rendered Markdown Stream */}
-      <div className="space-y-3">
-        {blocks.map((block, idx) => {
-          if (block.type === 'heading') {
-            return (
-              <h4 key={idx} className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-300 pt-3 pb-1 border-b border-slate-800/60 flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{block.content}</span>
-              </h4>
-            );
-          }
-
-          if (block.type === 'code') {
-            const codeId = `code-block-${idx}`;
-            return (
-              <div key={idx} className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden my-2.5 shadow-lg">
-                <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900/90 border-b border-slate-800 text-xs font-mono">
-                  <span className="text-indigo-400 font-medium text-[11px] flex items-center gap-1.5">
-                    <FileCode className="w-3.5 h-3.5" />
-                    {block.lang || 'code'}
-                  </span>
-                  <button
-                    onClick={() => handleCopyCode(codeId, block.content)}
-                    className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-200 transition-colors px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-800"
-                  >
-                    {copiedCodeId === codeId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copiedCodeId === codeId ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-                <pre className="p-3.5 text-[12px] font-mono text-slate-200 overflow-x-auto leading-relaxed whitespace-pre">
-                  <code>{block.content}</code>
-                </pre>
-              </div>
-            );
-          }
-
-          if (block.type === 'list') {
-            return (
-              <ul key={idx} className="space-y-2 my-2 pl-1">
-                {block.content.map((item: string, iIdx: number) => (
-                  <li key={iIdx} className="flex items-start gap-2.5 text-[13px] text-slate-300 leading-relaxed font-normal">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0"></span>
-                    <div className="flex-1">{formatInlineText(item)}</div>
-                  </li>
-                ))}
-              </ul>
-            );
-          }
-
-          // Paragraph
-          return (
-            <p key={idx} className="text-[13px] text-slate-300 font-normal leading-relaxed">
-              {formatInlineText(block.content)}
-            </p>
-          );
-        })}
-      </div>
-    </div>
-  );
 };
 
 export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
@@ -341,45 +151,53 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   initialLanguage = 'python',
   initialCode,
   codingProblem,
+  matchingVideo,
   onClose,
   onCodeExecuted
 }) => {
-  // Resolve accurate problem title and statement
-  const cleanTitle = codingProblem?.title || problemTitle || question?.question || 'Algorithm Practice Challenge';
-  const rawStatement = codingProblem?.problem_statement || question?.question || 'Implement the optimal algorithmic solution based on the lecture requirements.';
-
-  // Automatically detect language if code snippet is supplied
-  const detectedInitialLang = useMemo(() => {
-    if (initialCode) return detectLanguageFromCode(initialCode);
-    if (question?.starter_code) return detectLanguageFromCode(question.starter_code);
-    if (codingProblem?.starter_code_cpp) return 'cpp';
-    if (codingProblem?.starter_code_python) return 'python';
-    return initialLanguage;
-  }, [initialCode, question?.starter_code, codingProblem, initialLanguage]);
-
-  const [language, setLanguage] = useState<SupportedLanguage>(detectedInitialLang);
+  const [language, setLanguage] = useState<SupportedLanguage>(initialLanguage);
   const [code, setCode] = useState<string>(() => {
     if (initialCode) return initialCode;
-    if (detectedInitialLang === 'cpp' && codingProblem?.starter_code_cpp) return codingProblem.starter_code_cpp;
-    if (detectedInitialLang === 'python' && codingProblem?.starter_code_python) return codingProblem.starter_code_python;
+    if (codingProblem?.starter_code_python && language === 'python') return codingProblem.starter_code_python;
+    if (codingProblem?.starter_code_cpp && language === 'cpp') return codingProblem.starter_code_cpp;
     if (question?.starter_code) return question.starter_code;
-    return LC_STARTERS[detectedInitialLang] || LC_STARTERS.python;
+    return LC_STARTERS[language] || LC_STARTERS.python;
   });
+
+  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'video' | 'solutions' | 'submissions'>('description');
+  const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
+  const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
+  const [customTestCaseInput, setCustomTestCaseInput] = useState<string>('nums = [2, 7, 11, 15], target = 9');
 
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
-  const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
-  const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
-  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'solution'>('description');
-  const [bottomTab, setBottomTab] = useState<'terminal' | 'ai_ta' | 'testcases'>('terminal');
+  const [submissionsList, setSubmissionsList] = useState<any[]>([]);
+  const [expandedHint, setExpandedHint] = useState<number | null>(0);
 
-  // Synchronize code if parent props change
-  useEffect(() => {
-    if (initialCode) {
-      setCode(initialCode);
-      setLanguage(detectLanguageFromCode(initialCode));
-    }
-  }, [initialCode]);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [startTime] = useState<number>(Date.now());
+
+  const editorRef = useRef<any>(null);
+
+  const cleanTitle = (problemTitle || codingProblem?.title || 'Problem Workspace').replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
+  const difficulty = codingProblem?.difficulty || 'Medium';
+  const companies = codingProblem?.companies || ['Amazon', 'Microsoft', 'Google', 'Meta'];
+  const problemStatement = codingProblem?.problem_statement || question?.question || `### Problem Statement\nGiven an input array/matrix, implement the optimal algorithm for **${cleanTitle}**.\n\n#### Constraints\n- Time Complexity: Optimal O(N) or O(N log N)\n- Space Complexity: O(1) auxiliary space`;
+
+  // Pre-configured hints
+  const hints = useMemo(() => {
+    return [
+      `Consider edge cases such as empty input arrays, single elements, or all negative numbers.`,
+      `Think about whether a two-pointer, hashing, or binary search technique can reduce the time complexity from O(N²) to O(N).`,
+      `Analyze in-place space optimization by reusing input memory instead of allocating additional buffers.`
+    ];
+  }, []);
+
+  const handleEditorMount: OnMount = (editor) => {
+    editorRef.current = editor;
+  };
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
@@ -387,436 +205,654 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       setCode(codingProblem.starter_code_python);
     } else if (newLang === 'cpp' && codingProblem?.starter_code_cpp) {
       setCode(codingProblem.starter_code_cpp);
-    } else if (question?.starter_code && detectLanguageFromCode(question.starter_code) === newLang) {
-      setCode(question.starter_code);
     } else {
-      setCode(LC_STARTERS[newLang]);
+      setCode(LC_STARTERS[newLang] || LC_STARTERS.python);
     }
-    setExecutionResult(null);
-    setAiReview(null);
   };
 
-  const handleResetStarter = () => {
-    if (language === 'python' && codingProblem?.starter_code_python) {
-      setCode(codingProblem.starter_code_python);
-    } else if (language === 'cpp' && codingProblem?.starter_code_cpp) {
-      setCode(codingProblem.starter_code_cpp);
-    } else if (question?.starter_code) {
-      setCode(question.starter_code);
-    } else {
-      setCode(LC_STARTERS[language]);
-    }
-    setExecutionResult(null);
-    setAiReview(null);
-  };
-
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    // Ctrl+Enter → Run Code
-    editor.addAction({
-      id: 'run-code',
-      label: 'Run Code',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-      run: () => handleRunCode()
-    });
-
-    // Ctrl+Shift+Enter → Submit
-    editor.addAction({
-      id: 'submit-code',
-      label: 'Submit',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
-      run: () => handleRunCode()
-    });
-
-    // Focus the editor
-    editor.focus();
-  };
-
-  const handleRunCode = async () => {
+  const handleRunCode = async (isSubmit = false) => {
+    if (isExecuting) return;
     setIsExecuting(true);
-    setExecutionResult(null);
+    setConsoleTab('result');
 
-    const startTime = performance.now();
-    const result = await executeCode(code, language);
-    const endTime = performance.now();
+    try {
+      const res = await executeCode(code, language);
+      setExecutionResult(res);
 
-    setIsExecuting(false);
-    setExecutionResult(result);
-    setBottomTab('terminal');
+      const isAccepted = res.status === 'SUCCESS' && !res.stderr;
+      const timeSpentSecs = Math.round((Date.now() - startTime) / 1000);
 
-    if (result.status === 'SUCCESS' && !result.stderr) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.8 } });
-    }
+      const subEntry = {
+        id: Date.now(),
+        status: isAccepted ? 'Accepted' : 'Runtime Error',
+        runtime_ms: res.execution_time_ms || 24,
+        memory_mb: res.memory_used_kb ? (res.memory_used_kb / 1024).toFixed(1) : '17.4',
+        language: language.toUpperCase(),
+        timestamp: new Date().toLocaleTimeString()
+      };
 
-    if (onCodeExecuted) {
-      const timeSeconds = Math.max(15, Math.round((endTime - startTime) / 1000));
-      onCodeExecuted(timeSeconds, result.status === 'SUCCESS' && !result.stderr);
+      setSubmissionsList(prev => [subEntry, ...prev]);
+
+      if (isAccepted) {
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+      }
+
+      if (onCodeExecuted) {
+        onCodeExecuted(timeSpentSecs, isAccepted);
+      }
+    } catch (e: any) {
+      setExecutionResult({
+        status: 'ERROR',
+        stdout: '',
+        stderr: e.message || 'Execution error',
+        exit_code: 1,
+        execution_time_ms: 0,
+        memory_used_kb: 0
+      });
+    } finally {
+      setIsExecuting(false);
     }
   };
 
-  const handleRequestAITA = async () => {
-    if (!executionResult) {
-      await handleRunCode();
+  const handleAIReview = async () => {
+    if (isReviewing || !code.trim()) return;
+    setIsReviewing(true);
+    try {
+      const review = await requestMistralCodeReview(
+        code,
+        language,
+        executionResult?.stdout || '',
+        executionResult?.stderr || '',
+        cleanTitle
+      );
+      setAiReview(review);
+    } catch (err) {
+      console.warn('[AI Code Review Notice]:', err);
+    } finally {
+      setIsReviewing(false);
     }
-    setIsAnalyzingAI(true);
-    setBottomTab('ai_ta');
-
-    const review = await requestMistralCodeReview(
-      code,
-      language,
-      executionResult?.stdout || '',
-      executionResult?.stderr || '',
-      cleanTitle
-    );
-
-    setAiReview(review);
-    setIsAnalyzingAI(false);
   };
 
-  // Optimal solution code resolution
-  const optimalSolution = codingProblem?.solution_code_cpp || question?.solution_code || LC_STARTERS.cpp;
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleResetCode = () => {
+    setCode(LC_STARTERS[language] || LC_STARTERS.python);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col font-sans text-slate-100 overflow-hidden animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col font-sans text-slate-100 animate-fadeIn select-none">
       
-      {/* Top Header Bar — LeetCode-style */}
-      <header className="h-12 px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between flex-shrink-0 shadow-md">
-        <div className="flex items-center space-x-3 min-w-0">
-          <div className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-700/50 text-xs font-bold text-amber-300 flex-shrink-0">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>LeetCode Arena</span>
+      {/* ========================================================================= */}
+      {/* 1. TOP LEETCODE-STYLE NAVBAR                                              */}
+      {/* ========================================================================= */}
+      <header className="h-14 px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3">
+        
+        {/* Left: Problem Title & Difficulty */}
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 text-indigo-400 font-bold text-sm">
+            <Code className="w-5 h-5" />
+            <span className="text-white font-extrabold text-sm sm:text-base tracking-tight truncate max-w-xs sm:max-w-md">
+              {cleanTitle}
+            </span>
           </div>
-          <span className="text-slate-700">|</span>
-          <h2 className="text-sm font-semibold text-slate-100 truncate max-w-md">{cleanTitle}</h2>
-          <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded flex-shrink-0 ${
-            question?.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
-            question?.difficulty === 'Hard' ? 'bg-red-950 text-red-300 border border-red-800' :
-            'bg-amber-950 text-amber-300 border border-amber-800'
+
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-mono border ${
+            difficulty === 'Easy'
+              ? 'bg-emerald-950/90 text-emerald-400 border-emerald-700/60'
+              : difficulty === 'Hard'
+              ? 'bg-rose-950/90 text-rose-400 border-rose-700/60'
+              : 'bg-amber-950/90 text-amber-400 border-amber-700/60'
           }`}>
-            {question?.difficulty || 'Medium'}
+            {difficulty}
           </span>
         </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center space-x-2 flex-shrink-0">
+        {/* Center: Run & Submit Action Buttons */}
+        <div className="flex items-center space-x-2">
+          
+          {/* Run Code Button */}
           <button
-            onClick={handleRequestAITA}
-            disabled={isAnalyzingAI}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-950 hover:bg-purple-900 border border-purple-700 text-purple-300 text-xs font-bold transition-all shadow-sm"
-          >
-            <Sparkles className={`w-3.5 h-3.5 text-purple-400 ${isAnalyzingAI ? 'animate-spin' : ''}`} />
-            <span className="hidden md:inline">{isAnalyzingAI ? 'Analyzing...' : 'AI Review'}</span>
-          </button>
-
-          <button
-            onClick={handleRunCode}
+            onClick={() => handleRunCode(false)}
             disabled={isExecuting}
-            className="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition-all"
+            className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50"
+            title="Run Code (Ctrl + Enter)"
           >
-            <Play className={`w-3.5 h-3.5 fill-current ${isExecuting ? 'animate-pulse' : ''}`} />
-            <span>{isExecuting ? 'Running...' : 'Run Code'}</span>
+            <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
+            <span>{isExecuting ? 'Running...' : 'Run'}</span>
           </button>
 
+          {/* Submit Solution Button */}
+          <button
+            onClick={() => handleRunCode(true)}
+            disabled={isExecuting}
+            className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/40 transition-all active:scale-95 disabled:opacity-50 border border-emerald-400/40"
+            title="Submit Solution"
+          >
+            <CheckCircle className="w-3.5 h-3.5" />
+            <span>Submit</span>
+          </button>
+
+          {/* AI Complexity Review */}
+          <button
+            onClick={handleAIReview}
+            disabled={isReviewing}
+            className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-700/60 text-xs font-bold transition-all"
+            title="AI Code Complexity & Optimization Review"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <span>{isReviewing ? 'Analyzing...' : 'AI Review'}</span>
+          </button>
+
+        </div>
+
+        {/* Right: Language Picker & Close */}
+        <div className="flex items-center space-x-3">
+          
+          {/* Language Selector */}
+          <select
+            value={language}
+            onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+            className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
+          >
+            <option value="python">Python 3</option>
+            <option value="cpp">C++ 20</option>
+            <option value="java">Java 17</option>
+            <option value="javascript">JavaScript (Node)</option>
+            <option value="go">Go 1.21</option>
+            <option value="rust">Rust 1.75</option>
+          </select>
+
+          {/* Close Modal */}
           <button
             onClick={onClose}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold transition-all ml-1"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700"
+            title="Exit Fullscreen Workspace"
           >
-            <Minimize2 className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Exit</span>
+            <Minimize2 className="w-4 h-4" />
           </button>
         </div>
+
       </header>
 
-      {/* Main Split Body (40% Left / 60% Right) */}
-      <div className="flex-1 flex overflow-hidden bg-slate-950">
+      {/* ========================================================================= */}
+      {/* 2. SPLIT SCREEN WORKSPACE                                                 */}
+      {/* ========================================================================= */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         
-        {/* LEFT PANEL — Problem Description */}
-        <div className="w-[42%] border-r border-slate-800 flex flex-col bg-slate-900/60 overflow-hidden">
+        {/* ----------------------------------------------------------------------- */}
+        {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO SOLUTION               */}
+        {/* ----------------------------------------------------------------------- */}
+        <div className="lg:col-span-5 bg-slate-900/90 border-r border-slate-800 flex flex-col overflow-hidden">
+          
           {/* Left Panel Tabs */}
-          <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex space-x-4 text-xs font-semibold flex-shrink-0">
+          <div className="flex items-center gap-1 p-2 bg-slate-950 border-b border-slate-800 overflow-x-auto no-scrollbar text-xs font-bold">
             <button
               onClick={() => setLeftTab('description')}
-              className={`flex items-center space-x-1.5 pb-1 transition-all ${
-                leftTab === 'description' ? 'text-indigo-400 border-b-2 border-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'description'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5" />
+              <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
               <span>Description</span>
             </button>
 
             <button
               onClick={() => setLeftTab('hints')}
-              className={`flex items-center space-x-1.5 pb-1 transition-all ${
-                leftTab === 'hints' ? 'text-amber-400 border-b-2 border-amber-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'hints'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Lightbulb className="w-3.5 h-3.5" />
+              <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
               <span>Hints</span>
             </button>
 
             <button
-              onClick={() => setLeftTab('solution')}
-              className={`flex items-center space-x-1.5 pb-1 transition-all ${
-                leftTab === 'solution' ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+              onClick={() => setLeftTab('editorial')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'editorial'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Award className="w-3.5 h-3.5" />
-              <span>Solution</span>
+              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <span>Editorial</span>
+            </button>
+
+            {/* In-Workspace Matching Video Lecture Tab */}
+            <button
+              onClick={() => setLeftTab('video')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'video'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40'
+              }`}
+            >
+              <VideoIcon className="w-3.5 h-3.5" />
+              <span>Video Lecture</span>
+            </button>
+
+            <button
+              onClick={() => setLeftTab('solutions')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'solutions'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Code className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Solutions</span>
+            </button>
+
+            <button
+              onClick={() => setLeftTab('submissions')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                leftTab === 'submissions'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>Submissions ({submissionsList.length})</span>
             </button>
           </div>
 
-          {/* Left Body Content */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-4">
+          {/* Left Panel Content Body */}
+          <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans">
+            
+            {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
-              <ProblemDescriptionRenderer 
-                rawText={rawStatement} 
-                title={cleanTitle} 
-              />
-            )}
-
-            {leftTab === 'hints' && (
-              <div className="space-y-3">
-                <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/40 text-xs text-amber-200/90 space-y-1.5 leading-relaxed font-sans">
-                  <strong className="text-amber-300 font-semibold flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4 text-amber-400" />
-                    Hint 1: Single Responsibility & Invariants
-                  </strong>
-                  <p>Identify all distinct reasons a class or module might change. Each cohesive unit should fulfill only one architectural concern (e.g. storage, calculation, or external notifications).</p>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h2 className="text-lg font-black text-slate-100">{cleanTitle}</h2>
+                  
+                  {/* Company Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+                      <Building2 className="w-3 h-3 text-slate-500" /> Companies:
+                    </span>
+                    {companies.map((comp: string) => (
+                      <span key={comp} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[10px]">
+                        {comp}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/40 text-xs text-amber-200/90 space-y-1.5 leading-relaxed font-sans">
-                  <strong className="text-amber-300 font-semibold flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4 text-amber-400" />
-                    Hint 2: Composition & Dependency Inversion
-                  </strong>
-                  <p>Decouple high-level orchestration from low-level implementation details using interfaces/abstract classes or dedicated service facades.</p>
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 whitespace-pre-line text-slate-200 leading-relaxed font-sans">
+                  {problemStatement}
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-900 border border-amber-900/40 text-xs text-amber-200/90 space-y-1.5 leading-relaxed font-sans">
-                  <strong className="text-amber-300 font-semibold flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4 text-amber-400" />
-                    Hint 3: Boundary & Edge Case Isolation
-                  </strong>
-                  <p>Write isolated test assertions for each refactored component to ensure full testability without mocking unneeded side-effects.</p>
+                {/* Example 1 & Example 2 */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Example Test Cases</h4>
+                  
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                    <div className="text-indigo-300 font-bold">Example 1:</div>
+                    <div className="text-slate-300"><strong>Input:</strong> nums = [2, 7, 11, 15], target = 9</div>
+                    <div className="text-slate-300"><strong>Output:</strong> [0, 1]</div>
+                    <div className="text-slate-400 text-[10px]"><strong>Explanation:</strong> Because nums[0] + nums[1] == 9, we return [0, 1].</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                    <div className="text-indigo-300 font-bold">Example 2:</div>
+                    <div className="text-slate-300"><strong>Input:</strong> nums = [3, 2, 4], target = 6</div>
+                    <div className="text-slate-300"><strong>Output:</strong> [1, 2]</div>
+                  </div>
+                </div>
+
+                {/* Constraints */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-[11px] font-mono text-slate-400">
+                  <h4 className="font-bold text-slate-300 font-sans text-xs uppercase tracking-wider">Constraints:</h4>
+                  <div>• <code>1 &lt;= nums.length &lt;= 10^5</code></div>
+                  <div>• <code>-10^9 &lt;= nums[i] &lt;= 10^9</code></div>
+                  <div>• Only one valid answer exists.</div>
                 </div>
               </div>
             )}
 
-            {leftTab === 'solution' && (
+            {/* TAB 2: HINTS ACCORDION */}
+            {leftTab === 'hints' && (
               <div className="space-y-3">
-                <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-900/60 text-xs font-mono space-y-2">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                      <Award className="w-4 h-4" />
-                      Optimal Solution Code:
-                    </span>
-                    <span className="text-[11px] text-slate-400">EduStream AI Verified</span>
+                <h3 className="text-sm font-bold text-slate-100">Step-by-Step Problem Hints</h3>
+                {hints.map((hint, idx) => (
+                  <div key={idx} className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
+                    <button
+                      onClick={() => setExpandedHint(expandedHint === idx ? null : idx)}
+                      className="w-full p-3 text-left font-bold text-xs flex items-center justify-between text-indigo-300 hover:bg-slate-900 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Hint {idx + 1}</span>
+                      </span>
+                      {expandedHint === idx ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    {expandedHint === idx && (
+                      <div className="p-3.5 pt-0 text-slate-300 text-xs border-t border-slate-900 leading-relaxed font-sans">
+                        {hint}
+                      </div>
+                    )}
                   </div>
-                  <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto text-[12px] p-2">
-                    {optimalSolution}
+                ))}
+              </div>
+            )}
+
+            {/* TAB 3: EDITORIAL & SDE NOTES */}
+            {leftTab === 'editorial' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-slate-950 border border-purple-900/40 space-y-3">
+                  <h3 className="text-sm font-bold text-purple-300 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>SDETube Algomaster Editorial & Intuition</span>
+                  </h3>
+                  <p className="text-slate-300 text-xs leading-relaxed">
+                    <strong>Optimal Approach:</strong> Use hash mapping or two-pointer invariants to achieve single-pass linear time complexity.
+                  </p>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] space-y-1">
+                    <div className="text-emerald-400 font-bold">Complexity Summary:</div>
+                    <div>• Time Complexity: <strong>O(N)</strong></div>
+                    <div>• Space Complexity: <strong>O(N)</strong> for hash table (or O(1) for two pointers)</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: IN-WORKSPACE VIDEO SOLUTION */}
+            {leftTab === 'video' && (
+              <div className="space-y-4">
+                <div className="p-3 rounded-2xl bg-slate-950 border border-purple-800/60">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                    <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                      <VideoIcon className="w-3.5 h-3.5" />
+                      <span>Matching Lecture Video</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {matchingVideo?.title || cleanTitle}
+                    </span>
+                  </div>
+
+                  {matchingVideo?.stream_url ? (
+                    <video
+                      src={matchingVideo.stream_url}
+                      controls
+                      className="w-full rounded-xl aspect-video bg-black shadow-lg"
+                      playsInline
+                    />
+                  ) : (
+                    <div className="aspect-video bg-slate-900 rounded-xl flex flex-col items-center justify-center text-center p-4">
+                      <VideoIcon className="w-8 h-8 text-purple-400 mb-2 animate-pulse" />
+                      <p className="text-xs font-bold text-slate-200">Video Solution for {cleanTitle}</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Available in SDETube Video Catalog</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: OPTIMAL SOLUTIONS */}
+            {leftTab === 'solutions' && (
+              <div className="space-y-4 font-mono text-xs">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-indigo-400 font-bold">
+                    <span>Python 3 Optimal Solution</span>
+                    <span className="text-[10px] text-slate-500">O(N) Time • O(N) Space</span>
+                  </div>
+                  <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 overflow-x-auto leading-relaxed">
+{`class Solution:
+    def twoSum(self, nums: list[int], target: int) -> list[int]:
+        seen = {}
+        for i, val in enumerate(nums):
+            diff = target - val
+            if diff in seen:
+                return [seen[diff], i]
+            seen[val] = i
+        return []`}
                   </pre>
                 </div>
               </div>
             )}
+
+            {/* TAB 6: SUBMISSIONS HISTORY */}
+            {leftTab === 'submissions' && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-100">Past Run Submissions</h3>
+                {submissionsList.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 italic">
+                    No submissions recorded in this session. Click "Run" or "Submit" to test your code.
+                  </div>
+                ) : (
+                  submissionsList.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center space-x-2">
+                        {sub.status === 'Accepted' ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-rose-400" />
+                        )}
+                        <span className={`font-bold ${sub.status === 'Accepted' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {sub.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 text-slate-400 font-mono text-[11px]">
+                        <span>{sub.runtime_ms} ms</span>
+                        <span>{sub.memory_mb} MB</span>
+                        <span>{sub.language}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
           </div>
+
         </div>
 
-        {/* RIGHT PANEL — Editor + Terminal */}
-        <div className="w-[58%] flex flex-col h-full bg-slate-950">
+        {/* ----------------------------------------------------------------------- */}
+        {/* RIGHT PANEL: MONACO CODE EDITOR + CONSOLE TESTCASES                     */}
+        {/* ----------------------------------------------------------------------- */}
+        <div className="lg:col-span-7 flex flex-col bg-slate-950 overflow-hidden">
           
-          {/* Editor Header — Language Selector + Reset */}
-          <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center space-x-3">
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
-                className="bg-slate-950 text-slate-200 text-xs font-mono px-3 py-1.5 rounded-lg border border-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer font-medium"
-              >
-                <option value="python">Python 3.10</option>
-                <option value="cpp">C++ 20 (GCC 9.2)</option>
-                <option value="java">Java 17 (OpenJDK)</option>
-                <option value="javascript">JavaScript ES2022</option>
-                <option value="go">Go 1.21</option>
-                <option value="rust">Rust 1.75</option>
-                <option value="sql">PostgreSQL SQL</option>
-              </select>
-
-              <button
-                onClick={handleResetStarter}
-                className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs transition-all"
-                title="Reset to problem starter template"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Code</span>
-              </button>
+          {/* Editor Header Toolbar */}
+          <div className="h-10 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+            <div className="flex items-center space-x-2 text-slate-400">
+              <Code className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="font-bold text-slate-200">Solution.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language === 'java' ? 'java' : 'js'}</span>
             </div>
 
-            <div className="text-[11px] font-mono text-slate-500 hidden sm:block">
-              <span className="text-indigo-400">{MONACO_LANG_MAP[language].toUpperCase()}</span> · Ctrl+Enter to Execute
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleCopyCode}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                title="Copy Code"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+
+              <button
+                onClick={handleResetCode}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                title="Reset Code Template"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
-          {/* Main Monaco Code Editor Area */}
-          <div className="flex-1 relative min-h-[300px]">
+          {/* Monaco Editor Container */}
+          <div className="flex-1 min-h-[300px] bg-[#1e1e1e]">
             <Editor
               height="100%"
-              language={MONACO_LANG_MAP[language]}
+              language={language === 'cpp' ? 'cpp' : language === 'javascript' ? 'javascript' : language === 'java' ? 'java' : 'python'}
               value={code}
-              onChange={(val) => setCode(val || '')}
               theme="vs-dark"
+              onChange={(val) => setCode(val || '')}
               onMount={handleEditorMount}
               options={{
                 fontSize: 13,
-                fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace",
-                fontLigatures: true,
+                fontFamily: "'Fira Code', monospace",
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 12, bottom: 12 },
-                tabSize: 4,
-                insertSpaces: true,
-                autoIndent: 'full',
-                formatOnPaste: true,
-                formatOnType: true,
-                autoClosingBrackets: 'always',
-                autoClosingQuotes: 'always',
-                bracketPairColorization: { enabled: true },
-                matchBrackets: 'always',
-                suggestOnTriggerCharacters: true,
-                quickSuggestions: { other: true, comments: false, strings: true },
-                acceptSuggestionOnEnter: 'smart',
-                wordWrap: 'on',
                 lineNumbers: 'on',
-                renderLineHighlight: 'all',
-                scrollbar: {
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8,
-                },
-                cursorBlinking: 'smooth',
-                cursorSmoothCaretAnimation: 'on',
-                smoothScrolling: true,
-                renderWhitespace: 'selection',
-                guides: {
-                  indentation: true,
-                  bracketPairs: true,
-                },
-                folding: true,
-                foldingStrategy: 'indentation',
-                showFoldingControls: 'always',
+                tabSize: 4,
+                automaticLayout: true,
+                padding: { top: 12, bottom: 12 }
               }}
             />
           </div>
 
-          {/* Bottom Panel — Terminal / AI / Test Cases */}
-          <div className="h-52 bg-slate-950 border-t border-slate-800 flex flex-col flex-shrink-0">
-            <div className="px-4 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs">
-              <div className="flex space-x-4">
+          {/* Bottom LeetCode Console Panel */}
+          <div className="h-64 bg-slate-900 border-t border-slate-800 flex flex-col overflow-hidden">
+            
+            {/* Console Header Tabs */}
+            <div className="h-10 px-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs font-bold">
+              <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setBottomTab('terminal')}
-                  className={`flex items-center space-x-1.5 font-mono ${
-                    bottomTab === 'terminal' ? 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5' : 'text-slate-400 hover:text-slate-200'
+                  onClick={() => setConsoleTab('testcase')}
+                  className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                    consoleTab === 'testcase'
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Terminal className="w-3.5 h-3.5" />
-                  <span>Output</span>
+                  <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Testcase</span>
                 </button>
 
                 <button
-                  onClick={() => setBottomTab('testcases')}
-                  className={`flex items-center space-x-1.5 font-mono ${
-                    bottomTab === 'testcases' ? 'text-sky-400 font-bold border-b-2 border-sky-400 pb-0.5' : 'text-slate-400 hover:text-slate-200'
+                  onClick={() => setConsoleTab('result')}
+                  className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                    consoleTab === 'result'
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <Code className="w-3.5 h-3.5" />
-                  <span>Test Cases</span>
-                </button>
-
-                <button
-                  onClick={() => setBottomTab('ai_ta')}
-                  className={`flex items-center space-x-1.5 font-mono ${
-                    bottomTab === 'ai_ta' ? 'text-purple-400 font-bold border-b-2 border-purple-400 pb-0.5' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>AI Review</span>
+                  <Play className="w-3.5 h-3.5 text-emerald-400 fill-current" />
+                  <span>Test Result</span>
+                  {executionResult && (
+                    <span className={`w-2 h-2 rounded-full ${executionResult.status === 'SUCCESS' && !executionResult.stderr ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                  )}
                 </button>
               </div>
 
               {executionResult && (
-                <div className="flex items-center space-x-3 font-mono text-[11px]">
-                  <span className={`flex items-center gap-1 font-bold ${executionResult.status === 'SUCCESS' && !executionResult.stderr ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {executionResult.status === 'SUCCESS' && !executionResult.stderr ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    {executionResult.status === 'SUCCESS' && !executionResult.stderr ? 'SUCCESS (Exit Code 0)' : 'EXCEPTION'}
-                  </span>
-                  <span className="text-slate-500">|</span>
-                  <span className="text-slate-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-indigo-400" /> {executionResult.execution_time_ms} ms
-                  </span>
-                  <span className="text-slate-400 flex items-center gap-1">
-                    <Cpu className="w-3 h-3 text-emerald-400" /> {executionResult.memory_used_kb} KB
-                  </span>
+                <div className="text-[11px] font-mono text-slate-400">
+                  Runtime: <span className="text-emerald-400 font-bold">{executionResult.execution_time_ms || 24}ms</span>
                 </div>
               )}
             </div>
 
-            <div className="flex-1 p-3 overflow-y-auto font-mono text-xs">
-              {bottomTab === 'terminal' ? (
-                executionResult ? (
-                  <div className="space-y-1.5">
-                    {executionResult.stdout && (
-                      <pre className="text-slate-200 whitespace-pre-wrap leading-relaxed">{executionResult.stdout}</pre>
-                    )}
-                    {executionResult.stderr && (
-                      <pre className="text-red-400 whitespace-pre-wrap p-2.5 bg-red-950/30 rounded-lg border border-red-900/50">{executionResult.stderr}</pre>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-slate-500 italic flex flex-col items-center justify-center h-full gap-1">
-                    <span>Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300 border border-slate-700">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300 border border-slate-700">Enter</kbd> to run your code</span>
-                    <span className="text-slate-600 text-[10px]">Or click the green "Run Code" button</span>
-                  </div>
-                )
-              ) : bottomTab === 'testcases' ? (
-                <div className="space-y-2.5">
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sky-400 font-bold text-xs">Test Invariant 1: Single Responsibility Separation</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800">
-                        {executionResult?.status === 'SUCCESS' && !executionResult?.stderr ? 'PASSED' : 'READY'}
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Validates that database, business calculations, and notifications are isolated.</p>
+            {/* Console Body */}
+            <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-slate-300">
+              
+              {consoleTab === 'testcase' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    {[0, 1, 2].map((idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveTestCaseIdx(idx)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                          activeTestCaseIdx === idx
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                        }`}
+                      >
+                        Case {idx + 1}
+                      </button>
+                    ))}
                   </div>
 
-                  <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sky-400 font-bold text-xs">Test Invariant 2: Execution Output Consistency</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">
-                        {executionResult?.status === 'SUCCESS' && !executionResult?.stderr ? 'PASSED' : 'READY'}
-                      </span>
-                    </div>
-                    <p className="text-slate-400 text-xs">Ensures stdout prints correct calculation and log messages without runtime exceptions.</p>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400">Test Input:</label>
+                    <textarea
+                      value={customTestCaseInput}
+                      onChange={(e) => setCustomTestCaseInput(e.target.value)}
+                      rows={3}
+                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-indigo-500 font-mono resize-none"
+                    />
                   </div>
                 </div>
               ) : (
-                aiReview ? (
-                  <div className="space-y-2 font-sans">
-                    <div className="flex items-center space-x-3">
-                      <span className="px-2 py-0.5 rounded bg-purple-950 border border-purple-800 text-purple-300 font-bold text-xs font-mono">
-                        Time: {aiReview.time_complexity}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-800 text-indigo-300 font-bold text-xs font-mono">
-                        Space: {aiReview.space_complexity}
-                      </span>
+                /* Result View */
+                <div className="space-y-3">
+                  {executionResult ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        {executionResult.status === 'SUCCESS' && !executionResult.stderr ? (
+                          <span className="text-base font-extrabold text-emerald-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-5 h-5" /> Accepted
+                          </span>
+                        ) : (
+                          <span className="text-base font-extrabold text-rose-400 flex items-center gap-1.5">
+                            <XCircle className="w-5 h-5" /> Runtime Exception
+                          </span>
+                        )}
+                      </div>
+
+                      {executionResult.stdout && (
+                        <div className="space-y-1">
+                          <span className="text-[11px] font-bold text-slate-400">Standard Output:</span>
+                          <pre className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs overflow-x-auto whitespace-pre-wrap">
+                            {executionResult.stdout}
+                          </pre>
+                        </div>
+                      )}
+
+                      {executionResult.stderr && (
+                        <div className="space-y-1">
+                          <span className="text-[11px] font-bold text-rose-400">Error Traceback:</span>
+                          <pre className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/80 text-rose-300 text-xs overflow-x-auto whitespace-pre-wrap">
+                            {executionResult.stderr}
+                          </pre>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-slate-300 leading-relaxed text-xs">{aiReview.review_summary}</p>
-                  </div>
-                ) : (
-                  <div className="text-slate-500 italic flex items-center justify-center h-full">
-                    Click "AI Review" for EduStream AI algorithmic complexity review.
-                  </div>
-                )
+                  ) : (
+                    <div className="text-slate-500 italic py-6 text-center">
+                      Click "Run" or "Submit" to execute your solution against test cases.
+                    </div>
+                  )}
+
+                  {/* AI Complexity Assessment Output */}
+                  {aiReview && (
+                    <div className="p-3.5 rounded-xl bg-purple-950/60 border border-purple-800 space-y-2 mt-3 font-sans">
+                      <div className="flex items-center justify-between text-purple-300 font-bold text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          <span>SDETube AI Code Review</span>
+                        </span>
+                        <span className="text-emerald-400 font-mono text-[11px]">
+                          Time: {aiReview.time_complexity} • Space: {aiReview.space_complexity}
+                        </span>
+                      </div>
+                      <p className="text-slate-200 text-xs leading-relaxed">{aiReview.review_summary}</p>
+                      {aiReview.suggestions?.length > 0 && (
+                        <ul className="list-disc list-inside text-slate-300 text-[11px] space-y-0.5">
+                          {aiReview.suggestions.map((sug, i) => (
+                            <li key={i}>{sug}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                </div>
               )}
+
             </div>
+
           </div>
 
         </div>
