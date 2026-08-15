@@ -7,6 +7,7 @@ export interface ProblemApproach {
   spaceComplexity: string;
   description: string;
   starters: Record<SupportedLanguage, string>;
+  solutionCode?: Record<SupportedLanguage, string>;
 }
 
 export interface ProblemTemplate {
@@ -24,6 +25,7 @@ export interface ProblemTemplate {
   expectedOutputs?: string[];
   approaches?: ProblemApproach[];
   starters: Record<SupportedLanguage, string>;
+  solutions?: Record<SupportedLanguage, string>;
 }
 
 // Helper to normalize problem names for matching
@@ -76,31 +78,7 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
           cpp: `class Solution {
 public:
     void setZeroes(vector<vector<int>>& matrix) {
-        int m = matrix.size(), n = matrix[0].size();
-        bool firstRowZero = false, firstColZero = false;
-
-        for (int j = 0; j < n; j++) if (matrix[0][j] == 0) firstRowZero = true;
-        for (int i = 0; i < m; i++) if (matrix[i][0] == 0) firstColZero = true;
-
-        for (int i = 1; i < m; i++) {
-            for (int j = 1; j < n; j++) {
-                if (matrix[i][j] == 0) {
-                    matrix[i][0] = 0;
-                    matrix[0][j] = 0;
-                }
-            }
-        }
-
-        for (int i = 1; i < m; i++) {
-            for (int j = 1; j < n; j++) {
-                if (matrix[i][0] == 0 || matrix[0][j] == 0) {
-                    matrix[i][j] = 0;
-                }
-            }
-        }
-
-        if (firstRowZero) for (int j = 0; j < n; j++) matrix[0][j] = 0;
-        if (firstColZero) for (int i = 0; i < m; i++) matrix[i][0] = 0;
+        // Optimal O(1) space solution
     }
 };`,
           python: `class Solution:
@@ -109,59 +87,14 @@ public:
         Optimal in-place marker solution.
         Time: O(M*N), Space: O(1)
         """
-        m, n = len(matrix), len(matrix[0])
-        first_row_zero = any(matrix[0][j] == 0 for j in range(n))
-        first_col_zero = any(matrix[i][0] == 0 for i in range(m))
-
-        for i in range(1, m):
-            for j in range(1, n):
-                if matrix[i][j] == 0:
-                    matrix[i][0] = matrix[0][j] = 0
-
-        for i in range(1, m):
-            for j in range(1, n):
-                if matrix[i][0] == 0 or matrix[0][j] == 0:
-                    matrix[i][j] = 0
-
-        if first_row_zero:
-            for j in range(n): matrix[0][j] = 0
-        if first_col_zero:
-            for i in range(m): matrix[i][0] = 0`,
+        pass`,
           java: `class Solution {
     public void setZeroes(int[][] matrix) {
-        int m = matrix.length, n = matrix[0].length;
-        boolean firstRow = false, firstCol = false;
-        for (int j = 0; j < n; j++) if (matrix[0][j] == 0) firstRow = true;
-        for (int i = 0; i < m; i++) if (matrix[i][0] == 0) firstCol = true;
-
-        for (int i = 1; i < m; i++)
-            for (int j = 1; j < n; j++)
-                if (matrix[i][j] == 0) { matrix[i][0] = 0; matrix[0][j] = 0; }
-
-        for (int i = 1; i < m; i++)
-            for (int j = 1; j < n; j++)
-                if (matrix[i][0] == 0 || matrix[0][j] == 0) matrix[i][j] = 0;
-
-        if (firstRow) for (int j = 0; j < n; j++) matrix[0][j] = 0;
-        if (firstCol) for (int i = 0; i < m; i++) matrix[i][0] = 0;
+        
     }
 }`,
           javascript: `var setZeroes = function(matrix) {
-    let m = matrix.length, n = matrix[0].length;
-    let firstRow = false, firstCol = false;
-    for (let j = 0; j < n; j++) if (matrix[0][j] === 0) firstRow = true;
-    for (let i = 0; i < m; i++) if (matrix[i][0] === 0) firstCol = true;
-
-    for (let i = 1; i < m; i++)
-        for (let j = 1; j < n; j++)
-            if (matrix[i][j] === 0) { matrix[i][0] = 0; matrix[0][j] = 0; }
-
-    for (let i = 1; i < m; i++)
-        for (let j = 1; j < n; j++)
-            if (matrix[i][0] === 0 || matrix[0][j] === 0) matrix[i][j] = 0;
-
-    if (firstRow) for (let j = 0; j < n; j++) matrix[0][j] = 0;
-    if (firstCol) for (let i = 0; i < m; i++) matrix[i][0] = 0;
+    
 };`,
           go: `func setZeroes(matrix [][]int) { }`,
           rust: `impl Solution { pub fn set_zeroes(matrix: &mut Vec<Vec<i32>>) { } }`,
@@ -180,63 +113,21 @@ public:
     void setZeroes(vector<vector<int>>& matrix) {
         int m = matrix.size(), n = matrix[0].size();
         vector<bool> rows(m, false), cols(n, false);
-
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (matrix[i][j] == 0) {
-                    rows[i] = true;
-                    cols[j] = true;
-                }
-            }
-        }
-
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (rows[i] || cols[j]) {
-                    matrix[i][j] = 0;
-                }
-            }
-        }
+        // Implement row & col marker logic
     }
 };`,
           python: `class Solution:
     def setZeroes(self, matrix: List[List[int]]) -> None:
-        """
-        Approach using O(M + N) extra boolean arrays.
-        """
         m, n = len(matrix), len(matrix[0])
         rows, cols = [False] * m, [False] * n
-
-        for i in range(m):
-            for j in range(n):
-                if matrix[i][j] == 0:
-                    rows[i] = cols[j] = True
-
-        for i in range(m):
-            for j in range(n):
-                if rows[i] or cols[j]:
-                    matrix[i][j] = 0`,
+        # Implement row & col marker logic`,
           java: `class Solution {
     public void setZeroes(int[][] matrix) {
-        int m = matrix.length, n = matrix[0].length;
-        boolean[] rows = new boolean[m], cols = new boolean[n];
-        for (int i = 0; i < m; i++)
-            for (int j = 0; j < n; j++)
-                if (matrix[i][j] == 0) { rows[i] = true; cols[j] = true; }
-        for (int i = 0; i < m; i++)
-            for (int j = 0; j < n; j++)
-                if (rows[i] || cols[j]) matrix[i][j] = 0;
+        
     }
 }`,
           javascript: `var setZeroes = function(matrix) {
-    let m = matrix.length, n = matrix[0].length;
-    let rows = new Array(m).fill(false), cols = new Array(n).fill(false);
-    for (let i = 0; i < m; i++)
-        for (let j = 0; j < n; j++)
-            if (matrix[i][j] === 0) { rows[i] = true; cols[j] = true; }
-    for (let i = 0; i < m; i++)
-        for (let j = 0; j < n; j++)
-            if (rows[i] || cols[j]) matrix[i][j] = 0;
+    
 };`,
           go: `func setZeroes(matrix [][]int) { }`,
           rust: `impl Solution { pub fn set_zeroes(matrix: &mut Vec<Vec<i32>>) { } }`,
@@ -274,187 +165,143 @@ public:
     }
 }`,
       sql: `-- Set Matrix Zeroes is an in-place array challenge.`
-    }
-  },
-
-  'twosum': {
-    name: 'Two Sum',
-    category: 'Arrays',
-    difficulty: 'Easy',
-    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice.',
-    examples: [
-      {
-        input: 'nums = [2,7,11,15], target = 9',
-        output: '[0,1]',
-        explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].'
-      },
-      {
-        input: 'nums = [3,2,4], target = 6',
-        output: '[1,2]'
-      }
-    ],
-    constraints: [
-      '2 <= nums.length <= 10^4',
-      '-10^9 <= nums[i] <= 10^9',
-      '-10^9 <= target <= 10^9',
-      'Only one valid answer exists.'
-    ],
-    testCases: [
-      'nums = [2, 7, 11, 15], target = 9',
-      'nums = [3, 2, 4], target = 6',
-      'nums = [3, 3], target = 6'
-    ],
-    expectedOutputs: [
-      '[0,1]',
-      '[1,2]',
-      '[0,1]'
-    ],
-    approaches: [
-      {
-        id: 'optimal',
-        name: 'Approach 1: One-Pass Hash Map (O(N) Time)',
-        timeComplexity: 'O(N)',
-        spaceComplexity: 'O(N)',
-        description: 'Iterate through the array and store {value: index} in a hash map to find complement in O(1).',
-        starters: {
-          cpp: `class Solution {
-public:
-    vector<int> twoSum(vector<int>& nums, int target) {
-        unordered_map<int, int> mp;
-        for (int i = 0; i < nums.size(); i++) {
-            int comp = target - nums[i];
-            if (mp.find(comp) != mp.end()) return {mp[comp], i};
-            mp[nums[i]] = i;
-        }
-        return {};
-    }
-};`,
-          python: `class Solution:
-    def twoSum(self, nums: List[int], target: int) -> List[int]:
-        seen = {}
-        for i, num in enumerate(nums):
-            comp = target - num
-            if comp in seen:
-                return [seen[comp], i]
-            seen[num] = i
-        return []`,
-          java: `class Solution {
-    public int[] twoSum(int[] nums, int target) {
-        Map<Integer, Integer> map = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int comp = target - nums[i];
-            if (map.containsKey(comp)) return new int[]{map.get(comp), i};
-            map.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-}`,
-          javascript: `var twoSum = function(nums, target) {
-    const map = new Map();
-    for (let i = 0; i < nums.length; i++) {
-        const comp = target - nums[i];
-        if (map.has(comp)) return [map.get(comp), i];
-        map.set(nums[i], i);
-    }
-    return [];
-};`,
-          go: `func twoSum(nums []int, target int) []int { return []int{} }`,
-          rust: `impl Solution { pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> { vec![] } }`,
-          sql: `-- Two Sum`
-        }
-      },
-      {
-        id: 'brute',
-        name: 'Approach 2: Brute Force (O(N²) Time)',
-        timeComplexity: 'O(N^2)',
-        spaceComplexity: 'O(1)',
-        description: 'Check every pair of elements with two nested loops.',
-        starters: {
-          cpp: `class Solution {
-public:
-    vector<int> twoSum(vector<int>& nums, int target) {
-        for (int i = 0; i < nums.size(); i++) {
-            for (int j = i + 1; j < nums.size(); j++) {
-                if (nums[i] + nums[j] == target) return {i, j};
-            }
-        }
-        return {};
-    }
-};`,
-          python: `class Solution:
-    def twoSum(self, nums: List[int], target: int) -> List[int]:
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                if nums[i] + nums[j] == target:
-                    return [i, j]
-        return []`,
-          java: `class Solution {
-    public int[] twoSum(int[] nums, int target) {
-        for (int i = 0; i < nums.length; i++)
-            for (int j = i + 1; j < nums.length; j++)
-                if (nums[i] + nums[j] == target) return new int[]{i, j};
-        return new int[]{};
-    }
-}`,
-          javascript: `var twoSum = function(nums, target) {
-    for (let i = 0; i < nums.length; i++)
-        for (let j = i + 1; j < nums.length; j++)
-            if (nums[i] + nums[j] === target) return [i, j];
-    return [];
-};`,
-          go: `func twoSum(nums []int, target int) []int { return []int{} }`,
-          rust: `impl Solution { pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> { vec![] } }`,
-          sql: `-- Two Sum`
-        }
-      }
-    ],
-    starters: {
+    },
+    solutions: {
       cpp: `class Solution {
 public:
-    vector<int> twoSum(vector<int>& nums, int target) {
-        
+    void setZeroes(vector<vector<int>>& matrix) {
+        int m = matrix.size(), n = matrix[0].size();
+        bool firstRowZero = false, firstColZero = false;
+
+        for (int j = 0; j < n; j++) if (matrix[0][j] == 0) firstRowZero = true;
+        for (int i = 0; i < m; i++) if (matrix[i][0] == 0) firstColZero = true;
+
+        for (int i = 1; i < m; i++) {
+            for (int j = 1; j < n; j++) {
+                if (matrix[i][j] == 0) {
+                    matrix[i][0] = 0;
+                    matrix[0][j] = 0;
+                }
+            }
+        }
+
+        for (int i = 1; i < m; i++) {
+            for (int j = 1; j < n; j++) {
+                if (matrix[i][0] == 0 || matrix[0][j] == 0) {
+                    matrix[i][j] = 0;
+                }
+            }
+        }
+
+        if (firstRowZero) for (int j = 0; j < n; j++) matrix[0][j] = 0;
+        if (firstColZero) for (int i = 0; i < m; i++) matrix[i][0] = 0;
     }
 };`,
       python: `class Solution:
-    def twoSum(self, nums: List[int], target: int) -> List[int]:
-        pass`,
+    def setZeroes(self, matrix: List[List[int]]) -> None:
+        m, n = len(matrix), len(matrix[0])
+        first_row_zero = any(matrix[0][j] == 0 for j in range(n))
+        first_col_zero = any(matrix[i][0] == 0 for i in range(m))
+
+        for i in range(1, m):
+            for j in range(1, n):
+                if matrix[i][j] == 0:
+                    matrix[i][0] = matrix[0][j] = 0
+
+        for i in range(1, m):
+            for j in range(1, n):
+                if matrix[i][0] == 0 or matrix[0][j] == 0:
+                    matrix[i][j] = 0
+
+        if first_row_zero:
+            for j in range(n): matrix[0][j] = 0
+        if first_col_zero:
+            for i in range(m): matrix[i][0] = 0`,
       java: `class Solution {
-    public int[] twoSum(int[] nums, int target) {
-        
+    public void setZeroes(int[][] matrix) {
+        int m = matrix.length, n = matrix[0].length;
+        boolean firstRow = false, firstCol = false;
+        for (int j = 0; j < n; j++) if (matrix[0][j] == 0) firstRow = true;
+        for (int i = 0; i < m; i++) if (matrix[i][0] == 0) firstCol = true;
+
+        for (int i = 1; i < m; i++)
+            for (int j = 1; j < n; j++)
+                if (matrix[i][j] == 0) { matrix[i][0] = 0; matrix[0][j] = 0; }
+
+        for (int i = 1; i < m; i++)
+            for (int j = 1; j < n; j++)
+                if (matrix[i][j] == 0 || matrix[0][j] == 0) matrix[i][j] = 0;
+
+        if (firstRow) for (int j = 0; j < n; j++) matrix[0][j] = 0;
+        if (firstCol) for (int i = 0; i < m; i++) matrix[i][0] = 0;
     }
 }`,
-      javascript: `var twoSum = function(nums, target) {
-    
+      javascript: `var setZeroes = function(matrix) {
+    let m = matrix.length, n = matrix[0].length;
+    let firstRow = false, firstCol = false;
+    for (let j = 0; j < n; j++) if (matrix[0][j] === 0) firstRow = true;
+    for (let i = 0; i < m; i++) if (matrix[i][0] === 0) firstCol = true;
+
+    for (let i = 1; i < m; i++)
+        for (let j = 1; j < n; j++)
+            if (matrix[i][j] === 0) { matrix[i][0] = 0; matrix[0][j] = 0; }
+
+    for (let i = 1; i < m; i++)
+        for (let j = 1; j < n; j++)
+            if (matrix[i][0] === 0 || matrix[0][j] === 0) matrix[i][j] = 0;
+
+    if (firstRow) for (let j = 0; j < n; j++) matrix[0][j] = 0;
+    if (firstCol) for (let i = 0; i < m; i++) matrix[i][0] = 0;
 };`,
-      go: `func twoSum(nums []int, target int) []int {
-    
-}`,
-      rust: `impl Solution {
-    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
-        
-    }
-}`,
-      sql: `-- Two Sum is an algorithmic challenge.`
+      go: `func setZeroes(matrix [][]int) { }`,
+      rust: `impl Solution { pub fn set_zeroes(matrix: &mut Vec<Vec<i32>>) { } }`,
+      sql: `-- Solution`
     }
   }
 };
 
-// System Design / LLD dynamic template generator grounded directly in transcript
+// System Design / LLD dynamic template generator grounded directly in verbatim transcript
 export const generateLLDTemplate = (
   title: string,
   transcript: string = '',
   notes: string = ''
 ): ProblemTemplate => {
   const cleanTitle = title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
-  const isSrp = cleanTitle.toLowerCase().includes('srp') || cleanTitle.toLowerCase().includes('single responsibility');
   const isOcp = cleanTitle.toLowerCase().includes('ocp') || cleanTitle.toLowerCase().includes('open closed');
   const isStrategy = cleanTitle.toLowerCase().includes('strategy') || cleanTitle.toLowerCase().includes('pattern');
   
-  let problemDesc = `In this Low-Level Design (LLD) challenge based on "${cleanTitle}", design an extensible, maintainable class hierarchy adhering strictly to Object-Oriented Principles.`;
-  if (transcript && transcript.length > 80) {
-    const keyExcerpt = transcript.slice(0, 300).replace(/\n+/g, ' ');
-    problemDesc += `\n\nInstructor Context from Lecture:\n"${keyExcerpt}..."`;
+  // Extract transcript excerpt
+  let transcriptSnippet = '';
+  if (transcript && transcript.length > 50) {
+    const rawExcerpt = transcript.slice(0, 450).replace(/\n+/g, ' ').trim();
+    transcriptSnippet = `\n\n📌 **Key Concepts Taught in Lecture Transcript:**\n"${rawExcerpt}..."`;
   }
+
+  let problemDesc = isOcp ? `### Low-Level Design Challenge: Open-Closed Principle (OCP)
+${transcriptSnippet}
+
+**Problem Scenario:**
+Design an extensible Payment Processing System where new payment gateways (e.g., Credit Card, UPI, PayPal, Crypto) can be added **WITHOUT modifying existing payment processor classes**.
+
+**Requirements:**
+1. Create a polymorphic \`PaymentStrategy\` abstract interface with \`virtual void pay(double amount)\`.
+2. Implement concrete classes: \`CreditCardPayment\` and \`UPIPayment\`.
+3. Create a \`PaymentProcessor\` context class that receives a \`PaymentStrategy\` dynamically.
+4. Verify that adding a new payment mode requires ZERO changes to \`PaymentProcessor\` (Open for Extension, Closed for Modification).` : `### Low-Level Design Challenge: Single Responsibility Principle (SRP)
+${transcriptSnippet}
+
+**Problem Scenario:**
+Refactor a legacy monolithic \`Invoice\` class that mixes:
+1. Invoice Total Calculation (Business Logic)
+2. Database Saving (SQL Persistence)
+3. Email Receipts (Notification Layer)
+
+**Requirements:**
+1. Split the responsibilities into 3 decoupled, single-responsibility classes:
+   - \`Invoice\`: Only holds invoice data and calculates total with tax.
+   - \`InvoiceRepository\`: Only handles database persistence.
+   - \`InvoiceNotificationService\`: Only sends customer receipts.
+2. Demonstrate clean instantiation and execution in the \`Solution\` class without side-effects.`;
 
   const cppStarter = isOcp ? `// LLD Challenge: Open-Closed Principle (OCP)
 #include <iostream>
@@ -463,7 +310,7 @@ export const generateLLDTemplate = (
 #include <string>
 using namespace std;
 
-// 1. Core Abstract Interface (Closed for modification, Open for extension)
+// 1. Abstract Strategy Interface (Closed for modification, Open for extension)
 class PaymentStrategy {
 public:
     virtual ~PaymentStrategy() = default;
@@ -471,6 +318,88 @@ public:
 };
 
 // 2. Concrete Extensible Classes
+class CreditCardPayment : public PaymentStrategy {
+public:
+    void pay(double amount) override {
+        // Implement credit card processing
+    }
+};
+
+class UPIPayment : public PaymentStrategy {
+public:
+    void pay(double amount) override {
+        // Implement UPI processing
+    }
+};
+
+// 3. High-level Context
+class PaymentProcessor {
+private:
+    unique_ptr<PaymentStrategy> strategy;
+public:
+    void setStrategy(unique_ptr<PaymentStrategy> newStrategy) {
+        strategy = move(newStrategy);
+    }
+    void executePayment(double amount) {
+        if (strategy) strategy->pay(amount);
+    }
+};
+
+class Solution {
+public:
+    void runDesign() {
+        PaymentProcessor processor;
+        // Test payment strategies
+    }
+};` : `// LLD Challenge: Single Responsibility Principle (SRP)
+#include <iostream>
+#include <string>
+#include <memory>
+using namespace std;
+
+// 1. Business Logic Entity
+class Invoice {
+public:
+    int id;
+    double amount;
+    Invoice(int id, double amount) : id(id), amount(amount) {}
+    double calculateTotal() { return amount * 1.18; }
+};
+
+// 2. Database Persistence Responsibility
+class InvoiceRepository {
+public:
+    void saveToDatabase(const Invoice& inv) {
+        // Implement DB save
+    }
+};
+
+// 3. Notification Responsibility
+class InvoiceNotificationService {
+public:
+    void sendEmail(const Invoice& inv) {
+        // Implement email notification
+    }
+};
+
+class Solution {
+public:
+    void runDesign() {
+        // Execute decoupled architecture
+    }
+};`;
+
+  const cppSolution = isOcp ? `// Complete Optimal OCP Solution
+#include <iostream>
+#include <memory>
+using namespace std;
+
+class PaymentStrategy {
+public:
+    virtual ~PaymentStrategy() = default;
+    virtual void pay(double amount) = 0;
+};
+
 class CreditCardPayment : public PaymentStrategy {
 public:
     void pay(double amount) override {
@@ -485,7 +414,6 @@ public:
     }
 };
 
-// 3. High-level Context
 class PaymentProcessor {
 private:
     unique_ptr<PaymentStrategy> strategy;
@@ -507,13 +435,10 @@ public:
         processor.setStrategy(make_unique<UPIPayment>());
         processor.executePayment(500.0);
     }
-};` : `// LLD Challenge: Single Responsibility Principle (SRP)
+};` : `// Complete Optimal SRP Solution
 #include <iostream>
-#include <string>
-#include <memory>
 using namespace std;
 
-// 1. Model / Business Logic
 class Invoice {
 public:
     int id;
@@ -522,7 +447,6 @@ public:
     double calculateTotal() { return amount * 1.18; }
 };
 
-// 2. Persistence Responsibility
 class InvoiceRepository {
 public:
     void saveToDatabase(const Invoice& inv) {
@@ -530,7 +454,6 @@ public:
     }
 };
 
-// 3. Notification Responsibility
 class InvoiceNotificationService {
 public:
     void sendEmail(const Invoice& inv) {
@@ -559,6 +482,54 @@ class PaymentStrategy(ABC):
 
 class CreditCardPayment(PaymentStrategy):
     def pay(self, amount: float) -> None:
+        pass
+
+class UPIPayment(PaymentStrategy):
+    def pay(self, amount: float) -> None:
+        pass
+
+class PaymentProcessor:
+    def __init__(self, strategy: PaymentStrategy = None):
+        self.strategy = strategy
+
+    def execute_payment(self, amount: float) -> None:
+        if self.strategy:
+            self.strategy.pay(amount)
+
+class Solution:
+    def run_design(self) -> None:
+        pass
+` : `# LLD Challenge: Single Responsibility Principle (SRP)
+class Invoice:
+    def __init__(self, invoice_id: int, amount: float):
+        self.invoice_id = invoice_id
+        self.amount = amount
+
+    def calculate_total(self) -> float:
+        return self.amount * 1.18
+
+class InvoiceRepository:
+    def save_to_db(self, invoice: Invoice) -> None:
+        pass
+
+class InvoiceNotifier:
+    def send_email(self, invoice: Invoice) -> None:
+        pass
+
+class Solution:
+    def run_design(self) -> None:
+        pass
+`;
+
+  const pySolution = isOcp ? `from abc import ABC, abstractmethod
+
+class PaymentStrategy(ABC):
+    @abstractmethod
+    def pay(self, amount: float) -> None:
+        pass
+
+class CreditCardPayment(PaymentStrategy):
+    def pay(self, amount: float) -> None:
         print(f"Processed Credit Card payment: \${amount}")
 
 class UPIPayment(PaymentStrategy):
@@ -579,8 +550,7 @@ class Solution:
         processor.execute_payment(250.0)
         processor.strategy = UPIPayment()
         processor.execute_payment(500.0)
-` : `# LLD Challenge: Single Responsibility Principle (SRP)
-class Invoice:
+` : `class Invoice:
     def __init__(self, invoice_id: int, amount: float):
         self.invoice_id = invoice_id
         self.amount = amount
@@ -612,9 +582,9 @@ class Solution:
     description: problemDesc,
     examples: [
       {
-        input: 'Run LLD Architectural Simulation',
-        output: 'All decoupled classes execute without coupling violations.',
-        explanation: 'Follows SOLID principles with isolated single responsibilities.'
+        input: 'Execute Solution::runDesign()',
+        output: isOcp ? 'Processed Credit Card payment: $250\nProcessed UPI payment: $500' : 'Persisted invoice #101 to database.\nSent receipt email for invoice #101.',
+        explanation: 'All classes execute cleanly adhering to SOLID principles.'
       }
     ],
     constraints: [
@@ -627,8 +597,8 @@ class Solution:
       'invoice = { id: 202, amount: 4500.0 }'
     ],
     expectedOutputs: [
-      'Persisted invoice #101 to database.\nSent receipt email for invoice #101.',
-      'Persisted invoice #202 to database.\nSent receipt email for invoice #202.'
+      isOcp ? 'Processed Credit Card payment: $250\nProcessed UPI payment: $500' : 'Persisted invoice #101 to database.\nSent receipt email for invoice #101.',
+      isOcp ? 'Processed Credit Card payment: $1200' : 'Persisted invoice #202 to database.\nSent receipt email for invoice #202.'
     ],
     approaches: [
       {
@@ -640,7 +610,16 @@ class Solution:
         starters: {
           cpp: cppStarter,
           python: pyStarter,
-          java: `// Java LLD Solution\nclass Solution { public void runDesign() { System.out.println("LLD SOLID Design verified."); } }`,
+          java: `class Solution { public void runDesign() { System.out.println("LLD SOLID Design verified."); } }`,
+          javascript: `class Solution { runDesign() { console.log("LLD SOLID Design verified."); } }`,
+          go: `func RunDesign() { }`,
+          rust: `impl Solution { pub fn run_design() { } }`,
+          sql: `-- LLD Schema Design`
+        },
+        solutionCode: {
+          cpp: cppSolution,
+          python: pySolution,
+          java: `class Solution { public void runDesign() { System.out.println("LLD SOLID Design verified."); } }`,
           javascript: `class Solution { runDesign() { console.log("LLD SOLID Design verified."); } }`,
           go: `func RunDesign() { }`,
           rust: `impl Solution { pub fn run_design() { } }`,
@@ -651,10 +630,19 @@ class Solution:
     starters: {
       cpp: cppStarter,
       python: pyStarter,
-      java: `// Java LLD Solution\nclass Solution {\n    public void runDesign() {\n        System.out.println("LLD SOLID Architecture Executed.");\n    }\n}`,
+      java: `class Solution {\n    public void runDesign() {\n        System.out.println("LLD SOLID Architecture Executed.");\n    }\n}`,
       javascript: `class Solution {\n    runDesign() {\n        console.log("LLD SOLID Architecture Executed.");\n    }\n}`,
       go: `func RunDesign() {\n}`,
       rust: `impl Solution {\n    pub fn run_design() {\n    }\n}`,
+      sql: `-- LLD Challenge`
+    },
+    solutions: {
+      cpp: cppSolution,
+      python: pySolution,
+      java: `class Solution { public void runDesign() { System.out.println("LLD SOLID Architecture Executed."); } }`,
+      javascript: `class Solution { runDesign() { console.log("LLD SOLID Architecture Executed."); } }`,
+      go: `func RunDesign() { }`,
+      rust: `impl Solution { pub fn run_design() { } }`,
       sql: `-- LLD Challenge`
     }
   };
@@ -693,7 +681,8 @@ export const getProblemTemplate = (
       testCases: t.testCases || [`nums = [1, 2, 3, 4, 5]`],
       expectedOutputs: t.expectedOutputs || [`Result`],
       approaches: t.approaches || [],
-      starters: t.starters || getDynamicStarters(problemTitle, category)
+      starters: t.starters || getDynamicStarters(problemTitle, category),
+      solutions: t.solutions || t.starters || getDynamicStarters(problemTitle, category)
     };
   }
 
@@ -712,7 +701,6 @@ function generateDynamicTemplate(
     .map((w, idx) => idx === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join('') || 'solve';
 
-  const isArray = category.toLowerCase().includes('array') || category.toLowerCase().includes('search');
   const isString = category.toLowerCase().includes('string');
   const isTree = category.toLowerCase().includes('tree');
   const isList = category.toLowerCase().includes('list');
@@ -786,7 +774,8 @@ function generateDynamicTemplate(
     testCases,
     expectedOutputs: [sampleOutput],
     approaches: [],
-    starters
+    starters,
+    solutions: starters
   };
 }
 

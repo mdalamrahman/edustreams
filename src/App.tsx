@@ -636,7 +636,141 @@ export function App() {
     );
   }
 
-  const rawMCQs = activeVideoQuiz.length > 0 ? activeVideoQuiz : (videoArtifacts?.mcqs || []);
+function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] {
+  const clean = (title || '').toLowerCase();
+  const cat = (category || '').toLowerCase();
+
+  if (clean.includes('srp') || clean.includes('single responsibility') || clean.includes('ocp') || clean.includes('open closed') || clean.includes('solid') || clean.includes('design') || clean.includes('lld') || cat.includes('design')) {
+    return [
+      {
+        id: 'lld-mcq-1',
+        type: 'MCQ',
+        question: 'What is the core motivation for adhering to the Single Responsibility Principle (SRP)?',
+        options: [
+          'A class should have only one reason to change, minimizing coupling and testing complexity.',
+          'A class must contain only a single method.',
+          'All database queries should be placed in the UI model.',
+          'Every variable must be declared static.'
+        ],
+        correct_answer: 0,
+        explanation: 'SRP states that a class should encapsulate a single actor responsibility so that business changes do not break unrelated features.'
+      },
+      {
+        id: 'lld-mcq-2',
+        type: 'MCQ',
+        question: 'How does the Open-Closed Principle (OCP) prevent regression bugs during feature expansion?',
+        options: [
+          'By making all class fields public.',
+          'Classes remain open for extension via polymorphism/interfaces, but closed for modification.',
+          'By preventing inheritance completely.',
+          'By writing all logic inside a single monolithic switch statement.'
+        ],
+        correct_answer: 1,
+        explanation: 'OCP ensures existing, tested code is not modified when new features are added—new behavior is introduced by implementing existing interfaces.'
+      },
+      {
+        id: 'lld-mcq-3',
+        type: 'MCQ',
+        question: 'In the Strategy Design Pattern, what is the role of the Context class?',
+        options: [
+          'It executes hardcoded if-else logic.',
+          'It maintains a reference to a Strategy interface and delegates the algorithm dynamically at runtime.',
+          'It acts as the database driver.',
+          'It destroys child objects when memory is low.'
+        ],
+        correct_answer: 1,
+        explanation: 'The Context class delegates execution to interchangeable Strategy implementations without knowing their concrete details.'
+      },
+      {
+        id: 'lld-mcq-4',
+        type: 'MCQ',
+        question: 'Why should database persistence and email notification NOT reside in an Invoice entity class?',
+        options: [
+          'It is illegal syntax in object-oriented programming.',
+          'It couples domain business logic with I/O mechanisms, creating 3 separate reasons to change (SRP violation).',
+          'It makes the code execute 10x slower.',
+          'Email addresses cannot be represented as strings.'
+        ],
+        correct_answer: 1,
+        explanation: 'Mixing calculation, SQL persistence, and emailing causes the Invoice class to change whenever DB schema or email format changes, violating SRP.'
+      }
+    ];
+  }
+
+  if (cat.includes('network') || clean.includes('cn') || clean.includes('tcp') || clean.includes('osi') || clean.includes('ip')) {
+    return [
+      {
+        id: 'cn-mcq-1',
+        type: 'MCQ',
+        question: 'What occurs during the TCP 3-Way Handshake before data transmission begins?',
+        options: [
+          'SYN -> SYN-ACK -> ACK packet exchange establishing sequence numbers and connection state.',
+          'Direct UDP datagram burst without acknowledgement.',
+          'DNS query resolution and SSL key generation only.',
+          'HTTP GET request followed by 200 OK.'
+        ],
+        correct_answer: 0,
+        explanation: 'TCP guarantees reliable connection establishment by synchronizing sequence numbers via SYN, SYN-ACK, and ACK.'
+      },
+      {
+        id: 'cn-mcq-2',
+        type: 'MCQ',
+        question: 'Which layer of the OSI model is responsible for end-to-end flow control and error recovery?',
+        options: [
+          'Network Layer (Layer 3)',
+          'Transport Layer (Layer 4)',
+          'Data Link Layer (Layer 2)',
+          'Physical Layer (Layer 1)'
+        ],
+        correct_answer: 1,
+        explanation: 'The Transport Layer (TCP/UDP) handles end-to-end communication, segmentation, flow control, and error recovery.'
+      }
+    ];
+  }
+
+  if (cat.includes('dbms') || clean.includes('sql') || clean.includes('transaction') || clean.includes('acid') || clean.includes('index')) {
+    return [
+      {
+        id: 'dbms-mcq-1',
+        type: 'MCQ',
+        question: 'In ACID transaction properties, what does "Isolation" guarantee?',
+        options: [
+          'Concurrent transactions execute without interfering with one another, preventing dirty reads.',
+          'All database files are stored on isolated physical SSDs.',
+          'Every transaction must complete within 1 second.',
+          'The database cannot be accessed via network sockets.'
+        ],
+        correct_answer: 0,
+        explanation: 'Isolation ensures that concurrent transactions result in a system state equivalent to serial execution.'
+      },
+      {
+        id: 'dbms-mcq-2',
+        type: 'MCQ',
+        question: 'Why are B+ Trees preferred over binary search trees for disk-based database indexing?',
+        options: [
+          'High fan-out minimizes disk I/O seeks, and sequential leaf node linking enables fast range queries.',
+          'B+ Trees only use CPU cache and zero disk space.',
+          'Binary search trees cannot store integer keys.',
+          'B+ Trees eliminate the need for primary keys.'
+        ],
+        correct_answer: 0,
+        explanation: 'B+ Tree nodes contain many keys (high fan-out), keeping tree depth small to minimize costly disk reads, while linked leaves accelerate range scans.'
+      }
+    ];
+  }
+
+  return [];
+}
+
+  const activeChannelObj = MOCK_CHANNELS.find((c) => c.id === selectedChannelId) || MOCK_CHANNELS[0];
+  const fallbackDomainMCQs = getDomainFallbackMCQs(selectedVideo.title, activeChannelObj?.name || '');
+
+  const rawMCQs = (activeVideoQuiz && activeVideoQuiz.length > 0)
+    ? activeVideoQuiz
+    : (videoArtifacts?.mcqs && videoArtifacts.mcqs.length > 0)
+    ? videoArtifacts.mcqs
+    : fallbackDomainMCQs;
+
   const activeMCQs: QuizQuestion[] = rawMCQs.map((q: any, idx: number) => ({
     id: q.id || `mcq-${idx + 1}`,
     type: 'MCQ' as const,
@@ -656,7 +790,6 @@ export function App() {
         explanation: videoArtifacts.coding_problem.title
       }
     : activeVideoQuiz.find((q) => q.type === 'CODING');
-  const activeChannelObj = MOCK_CHANNELS.find((c) => c.id === selectedChannelId) || MOCK_CHANNELS[0];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative">
@@ -893,8 +1026,15 @@ export function App() {
                   <span>Ask AI</span>
                 </button>
 
-                {/* Show Open Coding IDE for DSA and System Design / LLD! For pure OS/CN theory, show Practice MCQ Quiz */}
-                {(activeChannelObj?.id === 'ch-dsa-01' || 
+                {/* Show Open Coding IDE for DSA and System Design / LLD! For pure CN & DBMS theory, show Practice MCQ Quiz only */}
+                {!(activeChannelObj?.id === 'ch-cn-04' || 
+                   activeChannelObj?.id === 'ch-dbms-03' ||
+                   Boolean(activeChannelObj?.name && (
+                     activeChannelObj.name.toLowerCase().includes('network') ||
+                     activeChannelObj.name.toLowerCase().includes('dbms') ||
+                     activeChannelObj.name.toLowerCase().includes('database')
+                   ))) && 
+                 (activeChannelObj?.id === 'ch-dsa-01' || 
                   activeChannelObj?.id === 'ch-sys-design' ||
                   Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('system design')) ||
                   Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('lld')) ||

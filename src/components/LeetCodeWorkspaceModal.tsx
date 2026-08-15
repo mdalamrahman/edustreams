@@ -758,7 +758,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto">
                   <pre className="text-slate-200">
-                    {problemTemplate.starters[language] || problemTemplate.starters.cpp}
+                    {problemTemplate.solutions?.[language] || problemTemplate.solutions?.cpp || problemTemplate.starters[language] || problemTemplate.starters.cpp}
                   </pre>
                 </div>
               </div>

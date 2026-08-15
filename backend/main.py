@@ -749,14 +749,15 @@ DEFAULT_RANGE_SIZE = 2 * 1024 * 1024  # 2MB default response chunk
 
 
 @app.get("/stream/{chat_id}/{msg_id}")
-async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
+async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
     """
     Streams actual video bytes from local disk storage if available,
     otherwise fetches from Telegram Datacenters via Telethon MTProto.
     Supports HTTP 206 Partial Content range requests for instant video scrubbing.
     """
     # 1. Check if video file is already stored locally on disk (e.g. C:\Users\User\Desktop\edustreamfiles)
-    local_filename = f"video_{chat_id}_{msg_id}.mp4"
+    real_chat_id = MOCK_CHANNEL_ID_MAP.get(chat_id, chat_id)
+    local_filename = f"video_{real_chat_id}_{msg_id}.mp4"
     local_file_path = os.path.join(MEDIA_STORAGE_DIR, local_filename)
 
     if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
@@ -929,12 +930,13 @@ async def stream_telegram_video(chat_id: int, msg_id: int, request: Request):
 
 @app.get("/api/download/{chat_id}/{msg_id}")
 async def download_telegram_attachment(
-    chat_id: int,
+    chat_id: str,
     msg_id: int,
     file_name: Optional[str] = "telegram_resource",
 ):
     """Downloads document/attachment from local disk if available, otherwise from Telegram MTProto."""
-    local_filename = f"video_{chat_id}_{msg_id}.mp4"
+    real_chat_id = MOCK_CHANNEL_ID_MAP.get(chat_id, chat_id)
+    local_filename = f"video_{real_chat_id}_{msg_id}.mp4"
     local_file_path = os.path.join(MEDIA_STORAGE_DIR, local_filename)
 
     # 1. Serve from local disk storage if already saved

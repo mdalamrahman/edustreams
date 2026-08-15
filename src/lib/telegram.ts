@@ -53,7 +53,7 @@ export function getStreamUrl(channelId: string, messageId: number): string {
  * @param fileName  - Original file name for Content-Disposition header
  */
 export function getDownloadUrl(channelId: string, messageId: number, fileName: string): string {
-  const chatId = CHANNEL_CHAT_ID_MAP[channelId];
+  const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
   if (!chatId || !messageId) return '#';
   return `${BACKEND_BASE}/api/download/${chatId}/${messageId}?file_name=${encodeURIComponent(fileName)}`;
 }
