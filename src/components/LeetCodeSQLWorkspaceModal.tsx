@@ -20,7 +20,8 @@ import {
   X, 
   RefreshCw,
   Table,
-  Lightbulb
+  Lightbulb,
+  Layers
 } from 'lucide-react';
 import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } from '../lib/sqlJudge';
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
@@ -55,6 +56,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const [code, setCode] = useState<string>(() => sqlProblem.starterSql);
   const [leftTab, setLeftTab] = useState<'description' | 'editorial' | 'solutions' | 'submissions'>('description');
   const [consoleTab, setConsoleTab] = useState<'tables' | 'result'>('tables');
+  const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [judgeResult, setJudgeResult] = useState<SQLJudgeResult | null>(null);
@@ -150,7 +152,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     setConsoleTab('result');
 
     try {
-      const result = await executeAndJudgeSQL(code, sqlProblem);
+      const result = await executeAndJudgeSQL(code, sqlProblem, activeTestCaseIdx);
       setJudgeResult(result);
 
       const isSuccess = result.status === 'ACCEPTED';
@@ -230,6 +232,11 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     } finally {
       setIsAiReplying(false);
     }
+  };
+
+  const currentTestCase = sqlProblem.testCases[activeTestCaseIdx] || sqlProblem.testCases[0] || {
+    name: 'Case 1',
+    tables: sqlProblem.tables
   };
 
   return (
@@ -388,7 +395,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                   </button>
                 </div>
 
-                {/* Problem Statement */}
+                {/* Problem Statement with Better-Aligned Tables */}
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
                   <FormattedChatText text={sqlProblem.description} />
                 </div>
@@ -396,11 +403,11 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                 {/* Input Database Tables */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Table className="w-3.5 h-3.5 text-cyan-400" /> Input Database Tables
+                    <Table className="w-3.5 h-3.5 text-cyan-400" /> Reference Schema Tables
                   </h3>
 
                   {sqlProblem.tables.map((tbl, tIdx) => (
-                    <div key={tIdx} className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
+                    <div key={tIdx} className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow-inner">
                       <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[11px] font-bold text-cyan-300 font-mono">
                         Table: {tbl.tableName}
                       </div>
@@ -409,7 +416,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                           <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-800">
                             <tr>
                               {tbl.schema.map((col, cIdx) => (
-                                <th key={cIdx} className="px-3 py-1.5 font-bold">{col.column}</th>
+                                <th key={cIdx} className="px-3.5 py-1.5 font-bold">{col.column}</th>
                               ))}
                             </tr>
                           </thead>
@@ -417,7 +424,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                             {tbl.rows.map((row, rIdx) => (
                               <tr key={rIdx} className="hover:bg-slate-900/40">
                                 {row.map((val, vIdx) => (
-                                  <td key={vIdx} className="px-3 py-1.5">{String(val)}</td>
+                                  <td key={vIdx} className="px-3.5 py-1.5">{String(val)}</td>
                                 ))}
                               </tr>
                             ))}
@@ -546,7 +553,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
             </div>
           </div>
 
-          {/* Bottom Console */}
+          {/* Bottom Console with Multiple Test Cases */}
           <div className="h-64 sm:h-72 bg-slate-900/90 flex flex-col flex-shrink-0">
             
             {/* Console Header */}
@@ -562,7 +569,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                   }`}
                 >
                   <Table className="w-3.5 h-3.5 inline mr-1 text-cyan-400" />
-                  <span>Input Tables</span>
+                  <span>Test Tables</span>
                 </button>
 
                 <button
@@ -607,36 +614,63 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
             {/* Console Content Area */}
             <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
               
-              {/* TAB A: INPUT TABLES */}
+              {/* TAB A: INPUT TABLES & MULTI-TESTCASE SELECTOR */}
               {consoleTab === 'tables' && (
                 <div className="space-y-4">
-                  {sqlProblem.tables.map((tbl, idx) => (
-                    <div key={idx} className="space-y-1.5">
-                      <div className="text-[11px] font-bold text-cyan-400 uppercase font-sans">
-                        Table: {tbl.tableName}
-                      </div>
-                      <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
-                            <tr>
-                              {tbl.schema.map((c, ci) => (
-                                <th key={ci} className="px-3 py-1 font-bold">{c.column}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                            {tbl.rows.map((r, ri) => (
-                              <tr key={ri}>
-                                {r.map((val, vi) => (
-                                  <td key={vi} className="px-3 py-1">{String(val)}</td>
+                  {/* Testcase Switcher Pills */}
+                  <div className="flex items-center space-x-2 pb-1 border-b border-slate-800/80 overflow-x-auto">
+                    <span className="text-slate-400 text-[11px] font-sans font-bold flex items-center gap-1 mr-1">
+                      <Layers className="w-3 h-3 text-cyan-400" /> Test Cases:
+                    </span>
+                    {sqlProblem.testCases.map((tc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveTestCaseIdx(idx)}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer ${
+                          activeTestCaseIdx === idx
+                            ? 'bg-cyan-600 text-white shadow-md'
+                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                        }`}
+                      >
+                        Case {idx + 1}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Active Testcase Tables */}
+                  <div className="space-y-3">
+                    <div className="text-[11px] font-bold text-slate-300 font-sans">
+                      {currentTestCase.name}
+                    </div>
+
+                    {currentTestCase.tables.map((tbl, idx) => (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="text-[11px] font-bold text-cyan-400 uppercase font-sans">
+                          Table: {tbl.tableName}
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                              <tr>
+                                {tbl.schema.map((c, ci) => (
+                                  <th key={ci} className="px-3 py-1 font-bold">{c.column}</th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                              {tbl.rows.map((r, ri) => (
+                                <tr key={ri}>
+                                  {r.map((val, vi) => (
+                                    <td key={vi} className="px-3 py-1">{String(val)}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -652,7 +686,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                           {judgeResult.status === 'ACCEPTED' ? (
                             <>
                               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                              <span className="text-emerald-400">Accepted</span>
+                              <span className="text-emerald-400">Accepted (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
                             </>
                           ) : judgeResult.status === 'SYNTAX_ERROR' ? (
                             <>
@@ -662,7 +696,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                           ) : (
                             <>
                               <XCircle className="w-5 h-5 text-amber-400" />
-                              <span className="text-amber-400">Wrong Answer</span>
+                              <span className="text-amber-400">Wrong Answer (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
                             </>
                           )}
                         </div>
@@ -745,7 +779,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                     </div>
                   ) : (
                     <div className="text-slate-500 py-6 text-center">
-                      Click "Run Query" or "Submit" to execute your SQL against the in-memory database.
+                      Click "Run Query" or "Submit" to execute your SQL against Case {activeTestCaseIdx + 1}.
                     </div>
                   )}
                 </div>
