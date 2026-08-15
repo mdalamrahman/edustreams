@@ -1,0 +1,18 @@
+{
+  "short_name": "SDETube",
+  "name": "SDETube — AI-Powered SDE Preparation & Coding Arena",
+  "description": "Master Coding Interviews with In-Workspace Video Lectures, Fullscreen LeetCode IDE, and 191 SDE Problems",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020617",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait"
+}

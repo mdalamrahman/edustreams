@@ -55,6 +55,9 @@ export function App() {
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
   const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
+  const [dynamicVideos, setDynamicVideos] = useState<Video[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [lessonSubTab, setLessonSubTab] = useState<'quiz' | 'code'>('code');
   const [showMobileGating, setShowMobileGating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -67,6 +70,63 @@ export function App() {
     setAskAIMode(mode);
     setIsAskAIOpen(true);
   };
+
+  // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
+  const navigateTo = (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'sde_sheet' ? 'sde-sheet' : tab}`;
+    if (tab === 'channels' && extra?.channelId) {
+      hash = `#/channel/${extra.channelId}`;
+    } else if (tab === 'lesson' && extra?.videoId) {
+      hash = `#/lesson/${encodeURIComponent(extra.videoId)}`;
+    }
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    }
+    setActiveTab(tab);
+    if (tab === 'channels') {
+      if (extra?.channelId) {
+        setSelectedChannelId(extra.channelId);
+        setChannelViewMode('detail');
+      } else {
+        setChannelViewMode('overview');
+      }
+    }
+  };
+
+  // Synchronize state on browser back/forward or hash change
+  useEffect(() => {
+    const handleHashSync = () => {
+      const hash = window.location.hash || '#/channels';
+      if (hash.startsWith('#/channel/')) {
+        const chId = hash.replace('#/channel/', '');
+        setSelectedChannelId(chId);
+        setChannelViewMode('detail');
+        setActiveTab('channels');
+      } else if (hash.startsWith('#/lesson/')) {
+        const vidId = decodeURIComponent(hash.replace('#/lesson/', ''));
+        const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+        const found = list.find((v) => v.id === vidId || v.title === vidId);
+        if (found) setSelectedVideo(found);
+        setActiveTab('lesson');
+      } else if (hash.startsWith('#/sde-sheet')) {
+        setActiveTab('sde_sheet');
+      } else if (hash.startsWith('#/analytics')) {
+        setActiveTab('analytics');
+      } else {
+        setActiveTab('channels');
+        setChannelViewMode('overview');
+      }
+    };
+
+    window.addEventListener('popstate', handleHashSync);
+    window.addEventListener('hashchange', handleHashSync);
+    handleHashSync();
+
+    return () => {
+      window.removeEventListener('popstate', handleHashSync);
+      window.removeEventListener('hashchange', handleHashSync);
+    };
+  }, [dynamicVideos]);
 
   // Lecture completion tracking
   const [completedLectures, setCompletedLectures] = useState<Set<string>>(() => {
@@ -199,11 +259,6 @@ export function App() {
     localStorage.setItem('edustream_correct_attempts', correctAttempts.toString());
     localStorage.setItem('edustream_time_breakdown', JSON.stringify(timeBreakdown));
   }, [totalSolved, totalActiveMins, correctAttempts, timeBreakdown]);
-
-  // Dynamic video catalog from backend API
-  const [dynamicVideos, setDynamicVideos] = useState<Video[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
 
   // Fetch real video catalog from backend on mount
   useEffect(() => {
@@ -429,13 +484,16 @@ export function App() {
     if (matchingVideos.length > 0) {
       setSelectedVideo(matchingVideos[0]);
     }
+    navigateTo('channels', { channelId });
   };
 
   const handleNextLecture = () => {
     const currentList = filteredVideos.length > 0 ? filteredVideos : MOCK_VIDEOS;
     const currentIndex = currentList.findIndex((v) => v.id === selectedVideo.id);
     if (currentIndex >= 0 && currentIndex < currentList.length - 1) {
-      setSelectedVideo(currentList[currentIndex + 1]);
+      const nextVid = currentList[currentIndex + 1];
+      setSelectedVideo(nextVid);
+      navigateTo('lesson', { videoId: nextVid.id });
     }
   };
 
@@ -443,7 +501,9 @@ export function App() {
     const currentList = filteredVideos.length > 0 ? filteredVideos : MOCK_VIDEOS;
     const currentIndex = currentList.findIndex((v) => v.id === selectedVideo.id);
     if (currentIndex > 0) {
-      setSelectedVideo(currentList[currentIndex - 1]);
+      const prevVid = currentList[currentIndex - 1];
+      setSelectedVideo(prevVid);
+      navigateTo('lesson', { videoId: prevVid.id });
     }
   };
 
@@ -478,7 +538,7 @@ export function App() {
       setSelectedVideo(match);
       setSelectedChannelId(match.channel_id);
       setReturnTarget('sde_sheet');
-      setActiveTab('lesson');
+      navigateTo('lesson', { videoId: match.id });
     }
   };
 
@@ -584,8 +644,7 @@ export function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'channels') setChannelViewMode('overview');
+          navigateTo(tab);
         }}
         selectedChannel={selectedChannelId}
         setSelectedChannel={handleSelectChannel}
@@ -649,8 +708,11 @@ export function App() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/30 shadow-xl">
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => setChannelViewMode('overview')}
-                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-slate-100 transition-all flex items-center gap-1.5 text-xs font-bold"
+                      onClick={() => {
+                        setChannelViewMode('overview');
+                        navigateTo('channels');
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-slate-100 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
                       title="Back to All Channels"
                     >
                       <ArrowLeft className="w-4 h-4" />
@@ -728,9 +790,9 @@ export function App() {
                               onClick={() => {
                                 setSelectedVideo(v);
                                 setReturnTarget('channels');
-                                setActiveTab('lesson');
+                                navigateTo('lesson', { videoId: v.id });
                               }}
-                              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
+                              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
                             >
                               <Play className="w-3.5 h-3.5 fill-current" />
                               <span>Watch</span>
@@ -741,7 +803,7 @@ export function App() {
                                 setSelectedVideo(v);
                                 setIsAskAIOpen(true);
                               }}
-                              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all"
+                              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all cursor-pointer"
                             >
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>AI</span>
@@ -750,7 +812,7 @@ export function App() {
 
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleLectureComplete(v.id); }}
-                            className={`p-1.5 rounded-lg transition-all border ${
+                            className={`p-1.5 rounded-lg transition-all border cursor-pointer ${
                               completedLectures.has(v.id)
                                 ? 'bg-emerald-950 border-emerald-600 text-emerald-400 shadow-sm shadow-emerald-500/20'
                                 : 'bg-slate-900 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-600'
@@ -781,9 +843,13 @@ export function App() {
                 {/* Back Button returning to previous page */}
                 <button
                   onClick={() => {
-                    setActiveTab(returnTarget);
+                    if (window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      navigateTo(returnTarget);
+                    }
                   }}
-                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold border border-slate-700 transition-all shadow-sm active:scale-95"
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold border border-slate-700 transition-all shadow-sm active:scale-95 cursor-pointer"
                   title="Return to previous screen"
                 >
                   <ArrowLeft className="w-4 h-4" />
