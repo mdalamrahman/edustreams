@@ -26,7 +26,10 @@ import {
   Building2,
   HelpCircle,
   X,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  GripVertical
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -81,14 +84,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     );
   }, [cleanTitle, codingProblem, effectiveTranscript, notes]);
 
-  // Selected Approach (if problem has multiple ways of solving)
+  // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
     return problemTemplate.approaches && problemTemplate.approaches.length > 0 
       ? problemTemplate.approaches[0].id 
       : 'default';
   });
 
-  // Code state initialized with problem-specific template
+  // Code state
   const [code, setCode] = useState<string>(() => {
     if (initialCode && initialCode.trim().length > 10) return initialCode;
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
@@ -103,6 +106,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
   const [executionTime, setExecutionTime] = useState<number>(0);
   
+  // Resizable Split Pane state
+  const [splitPercent, setSplitPercent] = useState<number>(42);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  // Minimizable console state
+  const [isConsoleMinimized, setIsConsoleMinimized] = useState<boolean>(false);
+
   // Copy states
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedDescription, setCopiedDescription] = useState<boolean>(false);
@@ -117,6 +127,36 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // AI Review state
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
+
+  // Dragging handlers for resizable split pane
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const containerWidth = window.innerWidth;
+      const newPercent = (e.clientX / containerWidth) * 100;
+      if (newPercent >= 20 && newPercent <= 80) {
+        setSplitPercent(newPercent);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Persistent Ask AI Chat state
   const chatStorageKey = `sdetube_chat_history_${cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
@@ -228,6 +268,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const handleExecute = async (isSubmission: boolean = false) => {
     setIsExecuting(true);
     setConsoleTab('result');
+    if (isConsoleMinimized) setIsConsoleMinimized(false);
     const start = Date.now();
 
     try {
@@ -349,7 +390,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden">
+    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
       
       {/* ========================================================================= */}
       {/* 1. TOP LEETCODE NAVBAR                                                    */}
@@ -421,7 +462,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
             className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:border-purple-500 cursor-pointer"
           >
-            <option value="cpp">C++ 20</option>
+            <option value="cpp">C++ 20 (STL)</option>
             <option value="python">Python 3</option>
             <option value="java">Java 17</option>
             <option value="javascript">JavaScript</option>
@@ -442,14 +483,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. SPLIT SCREEN WORKSPACE                                                 */}
+      {/* 2. RESIZABLE SPLIT SCREEN WORKSPACE                                       */}
       {/* ========================================================================= */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* ----------------------------------------------------------------------- */}
         {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, SOLUTIONS, AI REVIEW   */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-5 bg-slate-900/90 border-r border-slate-800 flex flex-col overflow-hidden">
+        <div 
+          style={{ width: `${splitPercent}%` }}
+          className="hidden lg:flex bg-slate-900/90 border-r border-slate-800 flex-col overflow-hidden transition-all duration-75"
+        >
           
           {/* Left Panel Tabs Bar */}
           <div className="flex items-center gap-1 p-2 bg-slate-950 border-b border-slate-800 overflow-x-auto no-scrollbar text-xs font-bold flex-shrink-0">
@@ -816,7 +860,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 7: AI REVIEW REPORT (CLEAN NO * OR # FORMATTING + COPY REPORT) */}
+            {/* TAB 7: AI REVIEW REPORT */}
             {leftTab === 'aireview' && aiReview && (
               <div className="space-y-4 font-sans animate-fadeIn">
                 <div className="flex items-center justify-between pb-2 border-b border-purple-900/40">
@@ -876,12 +920,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         </div>
 
         {/* ----------------------------------------------------------------------- */}
+        {/* DRAGGABLE RESIZER HANDLE                                                */}
+        {/* ----------------------------------------------------------------------- */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="hidden lg:flex w-2 hover:w-2.5 bg-slate-900 hover:bg-indigo-600/80 cursor-col-resize items-center justify-center transition-all z-20 border-x border-slate-800/80 group"
+          title="Drag to resize Problem Description and Code Editor width"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-white transition-colors" />
+        </div>
+
+        {/* ----------------------------------------------------------------------- */}
         {/* RIGHT PANEL: MONACO CODE EDITOR & TESTCASES / RESULTS CONSOLE           */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-7 bg-slate-950 flex flex-col overflow-hidden relative">
+        <div 
+          style={{ width: `${100 - splitPercent}%` }}
+          className="flex-1 lg:flex-none bg-slate-950 flex flex-col overflow-hidden relative transition-all duration-75"
+        >
           
           {/* Monaco Editor Container */}
-          <div className="flex-1 min-h-[300px] border-b border-slate-800 relative">
+          <div className={`flex-1 border-b border-slate-800 relative transition-all ${isConsoleMinimized ? 'h-full' : 'min-h-[260px]'}`}>
             <Editor
               height="100%"
               language={language === 'rust' ? 'rust' : language === 'go' ? 'go' : language}
@@ -913,15 +971,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </div>
           </div>
 
-          {/* Testcases & Console Bottom Split */}
-          <div className="h-64 sm:h-72 bg-slate-900/90 flex flex-col flex-shrink-0">
+          {/* Testcases & Console Bottom Split (Minimizable) */}
+          <div className={`${isConsoleMinimized ? 'h-10' : 'h-64 sm:h-72'} bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-200 border-t border-slate-800`}>
             
             {/* Console Header / Action Tabs */}
             <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800">
               
               <div className="flex items-center space-x-1.5">
                 <button
-                  onClick={() => setConsoleTab('testcase')}
+                  onClick={() => {
+                    setConsoleTab('testcase');
+                    if (isConsoleMinimized) setIsConsoleMinimized(false);
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     consoleTab === 'testcase'
                       ? 'bg-slate-800 text-white'
@@ -931,7 +992,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   Test Cases
                 </button>
                 <button
-                  onClick={() => setConsoleTab('result')}
+                  onClick={() => {
+                    setConsoleTab('result');
+                    if (isConsoleMinimized) setIsConsoleMinimized(false);
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     consoleTab === 'result'
                       ? 'bg-slate-800 text-white'
@@ -946,7 +1010,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 </button>
               </div>
 
-              {/* Execution Run & Submit Buttons */}
+              {/* Execution Run, Submit & Minimize/Maximize Buttons */}
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handleExecute(false)}
@@ -965,114 +1029,125 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <CheckCircle className="w-3.5 h-3.5 fill-current" />
                   <span>{isExecuting ? 'Submitting...' : 'Submit'}</span>
                 </button>
+
+                {/* Minimize Console Button to get Full Height Code Screen */}
+                <button
+                  onClick={() => setIsConsoleMinimized(!isConsoleMinimized)}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-colors ml-1"
+                  title={isConsoleMinimized ? "Expand Testcases Console" : "Minimize Console to expand Editor"}
+                >
+                  {isConsoleMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
 
             </div>
 
-            {/* Console Content */}
-            <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
-              
-              {/* TAB A: TESTCASES */}
-              {consoleTab === 'testcase' && (
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                    {problemTemplate.testCases.map((tc, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setActiveTestCaseIdx(idx);
-                          setTestInput(tc);
-                        }}
-                        className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                          activeTestCaseIdx === idx
-                            ? 'bg-indigo-600 text-white shadow-md'
-                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                        }`}
-                      >
-                        Case {idx + 1}
-                      </button>
-                    ))}
-                  </div>
+            {/* Console Content (Hidden when minimized) */}
+            {!isConsoleMinimized && (
+              <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
+                
+                {/* TAB A: TESTCASES */}
+                {consoleTab === 'testcase' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+                      {problemTemplate.testCases.map((tc, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setActiveTestCaseIdx(idx);
+                            setTestInput(tc);
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                            activeTestCaseIdx === idx
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                          }`}
+                        >
+                          Case {idx + 1}
+                        </button>
+                      ))}
+                    </div>
 
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Input:</div>
-                    <textarea
-                      value={testInput}
-                      onChange={(e) => setTestInput(e.target.value)}
-                      rows={3}
-                      className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500"
-                    />
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-slate-400 uppercase font-bold">Input:</div>
+                      <textarea
+                        value={testInput}
+                        onChange={(e) => setTestInput(e.target.value)}
+                        rows={3}
+                        className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* TAB B: TEST RESULT */}
-              {consoleTab === 'result' && (
-                <div className="space-y-3 font-sans">
-                  {executionResult ? (
-                    <div className="space-y-3">
-                      
-                      {/* Status Header */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                        <div className="flex items-center space-x-2 font-black text-sm">
-                          {executionResult.stderr ? (
-                            <>
-                              <XCircle className="w-5 h-5 text-rose-400" />
-                              <span className="text-rose-400">Runtime Error</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                              <span className="text-emerald-400">Accepted</span>
-                            </>
-                          )}
+                {/* TAB B: TEST RESULT */}
+                {consoleTab === 'result' && (
+                  <div className="space-y-3 font-sans">
+                    {executionResult ? (
+                      <div className="space-y-3">
+                        
+                        {/* Status Header */}
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                          <div className="flex items-center space-x-2 font-black text-sm">
+                            {executionResult.stderr ? (
+                              <>
+                                <XCircle className="w-5 h-5 text-rose-400" />
+                                <span className="text-rose-400">Runtime Error</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                <span className="text-emerald-400">Accepted</span>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
+                            <span>Runtime: <strong className="text-slate-200">{executionTime} ms</strong></span>
+                            <span>Memory: <strong className="text-slate-200">{executionResult.memory_used_kb || 3420} KB</strong></span>
+                          </div>
                         </div>
 
-                        <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
-                          <span>Runtime: <strong className="text-slate-200">{executionTime} ms</strong></span>
-                          <span>Memory: <strong className="text-slate-200">{executionResult.memory_used_kb || 3420} KB</strong></span>
-                        </div>
+                        {/* Stdout Output Box */}
+                        {executionResult.stdout && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Stdout Output:</div>
+                            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-xs whitespace-pre-wrap">
+                              {executionResult.stdout}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Expected Box */}
+                        {problemTemplate.expectedOutputs && problemTemplate.expectedOutputs[activeTestCaseIdx] && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Expected:</div>
+                            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
+                              {problemTemplate.expectedOutputs[activeTestCaseIdx]}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Stderr Error Box */}
+                        {executionResult.stderr && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-rose-400 font-bold uppercase">Error (Stderr):</div>
+                            <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
+                              {executionResult.stderr}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <div className="text-slate-500 py-6 text-center">
+                        Click "Run" or "Submit" to compile and test your solution.
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                      {/* Stdout Output Box */}
-                      {executionResult.stdout && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase">Stdout Output:</div>
-                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-xs whitespace-pre-wrap">
-                            {executionResult.stdout}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Expected Box */}
-                      {problemTemplate.expectedOutputs && problemTemplate.expectedOutputs[activeTestCaseIdx] && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase">Expected:</div>
-                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
-                            {problemTemplate.expectedOutputs[activeTestCaseIdx]}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Stderr Error Box */}
-                      {executionResult.stderr && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-rose-400 font-bold uppercase">Error (Stderr):</div>
-                          <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
-                            {executionResult.stderr}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-slate-500 py-6 text-center">
-                      Click "Run" or "Submit" to compile and test your solution.
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
+              </div>
+            )}
 
           </div>
 
@@ -1095,11 +1170,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. SLIDE-OUT ASK AI TEACHING ASSISTANT POPUP (DOCKED ALWAYS ON THE RIGHT)  */}
+      {/* 3. SLIDE-OUT ASK AI TEACHING ASSISTANT POPUP (NON-BLURRED BACKGROUND)    */}
       {/* ========================================================================= */}
       {isRightAskAiOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg h-full bg-slate-950 border-l border-purple-500/40 shadow-2xl flex flex-col font-sans relative overflow-hidden animate-slideInRight">
+        <div className="fixed inset-0 z-50 flex justify-end pointer-events-none animate-fadeIn">
+          {/* Non-blurring click catcher overlay */}
+          <div 
+            onClick={() => setIsRightAskAiOpen(false)}
+            className="absolute inset-0 bg-slate-950/25 pointer-events-auto cursor-pointer"
+          />
+
+          <div className="w-full max-w-lg h-full bg-slate-950/98 border-l border-purple-500/40 shadow-2xl flex flex-col font-sans relative overflow-hidden pointer-events-auto animate-slideInRight z-10">
             
             {/* Drawer Header */}
             <div className="p-4 bg-gradient-to-r from-slate-900 via-purple-950/70 to-slate-950 border-b border-purple-500/30 flex items-center justify-between">
@@ -1189,7 +1270,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         className="absolute top-2 right-2 p-1 text-slate-500 hover:text-purple-300 transition-colors cursor-pointer"
                         title="Copy message text"
                       >
-                        {copiedMsgIdx === idx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       </button>
                     )}
                   </div>

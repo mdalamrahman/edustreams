@@ -70,6 +70,26 @@ export function wrapLeetCodeExecutableCode(
     }
     cout << "]" << endl;
 `;
+    } else if (normTitle.includes('nextpermutation') || normTitle.includes('permutation')) {
+      testExecution = `
+    vector<int> nums = {1, 2, 3};
+    sol.nextPermutation(nums);
+    cout << "[";
+    for (size_t i = 0; i < nums.size(); i++) {
+        cout << nums[i] << (i + 1 < nums.size() ? "," : "");
+    }
+    cout << "]" << endl;
+`;
+    } else if (normTitle.includes('sortcolors') || normTitle.includes('dutchflag')) {
+      testExecution = `
+    vector<int> nums = {2, 0, 2, 1, 1, 0};
+    sol.sortColors(nums);
+    cout << "[";
+    for (size_t i = 0; i < nums.size(); i++) {
+        cout << nums[i] << (i + 1 < nums.size() ? "," : "");
+    }
+    cout << "]" << endl;
+`;
     } else {
       testExecution = `
     cout << "Solution executed successfully with test input." << endl;
@@ -81,14 +101,21 @@ export function wrapLeetCodeExecutableCode(
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <numeric>
 #include <unordered_map>
 #include <map>
 #include <set>
 #include <unordered_set>
 #include <queue>
 #include <stack>
+#include <deque>
 #include <cmath>
+#include <climits>
+#include <cstring>
 #include <sstream>
+#include <utility>
+#include <tuple>
+#include <functional>
 using namespace std;
 
 struct ListNode {

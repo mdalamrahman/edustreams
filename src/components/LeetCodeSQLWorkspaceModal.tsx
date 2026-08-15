@@ -21,7 +21,10 @@ import {
   RefreshCw,
   Table,
   Lightbulb,
-  Layers
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  GripVertical
 } from 'lucide-react';
 import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } from '../lib/sqlJudge';
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
@@ -58,6 +61,13 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const [consoleTab, setConsoleTab] = useState<'tables' | 'result'>('tables');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   
+  // Resizable Split Pane state
+  const [splitPercent, setSplitPercent] = useState<number>(42);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  // Minimizable console state
+  const [isConsoleMinimized, setIsConsoleMinimized] = useState<boolean>(false);
+
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [judgeResult, setJudgeResult] = useState<SQLJudgeResult | null>(null);
   
@@ -74,6 +84,36 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     status: string;
     runtime: string;
   }[]>([]);
+
+  // Dragging handlers for resizable split pane
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const containerWidth = window.innerWidth;
+      const newPercent = (e.clientX / containerWidth) * 100;
+      if (newPercent >= 20 && newPercent <= 80) {
+        setSplitPercent(newPercent);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Ask AI Drawer on the Right
   const [isRightAskAiOpen, setIsRightAskAiOpen] = useState<boolean>(false);
@@ -150,6 +190,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const handleExecute = async (isSubmission: boolean = false) => {
     setIsExecuting(true);
     setConsoleTab('result');
+    if (isConsoleMinimized) setIsConsoleMinimized(false);
 
     try {
       const result = await executeAndJudgeSQL(code, sqlProblem, activeTestCaseIdx);
@@ -240,7 +281,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden">
+    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
       
       {/* ========================================================================= */}
       {/* 1. TOP NAVBAR                                                             */}
@@ -315,14 +356,17 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
       </header>
 
       {/* ========================================================================= */}
-      {/* 2. SPLIT SCREEN WORKSPACE                                                 */}
+      {/* 2. RESIZABLE SPLIT SCREEN WORKSPACE                                       */}
       {/* ========================================================================= */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
         {/* ----------------------------------------------------------------------- */}
         {/* LEFT PANEL: DESCRIPTION, EDITORIAL, SOLUTIONS, SUBMISSIONS               */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-5 bg-slate-900/90 border-r border-slate-800 flex flex-col overflow-hidden">
+        <div 
+          style={{ width: `${splitPercent}%` }}
+          className="hidden lg:flex bg-slate-900/90 border-r border-slate-800 flex-col overflow-hidden transition-all duration-75"
+        >
           
           {/* Left Tabs Bar */}
           <div className="flex items-center gap-1 p-2 bg-slate-950 border-b border-slate-800 overflow-x-auto no-scrollbar text-xs font-bold flex-shrink-0">
@@ -516,12 +560,26 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         </div>
 
         {/* ----------------------------------------------------------------------- */}
+        {/* DRAGGABLE RESIZER HANDLE                                                */}
+        {/* ----------------------------------------------------------------------- */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="hidden lg:flex w-2 hover:w-2.5 bg-slate-900 hover:bg-cyan-600/80 cursor-col-resize items-center justify-center transition-all z-20 border-x border-slate-800/80 group"
+          title="Drag to resize Problem Description and SQL Editor width"
+        >
+          <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-white transition-colors" />
+        </div>
+
+        {/* ----------------------------------------------------------------------- */}
         {/* RIGHT PANEL: MONACO SQL EDITOR & QUERY RESULT CONSOLE                   */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-7 bg-slate-950 flex flex-col overflow-hidden relative">
+        <div 
+          style={{ width: `${100 - splitPercent}%` }}
+          className="flex-1 lg:flex-none bg-slate-950 flex flex-col overflow-hidden relative transition-all duration-75"
+        >
           
           {/* Monaco SQL Editor */}
-          <div className="flex-1 min-h-[300px] border-b border-slate-800 relative">
+          <div className={`flex-1 border-b border-slate-800 relative transition-all ${isConsoleMinimized ? 'h-full' : 'min-h-[260px]'}`}>
             <Editor
               height="100%"
               language="sql"
@@ -553,15 +611,18 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
             </div>
           </div>
 
-          {/* Bottom Console with Multiple Test Cases */}
-          <div className="h-64 sm:h-72 bg-slate-900/90 flex flex-col flex-shrink-0">
+          {/* Bottom Console with Multiple Test Cases (Minimizable) */}
+          <div className={`${isConsoleMinimized ? 'h-10' : 'h-64 sm:h-72'} bg-slate-900/90 flex flex-col flex-shrink-0 transition-all duration-200 border-t border-slate-800`}>
             
             {/* Console Header */}
             <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800">
               
               <div className="flex items-center space-x-1.5">
                 <button
-                  onClick={() => setConsoleTab('tables')}
+                  onClick={() => {
+                    setConsoleTab('tables');
+                    if (isConsoleMinimized) setIsConsoleMinimized(false);
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     consoleTab === 'tables'
                       ? 'bg-slate-800 text-white'
@@ -573,7 +634,10 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                 </button>
 
                 <button
-                  onClick={() => setConsoleTab('result')}
+                  onClick={() => {
+                    setConsoleTab('result');
+                    if (isConsoleMinimized) setIsConsoleMinimized(false);
+                  }}
                   className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     consoleTab === 'result'
                       ? 'bg-slate-800 text-white'
@@ -588,7 +652,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                 </button>
               </div>
 
-              {/* Execution Run & Submit Buttons */}
+              {/* Execution Run, Submit & Minimize Buttons */}
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handleExecute(false)}
@@ -607,185 +671,196 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                   <CheckCircle className="w-3.5 h-3.5 fill-current" />
                   <span>{isExecuting ? 'Submitting...' : 'Submit'}</span>
                 </button>
+
+                {/* Minimize Console Button to get Full Height Code Screen */}
+                <button
+                  onClick={() => setIsConsoleMinimized(!isConsoleMinimized)}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-colors ml-1"
+                  title={isConsoleMinimized ? "Expand Testcases Console" : "Minimize Console to expand Editor"}
+                >
+                  {isConsoleMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
               </div>
 
             </div>
 
-            {/* Console Content Area */}
-            <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
-              
-              {/* TAB A: INPUT TABLES & MULTI-TESTCASE SELECTOR */}
-              {consoleTab === 'tables' && (
-                <div className="space-y-4">
-                  {/* Testcase Switcher Pills */}
-                  <div className="flex items-center space-x-2 pb-1 border-b border-slate-800/80 overflow-x-auto">
-                    <span className="text-slate-400 text-[11px] font-sans font-bold flex items-center gap-1 mr-1">
-                      <Layers className="w-3 h-3 text-cyan-400" /> Test Cases:
-                    </span>
-                    {sqlProblem.testCases.map((tc, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveTestCaseIdx(idx)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer ${
-                          activeTestCaseIdx === idx
-                            ? 'bg-cyan-600 text-white shadow-md'
-                            : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                        }`}
-                      >
-                        Case {idx + 1}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Active Testcase Tables */}
-                  <div className="space-y-3">
-                    <div className="text-[11px] font-bold text-slate-300 font-sans">
-                      {currentTestCase.name}
+            {/* Console Content Area (Hidden when minimized) */}
+            {!isConsoleMinimized && (
+              <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
+                
+                {/* TAB A: INPUT TABLES & MULTI-TESTCASE SELECTOR */}
+                {consoleTab === 'tables' && (
+                  <div className="space-y-4">
+                    {/* Testcase Switcher Pills */}
+                    <div className="flex items-center space-x-2 pb-1 border-b border-slate-800/80 overflow-x-auto">
+                      <span className="text-slate-400 text-[11px] font-sans font-bold flex items-center gap-1 mr-1">
+                        <Layers className="w-3 h-3 text-cyan-400" /> Test Cases:
+                      </span>
+                      {sqlProblem.testCases.map((tc, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setActiveTestCaseIdx(idx)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer ${
+                            activeTestCaseIdx === idx
+                              ? 'bg-cyan-600 text-white shadow-md'
+                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                          }`}
+                        >
+                          Case {idx + 1}
+                        </button>
+                      ))}
                     </div>
 
-                    {currentTestCase.tables.map((tbl, idx) => (
-                      <div key={idx} className="space-y-1.5">
-                        <div className="text-[11px] font-bold text-cyan-400 uppercase font-sans">
-                          Table: {tbl.tableName}
-                        </div>
-                        <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
-                          <table className="w-full text-left text-[11px]">
-                            <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
-                              <tr>
-                                {tbl.schema.map((c, ci) => (
-                                  <th key={ci} className="px-3 py-1 font-bold">{c.column}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                              {tbl.rows.map((r, ri) => (
-                                <tr key={ri}>
-                                  {r.map((val, vi) => (
-                                    <td key={vi} className="px-3 py-1">{String(val)}</td>
+                    {/* Active Testcase Tables */}
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-bold text-slate-300 font-sans">
+                        {currentTestCase.name}
+                      </div>
+
+                      {currentTestCase.tables.map((tbl, idx) => (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="text-[11px] font-bold text-cyan-400 uppercase font-sans">
+                            Table: {tbl.tableName}
+                          </div>
+                          <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
+                            <table className="w-full text-left text-[11px]">
+                              <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                  {tbl.schema.map((c, ci) => (
+                                    <th key={ci} className="px-3 py-1 font-bold">{c.column}</th>
                                   ))}
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                {tbl.rows.map((r, ri) => (
+                                  <tr key={ri}>
+                                    {r.map((val, vi) => (
+                                      <td key={vi} className="px-3 py-1">{String(val)}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* TAB B: QUERY RESULT */}
-              {consoleTab === 'result' && (
-                <div className="space-y-3 font-sans">
-                  {judgeResult ? (
-                    <div className="space-y-3">
-                      
-                      {/* Status Header */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                        <div className="flex items-center space-x-2 font-black text-sm">
-                          {judgeResult.status === 'ACCEPTED' ? (
-                            <>
-                              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                              <span className="text-emerald-400">Accepted (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
-                            </>
-                          ) : judgeResult.status === 'SYNTAX_ERROR' ? (
-                            <>
-                              <XCircle className="w-5 h-5 text-rose-400" />
-                              <span className="text-rose-400">Syntax Error</span>
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-5 h-5 text-amber-400" />
-                              <span className="text-amber-400">Wrong Answer (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
-                          <span>Execution Time: <strong className="text-slate-200">{judgeResult.executionTimeMs} ms</strong></span>
-                        </div>
-                      </div>
-
-                      {/* Error Message */}
-                      {judgeResult.errorMessage && (
-                        <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
-                          {judgeResult.errorMessage}
-                        </div>
-                      )}
-
-                      {/* Output Tables Comparison */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono">
+                {/* TAB B: QUERY RESULT */}
+                {consoleTab === 'result' && (
+                  <div className="space-y-3 font-sans">
+                    {judgeResult ? (
+                      <div className="space-y-3">
                         
-                        {/* Your Output */}
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-slate-400 font-bold uppercase font-sans">Your Output:</div>
-                          <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-x-auto min-h-[60px]">
-                            {judgeResult.columns.length > 0 ? (
-                              <table className="w-full text-left text-[11px]">
-                                <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
-                                  <tr>
-                                    {judgeResult.columns.map((c, i) => (
-                                      <th key={i} className="px-3 py-1">{c}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                                  {judgeResult.rows.map((r, ri) => (
-                                    <tr key={ri}>
-                                      {r.map((val, vi) => (
-                                        <td key={vi} className="px-3 py-1">{val === null ? 'null' : String(val)}</td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                        {/* Status Header */}
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                          <div className="flex items-center space-x-2 font-black text-sm">
+                            {judgeResult.status === 'ACCEPTED' ? (
+                              <>
+                                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                                <span className="text-emerald-400">Accepted (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
+                              </>
+                            ) : judgeResult.status === 'SYNTAX_ERROR' ? (
+                              <>
+                                <XCircle className="w-5 h-5 text-rose-400" />
+                                <span className="text-rose-400">Syntax Error</span>
+                              </>
                             ) : (
-                              <div className="p-3 text-slate-500 text-[11px]">Empty result set</div>
+                              <>
+                                <XCircle className="w-5 h-5 text-amber-400" />
+                                <span className="text-amber-400">Wrong Answer (Case {(judgeResult.testCaseIdx ?? activeTestCaseIdx) + 1})</span>
+                              </>
                             )}
+                          </div>
+
+                          <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
+                            <span>Execution Time: <strong className="text-slate-200">{judgeResult.executionTimeMs} ms</strong></span>
                           </div>
                         </div>
 
-                        {/* Expected Output */}
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-emerald-400 font-bold uppercase font-sans">Expected Output:</div>
-                          <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-x-auto min-h-[60px]">
-                            {judgeResult.expectedColumns.length > 0 ? (
-                              <table className="w-full text-left text-[11px]">
-                                <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
-                                  <tr>
-                                    {judgeResult.expectedColumns.map((c, i) => (
-                                      <th key={i} className="px-3 py-1 text-emerald-400">{c}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60 text-emerald-300/90">
-                                  {judgeResult.expectedRows.map((r, ri) => (
-                                    <tr key={ri}>
-                                      {r.map((val, vi) => (
-                                        <td key={vi} className="px-3 py-1">{val === null ? 'null' : String(val)}</td>
+                        {/* Error Message */}
+                        {judgeResult.errorMessage && (
+                          <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
+                            {judgeResult.errorMessage}
+                          </div>
+                        )}
+
+                        {/* Output Tables Comparison */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono">
+                          
+                          {/* Your Output */}
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase font-sans">Your Output:</div>
+                            <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-x-auto min-h-[60px]">
+                              {judgeResult.columns.length > 0 ? (
+                                <table className="w-full text-left text-[11px]">
+                                  <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                      {judgeResult.columns.map((c, i) => (
+                                        <th key={i} className="px-3 py-1">{c}</th>
                                       ))}
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <div className="p-3 text-slate-500 text-[11px]">Empty result set</div>
-                            )}
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                                    {judgeResult.rows.map((r, ri) => (
+                                      <tr key={ri}>
+                                        {r.map((val, vi) => (
+                                          <td key={vi} className="px-3 py-1">{val === null ? 'null' : String(val)}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div className="p-3 text-slate-500 text-[11px]">Empty result set</div>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Expected Output */}
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-emerald-400 font-bold uppercase font-sans">Expected Output:</div>
+                            <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-x-auto min-h-[60px]">
+                              {judgeResult.expectedColumns.length > 0 ? (
+                                <table className="w-full text-left text-[11px]">
+                                  <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                      {judgeResult.expectedColumns.map((c, i) => (
+                                        <th key={i} className="px-3 py-1 text-emerald-400">{c}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/60 text-emerald-300/90">
+                                    {judgeResult.expectedRows.map((r, ri) => (
+                                      <tr key={ri}>
+                                        {r.map((val, vi) => (
+                                          <td key={vi} className="px-3 py-1">{val === null ? 'null' : String(val)}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div className="p-3 text-slate-500 text-[11px]">Empty result set</div>
+                              )}
+                            </div>
+                          </div>
+
                         </div>
 
                       </div>
+                    ) : (
+                      <div className="text-slate-500 py-6 text-center">
+                        Click "Run Query" or "Submit" to execute your SQL against Case {activeTestCaseIdx + 1}.
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                    </div>
-                  ) : (
-                    <div className="text-slate-500 py-6 text-center">
-                      Click "Run Query" or "Submit" to execute your SQL against Case {activeTestCaseIdx + 1}.
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
+              </div>
+            )}
 
           </div>
 
@@ -806,11 +881,17 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. SLIDE-OUT ASK AI TEACHING ASSISTANT POPUP (DOCKED ON THE RIGHT)         */}
+      {/* 3. SLIDE-OUT ASK AI TEACHING ASSISTANT POPUP (NON-BLURRED BACKGROUND)    */}
       {/* ========================================================================= */}
       {isRightAskAiOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg h-full bg-slate-950 border-l border-purple-500/40 shadow-2xl flex flex-col font-sans relative overflow-hidden animate-slideInRight">
+        <div className="fixed inset-0 z-50 flex justify-end pointer-events-none animate-fadeIn">
+          {/* Non-blurring click catcher overlay */}
+          <div 
+            onClick={() => setIsRightAskAiOpen(false)}
+            className="absolute inset-0 bg-slate-950/25 pointer-events-auto cursor-pointer"
+          />
+
+          <div className="w-full max-w-lg h-full bg-slate-950/98 border-l border-cyan-500/40 shadow-2xl flex flex-col font-sans relative overflow-hidden pointer-events-auto animate-slideInRight z-10">
             
             {/* Header */}
             <div className="p-4 bg-gradient-to-r from-slate-900 via-cyan-950/70 to-slate-950 border-b border-cyan-500/30 flex items-center justify-between">
@@ -900,7 +981,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                         className="absolute top-2 right-2 p-1 text-slate-500 hover:text-cyan-300 transition-colors cursor-pointer"
                         title="Copy message text"
                       >
-                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     )}
                   </div>
