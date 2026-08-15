@@ -6,7 +6,7 @@ const INITIALIZATION_STEPS = [
   { label: 'Syncing High-Definition Lecture Buffers', icon: ShieldCheck },
   { label: 'Warming SDETube Speech STT & AI Engine', icon: Sparkles },
   { label: 'Loading SDE Sheet Curated Curricula', icon: Cpu },
-  { label: 'Initializing Sandboxed LeetCode Compiler & IDE', icon: Code2 },
+  { label: 'Initializing Sandboxed Cloud Compiler & IDE', icon: Code2 },
   { label: 'Verifying Academic Progress & Cloud Diagnostics', icon: ShieldCheck },
 ];
 
@@ -112,7 +112,7 @@ export const LoadingScreen: React.FC = () => {
         <div className="flex items-center justify-center space-x-2 text-[10px] font-mono text-slate-400 pt-1">
           <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">Cloud HD Streams</span>
           <span className="text-slate-600">•</span>
-          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">LeetCode Sandbox IDE</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">Cloud Sandbox IDE</span>
           <span className="text-slate-600">•</span>
           <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">SDETube AI Engine</span>
         </div>

@@ -241,30 +241,41 @@ class SupabaseConnectionManager:
 
 _supabase_conn_manager = SupabaseConnectionManager()
 
+from r2_storage import r2_storage
+
 def sync_artifacts_to_supabase(data: dict):
-    """Saves completed transcript, MCQs, coding problem, and Algomaster notes into Supabase database via reused connection."""
+    """
+    Architecture:
+    1. Uploads full heavy text payload (transcript, notes, MCQs, code) to Cloudflare R2 object storage (10 GB free, 0 egress cost).
+    2. Saves lightweight index pointer in Supabase DB (saving 99% database storage).
+    3. Caches in local SQLite & RAM.
+    """
     save_to_sqlite(data)
+    chat_id = data.get("chat_id")
+    msg_id = data.get("msg_id")
+    title = data.get("title")
+    transcript = data.get("transcript")
+    if not transcript or len(transcript.strip()) < 120:
+        return  # Incomplete transcript — do not store
+    
+    file_id = f"{chat_id}_{msg_id}"
+    
+    # 1. Cloudflare R2 Object Storage upload
+    r2_key = r2_storage.upload_artifact_payload(file_id, data)
+    
+    # 2. Supabase Lightweight Metadata Indexing
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return
     try:
-        chat_id = data.get("chat_id")
-        msg_id = data.get("msg_id")
-        title = data.get("title")
-        transcript = data.get("transcript")
-        if not transcript or len(transcript.strip()) < 120:
-            return  # Incomplete transcript — do not store
-        
-        file_id = f"{chat_id}_{msg_id}"
         payload = {
             "telegram_file_id": file_id,
             "title": title,
-            "transcript": transcript,
             "duration_seconds": 900,
+            "transcript": f"R2_POINTER:{r2_key or file_id}",  # Lightweight pointer instead of heavy text
             "quiz_json": {
-                "mcqs": data.get("mcqs", []),
-                "coding_problem": data.get("coding_problem"),
-                "simulation_steps": data.get("simulation_steps", []),
-                "notes": data.get("notes")
+                "r2_storage_key": r2_key or f"payloads/{file_id}.json",
+                "r2_bucket": "sdestream",
+                "has_artifacts": True
             }
         }
         headers = {
@@ -275,25 +286,37 @@ def sync_artifacts_to_supabase(data: dict):
         session = _supabase_conn_manager.get_session()
         resp = session.post(url, headers=headers, json=payload, timeout=5)
         if resp.status_code in [200, 201]:
-            print(f"[Supabase Cloud Sync] Successfully persisted artifacts for {file_id} in Supabase (Connection Reused)")
+            print(f"[Supabase Metadata Index] Indexed pointer for {file_id} (Raw payload in Cloudflare R2)")
     except Exception as e:
         print(f"[Supabase Cloud Sync Notice]: {e}")
 
 def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Optional[dict]:
-    """Fetches previously stored transcript and artifacts from SQLite DB and Supabase database using connection pool."""
-    # Check SQLite first (instant 0ms retrieval)
+    """
+    Fetches transcript & artifacts:
+    1. Check SQLite / RAM (0ms instant retrieval).
+    2. Check Cloudflare R2 Object Storage for payload.
+    3. Fallback to Supabase metadata index.
+    """
+    # 1. Check SQLite first (instant 0ms retrieval)
     sqlite_hit = fetch_from_sqlite(chat_id, msg_id, title)
     if sqlite_hit:
         return sqlite_hit
 
+    file_id = f"{chat_id}_{msg_id}"
+    clean_title = (title or "").strip()
+
+    # 2. Check Cloudflare R2 Object Storage directly
+    r2_payload = r2_storage.fetch_artifact_payload(file_id)
+    if r2_payload and r2_payload.get("transcript") and len(r2_payload.get("transcript", "").strip()) > 120:
+        print(f"[Cloudflare R2 Direct Hit] Loaded stored transcript & AI artifacts for {file_id} (0 egress cost)")
+        save_to_sqlite(r2_payload)
+        return r2_payload
+
+    # 3. Fallback to Supabase DB
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return None
     try:
-        file_id = f"{chat_id}_{msg_id}"
-        clean_title = (title or "").strip()
         session = _supabase_conn_manager.get_session()
-        
-        # Search by file_id OR title
         url = f"{SUPABASE_URL}/rest/v1/videos?telegram_file_id=eq.{file_id}&select=*"
         resp = session.get(url, timeout=4)
         if resp.status_code == 200:
@@ -307,10 +330,19 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
 
             if rows and len(rows) > 0:
                 row = rows[0]
-                tr = row.get("transcript")
+                tr = row.get("transcript") or ""
                 qj = row.get("quiz_json") or {}
-                if tr and len(tr.strip()) > 120:
-                    print(f"[Supabase DB Hit] Loaded stored transcript & AI artifacts for {file_id} (Connection Reused)")
+
+                # If Supabase has an R2 pointer or raw transcript
+                if tr.startswith("R2_POINTER:") or (isinstance(qj, dict) and qj.get("r2_storage_key")):
+                    r2_key = qj.get("r2_storage_key") if isinstance(qj, dict) else tr.replace("R2_POINTER:", "")
+                    r2_fetched = r2_storage.fetch_artifact_payload(r2_key.replace("payloads/", "").replace(".json", ""))
+                    if r2_fetched and r2_fetched.get("transcript"):
+                        save_to_sqlite(r2_fetched)
+                        return r2_fetched
+
+                if tr and len(tr.strip()) > 120 and not tr.startswith("R2_POINTER:"):
+                    print(f"[Supabase DB Legacy Hit] Found legacy row in Supabase for {file_id}, migrating to Cloudflare R2...")
                     result_obj = {
                         "chat_id": chat_id,
                         "msg_id": msg_id,
@@ -329,10 +361,11 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
                         "has_artifacts": True,
                         "estimated_seconds_left": 0
                     }
-                    save_to_sqlite(result_obj)
+                    # Shift legacy text to Cloudflare R2 and update Supabase with lightweight pointer
+                    sync_artifacts_to_supabase(result_obj)
                     return result_obj
     except Exception as e:
-        print(f"[Supabase DB Query Notice]: {e}")
+        print(f"[Supabase / R2 Fetch Notice]: {e}")
     return None
 
 # Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX)
