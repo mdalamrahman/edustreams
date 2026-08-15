@@ -224,7 +224,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                TiliTube AI Teaching Assistant
+                SDETube AI Teaching Assistant
               </h3>
               <p className="text-[11px] text-purple-300 font-mono line-clamp-1">
                 Lecture: {cleanTitle}
@@ -487,7 +487,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
                   </div>
                   <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 text-purple-400 flex items-center space-x-2">
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span className="text-[11px] font-mono">TiliTube AI is analyzing {selectedMode} context...</span>
+                    <span className="text-[11px] font-mono">SDETube AI is analyzing {selectedMode} context...</span>
                   </div>
                 </div>
               )}

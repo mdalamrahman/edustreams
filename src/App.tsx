@@ -32,7 +32,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { SDESheetExplorer } from './components/SDESheetExplorer';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
-import { SDEProblem } from './lib/sdeSheetData';
+import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent } from './lib/auth';
@@ -50,7 +50,8 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings'>('channels');
+  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings'>('channels');
+  const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
   const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
@@ -60,6 +61,7 @@ export function App() {
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
   const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
+  const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
     setAskAIMode(mode);
@@ -475,6 +477,7 @@ export function App() {
     if (match) {
       setSelectedVideo(match);
       setSelectedChannelId(match.channel_id);
+      setReturnTarget('sde_sheet');
       setActiveTab('lesson');
     }
   };
@@ -484,7 +487,21 @@ export function App() {
       setShowMobileGating(true);
       return;
     }
+
+    const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    const pName = problem.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
+    const pWords = pName.split(/\s+/).filter(w => w.length > 2);
+
+    let matched = list.find((v) => {
+      const vTitle = v.title.toLowerCase();
+      return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName) || pName.includes(vTitle);
+    }) || list.find((v) => {
+      const vTitle = v.title.toLowerCase();
+      return pWords.some(w => vTitle.includes(w));
+    }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+
     setSdeFullscreenProblem(problem);
+    setSdeFullscreenVideo(matched || null);
   };
 
   const handleQuestionSolved = (timeTakenSeconds: number, isCorrect: boolean) => {
@@ -697,6 +714,7 @@ export function App() {
                             <button
                               onClick={() => {
                                 setSelectedVideo(v);
+                                setReturnTarget('channels');
                                 setActiveTab('lesson');
                               }}
                               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20"
@@ -743,15 +761,27 @@ export function App() {
         {activeTab === 'lesson' && (
           <div className="space-y-6">
             
-            {/* Top Workspace Lecture Banner */}
-            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+            {/* Top Workspace Lecture Banner with Back Button & Contextual Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-xl">
+              
               <div className="flex items-center space-x-3">
-                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
-                  Lecture: {selectedVideo.title}
-                </span>
-                <span className="text-xs text-slate-400 hidden sm:inline font-mono">
-                  Channel: {activeChannelObj.name}
-                </span>
+                {/* Back Button returning to previous page */}
+                <button
+                  onClick={() => {
+                    setActiveTab(returnTarget);
+                  }}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold border border-slate-700 transition-all shadow-sm active:scale-95"
+                  title="Return to previous screen"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to {returnTarget === 'sde_sheet' ? 'SDE Sheet' : 'Channels'}</span>
+                </button>
+
+                <div className="hidden md:flex items-center space-x-2">
+                  <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50 truncate max-w-sm">
+                    {selectedVideo.title}
+                  </span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -760,14 +790,31 @@ export function App() {
                   className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Ask AI on Notes</span>
+                  <span>Ask AI</span>
                 </button>
 
+                {/* Open Fullscreen LeetCode IDE for this lecture */}
                 <button
-                  onClick={() => setActiveTab('code')}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md"
+                  onClick={() => {
+                    const cleanName = selectedVideo.title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
+                    const matchedProblem = SDE_SHEET_DATA.find(p => 
+                      p.name.toLowerCase().includes(cleanName.toLowerCase()) || 
+                      cleanName.toLowerCase().includes(p.name.toLowerCase())
+                    ) || {
+                      id: 999,
+                      category: activeChannelObj?.name || 'DSA',
+                      name: cleanName,
+                      leetcode: 'https://leetcode.com',
+                      gfg: 'https://www.geeksforgeeks.org',
+                      companies: ['Amazon', 'Microsoft', 'Google', 'Meta'],
+                      difficulty: 'Medium' as const,
+                      rating: '5.0 / 5 (Must Do)'
+                    };
+                    handleOpenCodingFullscreen(matchedProblem);
+                  }}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40"
                 >
-                  <Code2 className="w-3.5 h-3.5" />
+                  <Code2 className="w-4 h-4" />
                   <span>Open Coding IDE</span>
                 </button>
               </div>
@@ -810,75 +857,6 @@ export function App() {
           </div>
         )}
 
-        {/* VIEW 2.2: DEDICATED SDE CODING IDE WORKSPACE */}
-        {activeTab === 'code' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
-              <div className="flex items-center space-x-3">
-                <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50">
-                  Coding Challenge: {videoArtifacts?.coding_problem?.title || selectedVideo.title}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveTab('lesson')}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Video</span>
-              </button>
-            </div>
-
-            <div className="h-[750px]">
-              <CodeWorkspace
-                codingProblem={videoArtifacts?.coding_problem}
-                question={activeCodingQuestion}
-                allCodingQuestions={activeVideoQuiz.filter(q => q.type === 'CODING')}
-                isLoading={quizLoading}
-                progressPercent={videoArtifacts?.progress_percent}
-                currentPart={videoArtifacts?.current_part}
-                totalParts={videoArtifacts?.total_parts}
-                stage={videoArtifacts?.stage}
-                estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
-                onCodeExecuted={handleQuestionSolved}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* VIEW 2.4: DEDICATED MCQ QUIZ ARENA */}
-        {activeTab === 'quiz' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
-              <div className="flex items-center space-x-3">
-                <span className="text-xs text-amber-300 font-mono font-bold px-3 py-1 rounded-xl bg-amber-950 border border-amber-700/50">
-                  Quiz Assessment: {selectedVideo.title}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveTab('lesson')}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to Video</span>
-              </button>
-            </div>
-
-            <QuizModule
-              questions={activeMCQs}
-              videoTitle={selectedVideo.title}
-              durationSeconds={selectedVideo.duration_seconds}
-              progressPercent={videoArtifacts?.progress_percent}
-              currentPart={videoArtifacts?.current_part}
-              totalParts={videoArtifacts?.total_parts}
-              stage={videoArtifacts?.stage}
-              estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
-              onQuizSubmitted={handleQuestionSolved}
-              onAttemptMoreQuestions={handleAttemptMoreQuestions}
-              isGeneratingMore={isGeneratingMoreQuiz}
-            />
-          </div>
-        )}
-
         {/* VIEW 2.5: SDE SHEET EXPLORER WITH 191 PROBLEMS */}
         {activeTab === 'sde_sheet' && (
           <SDESheetExplorer
@@ -912,13 +890,23 @@ export function App() {
         <LeetCodeWorkspaceModal
           problemTitle={sdeFullscreenProblem.name}
           initialLanguage="python"
+          matchingVideo={sdeFullscreenVideo || selectedVideo}
           codingProblem={{
             title: sdeFullscreenProblem.name,
-            problem_statement: `### ${sdeFullscreenProblem.name}\n\n**Category:** ${sdeFullscreenProblem.category}  \n**Difficulty:** ${sdeFullscreenProblem.difficulty}  \n**Top Companies:** ${sdeFullscreenProblem.companies.join(', ')}  \n**Importance:** ${sdeFullscreenProblem.rating}\n\n#### Problem Description\nImplement an optimal solution for **${sdeFullscreenProblem.name}**. Analyze the Time & Space complexity.\n\n#### Practice Links\n- [LeetCode Challenge](${sdeFullscreenProblem.leetcode})\n- [GeeksforGeeks Practice](${sdeFullscreenProblem.gfg})`,
-            starter_code_python: `# TiliTube SDE Arena: ${sdeFullscreenProblem.name}\n# Difficulty: ${sdeFullscreenProblem.difficulty} | Companies: ${sdeFullscreenProblem.companies.slice(0, 3).join(', ')}\n\nclass Solution:\n    def solve(self) -> None:\n        # Write your optimal algorithm here\n        pass\n\nif __name__ == "__main__":\n    sol = Solution()\n    sol.solve()\n    print("Code executed successfully on TiliTube Cloud Engine.")\n`,
-            starter_code_cpp: `// TiliTube SDE Arena: ${sdeFullscreenProblem.name}\n// Difficulty: ${sdeFullscreenProblem.difficulty}\n\n#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Optimal C++ Solution\n    }\n};\n\nint main() {\n    Solution sol;\n    sol.solve();\n    cout << "Success: Problem executed on TiliTube Cloud Compiler." << endl;\n    return 0;\n}\n`
+            category: sdeFullscreenProblem.category,
+            difficulty: sdeFullscreenProblem.difficulty,
+            rating: sdeFullscreenProblem.rating,
+            companies: sdeFullscreenProblem.companies,
+            leetcode: sdeFullscreenProblem.leetcode,
+            gfg: sdeFullscreenProblem.gfg,
+            problem_statement: `Implement an optimal solution for ${sdeFullscreenProblem.name}. Analyze the Time & Space complexity.`,
+            starter_code_python: `# SDETube LeetCode Arena: ${sdeFullscreenProblem.name}\n# Difficulty: ${sdeFullscreenProblem.difficulty} | Companies: ${sdeFullscreenProblem.companies.slice(0, 3).join(', ')}\n\nclass Solution:\n    def solve(self) -> None:\n        # Write your optimal algorithm here\n        pass\n\nif __name__ == "__main__":\n    sol = Solution()\n    sol.solve()\n    print("Code executed successfully on SDETube Cloud Engine.")\n`,
+            starter_code_cpp: `// SDETube LeetCode Arena: ${sdeFullscreenProblem.name}\n// Difficulty: ${sdeFullscreenProblem.difficulty}\n\n#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Optimal C++ Solution\n    }\n};\n\nint main() {\n    Solution sol;\n    sol.solve();\n    cout << "Success: Problem executed on SDETube Cloud Compiler." << endl;\n    return 0;\n}\n`
           }}
-          onClose={() => setSdeFullscreenProblem(null)}
+          onClose={() => {
+            setSdeFullscreenProblem(null);
+            setSdeFullscreenVideo(null);
+          }}
           onCodeExecuted={handleQuestionSolved}
         />
       )}

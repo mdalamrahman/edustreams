@@ -89,7 +89,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80 mb-4">
         <div className="flex items-center space-x-2">
           <HelpCircle className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-semibold text-slate-100">TiliTube AI Conceptual MCQ Quiz</h3>
+          <h3 className="text-sm font-semibold text-slate-100">SDETube AI Conceptual MCQ Quiz</h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
@@ -175,7 +175,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
       {isAnswered && currentQ.explanation && (
         <div className="p-3.5 rounded-xl bg-slate-950 border border-indigo-900/50 mb-4 text-xs text-slate-300">
           <strong className="text-indigo-400 font-semibold flex items-center gap-1 mb-1">
-            <Sparkles className="w-3.5 h-3.5" /> TiliTube AI Explanation:
+            <Sparkles className="w-3.5 h-3.5" /> SDETube AI Explanation:
           </strong>
           {currentQ.explanation}
         </div>
@@ -246,7 +246,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
                 <HelpCircle className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-100">TiliTube AI MCQ Quiz — Fullscreen Assessment</h3>
+                <h3 className="text-lg font-bold text-slate-100">SDETube AI MCQ Quiz — Fullscreen Assessment</h3>
                 <p className="text-xs text-slate-400">Question {currentIndex + 1} of {questions.length} • Current Score: {score}</p>
               </div>
             </div>
@@ -302,7 +302,7 @@ export const QuizModule: React.FC<QuizModuleProps> = ({
             {isAnswered && currentQ.explanation && (
               <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-900/50 text-xs sm:text-sm text-slate-300 space-y-1">
                 <strong className="text-indigo-400 font-semibold flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-300" /> TiliTube AI Conceptual Explanation:
+                  <Sparkles className="w-4 h-4 text-amber-300" /> SDETube AI Conceptual Explanation:
                 </strong>
                 <p>{currentQ.explanation}</p>
               </div>

@@ -16,8 +16,8 @@ import {
 import { useDevice } from '../lib/device';
 
 interface NavbarProps {
-  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'code' | 'quiz' | 'analytics' | 'settings') => void;
+  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings';
+  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -59,22 +59,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar">
+        <nav className="flex items-center space-x-2">
           <button
             onClick={() => setActiveTab('channels')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'channels'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span className="hidden md:inline">Channels</span>
+            <span>Channels</span>
           </button>
 
           <button
             onClick={() => setActiveTab('sde_sheet')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'sde_sheet'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
                 : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40 border border-purple-900/40'
@@ -85,54 +85,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('lesson')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === 'lesson'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-            title="Video Lecture + SDE Notes Side-by-Side"
-          >
-            <Tv className="w-4 h-4 text-sky-400" />
-            <span>Video & Notes</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('code')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === 'code'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-            title="Monaco SDE Coding IDE"
-          >
-            <Terminal className="w-4 h-4 text-cyan-300" />
-            <span>Coding IDE</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('quiz')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-              activeTab === 'quiz'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-            title="Conceptual MCQ Quiz Arena"
-          >
-            <HelpCircle className="w-4 h-4 text-amber-300" />
-            <span>MCQ Quiz</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'analytics'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Analytics</span>
+            <span>Analytics</span>
           </button>
         </nav>
 

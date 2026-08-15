@@ -30,7 +30,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 }) => {
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_SOLVED_KEY) || localStorage.getItem('tilitube_sde_sheet_solved_ids');
+      const saved = localStorage.getItem(STORAGE_SOLVED_KEY) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];

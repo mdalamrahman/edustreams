@@ -467,16 +467,42 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           {/* Left Panel Content Body */}
           <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans">
             
-            {/* TAB 1: DESCRIPTION */}
+            {/* TAB 1: CLEAN LEETCODE-STYLE DESCRIPTION */}
             {leftTab === 'description' && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <h2 className="text-lg font-black text-slate-100">{cleanTitle}</h2>
+                
+                {/* Header & Meta Badges */}
+                <div className="space-y-2.5 pb-3 border-b border-slate-800">
+                  <h2 className="text-xl font-black text-slate-100 tracking-tight">{cleanTitle}</h2>
                   
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-mono border ${
+                      difficulty === 'Easy'
+                        ? 'bg-emerald-950/90 text-emerald-400 border-emerald-700/60'
+                        : difficulty === 'Hard'
+                        ? 'bg-rose-950/90 text-rose-400 border-rose-700/60'
+                        : 'bg-amber-950/90 text-amber-400 border-amber-700/60'
+                    }`}>
+                      {difficulty}
+                    </span>
+
+                    {codingProblem?.category && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-xs font-mono font-semibold">
+                        {codingProblem.category}
+                      </span>
+                    )}
+
+                    {codingProblem?.rating && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/60 text-amber-300 text-xs font-mono font-bold flex items-center gap-1">
+                        ★ {codingProblem.rating}
+                      </span>
+                    )}
+                  </div>
+
                   {/* Company Pills */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
-                      <Building2 className="w-3 h-3 text-slate-500" /> Companies:
+                      <Building2 className="w-3 h-3 text-slate-500" /> Top Companies:
                     </span>
                     {companies.map((comp: string) => (
                       <span key={comp} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[10px]">
@@ -486,35 +512,90 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 whitespace-pre-line text-slate-200 leading-relaxed font-sans">
-                  {problemStatement}
+                {/* Problem Statement text */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Description</h3>
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
+                    {cleanTitle.toLowerCase().includes('matrix') ? (
+                      <div>
+                        Given an <code>m x n</code> integer matrix <code>matrix</code>, if an element is <code>0</code>, set its entire row and column to <code>0</code>'s. You must do it in place without allocating auxiliary 2D matrix memory.
+                      </div>
+                    ) : cleanTitle.toLowerCase().includes('pascal') ? (
+                      <div>
+                        Given an integer <code>numRows</code>, return the first <code>numRows</code> of Pascal's triangle. In Pascal's triangle, each number is the sum of the two numbers directly above it.
+                      </div>
+                    ) : cleanTitle.toLowerCase().includes('kadane') || cleanTitle.toLowerCase().includes('maximum subarray') ? (
+                      <div>
+                        Given an integer array <code>nums</code>, find the subarray with the largest sum, and return its sum in optimal <code>O(N)</code> time.
+                      </div>
+                    ) : cleanTitle.toLowerCase().includes('two sum') ? (
+                      <div>
+                        Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.
+                      </div>
+                    ) : (
+                      <div>
+                        Implement an optimal algorithmic solution for <strong>{cleanTitle}</strong>. Formulate the time complexity target of <code>O(N)</code> or <code>O(N log N)</code> with optimal space utilization.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Example 1 & Example 2 */}
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Example Test Cases</h4>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Example Test Cases</h3>
                   
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
-                    <div className="text-indigo-300 font-bold">Example 1:</div>
-                    <div className="text-slate-300"><strong>Input:</strong> nums = [2, 7, 11, 15], target = 9</div>
-                    <div className="text-slate-300"><strong>Output:</strong> [0, 1]</div>
-                    <div className="text-slate-400 text-[10px]"><strong>Explanation:</strong> Because nums[0] + nums[1] == 9, we return [0, 1].</div>
+                    <div className="text-indigo-400 font-bold">Example 1:</div>
+                    <div className="text-slate-300"><strong>Input:</strong> matrix = [[1,1,1],[1,0,1],[1,1,1]]</div>
+                    <div className="text-slate-300"><strong>Output:</strong> [[1,0,1],[0,0,0],[1,0,1]]</div>
+                    <div className="text-slate-400 text-[10px]"><strong>Explanation:</strong> Element at (1,1) is 0, so entire row 1 and column 1 are set to 0.</div>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
-                    <div className="text-indigo-300 font-bold">Example 2:</div>
-                    <div className="text-slate-300"><strong>Input:</strong> nums = [3, 2, 4], target = 6</div>
-                    <div className="text-slate-300"><strong>Output:</strong> [1, 2]</div>
+                    <div className="text-indigo-400 font-bold">Example 2:</div>
+                    <div className="text-slate-300"><strong>Input:</strong> matrix = [[0,1,2,0],[3,4,5,2],[1,3,1,5]]</div>
+                    <div className="text-slate-300"><strong>Output:</strong> [[0,0,0,0],[0,4,5,0],[0,3,1,0]]</div>
                   </div>
                 </div>
 
                 {/* Constraints */}
                 <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 text-[11px] font-mono text-slate-400">
                   <h4 className="font-bold text-slate-300 font-sans text-xs uppercase tracking-wider">Constraints:</h4>
-                  <div>• <code>1 &lt;= nums.length &lt;= 10^5</code></div>
-                  <div>• <code>-10^9 &lt;= nums[i] &lt;= 10^9</code></div>
-                  <div>• Only one valid answer exists.</div>
+                  <div>• <code>m == matrix.length</code>, <code>n == matrix[0].length</code></div>
+                  <div>• <code>1 &lt;= m, n &lt;= 200</code></div>
+                  <div>• <code>-2^31 &lt;= matrix[i][j] &lt;= 2^31 - 1</code></div>
+                  <div>• Follow up: A straightforward solution using O(mn) space is probably a bad idea. A simple improvement uses O(m + n) space, but could you devise a constant space solution?</div>
                 </div>
+
+                {/* External Practice Links */}
+                {(codingProblem?.leetcode || codingProblem?.gfg) && (
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">External Platforms</h4>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {codingProblem.leetcode && (
+                        <a
+                          href={codingProblem.leetcode}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition-colors"
+                        >
+                          <span>Solve on LeetCode</span>
+                        </a>
+                      )}
+                      {codingProblem.gfg && (
+                        <a
+                          href={codingProblem.gfg}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-colors"
+                        >
+                          <span>Solve on GeeksforGeeks</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 
@@ -553,13 +634,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <span>SDETube Algomaster Editorial & Intuition</span>
                   </h3>
                   <p className="text-slate-300 text-xs leading-relaxed">
-                    <strong>Optimal Approach:</strong> Use hash mapping or two-pointer invariants to achieve single-pass linear time complexity.
+                    <strong>Optimal Approach:</strong> Use the first row and first column of the matrix itself as state markers to achieve <code>O(1)</code> in-place space complexity!
                   </p>
 
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 font-mono text-[11px] space-y-1">
                     <div className="text-emerald-400 font-bold">Complexity Summary:</div>
-                    <div>• Time Complexity: <strong>O(N)</strong></div>
-                    <div>• Space Complexity: <strong>O(N)</strong> for hash table (or O(1) for two pointers)</div>
+                    <div>• Time Complexity: <strong>O(M * N)</strong> — 2 passes across the grid</div>
+                    <div>• Space Complexity: <strong>O(1)</strong> — In-place marker variables</div>
                   </div>
                 </div>
               </div>
@@ -572,7 +653,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
                     <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
                       <VideoIcon className="w-3.5 h-3.5" />
-                      <span>Matching Lecture Video</span>
+                      <span>Lecture Video Stream</span>
                     </span>
                     <span className="text-[10px] font-mono text-slate-400">
                       {matchingVideo?.title || cleanTitle}
@@ -583,6 +664,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <video
                       src={matchingVideo.stream_url}
                       controls
+                      autoPlay={false}
                       className="w-full rounded-xl aspect-video bg-black shadow-lg"
                       playsInline
                     />
@@ -590,7 +672,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <div className="aspect-video bg-slate-900 rounded-xl flex flex-col items-center justify-center text-center p-4">
                       <VideoIcon className="w-8 h-8 text-purple-400 mb-2 animate-pulse" />
                       <p className="text-xs font-bold text-slate-200">Video Solution for {cleanTitle}</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Available in SDETube Video Catalog</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Streaming via SDETube Video Engine</p>
                     </div>
                   )}
                 </div>

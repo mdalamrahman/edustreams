@@ -51,7 +51,7 @@ export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({
       {/* Main Header Badge */}
       <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-bold tracking-wide shadow-inner">
         <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-        <span>TILITUBE AI PROCESSING ENGINE</span>
+        <span>SDETUBE AI PROCESSING ENGINE</span>
       </div>
 
       {/* Title & Description */}
@@ -166,7 +166,7 @@ export const AIProcessingStatusCard: React.FC<AIProcessingStatusCardProps> = ({
       </div>
 
       <p className="text-[11px] text-slate-500 font-mono pt-1">
-        TiliTube Cloud will automatically refresh components once processing completes.
+        SDETube Cloud will automatically refresh components once processing completes.
       </p>
 
     </div>

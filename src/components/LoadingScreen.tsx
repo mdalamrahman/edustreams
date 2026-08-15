@@ -4,8 +4,8 @@ import { Sparkles, Cpu, Layers, Zap, Code2, ShieldCheck, Radio } from 'lucide-re
 const INITIALIZATION_STEPS = [
   { label: 'Connecting Telethon MTProto Proxy Streams', icon: Radio },
   { label: 'Connecting Telethon MTProto Stream Channel Proxy', icon: ShieldCheck },
-  { label: 'Warming TiliTube Speech & Audio Engine', icon: Sparkles },
-  { label: 'Loading TiliTube Academic Diagnostics', icon: Cpu },
+  { label: 'Warming SDETube Speech & Audio Engine', icon: Sparkles },
+  { label: 'Loading SDETube Academic Diagnostics', icon: Cpu },
   { label: 'Initializing Monaco Sandboxed Code Workspace', icon: Code2 },
   { label: 'Verifying Supabase Auth & Cloud Database Sync', icon: ShieldCheck },
 ];
@@ -71,7 +71,7 @@ export const LoadingScreen: React.FC = () => {
         {/* Title & Tagline */}
         <div className="space-y-1.5">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold tracking-wider uppercase">
-            <Zap className="w-3 h-3 text-amber-400 fill-current" /> TiliTube AI Engine
+            <Zap className="w-3 h-3 text-amber-400 fill-current" /> SDETube AI Engine
           </div>
           <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-indigo-200 to-purple-300 tracking-tight">
             Synchronizing Learning Platform
@@ -114,7 +114,7 @@ export const LoadingScreen: React.FC = () => {
           <span className="text-slate-600">•</span>
           <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">Judge0 Compiler</span>
           <span className="text-slate-600">•</span>
-          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">TiliTube Cloud</span>
+          <span className="px-2.5 py-0.5 rounded-md bg-slate-950 border border-slate-800">SDETube Cloud</span>
         </div>
 
       </div>

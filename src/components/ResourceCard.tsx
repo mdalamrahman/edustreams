@@ -101,7 +101,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
       <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
         <div className="flex items-center space-x-2">
           <Paperclip className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-bold text-slate-100">TiliTube Study Attachments & Notes</h3>
+          <h3 className="text-sm font-bold text-slate-100">SDETube Study Attachments & Notes</h3>
         </div>
         <span className="text-xs font-mono text-slate-300 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
           {attachments.length} Resources

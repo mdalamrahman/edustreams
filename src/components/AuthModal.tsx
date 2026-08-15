@@ -98,7 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <Tv className="w-7 h-7 text-indigo-400" />
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight gradient-text">TiliTube AI Portal</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight gradient-text">SDETube AI Portal</h1>
           <p className="text-xs text-slate-400 mt-1 max-w-sm">
             Private Educational Matrix & Automated MTProto Video Ingestion Engine
           </p>
