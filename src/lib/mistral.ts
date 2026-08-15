@@ -19,6 +19,7 @@ export interface ContextualChatPayload {
   mode: 'video' | 'notes' | 'quiz' | 'code';
   userMsg: string;
   videoTitle: string;
+  timestamp?: string;
   transcript?: string;
   notes?: string;
   mcq?: {
@@ -41,19 +42,21 @@ export interface ContextualChatPayload {
 }
 
 export async function requestContextualAIChatResponse(payload: ContextualChatPayload): Promise<string> {
-  const { mode, userMsg, videoTitle, transcript, notes, mcq, codingContext, history = [] } = payload;
+  const { mode, userMsg, videoTitle, timestamp, transcript, notes, mcq, codingContext, history = [] } = payload;
   const cleanTitle = (videoTitle || 'Computer Science Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
 
   let contextDescription = '';
   if (mode === 'video') {
-    contextDescription = `MODE: VIDEO LECTURE & SPEECH TRANSCRIPT
-You are grounded in the lecture "${cleanTitle}".
+    contextDescription = `MODE: VIDEO LECTURE & SPEECH TRANSCRIPT (TIMESTAMP-REFERENCED)
+You are an expert computer science and software engineering teaching assistant grounded in the lecture "${cleanTitle}".
+${timestamp ? `ACTIVE VIDEO TIMEMARK: ${timestamp} (The student paused the video at ${timestamp} to ask for clarification).` : ''}
 VERBATIM LECTURE TRANSCRIPT:
-${(transcript || '').slice(0, 12000)}
+${(transcript || '').slice(0, 14000)}
 
 Instructions:
-- Answer based directly on what was taught in the transcript.
-- Cite specific concepts, definitions, and code patterns explained in the video.`;
+- If a timestamp (${timestamp || 'N/A'}) is referenced, explain with precision what the instructor is teaching, drawing, or coding at this point in the lecture.
+- Provide clear intuition, mental models, trade-offs, and practical interview takeaways.
+- Present explanations in clean, readable prose.`;
   } else if (mode === 'notes') {
     contextDescription = `MODE: ALGOMASTER SDE STUDY NOTES
 You are grounded in the Algomaster SDE study guide for "${cleanTitle}".

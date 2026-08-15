@@ -64,12 +64,14 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
   const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
+  const [askAITimestamp, setAskAITimestamp] = useState<number | undefined>(undefined);
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
 
-  const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
+  const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
     setAskAIMode(mode);
+    setAskAITimestamp(timestamp);
     setIsAskAIOpen(true);
   };
 
@@ -1117,7 +1119,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                   onPrevLecture={handlePrevLecture}
                   hasNextLecture={hasNextLecture}
                   hasPrevLecture={hasPrevLecture}
-                  onOpenAskAI={() => openAskAIWithMode('video')}
+                  onOpenAskAI={(mode, timestamp) => openAskAIWithMode(mode || 'video', timestamp)}
                   onAutoComplete={handleAutoComplete}
                 />
                 <ResourceCard
@@ -1246,10 +1248,14 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
       {/* Ask AI Teaching Assistant Chatbot Drawer */}
       <AskAIChatModal
         isOpen={isAskAIOpen}
-        onClose={() => setIsAskAIOpen(false)}
+        onClose={() => {
+          setIsAskAIOpen(false);
+          setAskAITimestamp(undefined);
+        }}
         video={selectedVideo}
         videoArtifacts={videoArtifacts}
         initialMode={askAIMode}
+        currentTimestamp={askAITimestamp}
         activeMCQ={activeVideoQuiz && activeVideoQuiz.length > 0 ? activeVideoQuiz[0] : undefined}
         codingProblem={videoArtifacts?.coding_problem}
       />

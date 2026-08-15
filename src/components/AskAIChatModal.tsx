@@ -34,6 +34,7 @@ interface AskAIChatModalProps {
   video: Video;
   videoArtifacts?: any;
   initialMode?: AskAIMode;
+  currentTimestamp?: number;
   activeMCQ?: QuizQuestion;
   selectedMCQOption?: number | null;
   activeCode?: string;
@@ -48,6 +49,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
   video,
   videoArtifacts,
   initialMode,
+  currentTimestamp,
   activeMCQ,
   selectedMCQOption,
   activeCode,
@@ -69,6 +71,10 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
   const realNotes = videoArtifacts?.notes || '';
   const resolvedCodingProblem = videoArtifacts?.coding_problem || codingProblem;
 
+  const formattedTs = typeof currentTimestamp === 'number' && currentTimestamp > 0
+    ? `${Math.floor(currentTimestamp / 60)}:${Math.floor(currentTimestamp % 60) < 10 ? '0' : ''}${Math.floor(currentTimestamp % 60)}`
+    : undefined;
+
   // Reset or preset selection when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -86,7 +92,9 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
 
     let greetingText = '';
     if (selectedMode === 'video') {
-      greetingText = `Hello! I am your AI Teaching Assistant for **"${cleanTitle}"**.\n\n🎙️ **Grounding Context:** Verbatim Lecture Speech Transcript (${realTranscript ? 'Loaded' : 'Synthesizing in background'}).\n\nAsk me any question about the concepts, time complexity, or architectural walkthrough explained by the instructor in this video!`;
+      greetingText = formattedTs
+        ? `Hello! I am your AI Teaching Assistant for **"${cleanTitle}"** referencing timestamp **${formattedTs}**.\n\n📍 **Paused at:** \`${formattedTs}\`\n🎙️ **Grounding Context:** Verbatim Lecture Speech Transcript (${realTranscript ? 'Loaded' : 'Synthesizing in background'}).\n\nAsk me anything about what the instructor is explaining or writing at **${formattedTs}**!`
+        : `Hello! I am your AI Teaching Assistant for **"${cleanTitle}"**.\n\n🎙️ **Grounding Context:** Verbatim Lecture Speech Transcript (${realTranscript ? 'Loaded' : 'Synthesizing in background'}).\n\nAsk me any question about the concepts, time complexity, or architectural walkthrough explained by the instructor in this video!`;
     } else if (selectedMode === 'notes') {
       greetingText = `Hello! I am grounded in your **Algomaster SDE Study Notes** for **"${cleanTitle}"**.\n\n📘 **Grounding Context:** Core Mental Models, ASCII Architecture Diagrams, Trade-off Matrix & FAANG Interview Traps.\n\nWhich section or concept would you like me to explain further?`;
     } else if (selectedMode === 'quiz') {
@@ -113,7 +121,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
     setTimeout(() => {
       inputRef.current?.focus();
     }, 150);
-  }, [isOpen, selectedMode, cleanTitle, activeMCQ?.question, selectedMCQOption, activeLanguage, resolvedCodingProblem?.title]);
+  }, [isOpen, selectedMode, cleanTitle, formattedTs, activeMCQ?.question, selectedMCQOption, activeLanguage, resolvedCodingProblem?.title]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -140,6 +148,7 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
       mode: selectedMode,
       userMsg: query.trim(),
       videoTitle: cleanTitle,
+      timestamp: formattedTs,
       transcript: realTranscript,
       notes: realNotes,
       mcq: activeMCQ ? {
@@ -498,6 +507,44 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
               <div ref={chatEndRef} />
             </div>
 
+            {/* Quick Prompts Bar */}
+            <div className="px-3.5 py-2 bg-slate-950 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto text-[11px] font-mono no-scrollbar">
+              <span className="text-purple-400 font-bold flex-shrink-0 flex items-center gap-1">
+                <Lightbulb className="w-3 h-3 text-amber-400" /> Suggestions:
+              </span>
+              {selectedMode === 'video' && formattedTs ? (
+                [
+                  `Explain what is taught at ${formattedTs}`,
+                  `Why did instructor do this at ${formattedTs}?`,
+                  `Break down concept shown at ${formattedTs}`,
+                  `Key takeaway at ${formattedTs}`
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(chip)}
+                    className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-purple-950 border border-slate-800 hover:border-purple-700/60 text-slate-300 hover:text-purple-200 transition-all text-[11px] cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))
+              ) : (
+                [
+                  "Explain core mental model",
+                  "What are the key trade-offs?",
+                  "Common interview traps",
+                  "Summary & Key takeaways"
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(chip)}
+                    className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-purple-950 border border-slate-800 hover:border-purple-700/60 text-slate-300 hover:text-purple-200 transition-all text-[11px] cursor-pointer"
+                  >
+                    {chip}
+                  </button>
+                ))
+              )}
+            </div>
+
             {/* Input Bar */}
             <div className="p-3 bg-slate-900/90 border-t border-slate-800 flex items-center gap-2">
               <input
@@ -506,8 +553,8 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={`Ask a question regarding ${selectedMode === 'video' ? 'lecture transcript' : selectedMode === 'notes' ? 'SDE notes' : selectedMode === 'quiz' ? 'MCQ quiz' : 'coding problem & compiler'}...`}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-purple-500 text-slate-100 placeholder-slate-500 text-xs"
+                placeholder={selectedMode === 'video' && formattedTs ? `Ask about timestamp ${formattedTs} or the lecture...` : `Ask a question regarding ${selectedMode === 'video' ? 'lecture transcript' : selectedMode === 'notes' ? 'SDE notes' : selectedMode === 'quiz' ? 'MCQ quiz' : 'coding problem & compiler'}...`}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-purple-500 text-slate-100 placeholder-slate-500 text-xs font-sans"
                 disabled={isLoading}
               />
               <button

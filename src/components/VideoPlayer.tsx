@@ -32,7 +32,7 @@ interface VideoPlayerProps {
   onPrevLecture?: () => void;
   hasNextLecture?: boolean;
   hasPrevLecture?: boolean;
-  onOpenAskAI?: () => void;
+  onOpenAskAI?: (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => void;
   onAutoComplete?: (videoId: string) => void;
 }
 
@@ -414,8 +414,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
           {onOpenAskAI && (
             <button
-              onClick={onOpenAskAI}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30 transition-all border border-purple-400/30"
+              onClick={() => onOpenAskAI('video', currentTime)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md shadow-purple-600/30 transition-all border border-purple-400/30 cursor-pointer"
               title="Ask AI Teaching Assistant about this lecture"
             >
               <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-300" />
@@ -502,17 +502,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             )}
 
             {!isPlaying && !streamError && !isLoadingStream && (
-              <div
-                className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlay();
-                }}
-              >
-                <div className="w-16 h-16 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center text-white shadow-2xl shadow-indigo-600/50 transition-transform transform hover:scale-110">
-                  <Play className="w-8 h-8 fill-current ml-1" />
+              <>
+                {/* Center Play Circle */}
+                <div
+                  className="absolute inset-0 bg-slate-950/20 flex items-center justify-center cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
+                >
+                  <div className="w-16 h-16 rounded-full bg-indigo-600/90 hover:bg-indigo-500 flex items-center justify-center text-white shadow-2xl shadow-indigo-600/50 transition-transform transform hover:scale-110">
+                    <Play className="w-8 h-8 fill-current ml-1" />
+                  </div>
                 </div>
-              </div>
+
+                {/* Floating Ask AI Button on Top Right (Shows only when Video is Paused) */}
+                <div className="absolute top-4 right-4 z-40 animate-fadeIn pointer-events-auto">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const curSecs = videoRef.current?.currentTime || currentTime || 0;
+                      if (onOpenAskAI) {
+                        onOpenAskAI('video', curSecs);
+                      }
+                    }}
+                    className="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-950/90 hover:bg-purple-950 text-purple-200 hover:text-white border border-purple-500/60 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 group cursor-pointer"
+                    title={`Ask AI regarding paused timestamp (${formatTime(currentTime)})`}
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+                    <span className="text-xs font-bold font-mono">Ask AI @ {formatTime(currentTime)}</span>
+                  </button>
+                </div>
+              </>
             )}
 
             {/* Overlay Video Controls (Mobile-aware touch toggle & hover) */}
