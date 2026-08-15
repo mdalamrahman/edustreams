@@ -392,14 +392,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         {/* Action Controls */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           
-          {/* Ask AI Popup Trigger on Top */}
+          {/* Ask AI Top Action Button with Icon and Tooltip on Hover */}
           <button
             onClick={() => setIsRightAskAiOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600 hover:to-indigo-600 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all shadow-sm cursor-pointer"
-            title="Open AI Teaching Assistant on the right"
+            className="p-2 rounded-xl bg-gradient-to-tr from-purple-600/30 via-indigo-600/30 to-sky-500/30 hover:from-purple-600 hover:to-indigo-600 text-purple-200 hover:text-white border border-purple-500/40 transition-all shadow-sm cursor-pointer relative group flex items-center justify-center"
+            title="Ask AI Teaching Assistant"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span>Ask AI</span>
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span className="absolute top-10 right-0 bg-slate-900 border border-slate-800 text-slate-100 text-[11px] font-bold px-2.5 py-1 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none z-30">
+              Ask AI
+            </span>
           </button>
 
           {/* AI Review Button */}
@@ -1075,15 +1077,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </div>
 
           {/* ===================================================================== */}
-          {/* FLOATING ASK AI ACTION BUTTON AT BOTTOM-RIGHT OF CODING WORKSPACE     */}
+          {/* FLOATING CIRCULAR ASK AI ACTION BUTTON AT BOTTOM-RIGHT                */}
           {/* ===================================================================== */}
           <button
             onClick={() => setIsRightAskAiOpen(true)}
-            className="absolute bottom-4 right-4 z-20 flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-xl shadow-purple-600/50 border border-purple-300/40 hover:scale-105 transition-all duration-300 cursor-pointer group"
-            title="Ask AI Teaching Assistant on this Problem & Code"
+            className="absolute bottom-4 right-4 z-20 w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"
+            title="Ask AI Teaching Assistant"
           >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
-            <span className="text-xs font-bold font-sans">Ask AI</span>
+            <Sparkles className="w-5 h-5 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+            <span className="absolute right-14 bg-slate-900 border border-slate-800 text-slate-100 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
+              Ask AI
+            </span>
           </button>
 
         </div>

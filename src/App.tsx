@@ -1191,17 +1191,19 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         />
       )}
 
-      {/* Floating Circular Ask AI Assistant Action Button at Bottom-Right */}
-      <button
-        onClick={() => openAskAIWithMode()}
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"
-        title="Ask AI Teaching Assistant"
-      >
-        <Sparkles className="w-7 h-7 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
-        <span className="absolute right-16 bg-slate-900 border border-slate-800 text-slate-100 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
-          Ask AI Teaching Assistant
-        </span>
-      </button>
+      {/* Floating Circular Ask AI Assistant Action Button ONLY on lesson workspace page */}
+      {activeTab === 'lesson' && !sdeFullscreenProblem && (
+        <button
+          onClick={() => openAskAIWithMode()}
+          className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"
+          title="Ask AI Teaching Assistant"
+        >
+          <Sparkles className="w-7 h-7 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+          <span className="absolute right-16 bg-slate-900 border border-slate-800 text-slate-100 text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg pointer-events-none">
+            Ask AI
+          </span>
+        </button>
+      )}
 
       {/* Mobile Coding Access Policy Overlay Modal */}
       {showMobileGating && (
