@@ -12,33 +12,26 @@ import {
   Code, 
   BookOpen, 
   Lightbulb, 
-  Zap, 
-  Award,
-  RotateCcw,
-  Copy,
-  Check,
-  CheckCircle,
-  FileCode,
-  Tag,
-  AlertCircle,
-  Video as VideoIcon,
-  Send,
-  HelpCircle,
-  ChevronRight,
-  ChevronDown,
+  RotateCcw, 
+  Copy, 
+  Check, 
+  CheckCircle, 
+  FileCode, 
+  Video as VideoIcon, 
+  Send, 
+  Bot, 
+  ExternalLink, 
+  Tv,
   Layers,
   Building2,
-  ListOrdered,
-  Bot,
-  ExternalLink,
-  MessageSquare,
-  ArrowLeft,
-  Tv
+  HelpCircle,
+  Maximize2
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { getProblemTemplate, ProblemTemplate } from '../lib/problemTemplates';
+import { getProblemTemplate, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
+import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
 
 interface LeetCodeWorkspaceModalProps {
@@ -48,6 +41,8 @@ interface LeetCodeWorkspaceModalProps {
   initialCode?: string;
   codingProblem?: any;
   matchingVideo?: Video;
+  transcript?: string;
+  notes?: string;
   onClose: () => void;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
@@ -59,6 +54,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   initialCode,
   codingProblem,
   matchingVideo,
+  transcript,
+  notes,
   onClose,
   onCodeExecuted
 }) => {
@@ -71,13 +68,24 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       .replace(/_/g, ' ');
   }, [problemTitle, codingProblem]);
 
+  const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
+
   const problemTemplate: ProblemTemplate = useMemo(() => {
     return getProblemTemplate(
       cleanTitle,
       codingProblem?.category || 'Arrays',
-      codingProblem?.difficulty || 'Medium'
+      codingProblem?.difficulty || 'Medium',
+      effectiveTranscript,
+      notes
     );
-  }, [cleanTitle, codingProblem]);
+  }, [cleanTitle, codingProblem, effectiveTranscript, notes]);
+
+  // Selected Approach (if problem has multiple ways of solving)
+  const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
+    return problemTemplate.approaches && problemTemplate.approaches.length > 0 
+      ? problemTemplate.approaches[0].id 
+      : 'default';
+  });
 
   // Code state initialized with problem-specific template
   const [code, setCode] = useState<string>(() => {
@@ -99,13 +107,31 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
 
-  // Ask AI Chat state
-  const [aiChatMessages, setAiChatMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: `Hello! I'm your SDETube Coding TA for **${cleanTitle}**.\nI already have your problem statement, code in **${language.toUpperCase()}**, and active testcases loaded in context.\n\nHow can I help you ace this question?`
-    }
-  ]);
+  // Persistent Ask AI Chat state
+  const chatStorageKey = `sdetube_chat_history_${cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+  const [aiChatMessages, setAiChatMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem(chatStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      {
+        role: 'assistant',
+        content: `Hello! I'm your SDETube Coding Teaching Assistant for **${cleanTitle}**.\nI already have your problem statement, code in **${language.toUpperCase()}**, and active testcases loaded in context.\n\nHow can I help you ace this question?`
+      }
+    ];
+  });
+
+  // Save chat to localStorage on update
+  useEffect(() => {
+    try {
+      localStorage.setItem(chatStorageKey, JSON.stringify(aiChatMessages));
+    } catch {}
+  }, [aiChatMessages, chatStorageKey]);
+
   const [aiInputText, setAiInputText] = useState('');
   const [isAiReplying, setIsAiReplying] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -124,12 +150,24 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     editorRef.current = editor;
   };
 
+  // Switch Approach
+  const handleSelectApproach = (approach: ProblemApproach) => {
+    setSelectedApproachId(approach.id);
+    const starter = approach.starters[language] || approach.starters.cpp;
+    if (starter) {
+      setCode(starter);
+    }
+  };
+
   // Sync testcases and starter code when language changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    const newStarter = problemTemplate.starters[newLang];
-    if (newStarter) {
-      setCode(newStarter);
+    const currentApproach = problemTemplate.approaches?.find(a => a.id === selectedApproachId);
+    if (currentApproach && currentApproach.starters[newLang]) {
+      setCode(currentApproach.starters[newLang]);
+    } else {
+      const newStarter = problemTemplate.starters[newLang];
+      if (newStarter) setCode(newStarter);
     }
   };
 
@@ -213,7 +251,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       );
       setAiReview(review);
     } catch (err) {
-      console.warn('[AI Code Review Notice]:', err);
       setAiReview({
         time_complexity: 'O(N)',
         space_complexity: 'O(1)',
@@ -244,6 +281,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         mode: 'code',
         userMsg: textToSend,
         videoTitle: cleanTitle,
+        transcript: effectiveTranscript,
+        notes: notes,
         codingContext: {
           title: cleanTitle,
           problemStatement: problemTemplate.description,
@@ -262,7 +301,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         ...prev,
         {
           role: 'assistant',
-          content: `Here is the algorithmic hint for **${cleanTitle}**:\nConsider how you can optimize from the brute force approach to **${problemTemplate.difficulty === 'Easy' ? 'O(N)' : 'O(N log N) or O(N)'}** time complexity. Ensure boundary conditions and edge cases are handled.`
+          content: `Here is the algorithmic hint for **${cleanTitle}**:\nConsider optimizing from brute force to **${problemTemplate.difficulty === 'Easy' ? 'O(N)' : 'O(N log N) or O(N)'}** time complexity. Ensure boundary conditions and edge cases are handled.`
         }
       ]);
     } finally {
@@ -277,7 +316,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   };
 
   const handleResetCode = () => {
-    setCode(problemTemplate.starters[language] || problemTemplate.starters.cpp);
+    const currentApproach = problemTemplate.approaches?.find(a => a.id === selectedApproachId);
+    if (currentApproach && currentApproach.starters[language]) {
+      setCode(currentApproach.starters[language]);
+    } else {
+      setCode(problemTemplate.starters[language] || problemTemplate.starters.cpp);
+    }
   };
 
   const difficulty = problemTemplate.difficulty;
@@ -287,21 +331,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col font-sans text-slate-100 animate-fadeIn select-none">
       
       {/* ========================================================================= */}
-      {/* 1. TOP LEETCODE-STYLE NAVBAR WITH SDETUBE BRAND ON LEFT                   */}
+      {/* 1. TOP LEETCODE-STYLE NAVBAR WITH SDESTREAM / SDETUBE LOGO                */}
       {/* ========================================================================= */}
       <header className="h-14 px-3 sm:px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0">
         
-        {/* Left: SDETube Brand & Problem Title */}
+        {/* Left: SDEStream / SDETube Brand & Problem Title */}
         <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
           
-          {/* SDETube Brand - Click returns to homepage / SDE sheet */}
+          {/* SDEStream Brand Logo & Name - Click returns to homepage / SDE sheet */}
           <div 
             onClick={() => {
               onClose();
               window.location.hash = '#/sde-sheet';
             }}
             className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0 group"
-            title="Return to SDETube Home / SDE Sheet"
+            title="Return to SDEStream / SDETube Home"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 p-0.5 shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
               <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center">
@@ -310,13 +354,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="font-black text-sm sm:text-base tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
-                SDETube
+                SDEStream
               </span>
               <span className="text-slate-600 font-bold hidden sm:inline">/</span>
             </div>
           </div>
 
-          {/* Problem Title & Badge */}
+          {/* Problem Title & Difficulty Badge */}
           <div className="flex items-center space-x-2 truncate">
             <span className="text-white font-extrabold text-xs sm:text-sm tracking-tight truncate max-w-[140px] sm:max-w-xs md:max-w-md">
               {cleanTitle}
@@ -335,7 +379,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
         </div>
 
-        {/* Center: Run, Submit, AI Review & Ask AI Buttons */}
+        {/* Center: Run, Submit, AI Review Buttons */}
         <div className="flex items-center space-x-1.5 sm:space-x-2">
           
           {/* Run Code */}
@@ -343,7 +387,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             onClick={() => handleRunCode(false)}
             disabled={isExecuting}
             className="flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-            title="Run Code (Executes in Cloud Compiler)"
+            title="Run Code on Cloud Compiler"
           >
             <Play className="w-3.5 h-3.5 text-indigo-400 fill-current" />
             <span className="hidden sm:inline">{isExecuting ? 'Running...' : 'Run'}</span>
@@ -354,7 +398,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             onClick={() => handleRunCode(true)}
             disabled={isExecuting}
             className="flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/40 transition-all active:scale-95 disabled:opacity-50 border border-emerald-400/40 cursor-pointer"
-            title="Submit Solution & Check All Testcases"
+            title="Submit Solution & Validate Testcases"
           >
             <CheckCircle className="w-3.5 h-3.5" />
             <span>Submit</span>
@@ -369,20 +413,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
             <span className="hidden md:inline">{isReviewing ? 'Analyzing...' : 'AI Review'}</span>
-          </button>
-
-          {/* Ask AI Tab Switcher */}
-          <button
-            onClick={() => setLeftTab('ask_ai')}
-            className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-              leftTab === 'ask_ai'
-                ? 'bg-indigo-600 text-white border-indigo-400'
-                : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
-            }`}
-            title="Ask AI on this Problem & Code"
-          >
-            <Bot className="w-3.5 h-3.5 text-cyan-300" />
-            <span className="hidden lg:inline">Ask AI</span>
           </button>
 
         </div>
@@ -419,7 +449,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       {/* ========================================================================= */}
       {/* 2. SPLIT SCREEN WORKSPACE                                                 */}
       {/* ========================================================================= */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden relative">
         
         {/* ----------------------------------------------------------------------- */}
         {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, ASK AI, AI REVIEW     */}
@@ -523,7 +553,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           {/* Left Panel Content Body */}
           <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans">
             
-            {/* TAB 1: CLEAN LEETCODE-STYLE DESCRIPTION */}
+            {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
               <div className="space-y-4">
                 
@@ -545,12 +575,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-xs font-mono font-semibold">
                       {problemTemplate.category}
                     </span>
-
-                    {codingProblem?.rating && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-950/60 border border-amber-800/60 text-amber-300 text-xs font-mono font-bold flex items-center gap-1">
-                        ★ {codingProblem.rating}
-                      </span>
-                    )}
                   </div>
 
                   {/* Company Pills */}
@@ -566,10 +590,34 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 </div>
 
-                {/* Problem Statement text */}
+                {/* Multiple Approaches Selector (if available) */}
+                {problemTemplate.approaches && problemTemplate.approaches.length > 1 && (
+                  <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-800/60 space-y-2">
+                    <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4" /> Multi-Approach Solution Switcher:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {problemTemplate.approaches.map((app) => (
+                        <button
+                          key={app.id}
+                          onClick={() => handleSelectApproach(app)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            selectedApproachId === app.id
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                          }`}
+                        >
+                          {app.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Problem Statement */}
                 <div className="space-y-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Description</h3>
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm whitespace-pre-line">
                     {problemTemplate.description}
                   </div>
                 </div>
@@ -602,34 +650,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </ul>
                 </div>
 
-                {/* External Practice Links */}
-                {(codingProblem?.leetcode || codingProblem?.gfg) && (
-                  <div className="flex items-center space-x-3 pt-3 border-t border-slate-800">
-                    {codingProblem.leetcode && (
-                      <a
-                        href={codingProblem.leetcode}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>LeetCode Challenge</span>
-                      </a>
-                    )}
-                    {codingProblem.gfg && (
-                      <a
-                        href={codingProblem.gfg}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>GeeksforGeeks</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-
               </div>
             )}
 
@@ -640,19 +660,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4" /> Hint 1: Brute Force vs Optimal
+                    <Lightbulb className="w-4 h-4" /> Hint 1: State & Invariant Analysis
                   </div>
                   <p className="text-xs text-slate-300">
-                    Think about what state needs to be preserved. Can you use auxiliary memory first, then observe if in-place markers or hash tables eliminate unnecessary iterations?
+                    Think about what state needs to be preserved. Can you use in-place markers or hash tables to eliminate unnecessary iterations?
                   </p>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
                   <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4" /> Hint 2: Two-Pointer & Hash Table Invariants
+                    <Lightbulb className="w-4 h-4" /> Hint 2: Two-Pointer & Reverse Pass
                   </div>
                   <p className="text-xs text-slate-300">
-                    For linear operations, maintain prefix or pointer boundaries to reach O(N) time with O(1) space.
+                    To avoid overwriting active markers, perform updates in reverse direction or keep boundary flags.
                   </p>
                 </div>
               </div>
@@ -666,7 +686,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="font-bold text-indigo-300 text-sm">Optimal Approach Walkthrough</div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    1. Traverse the input data and compute the invariant state without allocating secondary matrices or deep copies.<br />
+                    1. Traverse the input data and identify invariant state boundaries.<br />
                     2. Use constant variables or first elements to record flags in-place.<br />
                     3. Perform the secondary pass in reverse or directional order to prevent overwriting active markers.
                   </p>
@@ -676,12 +696,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
                     <div className="text-[10px] font-bold text-slate-400 uppercase">Time Complexity</div>
                     <div className="text-sm font-black text-emerald-400 font-mono mt-1">O(N) / O(M*N)</div>
-                    <div className="text-[10px] text-slate-500 mt-1">Optimal linear traversal</div>
                   </div>
                   <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
                     <div className="text-[10px] font-bold text-slate-400 uppercase">Space Complexity</div>
                     <div className="text-sm font-black text-emerald-400 font-mono mt-1">O(1) Auxiliary</div>
-                    <div className="text-[10px] text-slate-500 mt-1">In-place memory utilization</div>
                   </div>
                 </div>
               </div>
@@ -717,7 +735,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     </div>
                     <div className="font-bold text-slate-200 text-sm">{cleanTitle} Video Lecture</div>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Available in SDETube Video Catalog. Watch anytime with integrated AI notes.
+                      Available in SDEStream Video Catalog. Watch anytime with integrated AI notes.
                     </p>
                   </div>
                 )}
@@ -731,7 +749,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Optimal Multi-Language Solutions</h3>
                   <button
                     onClick={handleCopyCode}
-                    className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold"
+                    className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
                   >
                     {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedCode ? 'Copied' : 'Copy Solution'}</span>
@@ -746,9 +764,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 6: ASK AI (GROUNDED PROBLEM & CODE ASSISTANT) */}
+            {/* TAB 6: ASK AI (CLEAN FORMATTING & PERSISTENT HISTORY) */}
             {leftTab === 'ask_ai' && (
-              <div className="h-[450px] flex flex-col justify-between space-y-3">
+              <div className="h-[460px] flex flex-col justify-between space-y-3">
                 
                 {/* Chat Messages Log */}
                 <div 
@@ -770,12 +788,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {msg.role === 'user' ? 'You' : <Bot className="w-4 h-4" />}
                       </div>
 
-                      <div className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                      <div className={`p-3 rounded-2xl text-xs max-w-[88%] leading-relaxed ${
                         msg.role === 'user'
                           ? 'bg-indigo-600 text-white font-medium'
-                          : 'bg-slate-950 border border-slate-800 text-slate-200 whitespace-pre-wrap font-sans'
+                          : 'bg-slate-950 border border-slate-800 text-slate-200 font-sans'
                       }`}>
-                        {msg.content}
+                        <FormattedChatText text={msg.content} />
                       </div>
                     </div>
                   ))}
@@ -783,28 +801,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   {isAiReplying && (
                     <div className="flex items-center space-x-2 text-xs text-purple-400 animate-pulse">
                       <Bot className="w-4 h-4" />
-                      <span>Analyzing your code & formulating answer...</span>
+                      <span>Formulating clean answer with your code context...</span>
                     </div>
                   )}
                 </div>
 
-                {/* Quick Prompt Chips */}
+                {/* Quick Action Prompt Chips */}
                 <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
                   <button
                     onClick={() => handleSendAiMessage("How do I optimize the time complexity to O(N)?")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-indigo-300 transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-indigo-300 transition-colors cursor-pointer"
                   >
                     ⚡ Optimize Complexity
                   </button>
                   <button
                     onClick={() => handleSendAiMessage("Why might my code fail on edge cases?")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-amber-300 transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-amber-300 transition-colors cursor-pointer"
                   >
                     🐞 Check Edge Cases
                   </button>
                   <button
                     onClick={() => handleSendAiMessage("Explain the test case logic step by step.")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-emerald-300 transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[11px] text-emerald-300 transition-colors cursor-pointer"
                   >
                     📝 Explain Testcase
                   </button>
@@ -838,7 +856,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <div className="flex items-center justify-between pb-2 border-b border-purple-900/40">
                   <div className="font-bold text-slate-100 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                    <span>Mistral AI Code Review & Complexity Report</span>
+                    <span>AI Code Review & Complexity Report</span>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700 text-purple-300 text-[10px] font-mono">
                     {aiReview.status}
@@ -857,7 +875,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="font-bold text-slate-200">TA Review Summary</div>
+                  <div className="font-bold text-slate-200">Review Summary</div>
                   <p className="text-xs text-slate-300 leading-relaxed">{aiReview.review_summary}</p>
                 </div>
 
@@ -881,7 +899,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         {/* ----------------------------------------------------------------------- */}
         {/* RIGHT PANEL: MONACO CODE EDITOR & TESTCASES / RESULTS CONSOLE           */}
         {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-950">
+        <div className="lg:col-span-7 flex flex-col overflow-hidden bg-slate-950 relative">
           
           {/* Editor Header Bar */}
           <div className="h-10 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
@@ -893,15 +911,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleCopyCode}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
                 title="Copy Code"
               >
                 {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
               <button
                 onClick={handleResetCode}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-                title="Reset to Starter Code"
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                title="Reset Code"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -1006,7 +1024,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   {isExecuting ? (
                     <div className="flex items-center justify-center py-6 text-indigo-400 space-x-2">
                       <Terminal className="w-4 h-4 animate-spin" />
-                      <span>Compiling and executing code on SDETube Cloud Engine...</span>
+                      <span>Compiling and executing code on SDEStream Cloud Engine...</span>
                     </div>
                   ) : executionResult ? (
                     <div className="space-y-3">
@@ -1092,6 +1110,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </div>
 
           </div>
+
+          {/* ===================================================================== */}
+          {/* FLOATING ASK AI ACTION BUTTON AT BOTTOM-RIGHT OF CODING WORKSPACE     */}
+          {/* ===================================================================== */}
+          <button
+            onClick={() => setLeftTab('ask_ai')}
+            className="absolute bottom-4 right-4 z-20 flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-xl shadow-purple-600/50 border border-purple-300/40 hover:scale-105 transition-all duration-300 cursor-pointer group"
+            title="Ask AI Teaching Assistant on this Problem & Code"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+            <span className="text-xs font-bold font-sans">Ask AI</span>
+          </button>
 
         </div>
 

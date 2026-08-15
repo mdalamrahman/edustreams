@@ -893,12 +893,21 @@ export function App() {
                   <span>Ask AI</span>
                 </button>
 
-                {/* Show Open Coding IDE ONLY for DSA / Coding problems. For OS / CN / DBMS / System Design, show Practice MCQ Quiz */}
+                {/* Show Open Coding IDE for DSA and System Design / LLD! For pure OS/CN theory, show Practice MCQ Quiz */}
                 {(activeChannelObj?.id === 'ch-dsa-01' || 
+                  activeChannelObj?.id === 'ch-sys-design' ||
+                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('system design')) ||
+                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('lld')) ||
+                  Boolean(activeChannelObj?.name && activeChannelObj.name.toLowerCase().includes('design')) ||
                   selectedVideo.title.toLowerCase().includes('dsa') ||
                   selectedVideo.title.toLowerCase().includes('array') ||
                   selectedVideo.title.toLowerCase().includes('tree') ||
                   selectedVideo.title.toLowerCase().includes('graph') ||
+                  selectedVideo.title.toLowerCase().includes('solid') ||
+                  selectedVideo.title.toLowerCase().includes('srp') ||
+                  selectedVideo.title.toLowerCase().includes('ocp') ||
+                  selectedVideo.title.toLowerCase().includes('pattern') ||
+                  selectedVideo.title.toLowerCase().includes('design') ||
                   selectedVideo.title.toLowerCase().includes('leetcode') ||
                   Boolean(videoArtifacts?.coding_problem)) ? (
                   <button
@@ -909,7 +918,7 @@ export function App() {
                         cleanName.toLowerCase().includes(p.name.toLowerCase())
                       ) || {
                         id: 999,
-                        category: activeChannelObj?.name || 'DSA',
+                        category: activeChannelObj?.name || 'System Design & LLD',
                         name: cleanName,
                         leetcode: 'https://leetcode.com',
                         gfg: 'https://www.geeksforgeeks.org',
@@ -1007,6 +1016,8 @@ export function App() {
           problemTitle={sdeFullscreenProblem.name}
           initialLanguage="cpp"
           matchingVideo={sdeFullscreenVideo || selectedVideo}
+          transcript={videoArtifacts?.transcript || selectedVideo?.telegram_caption}
+          notes={videoArtifacts?.notes}
           codingProblem={sdeFullscreenProblem}
           onClose={() => {
             setSdeFullscreenProblem(null);

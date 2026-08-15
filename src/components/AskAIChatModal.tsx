@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { requestContextualAIChatResponse, ChatMessage, ContextualChatPayload } from '../lib/mistral';
 import { Video, QuizQuestion } from '../lib/types';
+import { FormattedChatText } from './FormattedChatText';
 
 export type AskAIMode = 'video' | 'notes' | 'quiz' | 'code';
 
@@ -459,7 +460,9 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
                         : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
                     }`}
                   >
-                    <div className="whitespace-pre-line font-sans">{m.content}</div>
+                    <div className="font-sans">
+                      <FormattedChatText text={m.content} />
+                    </div>
 
                     {m.role === 'assistant' && (
                       <button
