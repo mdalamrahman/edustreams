@@ -69,8 +69,18 @@ class CloudflareR2Storage:
         region = "auto"
         service = "s3"
         host = f"{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-        canonical_uri = f"/{R2_BUCKET_NAME}/{key}"
-        canonical_querystring = ""
+        
+        # Split key and querystring if present
+        if "?" in key:
+            key_part, canonical_querystring = key.split("?", 1)
+        else:
+            key_part, canonical_querystring = key, ""
+
+        if key_part:
+            canonical_uri = f"/{R2_BUCKET_NAME}/{key_part}"
+        else:
+            canonical_uri = f"/{R2_BUCKET_NAME}"
+
         payload_hash = hashlib.sha256(payload_bytes).hexdigest()
 
         canonical_headers = f"host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n"
@@ -98,7 +108,8 @@ class CloudflareR2Storage:
         Uploads full transcript, notes, MCQs, and coding problem payload to Cloudflare R2.
         Returns the storage key (e.g. 'payloads/{file_id}.json').
         """
-        clean_id = str(file_id).replace("/", "_").replace(" ", "_")
+        import re
+        clean_id = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', str(file_id))
         key = f"payloads/{clean_id}.json"
         payload_str = json.dumps(data, indent=2, ensure_ascii=False)
         payload_bytes = payload_str.encode("utf-8")
@@ -137,7 +148,8 @@ class CloudflareR2Storage:
         """
         Fetches full transcript, notes, and AI artifact payload from Cloudflare R2.
         """
-        clean_id = str(file_id).replace("/", "_").replace(" ", "_")
+        import re
+        clean_id = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', str(file_id))
         key = f"payloads/{clean_id}.json"
 
         # 1. Try Boto3 if available
