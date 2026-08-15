@@ -501,10 +501,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                       </span>
                     </td>
 
-                    {/* Problem Name & POTD Badge */}
-                    <td className="py-3.5 px-4">
+                    {/* Problem Name & POTD Badge - Click opens compiler immediately */}
+                    <td 
+                      onClick={() => onOpenCodingFullscreen && onOpenCodingFullscreen(item)}
+                      className="py-3.5 px-4 cursor-pointer group/title"
+                      title="Click to open coding compiler immediately"
+                    >
                       <div className="flex items-center gap-2">
-                        <span className={`font-bold text-sm ${isSolved ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                        <span className={`font-bold text-sm transition-colors group-hover/title:text-purple-300 group-hover/title:underline ${isSolved ? 'line-through text-slate-500' : 'text-slate-100'}`}>
                           {item.name}
                         </span>
                         {isPotd && (

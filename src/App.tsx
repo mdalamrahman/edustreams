@@ -97,24 +97,42 @@ export function App() {
   useEffect(() => {
     const handleHashSync = () => {
       const hash = window.location.hash || '#/channels';
-      if (hash.startsWith('#/channel/')) {
-        const chId = hash.replace('#/channel/', '');
-        setSelectedChannelId(chId);
-        setChannelViewMode('detail');
-        setActiveTab('channels');
-      } else if (hash.startsWith('#/lesson/')) {
-        const vidId = decodeURIComponent(hash.replace('#/lesson/', ''));
-        const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
-        const found = list.find((v) => v.id === vidId || v.title === vidId);
-        if (found) setSelectedVideo(found);
-        setActiveTab('lesson');
-      } else if (hash.startsWith('#/sde-sheet')) {
-        setActiveTab('sde_sheet');
-      } else if (hash.startsWith('#/analytics')) {
-        setActiveTab('analytics');
+      if (hash.startsWith('#/problem/')) {
+        const pIdStr = hash.replace('#/problem/', '');
+        const found = SDE_SHEET_DATA.find((p) => p.id.toString() === pIdStr || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === pIdStr.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        if (found) {
+          setSdeFullscreenProblem(found);
+          const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+          const pName = found.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
+          const pWords = pName.split(/\s+/).filter(w => w.length > 2);
+          const matched = list.find((v) => {
+            const vTitle = v.title.toLowerCase();
+            return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName);
+          }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+          setSdeFullscreenVideo(matched || null);
+          setActiveTab('sde_sheet');
+        }
       } else {
-        setActiveTab('channels');
-        setChannelViewMode('overview');
+        setSdeFullscreenProblem(null);
+        if (hash.startsWith('#/channel/')) {
+          const chId = hash.replace('#/channel/', '');
+          setSelectedChannelId(chId);
+          setChannelViewMode('detail');
+          setActiveTab('channels');
+        } else if (hash.startsWith('#/lesson/') || hash.startsWith('#/video/')) {
+          const vidId = decodeURIComponent(hash.replace(/^#\/(lesson|video)\//, ''));
+          const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+          const found = list.find((v) => v.id === vidId || v.title === vidId);
+          if (found) setSelectedVideo(found);
+          setActiveTab('lesson');
+        } else if (hash.startsWith('#/sde-sheet')) {
+          setActiveTab('sde_sheet');
+        } else if (hash.startsWith('#/analytics')) {
+          setActiveTab('analytics');
+        } else {
+          setActiveTab('channels');
+          setChannelViewMode('overview');
+        }
       }
     };
 
@@ -562,6 +580,9 @@ export function App() {
 
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);
+    if (window.location.hash !== `#/problem/${problem.id}`) {
+      window.history.pushState(null, '', `#/problem/${problem.id}`);
+    }
   };
 
   const handleQuestionSolved = (timeTakenSeconds: number, isCorrect: boolean) => {
@@ -968,23 +989,19 @@ export function App() {
       {sdeFullscreenProblem && (
         <LeetCodeWorkspaceModal
           problemTitle={sdeFullscreenProblem.name}
-          initialLanguage="python"
+          initialLanguage="cpp"
           matchingVideo={sdeFullscreenVideo || selectedVideo}
-          codingProblem={{
-            title: sdeFullscreenProblem.name,
-            category: sdeFullscreenProblem.category,
-            difficulty: sdeFullscreenProblem.difficulty,
-            rating: sdeFullscreenProblem.rating,
-            companies: sdeFullscreenProblem.companies,
-            leetcode: sdeFullscreenProblem.leetcode,
-            gfg: sdeFullscreenProblem.gfg,
-            problem_statement: `Implement an optimal solution for ${sdeFullscreenProblem.name}. Analyze the Time & Space complexity.`,
-            starter_code_python: `# SDETube LeetCode Arena: ${sdeFullscreenProblem.name}\n# Difficulty: ${sdeFullscreenProblem.difficulty} | Companies: ${sdeFullscreenProblem.companies.slice(0, 3).join(', ')}\n\nclass Solution:\n    def solve(self) -> None:\n        # Write your optimal algorithm here\n        pass\n\nif __name__ == "__main__":\n    sol = Solution()\n    sol.solve()\n    print("Code executed successfully on SDETube Cloud Engine.")\n`,
-            starter_code_cpp: `// SDETube LeetCode Arena: ${sdeFullscreenProblem.name}\n// Difficulty: ${sdeFullscreenProblem.difficulty}\n\n#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Optimal C++ Solution\n    }\n};\n\nint main() {\n    Solution sol;\n    sol.solve();\n    cout << "Success: Problem executed on SDETube Cloud Compiler." << endl;\n    return 0;\n}\n`
-          }}
+          codingProblem={sdeFullscreenProblem}
           onClose={() => {
             setSdeFullscreenProblem(null);
             setSdeFullscreenVideo(null);
+            if (window.location.hash.startsWith('#/problem/')) {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.hash = '#/sde-sheet';
+              }
+            }
           }}
           onCodeExecuted={handleQuestionSolved}
         />
