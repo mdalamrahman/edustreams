@@ -192,15 +192,33 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  const handleDownloadVideoFile = () => {
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
+
+  const handleDownloadVideoFile = async () => {
     if (!streamSrc) return;
-    const a = document.createElement('a');
-    a.href = streamSrc;
-    a.download = `${video.title || 'video'}.mp4`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    setIsDownloadingVideo(true);
+    const cleanName = `${(video.title || 'lecture').replace(/[^\w\s.-]/gi, '')}.mp4`;
+    try {
+      const response = await fetch(streamSrc);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = cleanName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      const a = document.createElement('a');
+      a.href = streamSrc;
+      a.download = cleanName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setIsDownloadingVideo(false);
+    }
   };
 
   const handleReconnect = () => {
@@ -392,9 +410,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <div className="w-14 h-14 rounded-full bg-indigo-950 border-2 border-indigo-600 flex items-center justify-center text-indigo-400 mb-4 animate-pulse">
               <WifiOff className="w-7 h-7" />
             </div>
-            <p className="text-sm font-bold text-slate-100 mb-1">Telegram MTProto Video Stream</p>
+            <p className="text-sm font-bold text-slate-100 mb-1">TiliTube Cloud Video Stream</p>
             <p className="text-xs text-slate-400 mb-1 max-w-md">
-              Target: <span className="font-mono text-indigo-300 font-bold">{video.title}</span> (Post #{video.telegram_message_id})
+              Lecture: <span className="font-mono text-indigo-300 font-bold">{video.title}</span>
             </p>
             <button
               onClick={handleReconnect}
@@ -433,7 +451,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none">
                 <div className="flex flex-col items-center space-y-2">
                   <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs font-mono text-indigo-300 font-bold">EduStream Streaming Bytes...</span>
+                  <span className="text-xs font-mono text-indigo-300 font-bold">TiliTube Streaming Bytes...</span>
                 </div>
               </div>
             )}
@@ -527,7 +545,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }`}
             >
               <Send className="w-3.5 h-3.5 text-sky-400" />
-              <span>Telegram Post Caption</span>
+              <span>Lecture Overview</span>
             </button>
 
             <button
@@ -539,7 +557,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-              <span>Whisper Transcript</span>
+              <span>Speech Transcript</span>
             </button>
 
             <button
@@ -564,16 +582,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="p-3.5 rounded-xl bg-slate-950 border border-sky-900/40 text-xs text-slate-200 leading-relaxed">
             <div className="flex items-center space-x-2 text-sky-400 font-semibold mb-1.5">
               <MessageSquare className="w-4 h-4" />
-              <span>Telegram Channel Post ({video.sender_username || '@EduStreamBot'}):</span>
+              <span>TiliTube Course Module:</span>
             </div>
-            <p className="whitespace-pre-line text-slate-300 font-sans">{video.telegram_caption || 'No caption available.'}</p>
+            <p className="whitespace-pre-line text-slate-300 font-sans">{video.telegram_caption || 'No description available for this lecture.'}</p>
           </div>
         ) : activeTab === 'transcript' ? (
           <div className="p-3.5 rounded-xl bg-slate-950 border border-purple-900/40 text-xs text-slate-300 font-mono leading-relaxed relative">
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-purple-900/30">
               <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                Whisper STT Verbatim Lecture Transcript
+                TiliTube Speech-to-Text Verbatim Transcript
               </span>
               <button
                 onClick={() => setShowRegenModal(true)}
@@ -587,9 +605,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
             <div className="max-h-44 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
               {loadingTranscript ? (
-                <span className="text-purple-400 animate-pulse">Generating EduStream AI verbatim speech-to-text transcript...</span>
+                <span className="text-purple-400 animate-pulse">Generating TiliTube AI verbatim speech-to-text transcript...</span>
               ) : (
-                videoArtifacts?.transcript || dynamicTranscript || (video.transcript && !video.transcript.includes('Ingested from Telegram') ? video.transcript : 'EduStream AI Speech Engine processing verbatim lecture transcript...')
+                videoArtifacts?.transcript || dynamicTranscript || (video.transcript && !video.transcript.includes('Ingested from') ? video.transcript : 'TiliTube AI Speech Engine processing verbatim lecture transcript...')
               )}
             </div>
           </div>

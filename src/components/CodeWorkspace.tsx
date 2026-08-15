@@ -44,52 +44,52 @@ interface CodeWorkspaceProps {
 
 // Language-specific starter templates
 const LANGUAGE_STARTERS: Record<SupportedLanguage, string> = {
-  python: `# EduStream — Python 3.10 Sandbox
+  python: `# TiliTube — Python 3.10 Sandbox
 # Solve the problem below and click "Run Code"
 
 def solve():
     pass
 `,
-  java: `// EduStream — Java 17 Sandbox
+  java: `// TiliTube — Java 17 Sandbox
 import java.util.*;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello, EduStream!");
+        System.out.println("Hello, TiliTube!");
     }
 }
 `,
-  cpp: `// EduStream — C++ 20 Sandbox
+  cpp: `// TiliTube — C++ 20 Sandbox
 #include <iostream>
 #include <vector>
 using namespace std;
 
 int main() {
-    cout << "Hello, EduStream!" << endl;
+    cout << "Hello, TiliTube!" << endl;
     return 0;
 }
 `,
-  go: `// EduStream — Go 1.21 Sandbox
+  go: `// TiliTube — Go 1.21 Sandbox
 package main
 
 import "fmt"
 
 func main() {
-    fmt.Println("EduStream Go Execution Context")
+    fmt.Println("TiliTube Go Execution Context")
 }
 `,
-  rust: `// EduStream — Rust 1.75 Sandbox
+  rust: `// TiliTube — Rust 1.75 Sandbox
 fn main() {
-    println!("EduStream Rust Execution Context");
+    println!("TiliTube Rust Execution Context");
 }
 `,
-  javascript: `// EduStream — Node.js Sandbox
+  javascript: `// TiliTube — Node.js Sandbox
 function solve() {
-    console.log("Hello, EduStream!");
+    console.log("Hello, TiliTube!");
 }
 solve();
 `,
-  sql: `-- EduStream — PostgreSQL SQL Sandbox
+  sql: `-- TiliTube — PostgreSQL SQL Sandbox
 SELECT 1;
 `
 };
@@ -347,7 +347,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
               Switch to Laptop to Use the Code Compiler
             </h3>
             <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
-              The Monaco SDE Code Compiler, real-time runtime judge, and live debugging terminal require a physical keyboard and larger display. Open EduStream on your laptop or PC to run test cases and submit solutions.
+              The Monaco SDE Code Compiler, real-time runtime judge, and live debugging terminal require a physical keyboard and larger display. Open TiliTube on your laptop or PC to run test cases and submit solutions.
             </p>
           </div>
         </div>
@@ -562,7 +562,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>EduStream AI Review</span>
+              <span>TiliTube AI Review</span>
             </button>
 
             {testCaseResults.length > 0 && (
@@ -619,7 +619,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
             testCaseResults.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-slate-100">EduStream AI Test Case Validation</span>
+                  <span className="text-xs font-bold text-slate-100">TiliTube AI Test Case Validation</span>
                   <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border ${
                     testCaseResults.every(t => t.passed)
                       ? 'bg-emerald-950 border-emerald-700 text-emerald-300'
@@ -672,7 +672,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
               </div>
             ) : (
               <div className="text-slate-500 italic flex items-center justify-center h-full">
-                Click "AI Review" for EduStream AI algorithmic complexity review.
+                Click "AI Review" for TiliTube AI algorithmic complexity review.
               </div>
             )
           )}

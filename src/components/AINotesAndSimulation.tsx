@@ -501,7 +501,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
               </div>
               <div>
                 <h2 className="text-base sm:text-xl font-black text-slate-100">{cleanTitle} — SDE Mastery Guide</h2>
-                <p className="text-xs text-slate-400">Algomaster.io Grade • EduStream Cloud AI</p>
+                <p className="text-xs text-slate-400">Algomaster SDE Grade • TiliTube Cloud AI</p>
               </div>
             </div>
 

@@ -57,12 +57,43 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
    * If channelId and messageId are provided, constructs a proper URL.
    * Falls back to the attachment's original download_url field otherwise.
    */
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+
   const resolveDownloadUrl = (att: Attachment): string => {
     if (channelId && messageId) {
       return getDownloadUrl(channelId, messageId, att.file_name);
     }
-    // Fallback: use the stored download_url (may be a relative path)
     return att.download_url || '#';
+  };
+
+  const handleDownload = async (e: React.MouseEvent, att: Attachment) => {
+    e.preventDefault();
+    const url = resolveDownloadUrl(att);
+    if (!url || url === '#') return;
+
+    setDownloadingId(att.id);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = att.file_name || 'document';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      // Fallback: direct anchor trigger without page redirection
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = att.file_name || 'document';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -70,10 +101,10 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
       <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
         <div className="flex items-center space-x-2">
           <Paperclip className="w-5 h-5 text-indigo-400" />
-          <h3 className="text-sm font-bold text-slate-100">Telegram Ingested Study Files</h3>
+          <h3 className="text-sm font-bold text-slate-100">TiliTube Study Attachments & Notes</h3>
         </div>
         <span className="text-xs font-mono text-slate-300 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-          {attachments.length} Ingested Attachments
+          {attachments.length} Resources
         </span>
       </div>
 
@@ -103,16 +134,15 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
               </div>
             </div>
 
-            <a
-              href={resolveDownloadUrl(att)}
-              download={att.file_name}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={(e) => handleDownload(e, att)}
+              disabled={downloadingId === att.id}
               className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-xs font-bold transition-all shadow-sm flex-shrink-0"
+              title="Download to computer directly"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Download</span>
-            </a>
+              <Download className={`w-3.5 h-3.5 ${downloadingId === att.id ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">{downloadingId === att.id ? 'Saving...' : 'Download'}</span>
+            </button>
           </div>
         ))}
       </div>

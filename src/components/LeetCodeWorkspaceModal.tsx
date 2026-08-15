@@ -39,7 +39,7 @@ interface LeetCodeWorkspaceModalProps {
 
 // Language-specific fallback starter templates
 const LC_STARTERS: Record<SupportedLanguage, string> = {
-  python: `# EduStream AI Algorithm Sandbox
+  python: `# TiliTube AI Algorithm Sandbox
 class Solution:
     def solve(self) -> None:
         """
@@ -266,7 +266,7 @@ const ProblemDescriptionRenderer: React.FC<{ rawText: string; title: string }> =
         </h2>
         <div className="flex items-center gap-2 mt-2">
           <span className="px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[11px] font-mono font-medium">
-            EduStream SDE Arena
+            TiliTube SDE Arena
           </span>
           <span className="px-2 py-0.5 rounded-md bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[11px] font-mono font-medium">
             Optimal Pattern Challenge

@@ -14,8 +14,8 @@ import {
 import { useDevice } from '../lib/device';
 
 interface NavbarProps {
-  activeTab: 'channels' | 'lesson' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'channels' | 'lesson' | 'analytics' | 'settings') => void;
+  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings';
+  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -45,12 +45,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-lg tracking-tight gradient-text">EduStream AI</span>
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60">
-                Private Portal
+              <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
+                TiliTube
+              </span>
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-700/60">
+                SDE Arena
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">Telegram Ingestion & AI Resource Matrix</p>
+            <p className="text-[11px] text-slate-400 hidden sm:block">AI-Powered Video & SDE Coding Platform</p>
           </div>
         </div>
 
@@ -58,7 +60,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <nav className="flex items-center space-x-1 sm:space-x-2">
           <button
             onClick={() => setActiveTab('channels')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'channels'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -69,27 +71,39 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('sde_sheet')}
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'sde_sheet'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40 border border-purple-900/40'
+            }`}
+          >
+            <Code2 className="w-4 h-4 text-purple-300" />
+            <span>SDE Sheet</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('lesson')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'lesson'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
-            <Code2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Lesson Workspace</span>
+            <Tv className="w-4 h-4" />
+            <span className="hidden sm:inline">Workspace</span>
           </button>
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
               activeTab === 'analytics'
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             <BarChart3 className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Velocity Analytics</span>
+            <span className="hidden sm:inline">Analytics</span>
           </button>
         </nav>
 

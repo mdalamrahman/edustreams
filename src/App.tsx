@@ -29,6 +29,9 @@ import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { AuthModal } from './components/AuthModal';
 import { AskAIChatModal } from './components/AskAIChatModal';
 import { LoadingScreen } from './components/LoadingScreen';
+import { SDESheetExplorer } from './components/SDESheetExplorer';
+import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
+import { SDEProblem } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent } from './lib/auth';
@@ -38,7 +41,7 @@ import { requestMistralQuiz } from './lib/mistral';
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'analytics' | 'settings'>('channels');
+  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
   const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
@@ -47,6 +50,7 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
   const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
+  const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
     setAskAIMode(mode);
@@ -445,6 +449,35 @@ export function App() {
     }
   };
 
+  const handleSelectVideoByTopic = (topicName: string) => {
+    const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    const cleanTopic = topicName.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
+    const topicWords = cleanTopic.split(/\s+/).filter(w => w.length > 2);
+
+    let match = list.find(v => {
+      const vTitle = v.title.toLowerCase();
+      return topicWords.some(w => vTitle.includes(w));
+    });
+
+    if (!match) {
+      match = list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+    }
+
+    if (match) {
+      setSelectedVideo(match);
+      setSelectedChannelId(match.channel_id);
+      setActiveTab('lesson');
+    }
+  };
+
+  const handleOpenCodingFullscreen = (problem: SDEProblem) => {
+    if (isMobile) {
+      setShowMobileGating(true);
+      return;
+    }
+    setSdeFullscreenProblem(problem);
+  };
+
   const handleQuestionSolved = (timeTakenSeconds: number, isCorrect: boolean) => {
     const mins = Math.max(0.5, Number((timeTakenSeconds / 60).toFixed(1)));
     setTotalSolved((prev) => prev + 1);
@@ -795,6 +828,14 @@ export function App() {
           </div>
         )}
 
+        {/* VIEW 2.5: SDE SHEET EXPLORER WITH 191 PROBLEMS */}
+        {activeTab === 'sde_sheet' && (
+          <SDESheetExplorer
+            onSelectVideoByTopic={handleSelectVideoByTopic}
+            onOpenCodingFullscreen={handleOpenCodingFullscreen}
+          />
+        )}
+
         {/* VIEW 3: DYNAMIC VELOCITY ANALYTICS & MISTRAL DIAGNOSTICS */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
@@ -814,6 +855,22 @@ export function App() {
         )}
 
       </main>
+
+      {/* Fullscreen LeetCode Monaco Workspace for SDE Sheet Problems */}
+      {sdeFullscreenProblem && (
+        <LeetCodeWorkspaceModal
+          problemTitle={sdeFullscreenProblem.name}
+          initialLanguage="python"
+          codingProblem={{
+            title: sdeFullscreenProblem.name,
+            problem_statement: `### ${sdeFullscreenProblem.name}\n\n**Category:** ${sdeFullscreenProblem.category}  \n**Difficulty:** ${sdeFullscreenProblem.difficulty}  \n**Top Companies:** ${sdeFullscreenProblem.companies.join(', ')}  \n**Importance:** ${sdeFullscreenProblem.rating}\n\n#### Problem Description\nImplement an optimal solution for **${sdeFullscreenProblem.name}**. Analyze the Time & Space complexity.\n\n#### Practice Links\n- [LeetCode Challenge](${sdeFullscreenProblem.leetcode})\n- [GeeksforGeeks Practice](${sdeFullscreenProblem.gfg})`,
+            starter_code_python: `# TiliTube SDE Arena: ${sdeFullscreenProblem.name}\n# Difficulty: ${sdeFullscreenProblem.difficulty} | Companies: ${sdeFullscreenProblem.companies.slice(0, 3).join(', ')}\n\nclass Solution:\n    def solve(self) -> None:\n        # Write your optimal algorithm here\n        pass\n\nif __name__ == "__main__":\n    sol = Solution()\n    sol.solve()\n    print("Code executed successfully on TiliTube Cloud Engine.")\n`,
+            starter_code_cpp: `// TiliTube SDE Arena: ${sdeFullscreenProblem.name}\n// Difficulty: ${sdeFullscreenProblem.difficulty}\n\n#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        // Optimal C++ Solution\n    }\n};\n\nint main() {\n    Solution sol;\n    sol.solve();\n    cout << "Success: Problem executed on TiliTube Cloud Compiler." << endl;\n    return 0;\n}\n`
+          }}
+          onClose={() => setSdeFullscreenProblem(null)}
+          onCodeExecuted={handleQuestionSolved}
+        />
+      )}
 
       {/* Floating Circular Ask AI Assistant Action Button at Bottom-Right */}
       <button
