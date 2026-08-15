@@ -154,7 +154,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
     const startTime = performance.now();
     try {
-      const result = await executeCode(code, language);
+      const result = await executeCode(code, language, testInput, cleanTitle);
       const elapsedMs = Math.round(performance.now() - startTime);
       setExecutionTime(elapsedMs);
       setExecutionResult(result);
@@ -1009,33 +1009,73 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                       <span>Compiling and executing code on SDETube Cloud Engine...</span>
                     </div>
                   ) : executionResult ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        {executionResult.status === 'SUCCESS' && !executionResult.stderr ? (
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-400 font-bold text-xs flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Accepted
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full bg-rose-950 border border-rose-700 text-rose-400 font-bold text-xs flex items-center gap-1">
-                            <XCircle className="w-3.5 h-3.5" /> Runtime Error
-                          </span>
-                        )}
-                        <span className="text-[11px] text-slate-400">Runtime: {executionTime} ms</span>
+                    <div className="space-y-3">
+                      {/* Top Status & Metrics */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {executionResult.status === 'SUCCESS' && !executionResult.stderr ? (
+                            <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Accepted
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 rounded-full bg-rose-950 border border-rose-700 text-rose-400 font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                              <XCircle className="w-3.5 h-3.5" /> {executionResult.stderr ? 'Runtime / Compilation Error' : 'Wrong Answer'}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400">Runtime: <strong className="text-emerald-400">{executionTime} ms</strong></span>
                       </div>
 
+                      {/* Case selector tabs */}
+                      <div className="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
+                        {problemTemplate.testCases.map((tc, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectTestCase(idx)}
+                            className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold font-mono transition-all ${
+                              activeTestCaseIdx === idx
+                                ? 'bg-slate-800 text-white ring-1 ring-slate-600'
+                                : 'bg-slate-950 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Case {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Input Box */}
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Input:</div>
+                        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-mono text-xs">
+                          {testInput}
+                        </div>
+                      </div>
+
+                      {/* Output Box */}
                       {executionResult.stdout && (
                         <div className="space-y-1">
-                          <div className="text-[10px] text-slate-500 font-bold uppercase">Stdout Output:</div>
-                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 whitespace-pre-wrap">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">Output:</div>
+                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-300 font-mono text-xs whitespace-pre-wrap">
                             {executionResult.stdout}
                           </div>
                         </div>
                       )}
 
+                      {/* Expected Box */}
+                      {problemTemplate.expectedOutputs && problemTemplate.expectedOutputs[activeTestCaseIdx] && (
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-slate-400 font-bold uppercase">Expected:</div>
+                          <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
+                            {problemTemplate.expectedOutputs[activeTestCaseIdx]}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stderr Error Box */}
                       {executionResult.stderr && (
                         <div className="space-y-1">
-                          <div className="text-[10px] text-rose-400 font-bold uppercase">Error Output (Stderr):</div>
-                          <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 whitespace-pre-wrap">
+                          <div className="text-[10px] text-rose-400 font-bold uppercase">Error (Stderr):</div>
+                          <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
                             {executionResult.stderr}
                           </div>
                         </div>

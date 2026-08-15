@@ -887,36 +887,52 @@ export function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => openAskAIWithMode('notes')}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm"
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>Ask AI</span>
                 </button>
 
-                {/* Open Fullscreen LeetCode IDE for this lecture */}
-                <button
-                  onClick={() => {
-                    const cleanName = selectedVideo.title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
-                    const matchedProblem = SDE_SHEET_DATA.find(p => 
-                      p.name.toLowerCase().includes(cleanName.toLowerCase()) || 
-                      cleanName.toLowerCase().includes(p.name.toLowerCase())
-                    ) || {
-                      id: 999,
-                      category: activeChannelObj?.name || 'DSA',
-                      name: cleanName,
-                      leetcode: 'https://leetcode.com',
-                      gfg: 'https://www.geeksforgeeks.org',
-                      companies: ['Amazon', 'Microsoft', 'Google', 'Meta'],
-                      difficulty: 'Medium' as const,
-                      rating: '5.0 / 5 (Must Do)'
-                    };
-                    handleOpenCodingFullscreen(matchedProblem);
-                  }}
-                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40"
-                >
-                  <Code2 className="w-4 h-4" />
-                  <span>Open Coding IDE</span>
-                </button>
+                {/* Show Open Coding IDE ONLY for DSA / Coding problems. For OS / CN / DBMS / System Design, show Practice MCQ Quiz */}
+                {(activeChannelObj?.id === 'ch-dsa-01' || 
+                  selectedVideo.title.toLowerCase().includes('dsa') ||
+                  selectedVideo.title.toLowerCase().includes('array') ||
+                  selectedVideo.title.toLowerCase().includes('tree') ||
+                  selectedVideo.title.toLowerCase().includes('graph') ||
+                  selectedVideo.title.toLowerCase().includes('leetcode') ||
+                  Boolean(videoArtifacts?.coding_problem)) ? (
+                  <button
+                    onClick={() => {
+                      const cleanName = selectedVideo.title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
+                      const matchedProblem = SDE_SHEET_DATA.find(p => 
+                        p.name.toLowerCase().includes(cleanName.toLowerCase()) || 
+                        cleanName.toLowerCase().includes(p.name.toLowerCase())
+                      ) || {
+                        id: 999,
+                        category: activeChannelObj?.name || 'DSA',
+                        name: cleanName,
+                        leetcode: 'https://leetcode.com',
+                        gfg: 'https://www.geeksforgeeks.org',
+                        companies: ['Amazon', 'Microsoft', 'Google', 'Meta'],
+                        difficulty: 'Medium' as const,
+                        rating: '5.0 / 5 (Must Do)'
+                      };
+                      handleOpenCodingFullscreen(matchedProblem);
+                    }}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40 cursor-pointer"
+                  >
+                    <Code2 className="w-4 h-4" />
+                    <span>Open Coding IDE</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => openAskAIWithMode('quiz')}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                  >
+                    <HelpCircle className="w-4 h-4 text-emerald-400" />
+                    <span>Practice MCQ Quiz</span>
+                  </button>
+                )}
               </div>
             </div>
 

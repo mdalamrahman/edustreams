@@ -195,24 +195,32 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
 
   const handleDownloadVideoFile = async () => {
-    if (!streamSrc) return;
     setIsDownloadingVideo(true);
     const cleanName = `${(video.title || 'lecture').replace(/[^\w\s.-]/gi, '')}.mp4`;
+    const downloadEndpoint = (video.channel_id && video.telegram_message_id)
+      ? `${TELEGRAM_BACKEND_URL}/api/download/${video.channel_id}/${video.telegram_message_id}?file_name=${encodeURIComponent(cleanName)}`
+      : streamSrc;
+
     try {
-      const response = await fetch(streamSrc);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = cleanName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
+      const response = await fetch(downloadEndpoint);
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = cleanName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        throw new Error('Direct fetch failed');
+      }
     } catch (e) {
       const a = document.createElement('a');
-      a.href = streamSrc;
+      a.href = downloadEndpoint;
       a.download = cleanName;
+      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
