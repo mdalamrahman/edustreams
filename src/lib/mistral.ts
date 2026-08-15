@@ -15,27 +15,108 @@ export interface ChatMessage {
   content: string;
 }
 
-export async function requestMistralChatResponse(
-  userMsg: string,
-  videoTitle: string,
-  transcript: string,
-  history: ChatMessage[] = []
-): Promise<string> {
-  const cleanTitle = (videoTitle || 'Computer Science Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
-  const systemPrompt = `You are EduStream AI Teaching Assistant, a patient, expert computer science tutor.
-You are helping a student watching the lecture: "${cleanTitle}".
+export interface ContextualChatPayload {
+  mode: 'video' | 'notes' | 'quiz' | 'code';
+  userMsg: string;
+  videoTitle: string;
+  transcript?: string;
+  notes?: string;
+  mcq?: {
+    question: string;
+    options: string[];
+    selectedAnswer?: number | null;
+    correctAnswer?: number;
+    explanation?: string;
+  };
+  codingContext?: {
+    title: string;
+    problemStatement: string;
+    studentCode: string;
+    language: string;
+    testCases?: any[];
+    stdout?: string;
+    stderr?: string;
+  };
+  history?: ChatMessage[];
+}
 
-Lecture Context & Transcript:
-${(transcript || '').slice(0, 3000)}
+export async function requestContextualAIChatResponse(payload: ContextualChatPayload): Promise<string> {
+  const { mode, userMsg, videoTitle, transcript, notes, mcq, codingContext, history = [] } = payload;
+  const cleanTitle = (videoTitle || 'Computer Science Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
+
+  let contextDescription = '';
+  if (mode === 'video') {
+    contextDescription = `MODE: VIDEO LECTURE & SPEECH TRANSCRIPT
+You are grounded in the lecture "${cleanTitle}".
+VERBATIM LECTURE TRANSCRIPT:
+${(transcript || '').slice(0, 12000)}
 
 Instructions:
-- Answer the student's question concisely, accurately, and with clear formatting.
-- Include code examples (in C++, Python, or Java) if relevant to their question.
-- Keep explanation clear, step-by-step, and directly grounded in the lecture context.`;
+- Answer based directly on what was taught in the transcript.
+- Cite specific concepts, definitions, and code patterns explained in the video.`;
+  } else if (mode === 'notes') {
+    contextDescription = `MODE: ALGOMASTER SDE STUDY NOTES
+You are grounded in the Algomaster SDE study guide for "${cleanTitle}".
+STUDY NOTES:
+${(notes || '').slice(0, 12000)}
+
+Instructions:
+- Answer questions by referencing the intuition, architectural diagrams, trade-off matrix, pitfalls, and interview follow-ups in the study notes.`;
+  } else if (mode === 'quiz') {
+    const selectedChar = mcq?.selectedAnswer !== undefined && mcq?.selectedAnswer !== null 
+      ? String.fromCharCode(65 + mcq.selectedAnswer) 
+      : 'None selected yet';
+    const correctChar = mcq?.correctAnswer !== undefined ? String.fromCharCode(65 + mcq.correctAnswer) : 'A';
+
+    contextDescription = `MODE: CONCEPTUAL MCQ QUIZ
+Current Question:
+"${mcq?.question || 'Quiz Question'}"
+
+Options:
+${(mcq?.options || []).map((opt, i) => `${String.fromCharCode(65 + i)}) ${opt}`).join('\n')}
+
+Student's Selected Answer: Option ${selectedChar}
+Correct Answer: Option ${correctChar}
+Explanation from Lecture: ${mcq?.explanation || ''}
+
+Instructions:
+- Help the student understand why the correct answer is right and why other options are incorrect.
+- Give constructive pedagogical feedback and explain edge cases or real-world implications.`;
+  } else if (mode === 'code') {
+    contextDescription = `MODE: CODING CHALLENGE & COMPILER WORKSPACE
+Problem: ${codingContext?.title || cleanTitle}
+Problem Statement:
+${(codingContext?.problemStatement || '').slice(0, 5000)}
+
+Language: ${codingContext?.language || 'python'}
+Student's Typed Solution Code:
+\`\`\`${codingContext?.language || 'python'}
+${codingContext?.studentCode || '# No code written yet'}
+\`\`\`
+
+Execution Output (Terminal):
+Stdout: ${codingContext?.stdout || '(No stdout)'}
+Stderr / Errors: ${codingContext?.stderr || '(No errors)'}
+
+Instructions:
+- Review the student's code logic, syntax, edge cases, and runtime errors.
+- If there is a compiler error or exception, explain the exact line and how to fix it without giving away the complete solution unless asked.
+- Provide time and space complexity analysis.`;
+  }
+
+  const systemPrompt = `You are EduStream AI Teaching Assistant, an expert, encouraging computer science tutor.
+You are assisting a student studying "${cleanTitle}".
+
+${contextDescription}
+
+General Guidelines:
+- Answer clearly and concisely using Markdown formatting (bold keywords, code blocks with syntax highlighting, bullet points).
+- NEVER mention third-party AI APIs (always identify yourself as EduStream AI Teaching Assistant).
+- Be supportive, precise, and directly address the student's question.`;
 
   const messagesPayload = [
     { role: 'system', content: systemPrompt },
-    ...history.slice(-6).map(h => ({ role: h.role, content: h.content })),
+    ...history.slice(-8).map(h => ({ role: h.role, content: h.content })),
     { role: 'user', content: userMsg }
   ];
 
@@ -55,19 +136,28 @@ Instructions:
 
     if (response.ok) {
       const data = await response.json();
-      return data.choices[0]?.message?.content || `Regarding "${cleanTitle}": The key concept involves understanding memory bounds and optimal state transitions.`;
+      return data.choices[0]?.message?.content || `Regarding "${cleanTitle}": The core principle focuses on modularity, clear abstractions, and optimal complexity bounds.`;
     }
   } catch (err) {
-    console.warn('[Mistral Chat] API notice:', err);
+    console.warn('[Mistral Contextual Chat] API notice:', err);
   }
 
-  if (userMsg.toLowerCase().includes('complexity') || userMsg.toLowerCase().includes('big-o')) {
-    return `In **${cleanTitle}**, the time complexity is typically **O(N)** or **O(N log N)** depending on array partitioning, while space complexity is optimized to **O(1)** auxiliary space.`;
-  }
-  if (userMsg.toLowerCase().includes('c++') || userMsg.toLowerCase().includes('code')) {
-    return `Here is the C++ implementation for **${cleanTitle}**:\n\`\`\`cpp\n#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    // Solution logic for ${cleanTitle}\n    cout << "Optimal state transformation executed." << endl;\n    return 0;\n}\n\`\`\``;
-  }
-  return `Great question about **${cleanTitle}**! As discussed in the lecture, the core principle relies on decomposing the problem into subproblems and storing intermediate states to avoid redundant calculations.`;
+  return `Regarding **${cleanTitle}**: Based on your current ${mode} workspace, the key idea is to identify the single reason to change, isolate dependencies into interfaces, and ensure testability.`;
+}
+
+export async function requestMistralChatResponse(
+  userMsg: string,
+  videoTitle: string,
+  transcript: string,
+  history: ChatMessage[] = []
+): Promise<string> {
+  return requestContextualAIChatResponse({
+    mode: 'video',
+    userMsg,
+    videoTitle,
+    transcript,
+    history
+  });
 }
 
 export async function requestMistralQuiz(

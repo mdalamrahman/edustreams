@@ -594,7 +594,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
           </div>
         ) : (
-          <AINotesAndSimulation video={video} videoArtifacts={videoArtifacts} isLoading={loadingTranscript} />
+          <AINotesAndSimulation video={video} videoArtifacts={videoArtifacts} isLoading={loadingTranscript} onOpenAskAI={onOpenAskAI} />
         )}
       </div>
 

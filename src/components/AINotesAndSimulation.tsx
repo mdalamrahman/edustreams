@@ -37,9 +37,10 @@ interface AINotesAndSimulationProps {
     estimated_seconds_left?: number;
   } | null;
   isLoading?: boolean;
+  onOpenAskAI?: (mode?: 'video' | 'notes' | 'quiz' | 'code') => void;
 }
 
-export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ video, videoArtifacts, isLoading }) => {
+export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ video, videoArtifacts, isLoading, onOpenAskAI }) => {
   const [activeTab, setActiveTab] = useState<'notes' | 'simulation'>('notes');
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlayingSim, setIsPlayingSim] = useState(false);
@@ -445,6 +446,17 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
         </div>
 
         <div className="flex items-center space-x-2">
+          {onOpenAskAI && (
+            <button
+              onClick={() => onOpenAskAI(activeTab === 'notes' ? 'notes' : 'video')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md border border-purple-400/30"
+              title="Ask AI Teaching Assistant about these notes"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span className="hidden sm:inline">Ask AI</span>
+            </button>
+          )}
+
           {activeTab === 'notes' ? (
             <button
               onClick={() => setIsFullscreenNotes(true)}
@@ -493,13 +505,25 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({ vide
               </div>
             </div>
 
-            <button
-              onClick={() => setIsFullscreenNotes(false)}
-              className="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all flex items-center gap-2 text-xs font-bold shadow-lg"
-            >
-              <X className="w-5 h-5 text-slate-400" />
-              <span className="hidden sm:inline">Close Focus Mode</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              {onOpenAskAI && (
+                <button
+                  onClick={() => onOpenAskAI('notes')}
+                  className="p-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/40 transition-all flex items-center gap-2 text-xs font-bold shadow-lg"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                  <span>Ask AI on Notes</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setIsFullscreenNotes(false)}
+                className="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-all flex items-center gap-2 text-xs font-bold shadow-lg"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+                <span className="hidden sm:inline">Close Focus Mode</span>
+              </button>
+            </div>
           </div>
 
           <AlgomasterNotesRenderer

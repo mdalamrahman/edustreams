@@ -49,11 +49,124 @@ print(f"[Media Storage] Active video storage directory: {MEDIA_STORAGE_DIR}")
 AI_CACHE_FILE = os.path.join(MEDIA_STORAGE_DIR, "ai_cache.json")
 BACKUP_CACHE_FILE = os.path.join(os.path.dirname(__file__), "ai_cache.json")
 ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
+SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "edustream_artifacts.db")
 
 _GLOBAL_AI_CACHE = {}
 
+def init_sqlite_db():
+    try:
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lecture_artifacts (
+                cache_key TEXT PRIMARY KEY,
+                chat_id TEXT,
+                msg_id INTEGER,
+                title TEXT,
+                transcript TEXT,
+                provider TEXT,
+                notes TEXT,
+                mcqs_json TEXT,
+                coding_problem_json TEXT,
+                simulation_steps_json TEXT,
+                status TEXT,
+                progress_percent REAL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_title ON lecture_artifacts(title)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_id ON lecture_artifacts(msg_id)")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[SQLite Init Notice]: {e}")
+
+init_sqlite_db()
+
+def save_to_sqlite(data: dict):
+    if not data or not data.get("transcript"):
+        return
+    try:
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cache_key = f"{data.get('chat_id')}_{data.get('msg_id')}"
+        cursor.execute("""
+            INSERT INTO lecture_artifacts 
+            (cache_key, chat_id, msg_id, title, transcript, provider, notes, mcqs_json, coding_problem_json, simulation_steps_json, status, progress_percent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(cache_key) DO UPDATE SET
+                title=excluded.title,
+                transcript=excluded.transcript,
+                provider=excluded.provider,
+                notes=excluded.notes,
+                mcqs_json=excluded.mcqs_json,
+                coding_problem_json=excluded.coding_problem_json,
+                simulation_steps_json=excluded.simulation_steps_json,
+                status=excluded.status,
+                progress_percent=excluded.progress_percent,
+                updated_at=CURRENT_TIMESTAMP
+        """, (
+            cache_key,
+            str(data.get("chat_id") or ""),
+            int(data.get("msg_id") or 0),
+            str(data.get("title") or ""),
+            data.get("transcript") or "",
+            data.get("provider") or "EduStream AI Speech Engine",
+            data.get("notes") or "",
+            json.dumps(data.get("mcqs", [])),
+            json.dumps(data.get("coding_problem")),
+            json.dumps(data.get("simulation_steps", [])),
+            data.get("status") or "completed",
+            float(data.get("progress_percent") or 100.0)
+        ))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[SQLite Save Notice]: {e}")
+
+def fetch_from_sqlite(chat_id: str, msg_id: int, title: str) -> Optional[dict]:
+    try:
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cache_key = f"{chat_id}_{msg_id}"
+        clean_title = (title or "").strip()
+        cursor.execute("""
+            SELECT cache_key, chat_id, msg_id, title, transcript, provider, notes, mcqs_json, coding_problem_json, simulation_steps_json, status, progress_percent
+            FROM lecture_artifacts
+            WHERE cache_key = ? OR msg_id = ? OR title = ? OR title LIKE ?
+            LIMIT 1
+        """, (cache_key, int(msg_id) if str(msg_id).isdigit() else 0, clean_title, f"%{clean_title}%"))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[4] and len(row[4].strip()) > 120:
+            print(f"[SQLite DB Hit] Loaded stored transcript & AI artifacts for {cache_key} (0 tokens used)")
+            return {
+                "chat_id": row[1],
+                "msg_id": row[2],
+                "title": row[3],
+                "transcript": row[4],
+                "provider": row[5],
+                "notes": row[6],
+                "mcqs": json.loads(row[7]) if row[7] else [],
+                "coding_problem": json.loads(row[8]) if row[8] else None,
+                "simulation_steps": json.loads(row[9]) if row[9] else [],
+                "status": row[10] or "completed",
+                "progress_percent": row[11] or 100.0,
+                "current_part": 30,
+                "total_parts": 30,
+                "stage": "Completed",
+                "has_artifacts": True,
+                "estimated_seconds_left": 0
+            }
+    except Exception as e:
+        print(f"[SQLite Query Notice]: {e}")
+    return None
+
 def load_ai_cache() -> dict:
-    """Loads cache merging RAM with all on-disk cache files and Supabase."""
+    """Loads cache merging RAM with all on-disk cache files, SQLite DB and Supabase."""
     global _GLOBAL_AI_CACHE
     if not _GLOBAL_AI_CACHE:
         for cpath in [AI_CACHE_FILE, BACKUP_CACHE_FILE, "ai_cache.json"]:
@@ -68,7 +181,7 @@ def load_ai_cache() -> dict:
     return _GLOBAL_AI_CACHE
 
 def save_ai_cache(cache_data: dict):
-    """Saves AI cache to RAM and all disk mirrors for zero-data-loss persistence."""
+    """Saves AI cache to RAM, SQLite DB, and all disk mirrors for zero-data-loss persistence."""
     global _GLOBAL_AI_CACHE
     _GLOBAL_AI_CACHE.update(cache_data)
     for cpath in [AI_CACHE_FILE, BACKUP_CACHE_FILE, "ai_cache.json"]:
@@ -78,9 +191,13 @@ def save_ai_cache(cache_data: dict):
                 json.dump(_GLOBAL_AI_CACHE, f, indent=2)
         except Exception:
             pass
+    for k, v in cache_data.items():
+        if isinstance(v, dict) and v.get("transcript"):
+            save_to_sqlite(v)
 
 def sync_artifacts_to_supabase(data: dict):
     """Saves completed transcript, MCQs, coding problem, and Algomaster notes into Supabase database."""
+    save_to_sqlite(data)
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return
     try:
@@ -118,7 +235,12 @@ def sync_artifacts_to_supabase(data: dict):
         print(f"[Supabase Cloud Sync Notice]: {e}")
 
 def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Optional[dict]:
-    """Fetches previously stored transcript and artifacts from Supabase database."""
+    """Fetches previously stored transcript and artifacts from SQLite DB and Supabase database."""
+    # Check SQLite first (instant 0ms retrieval)
+    sqlite_hit = fetch_from_sqlite(chat_id, msg_id, title)
+    if sqlite_hit:
+        return sqlite_hit
+
     if not SUPABASE_URL or not SUPABASE_KEY or "edustream-demo.supabase.co" in SUPABASE_URL:
         return None
     try:
@@ -127,17 +249,26 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
             "Authorization": f"Bearer {SUPABASE_KEY}"
         }
         file_id = f"{chat_id}_{msg_id}"
+        clean_title = (title or "").strip()
+        # Search by file_id OR title
         url = f"{SUPABASE_URL}/rest/v1/videos?telegram_file_id=eq.{file_id}&select=*"
         resp = requests.get(url, headers=headers, timeout=4)
         if resp.status_code == 200:
             rows = resp.json()
+            if not rows or len(rows) == 0:
+                # Fallback: search by title
+                url_title = f"{SUPABASE_URL}/rest/v1/videos?title=ilike.*{requests.utils.quote(clean_title)}*&select=*"
+                resp_title = requests.get(url_title, headers=headers, timeout=4)
+                if resp_title.status_code == 200:
+                    rows = resp_title.json()
+
             if rows and len(rows) > 0:
                 row = rows[0]
                 tr = row.get("transcript")
                 qj = row.get("quiz_json") or {}
                 if tr and len(tr.strip()) > 120:
                     print(f"[Supabase DB Hit] Loaded stored transcript & AI artifacts for {file_id}")
-                    return {
+                    result_obj = {
                         "chat_id": chat_id,
                         "msg_id": msg_id,
                         "title": row.get("title") or title,
@@ -155,6 +286,8 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
                         "has_artifacts": True,
                         "estimated_seconds_left": 0
                     }
+                    save_to_sqlite(result_obj)
+                    return result_obj
     except Exception as e:
         print(f"[Supabase DB Query Notice]: {e}")
     return None

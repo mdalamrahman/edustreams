@@ -46,6 +46,16 @@ export function App() {
   const [showMobileGating, setShowMobileGating] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
+  const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code'>('video');
+
+  const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code') => {
+    if (mode) {
+      setAskAIMode(mode);
+    } else {
+      setAskAIMode(lessonSubTab === 'quiz' ? 'quiz' : (lessonSubTab === 'code' ? 'code' : 'video'));
+    }
+    setIsAskAIOpen(true);
+  };
 
   // Lecture completion tracking
   const [completedLectures, setCompletedLectures] = useState<Set<string>>(() => {
@@ -742,7 +752,7 @@ export function App() {
                   onPrevLecture={handlePrevLecture}
                   hasNextLecture={hasNextLecture}
                   hasPrevLecture={hasPrevLecture}
-                  onOpenAskAI={() => setIsAskAIOpen(true)}
+                  onOpenAskAI={() => openAskAIWithMode('video')}
                   onAutoComplete={handleAutoComplete}
                 />
                 <ResourceCard
@@ -811,7 +821,7 @@ export function App() {
 
       {/* Floating Circular Ask AI Assistant Action Button at Bottom-Right */}
       <button
-        onClick={() => setIsAskAIOpen(true)}
+        onClick={() => openAskAIWithMode()}
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 hover:from-purple-500 hover:to-indigo-500 text-white shadow-2xl shadow-purple-600/60 border-2 border-purple-300/40 flex items-center justify-center transition-all duration-300 hover:scale-110 group cursor-pointer"
         title="Ask AI Teaching Assistant"
       >
@@ -846,6 +856,10 @@ export function App() {
         isOpen={isAskAIOpen}
         onClose={() => setIsAskAIOpen(false)}
         video={selectedVideo}
+        videoArtifacts={videoArtifacts}
+        initialMode={askAIMode}
+        activeMCQ={activeVideoQuiz && activeVideoQuiz.length > 0 ? activeVideoQuiz[0] : undefined}
+        codingProblem={videoArtifacts?.coding_problem}
       />
 
     </div>
