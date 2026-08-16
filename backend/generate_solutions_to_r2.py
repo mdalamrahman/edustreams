@@ -9,6 +9,12 @@ import json
 import time
 import requests
 
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 sys.path.insert(0, '.')
 from backend.r2_storage import r2_storage
 from backend.scrape_leetcode_to_r2 import get_sde_sheet_slugs
