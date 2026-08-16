@@ -67,7 +67,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const { user, error: signInErr } = await signInStudent(email.trim(), password);
 
         if (signInErr) {
-          setError(signInErr);
+          if (signInErr.toLowerCase().includes('invalid login credentials') || signInErr.toLowerCase().includes('email not confirmed')) {
+            setError('Account not found or credentials invalid. If you do not have an account yet, click "Create Account" below.');
+          } else {
+            setError(signInErr);
+          }
         } else if (user) {
           setSuccessMsg('Signed in successfully! Loading portal...');
           setTimeout(() => {
@@ -100,7 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight gradient-text">SDETube AI Portal</h1>
           <p className="text-xs text-slate-400 mt-1 max-w-sm">
-            Private Educational Matrix & Automated MTProto Video Ingestion Engine
+            Private Educational Matrix & High-Performance SDE Video Learning Platform
           </p>
         </div>
       )}
