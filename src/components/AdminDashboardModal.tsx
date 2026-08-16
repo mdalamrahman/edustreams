@@ -51,169 +51,73 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [filterRole, setFilterRole] = useState<'all' | 'online' | 'active'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<'supabase' | 'r2_backend'>('r2_backend');
-  const [statsData, setStatsData] = useState<{
-    totalActiveUsers: number;
-    onlineUsers: number;
-    totalTranscriptsStored: number;
-    totalNotesStored: number;
-    totalSdeProblems: number;
-    totalCodeExecutions: number;
-    r2StorageStatus: string;
-    groqAiStatus: string;
-    mistralAiStatus: string;
-    backendStatus: string;
-  }>({
-    totalActiveUsers: 1428,
-    onlineUsers: 42,
-    totalTranscriptsStored: 287,
-    totalNotesStored: 194,
-    totalSdeProblems: 167,
-    totalCodeExecutions: 8940,
-    r2StorageStatus: 'Healthy (sdestream bucket)',
-    groqAiStatus: 'Active (Llama-3.3-70B)',
-    mistralAiStatus: 'Active (Mistral-Small)',
-    backendStatus: 'Operational (Render/FastAPI)'
+
+  // Real User Stats (Zero Mock Users)
+  const [usersList, setUsersList] = useState<AdminUserStat[]>(() => {
+    try {
+      const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+      const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+      const combined = new Set([
+        ...(Array.isArray(sde1) ? sde1 : []),
+        ...(Array.isArray(sde2) ? sde2 : [])
+      ]);
+      const solved = combined.size;
+      const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
+      const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+      const correct = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
+      const accuracy = attempts > 0 ? Math.round((Math.max(solved, correct) / Math.max(1, attempts)) * 100) : (solved > 0 ? 100 : 0);
+
+      const email = currentUserEmail || 'mdalamrahman4@gmail.com';
+      const name = email.split('@')[0];
+
+      return [
+        {
+          id: 'usr-admin-1',
+          email: email,
+          name: `${name} (Admin)`,
+          solvedCount: solved,
+          studyHours: Number((activeMins / 60).toFixed(1)),
+          streakDays: solved > 0 || activeMins > 0 ? 1 : 0,
+          quizScorePercent: accuracy,
+          totalCodeRuns: attempts,
+          lastActive: 'Active Now',
+          isOnline: true,
+          joinedDate: new Date().toISOString().slice(0, 10)
+        }
+      ];
+    } catch {
+      return [];
+    }
   });
 
-  // Comprehensive Userwise Telemetry List
-  const [usersList, setUsersList] = useState<AdminUserStat[]>([
-    {
-      id: 'usr-admin-1',
-      email: 'mdalamrahman4@gmail.com',
-      name: 'Md Alam Rahman (Admin)',
-      solvedCount: 167,
-      studyHours: 48.5,
-      streakDays: 24,
-      quizScorePercent: 98,
-      totalCodeRuns: 430,
-      lastActive: 'Active Now',
-      isOnline: true,
-      joinedDate: '2026-08-01'
-    },
-    {
-      id: 'usr-2',
-      email: 'aarav.sharma@scaler.edu',
-      name: 'Aarav Sharma',
-      solvedCount: 112,
-      studyHours: 34.2,
-      streakDays: 18,
-      quizScorePercent: 91,
-      totalCodeRuns: 310,
-      lastActive: '3 mins ago',
-      isOnline: true,
-      joinedDate: '2026-08-04'
-    },
-    {
-      id: 'usr-3',
-      email: 'priya.patel@amazon.com',
-      name: 'Priya Patel',
-      solvedCount: 94,
-      studyHours: 29.8,
-      streakDays: 12,
-      quizScorePercent: 88,
-      totalCodeRuns: 245,
-      lastActive: '12 mins ago',
-      isOnline: true,
-      joinedDate: '2026-08-05'
-    },
-    {
-      id: 'usr-4',
-      email: 'rohit.verma@iitb.ac.in',
-      name: 'Rohit Verma',
-      solvedCount: 81,
-      studyHours: 25.1,
-      streakDays: 9,
-      quizScorePercent: 84,
-      totalCodeRuns: 190,
-      lastActive: '25 mins ago',
-      isOnline: false,
-      joinedDate: '2026-08-07'
-    },
-    {
-      id: 'usr-5',
-      email: 'sneha.kulkarni@google.com',
-      name: 'Sneha Kulkarni',
-      solvedCount: 76,
-      studyHours: 22.4,
-      streakDays: 15,
-      quizScorePercent: 92,
-      totalCodeRuns: 180,
-      lastActive: '45 mins ago',
-      isOnline: false,
-      joinedDate: '2026-08-08'
-    },
-    {
-      id: 'usr-6',
-      email: 'ananya.deshmukh@microsoft.com',
-      name: 'Ananya Deshmukh',
-      solvedCount: 65,
-      studyHours: 19.5,
-      streakDays: 7,
-      quizScorePercent: 86,
-      totalCodeRuns: 142,
-      lastActive: '1 hour ago',
-      isOnline: false,
-      joinedDate: '2026-08-10'
-    },
-    {
-      id: 'usr-7',
-      email: 'karan.mehta@meta.com',
-      name: 'Karan Mehta',
-      solvedCount: 58,
-      studyHours: 16.8,
-      streakDays: 5,
-      quizScorePercent: 79,
-      totalCodeRuns: 118,
-      lastActive: '2 hours ago',
-      isOnline: false,
-      joinedDate: '2026-08-11'
-    },
-    {
-      id: 'usr-8',
-      email: 'vikram.singh@bits-pilani.ac.in',
-      name: 'Vikram Singh',
-      solvedCount: 42,
-      studyHours: 12.3,
-      streakDays: 4,
-      quizScorePercent: 82,
-      totalCodeRuns: 89,
-      lastActive: '4 hours ago',
-      isOnline: false,
-      joinedDate: '2026-08-12'
-    },
-    {
-      id: 'usr-9',
-      email: 'tanya.rao@iiit.ac.in',
-      name: 'Tanya Rao',
-      solvedCount: 38,
-      studyHours: 10.9,
-      streakDays: 3,
-      quizScorePercent: 75,
-      totalCodeRuns: 72,
-      lastActive: 'Yesterday',
-      isOnline: false,
-      joinedDate: '2026-08-13'
-    },
-    {
-      id: 'usr-10',
-      email: 'dev.sharma@uber.com',
-      name: 'Dev Sharma',
-      solvedCount: 29,
-      studyHours: 8.5,
-      streakDays: 2,
-      quizScorePercent: 78,
-      totalCodeRuns: 54,
-      lastActive: '2 days ago',
-      isOnline: false,
-      joinedDate: '2026-08-14'
-    }
-  ]);
+  const [statsData, setStatsData] = useState(() => {
+    const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+    const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+    const combined = new Set([
+      ...(Array.isArray(sde1) ? sde1 : []),
+      ...(Array.isArray(sde2) ? sde2 : [])
+    ]);
+    const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+
+    return {
+      totalActiveUsers: 1,
+      onlineUsers: 1,
+      totalTranscriptsStored: 176,
+      totalNotesStored: 176,
+      totalSdeProblems: 167,
+      totalCodeExecutions: attempts,
+      r2StorageStatus: 'Healthy (sdestream bucket)',
+      groqAiStatus: 'Active (Llama-3.3-70B)',
+      mistralAiStatus: 'Active (Mistral-Small)',
+      backendStatus: 'Operational (Render/FastAPI)'
+    };
+  });
 
   // Fetch real-time metrics from Supabase & Backend
   const fetchAdminStats = async () => {
     setIsRefreshing(true);
 
-    // 1. Try fetching from Supabase tables
+    // 1. Check Supabase
     try {
       const supaData = await fetchSupabaseLiveTelemetry();
       if (supaData && supaData.isSupabaseLive) {
@@ -223,7 +127,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           totalTranscriptsStored: supaData.totalTranscriptsStored || prev.totalTranscriptsStored,
           totalNotesStored: supaData.totalNotesStored || prev.totalNotesStored,
           totalCodeExecutions: supaData.totalCodeExecutions || prev.totalCodeExecutions,
-          totalActiveUsers: supaData.totalActiveUsers || prev.totalActiveUsers
+          totalActiveUsers: supaData.users && supaData.users.length > 0 ? supaData.users.length : prev.totalActiveUsers
         }));
         if (supaData.users && supaData.users.length > 0) {
           setUsersList(supaData.users as AdminUserStat[]);
@@ -238,12 +142,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         const data = await resp.json();
         setStatsData(prev => ({
           ...prev,
-          totalActiveUsers: data.active_users_count || prev.totalActiveUsers,
-          onlineUsers: data.online_users_count || prev.onlineUsers,
           totalTranscriptsStored: data.total_transcripts_stored || prev.totalTranscriptsStored,
           totalNotesStored: data.total_notes_stored || prev.totalNotesStored,
           totalSdeProblems: data.total_sde_problems || 167,
-          totalCodeExecutions: data.total_code_runs || prev.totalCodeExecutions,
+          totalCodeExecutions: Math.max(data.total_code_runs, prev.totalCodeExecutions),
           r2StorageStatus: data.r2_storage_status || prev.r2StorageStatus,
           groqAiStatus: data.groq_status || prev.groqAiStatus,
           mistralAiStatus: data.mistral_status || prev.mistralAiStatus,
@@ -263,18 +165,33 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
       const solvedCount = combinedSolvedSet.size;
       const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
       const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+      const correct = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
+      const accuracy = attempts > 0 ? Math.round((Math.max(solvedCount, correct) / Math.max(1, attempts)) * 100) : (solvedCount > 0 ? 100 : 0);
 
-      setUsersList(prev => prev.map(u => {
-        if (u.email.includes('mdalamrahman4') || (currentUserEmail && u.email === currentUserEmail)) {
-          const calcHours = Number(Math.max(u.studyHours, (activeMins / 60) + (solvedCount * 0.25)).toFixed(1));
-          return {
-            ...u,
-            solvedCount: Math.max(u.solvedCount, solvedCount),
-            studyHours: calcHours,
-            totalCodeRuns: Math.max(u.totalCodeRuns, attempts, solvedCount * 3)
-          };
+      const email = currentUserEmail || 'mdalamrahman4@gmail.com';
+      const name = email.split('@')[0];
+
+      setUsersList([
+        {
+          id: 'usr-admin-1',
+          email: email,
+          name: `${name} (Admin)`,
+          solvedCount: solvedCount,
+          studyHours: Number((activeMins / 60).toFixed(1)),
+          streakDays: solvedCount > 0 || activeMins > 0 ? 1 : 0,
+          quizScorePercent: accuracy,
+          totalCodeRuns: attempts,
+          lastActive: 'Active Now',
+          isOnline: true,
+          joinedDate: new Date().toISOString().slice(0, 10)
         }
-        return u;
+      ]);
+
+      setStatsData(prev => ({
+        ...prev,
+        totalActiveUsers: 1,
+        onlineUsers: 1,
+        totalCodeExecutions: attempts
       }));
     } catch {}
 
@@ -292,7 +209,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                             user.email.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
       if (filterRole === 'online') return user.isOnline;
-      if (filterRole === 'active') return user.solvedCount > 30;
+      if (filterRole === 'active') return user.solvedCount > 0;
       return true;
     });
   }, [usersList, searchQuery, filterRole]);
@@ -379,7 +296,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         {/* Scrollable Dashboard Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">
           
-          {/* 1. Global Metrics Row (5 High-Impact Cards) */}
+          {/* 1. Global Metrics Row (5 Real Metrics Cards) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             
             {/* Card 1: Active Users */}
@@ -389,10 +306,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <Users className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {statsData.totalActiveUsers.toLocaleString()}
+                {usersList.length}
               </div>
               <div className="text-[11px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> +14.2% this month
+                <CheckCircle2 className="w-3 h-3" /> Live Authenticated
               </div>
             </div>
 
@@ -403,7 +320,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
               </div>
               <div className="text-2xl font-black text-slate-100 font-mono mt-2 flex items-baseline gap-1.5">
-                <span>{statsData.onlineUsers}</span>
+                <span>{usersList.filter(u => u.isOnline).length}</span>
                 <span className="text-xs font-normal text-slate-400">concurrent</span>
               </div>
               <div className="text-[11px] text-slate-400 mt-1">Real-time Heartbeat</div>
@@ -433,14 +350,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               <div className="text-[11px] text-sky-300 mt-1">Algomaster Synopses</div>
             </div>
 
-            {/* Card 5: SDE Sheet & Code Runs */}
+            {/* Card 5: Total Code Runs */}
             <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950 to-slate-950 border border-amber-500/30 shadow-lg col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between text-amber-400">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Code Runs</span>
                 <Terminal className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {statsData.totalCodeExecutions.toLocaleString()}
+                {statsData.totalCodeExecutions}
               </div>
               <div className="text-[11px] text-amber-300 mt-1">167 SDE Problems</div>
             </div>
@@ -552,7 +469,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                     <th className="py-3 px-3 text-center">SDE Solved</th>
                     <th className="py-3 px-3 text-center">Study Time</th>
                     <th className="py-3 px-3 text-center">Streak</th>
-                    <th className="py-3 px-3 text-center">Quiz Score</th>
+                    <th className="py-3 px-3 text-center">Accuracy / Quiz</th>
                     <th className="py-3 px-3 text-center">Code Runs</th>
                     <th className="py-3 px-4 text-right">Last Active</th>
                   </tr>
@@ -569,7 +486,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                         <td className="py-3 px-4 font-sans">
                           <div className="flex items-center space-x-2.5">
                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isSuperAdmin ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                              {u.name.charAt(0)}
+                              {u.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
@@ -628,9 +545,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                           </div>
                         </td>
 
-                        {/* Quiz Score */}
+                        {/* Quiz Score / Accuracy */}
                         <td className="py-3 px-3 text-center">
-                          <span className={`font-bold ${u.quizScorePercent >= 90 ? 'text-emerald-400' : u.quizScorePercent >= 75 ? 'text-sky-400' : 'text-amber-400'}`}>
+                          <span className={`font-bold ${u.quizScorePercent >= 90 ? 'text-emerald-400' : u.quizScorePercent >= 75 ? 'text-sky-400' : u.quizScorePercent > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
                             {u.quizScorePercent}%
                           </span>
                         </td>
