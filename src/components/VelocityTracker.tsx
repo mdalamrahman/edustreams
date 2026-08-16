@@ -300,7 +300,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = ({
               Platform Benchmark Comparison (You vs. Average SDETube Student)
             </h3>
             <p className="text-xs text-slate-400">
-              Benchmarking your active progress against 1,400+ learners currently preparing on the platform
+              Live comparison of your personal metrics against aggregated platform learners on SDETube
             </p>
           </div>
           <span className="px-3 py-1 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 font-mono text-xs font-bold self-start sm:self-auto">

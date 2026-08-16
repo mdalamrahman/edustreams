@@ -22,11 +22,15 @@ import {
   TrendingUp,
   Cpu,
   Layers,
-  Award
+  Award,
+  KeyRound,
+  Copy,
+  Check
 } from 'lucide-react';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 import { getAllRegisteredUsers } from '../lib/auth';
+import { getActivePasskey, generateDynamicPasskey, DynamicPasskey } from '../lib/passkey';
 
 interface AdminUserStat {
   id: string;
@@ -94,6 +98,40 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   // Real Dynamic User Stats List
   const [usersList, setUsersList] = useState<AdminUserStat[]>(() => buildRealUsersList(currentUserEmail));
 
+  // Dynamic 10-Minute Student Registration Passkey State
+  const [currentPasskey, setCurrentPasskey] = useState<DynamicPasskey | null>(() => getActivePasskey().passkey);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => getActivePasskey().remainingSeconds);
+  const [copiedPasskey, setCopiedPasskey] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const active = getActivePasskey();
+      setCurrentPasskey(active.passkey);
+      setRemainingSeconds(active.remainingSeconds);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleGenerateNewPasskey = () => {
+    const fresh = generateDynamicPasskey(currentUserEmail || 'mdalamrahman4@gmail.com');
+    setCurrentPasskey(fresh);
+    setRemainingSeconds(600);
+    setCopiedPasskey(false);
+  };
+
+  const handleCopyPasskey = () => {
+    if (!currentPasskey?.code) return;
+    navigator.clipboard.writeText(currentPasskey.code);
+    setCopiedPasskey(true);
+    setTimeout(() => setCopiedPasskey(false), 2500);
+  };
+
+  const formatCountdown = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   const [statsData, setStatsData] = useState(() => {
     const initialUsers = buildRealUsersList(currentUserEmail);
     const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
@@ -107,7 +145,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
       totalCodeExecutions: attempts,
       r2StorageStatus: 'Healthy (sdestream bucket)',
       groqAiStatus: 'Active (Llama-3.1-8B-Instant)',
-      mistralAiStatus: 'Active (Mistral-Small)',
+      mistralAiStatus: 'Active (Mistral-Large-Latest)',
       backendStatus: 'Operational (Render/FastAPI)'
     };
   });
@@ -265,6 +303,78 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         {/* Scrollable Dashboard Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">
           
+          {/* Dynamic 10-Minute Student Registration Passkey Generator */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-950 border border-purple-500/40 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                  <KeyRound className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-100">
+                  Student Registration Authorization Key (10-Min Dynamic Passkey)
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  remainingSeconds > 0 
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60' 
+                    : 'bg-red-950/80 text-red-300 border-red-700/60'
+                }`}>
+                  {remainingSeconds > 0 ? 'ACTIVE KEY' : 'EXPIRED'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 max-w-xl">
+                Students must enter this active passkey to register for an account. Passkeys automatically expire after 10 minutes for platform security.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Passkey Display Box */}
+              <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/90 border border-purple-500/50 rounded-xl shadow-inner">
+                <div className="text-center">
+                  <div className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Passkey Code</div>
+                  <div className="text-lg font-black font-mono tracking-widest text-purple-100">
+                    {currentPasskey?.code || 'SDE-------'}
+                  </div>
+                </div>
+                <div className="h-7 w-px bg-slate-800 mx-1"></div>
+                <div className="text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5 text-amber-400" /> Validity
+                  </div>
+                  <div className={`text-xs font-mono font-bold ${remainingSeconds > 60 ? 'text-amber-300' : 'text-red-400 animate-pulse'}`}>
+                    {remainingSeconds > 0 ? formatCountdown(remainingSeconds) : '00:00'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <button
+                onClick={handleCopyPasskey}
+                disabled={!currentPasskey?.code}
+                className="px-3 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-900 border border-purple-600/60 text-purple-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+              >
+                {copiedPasskey ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-300">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Passkey</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleGenerateNewPasskey}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/30"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Generate New (10m)</span>
+              </button>
+            </div>
+          </div>
+
           {/* 1. Global Metrics Row (5 Real Metrics Cards) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             
