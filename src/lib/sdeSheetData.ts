@@ -7,8 +7,16 @@ export interface SDEProblem {
   companies: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
   rating: string;
+  slug?: string;
   starter_code_cpp?: string;
   starter_code_python?: string;
+}
+
+/** Extract LeetCode slug from URL, e.g. "https://leetcode.com/problems/two-sum/" → "two-sum" */
+export function getLeetCodeSlug(problem: SDEProblem): string {
+  if (problem.slug) return problem.slug;
+  const match = problem.leetcode.match(/\/problems\/([^/]+)/);
+  return match ? match[1] : problem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 export const SDE_SHEET_DATA: SDEProblem[] = [

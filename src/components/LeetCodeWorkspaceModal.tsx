@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { getProblemTemplate, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
+import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
@@ -75,7 +75,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
-  const problemTemplate: ProblemTemplate = useMemo(() => {
+  const [problemTemplate, setProblemTemplate] = useState<ProblemTemplate>(() => {
     return getProblemTemplate(
       cleanTitle,
       codingProblem?.category || 'Arrays',
@@ -83,7 +83,41 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       effectiveTranscript,
       notes
     );
-  }, [cleanTitle, codingProblem, effectiveTranscript, notes]);
+  });
+
+  const [isLoadingEnriched, setIsLoadingEnriched] = useState<boolean>(true);
+
+  // Fetch enriched LeetCode problem description, examples, constraints & starter code from Cloudflare R2
+  useEffect(() => {
+    let isCancelled = false;
+    setIsLoadingEnriched(true);
+
+    const slug = codingProblem?.slug || codingProblem?.leetcode || cleanTitle;
+    fetchEnrichedProblem(
+      slug,
+      codingProblem?.category || 'Arrays',
+      codingProblem?.difficulty || 'Medium',
+      effectiveTranscript,
+      notes
+    ).then((enriched) => {
+      if (!isCancelled && enriched) {
+        setProblemTemplate(enriched);
+        setIsLoadingEnriched(false);
+        if (!initialCode || initialCode.trim().length < 10) {
+          setCode(enriched.starters[language] || enriched.starters.cpp || '');
+        }
+        if (enriched.testCases && enriched.testCases.length > 0) {
+          setTestInput(enriched.testCases[0]);
+        }
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoadingEnriched(false);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [cleanTitle, codingProblem, effectiveTranscript, notes, language, initialCode]);
 
   // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {

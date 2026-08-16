@@ -589,6 +589,18 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
     return job
 
 
+@app.get("/api/problem/{slug}")
+async def get_problem_route(slug: str):
+    """
+    Fetches enriched LeetCode problem description, constraints, examples,
+    and official multi-language starter code stored in Cloudflare R2.
+    """
+    problem_data = r2_storage.fetch_problem(slug)
+    if problem_data:
+        return problem_data
+    return {"error": f"Problem '{slug}' not found in Cloudflare R2", "slug": slug}
+
+
 # -------------------------------------------------------------------
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------

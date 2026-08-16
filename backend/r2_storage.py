@@ -180,4 +180,55 @@ class CloudflareR2Storage:
 
         return None
 
+    def upload_problem(self, slug: str, data: Dict[str, Any]) -> Optional[str]:
+        """Uploads a LeetCode problem JSON to R2 under problems/{slug}.json."""
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        key = f"problems/{clean_slug}.json"
+        payload_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=payload_bytes, ContentType="application/json")
+                print(f"[R2 Problem Upload] {key} ({len(payload_bytes)} bytes)")
+                return key
+            except Exception as e:
+                print(f"[R2 Problem Upload Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("PUT", key, payload_bytes)
+            headers["Content-Type"] = "application/json"
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+            resp = requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            if resp.status_code in [200, 201]:
+                print(f"[R2 Problem Upload SigV4] {key} ({len(payload_bytes)} bytes)")
+                return key
+        except Exception as e:
+            print(f"[R2 Problem Upload SigV4 Error]: {e}")
+        return None
+
+    def fetch_problem(self, slug: str) -> Optional[Dict[str, Any]]:
+        """Fetches a LeetCode problem JSON from R2."""
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        key = f"problems/{clean_slug}.json"
+
+        if self._boto_client:
+            try:
+                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                body = resp["Body"].read()
+                return json.loads(body.decode("utf-8"))
+            except Exception:
+                pass
+
+        try:
+            headers = self._get_sigv4_headers("GET", key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
 r2_storage = CloudflareR2Storage()

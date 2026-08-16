@@ -1,4 +1,5 @@
 import { SupportedLanguage } from './compiler';
+import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export interface ProblemApproach {
   id: string;
@@ -891,3 +892,87 @@ function generateDynamicTemplate(
 function getDynamicStarters(name: string, category: string): Record<SupportedLanguage, string> {
   return generateDynamicTemplate(name, category, 'Medium').starters;
 }
+
+/**
+ * Fetches enriched LeetCode problem description, examples, constraints,
+ * test cases, and official multi-language starter code from Cloudflare R2.
+ */
+export async function fetchEnrichedProblem(
+  slugOrTitle: string,
+  category: string = 'Arrays',
+  difficulty: 'Easy' | 'Medium' | 'Hard' = 'Medium',
+  transcript: string = '',
+  notes: string = ''
+): Promise<ProblemTemplate> {
+  const cleanSlug = slugOrTitle
+    .toLowerCase()
+    .replace(/^https?:\/\/leetcode\.com\/problems\//i, '')
+    .replace(/\/.*$/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  const cacheKey = `edustream_lc_problem_${cleanSlug}`;
+
+  // 1. Instant 0ms browser cache check
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.description && parsed?.starters) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  // 2. Check handcrafted templates first if available
+  const norm = normalizeProblemTitle(slugOrTitle);
+  const staticTemplate = SPECIFIC_TEMPLATES[norm];
+
+  // 3. Fetch from Backend / Cloudflare R2
+  try {
+    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${cleanSlug}`, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.title && (data.description || data.description_full)) {
+        const fullDesc = data.description_full || data.description;
+        const dynamicFallback = generateDynamicTemplate(data.title || slugOrTitle, category, data.difficulty || difficulty);
+
+        const template: ProblemTemplate = {
+          name: data.title || slugOrTitle,
+          category: data.topicTags?.[0] || category,
+          difficulty: data.difficulty || difficulty,
+          description: fullDesc,
+          examples: data.examples && data.examples.length > 0 ? data.examples : (staticTemplate?.examples || dynamicFallback.examples),
+          constraints: data.constraints && data.constraints.length > 0 ? data.constraints : (staticTemplate?.constraints || dynamicFallback.constraints),
+          testCases: data.testCases && data.testCases.length > 0 ? data.testCases : (staticTemplate?.testCases || dynamicFallback.testCases),
+          expectedOutputs: staticTemplate?.expectedOutputs || dynamicFallback.expectedOutputs,
+          approaches: staticTemplate?.approaches || [],
+          starters: {
+            cpp: data.starters?.cpp || staticTemplate?.starters?.cpp || dynamicFallback.starters.cpp,
+            python: data.starters?.python || staticTemplate?.starters?.python || dynamicFallback.starters.python,
+            java: data.starters?.java || staticTemplate?.starters?.java || dynamicFallback.starters.java,
+            javascript: data.starters?.javascript || staticTemplate?.starters?.javascript || dynamicFallback.starters.javascript,
+            go: data.starters?.go || staticTemplate?.starters?.go || dynamicFallback.starters.go,
+            rust: data.starters?.rust || staticTemplate?.starters?.rust || dynamicFallback.starters.rust,
+            sql: staticTemplate?.starters?.sql || dynamicFallback.starters.sql,
+          },
+          solutions: staticTemplate?.solutions || dynamicFallback.solutions,
+        };
+
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(template));
+        } catch {}
+
+        return template;
+      }
+    }
+  } catch (err) {
+    console.warn(`[EduStream] Cloudflare R2 problem fetch notice for ${cleanSlug}:`, err);
+  }
+
+  // 4. Fallback to existing local generator
+  return getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+}
+
