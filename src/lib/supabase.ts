@@ -14,12 +14,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storage: typeof window !== 'undefined' ? window.localStorage : undefined
-  },
-  global: {
-    headers: {
-      'x-application-name': 'sdetube',
-      'Connection': 'keep-alive'
-    }
   }
 });
 
