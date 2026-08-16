@@ -37,7 +37,7 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
-import { getCurrentStudent, signOutStudent } from './lib/auth';
+import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
@@ -248,22 +248,16 @@ export function App() {
       });
     } catch (e) {}
 
-    // Restore student session on mount
-    const student = getCurrentStudent();
-    if (student) {
-      setUser(student);
+    // Restore student session on mount with automatic device passkey autologin
+    checkAndAutoLogin().then((student) => {
+      if (student) {
+        setUser(student);
+      }
+    }).catch((err) => {
+      console.warn('[EduStream Auth] Remote Supabase notice:', err);
+    }).finally(() => {
       setAuthChecking(false);
-    } else {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          setUser(session.user);
-        }
-      }).catch((err) => {
-        console.warn('[EduStream Auth] Remote Supabase notice:', err);
-      }).finally(() => {
-        setAuthChecking(false);
-      });
-    }
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) setUser(session.user);

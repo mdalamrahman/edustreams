@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getSavedDevicePasskey } from './passkey';
 
 export interface StudentUser {
   id: string;
@@ -16,13 +17,59 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Signs up a student strictly via Supabase Auth (No LocalStorage password storage).
+ * Checks for an existing session or saved device passkey and performs instant auto-login.
  */
-export async function signUpStudent(email: string, password: string): Promise<{ user: StudentUser | null; error: string | null }> {
+export async function checkAndAutoLogin(): Promise<StudentUser | null> {
+  // 1. Check active Supabase session
   try {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session?.user) {
+      const u = data.session.user;
+      const studentUser: StudentUser = {
+        id: u.id,
+        email: u.email || '',
+        created_at: u.created_at || new Date().toISOString()
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      return studentUser;
+    }
+  } catch {}
+
+  // 2. Check saved local session
+  const local = getCurrentStudent();
+  if (local?.email) return local;
+
+  // 3. Check saved device passkey for 1-click autologin
+  const devicePasskey = getSavedDevicePasskey();
+  if (devicePasskey?.email && devicePasskey?.userId) {
+    const studentUser: StudentUser = {
+      id: devicePasskey.userId,
+      email: devicePasskey.email,
+      created_at: new Date().toISOString()
+    };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+    return studentUser;
+  }
+
+  return null;
+}
+
+/**
+ * Signs up a student via Supabase Auth with email verification support.
+ */
+export async function signUpStudent(email: string, password: string): Promise<{ 
+  user: StudentUser | null; 
+  needsEmailVerification?: boolean; 
+  error: string | null 
+}> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
     const { data, error } = await supabase.auth.signUp({ 
-      email: email.trim().toLowerCase(), 
-      password 
+      email: cleanEmail, 
+      password,
+      options: {
+        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+      }
     });
 
     if (error) {
@@ -30,18 +77,119 @@ export async function signUpStudent(email: string, password: string): Promise<{ 
     }
 
     if (data?.user) {
+      const isConfirmed = !!data.user.email_confirmed_at;
       const studentUser: StudentUser = {
         id: data.user.id,
-        email: data.user.email || email.trim().toLowerCase(),
+        email: data.user.email || cleanEmail,
+        created_at: data.user.created_at || new Date().toISOString(),
+      };
+
+      if (!isConfirmed && !data.session) {
+        return { user: studentUser, needsEmailVerification: true, error: null };
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      return { user: studentUser, needsEmailVerification: false, error: null };
+    }
+
+    return { user: null, error: 'Registration failed. Please check your inputs.' };
+  } catch (err: any) {
+    return { user: null, error: err?.message || 'Authentication service error.' };
+  }
+}
+
+/**
+ * Verifies Supabase Email OTP code for email confirmation.
+ */
+export async function verifyEmailOtp(email: string, token: string): Promise<{ user: StudentUser | null; error: string | null }> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanToken = token.trim();
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: cleanEmail,
+      token: cleanToken,
+      type: 'signup'
+    });
+
+    if (error) {
+      // Try 'email' type as fallback
+      const { data: retryData, error: retryErr } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: 'email'
+      });
+
+      if (retryErr) {
+        return { user: null, error: retryErr.message };
+      }
+
+      if (retryData?.user) {
+        const studentUser: StudentUser = {
+          id: retryData.user.id,
+          email: retryData.user.email || cleanEmail,
+          created_at: retryData.user.created_at || new Date().toISOString(),
+        };
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+        return { user: studentUser, error: null };
+      }
+    }
+
+    if (data?.user) {
+      const studentUser: StudentUser = {
+        id: data.user.id,
+        email: data.user.email || cleanEmail,
         created_at: data.user.created_at || new Date().toISOString(),
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
       return { user: studentUser, error: null };
     }
 
-    return { user: null, error: 'Registration failed. Please check your inputs.' };
+    return { user: null, error: 'Invalid or expired OTP code.' };
   } catch (err: any) {
-    return { user: null, error: err?.message || 'Authentication service error.' };
+    return { user: null, error: err?.message || 'Failed to verify email OTP.' };
+  }
+}
+
+/**
+ * Resends the confirmation link / OTP email to the student.
+ */
+export async function resendVerificationEmail(email: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim().toLowerCase()
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to resend confirmation email.' };
+  }
+}
+
+/**
+ * Initiates Google OAuth Sign In via Supabase.
+ */
+export async function signInWithGoogle(): Promise<{ error?: string }> {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : 'https://sdetube.vercel.app',
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
+
+    if (error) return { error: error.message };
+    return {};
+  } catch (err: any) {
+    return { error: err?.message || 'Failed to initiate Google sign in.' };
   }
 }
 
