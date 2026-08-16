@@ -80,7 +80,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     if (mode === 'signup') {
-      const passkeyCheck = verifyStudentPasskey(authCode);
+      const passkeyCheck = await verifyStudentPasskey(authCode);
       if (!passkeyCheck.valid) {
         setError(passkeyCheck.error || 'Invalid or expired student authorization passkey. Passkeys expire after 10 minutes.');
         return;

@@ -112,8 +112,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     return () => clearInterval(timer);
   }, []);
 
-  const handleGenerateNewPasskey = () => {
-    const fresh = generateDynamicPasskey(currentUserEmail || 'mdalamrahman4@gmail.com');
+  const handleGenerateNewPasskey = async () => {
+    const fresh = await generateDynamicPasskey(currentUserEmail || 'mdalamrahman4@gmail.com');
     setCurrentPasskey(fresh);
     setRemainingSeconds(600);
     setCopiedPasskey(false);

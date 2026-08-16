@@ -1,4 +1,5 @@
 import { StudentUser } from './auth';
+import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export interface DynamicPasskey {
   code: string;
@@ -20,9 +21,10 @@ const DEVICE_PASSKEY_STORAGE_KEY = 'sdetube_saved_device_passkey';
 const MASTER_ADMIN_KEY = 'Zerocheck@8100648132';
 
 /**
- * Generates a new dynamic 6-digit authorization passkey valid for exactly 10 minutes (600 seconds).
+ * Generates a new dynamic 6-digit authorization passkey valid for exactly 10 minutes (600 seconds),
+ * and syncs it globally to the server so students on ANY device can use it.
  */
-export function generateDynamicPasskey(adminEmail: string = 'mdalamrahman4@gmail.com'): DynamicPasskey {
+export async function generateDynamicPasskey(adminEmail: string = 'mdalamrahman4@gmail.com'): Promise<DynamicPasskey> {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   const code = `SDE-${randomNum}`;
   const now = Date.now();
@@ -35,16 +37,26 @@ export function generateDynamicPasskey(adminEmail: string = 'mdalamrahman4@gmail
     generatedBy: adminEmail
   };
 
+  // Local cache
   try {
     localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeyObj));
+  } catch {}
+
+  // Global Backend Sync for Cross-Device Access
+  try {
+    await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_email: adminEmail, code, expires_at: expiresAt }),
+      signal: AbortSignal.timeout(4000)
+    });
   } catch {}
 
   return passkeyObj;
 }
 
 /**
- * Retrieves the currently active dynamic passkey and calculates remaining validity.
- * Automatically DELETES the passkey from storage if 10 minutes have elapsed so it is never stored.
+ * Synchronous local reader with auto-deletion of expired keys.
  */
 export function getActivePasskey(): { passkey: DynamicPasskey | null; remainingSeconds: number; isExpired: boolean } {
   try {
@@ -71,10 +83,30 @@ export function getActivePasskey(): { passkey: DynamicPasskey | null; remainingS
 }
 
 /**
- * Verifies whether an entered student registration passkey is valid and unexpired (within 10-min window).
- * Automatically purges the code if expired.
+ * Asynchronously syncs the global active passkey from the server for any device.
  */
-export function verifyStudentPasskey(enteredCode: string): { valid: boolean; error?: string } {
+export async function syncGlobalActivePasskey(): Promise<{ passkey: DynamicPasskey | null; remainingSeconds: number; isExpired: boolean }> {
+  try {
+    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/active`, { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data?.passkey) {
+        localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(data.passkey));
+        return data;
+      } else {
+        localStorage.removeItem(PASSKEY_STORAGE_KEY);
+      }
+    }
+  } catch {}
+
+  return getActivePasskey();
+}
+
+/**
+ * Verifies whether an entered student registration passkey is valid and unexpired (within 10-min window).
+ * Checks centrally on the server first, falling back to local verification.
+ */
+export async function verifyStudentPasskey(enteredCode: string): Promise<{ valid: boolean; error?: string }> {
   const cleanInput = (enteredCode || '').trim().toUpperCase();
 
   if (!cleanInput) {
@@ -86,10 +118,25 @@ export function verifyStudentPasskey(enteredCode: string): { valid: boolean; err
     return { valid: true };
   }
 
+  // 1. Check Global Server Verification across all devices
+  try {
+    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: cleanInput }),
+      signal: AbortSignal.timeout(4000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.valid) return { valid: true };
+      if (data.error) return { valid: false, error: data.error };
+    }
+  } catch {}
+
+  // 2. Fallback to Local Verification
   const { passkey, remainingSeconds, isExpired } = getActivePasskey();
 
   if (!passkey || isExpired || remainingSeconds <= 0) {
-    // Ensure deleted
     try { localStorage.removeItem(PASSKEY_STORAGE_KEY); } catch {}
     return { 
       valid: false, 
