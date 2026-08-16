@@ -1,5 +1,5 @@
 import { StudentUser } from './auth';
-import { TELEGRAM_BACKEND_URL } from './telegram';
+import { supabaseAdmin } from './supabase';
 
 export interface DynamicPasskey {
   code: string;
@@ -19,16 +19,17 @@ export interface DevicePasskeyCredential {
 const PASSKEY_STORAGE_KEY = 'sdetube_dynamic_auth_passkey';
 const DEVICE_PASSKEY_STORAGE_KEY = 'sdetube_saved_device_passkey';
 const MASTER_ADMIN_KEY = 'Zerocheck@8100648132';
+const ADMIN_USER_ID = 'd0f83a4a-d9ca-4c01-98e6-111f9a962a95';
 
 /**
  * Generates a new dynamic 6-digit authorization passkey valid for exactly 10 minutes (600 seconds),
- * and syncs it globally to the server so students on ANY device can use it.
+ * and syncs it globally directly into Supabase Auth so students on ANY device in the world can use it.
  */
 export async function generateDynamicPasskey(adminEmail: string = 'mdalamrahman4@gmail.com'): Promise<DynamicPasskey> {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   const code = `SDE-${randomNum}`;
   const now = Date.now();
-  const expiresAt = now + 10 * 60 * 1000; // 10 minutes
+  const expiresAt = now + (10 * 60 * 1000); // 10 minutes from now
 
   const passkeyObj: DynamicPasskey = {
     code,
@@ -37,20 +38,25 @@ export async function generateDynamicPasskey(adminEmail: string = 'mdalamrahman4
     generatedBy: adminEmail
   };
 
-  // Local cache
+  // 1. Local Cache for Instant Admin UI Feedback
   try {
     localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkeyObj));
   } catch {}
 
-  // Global Backend Sync for Cross-Device Access
+  // 2. Global Sync directly to Supabase Auth
   try {
-    await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admin_email: adminEmail, code, expires_at: expiresAt }),
-      signal: AbortSignal.timeout(4000)
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(ADMIN_USER_ID);
+    const existingMeta = userData?.user?.user_metadata || {};
+    
+    await supabaseAdmin.auth.admin.updateUserById(ADMIN_USER_ID, {
+      user_metadata: {
+        ...existingMeta,
+        dynamic_passkey: passkeyObj
+      }
     });
-  } catch {}
+  } catch (err) {
+    console.warn('[Passkey Supabase Sync notice]:', err);
+  }
 
   return passkeyObj;
 }
@@ -83,28 +89,40 @@ export function getActivePasskey(): { passkey: DynamicPasskey | null; remainingS
 }
 
 /**
- * Asynchronously syncs the global active passkey from the server for any device.
+ * Asynchronously syncs the global active passkey directly from Supabase for any device.
  */
 export async function syncGlobalActivePasskey(): Promise<{ passkey: DynamicPasskey | null; remainingSeconds: number; isExpired: boolean }> {
   try {
-    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/active`, { signal: AbortSignal.timeout(3000) });
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data?.passkey) {
-        localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(data.passkey));
-        return data;
-      } else {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(ADMIN_USER_ID);
+    const passkey: DynamicPasskey | null = data?.user?.user_metadata?.dynamic_passkey || null;
+
+    if (passkey?.expiresAt) {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((passkey.expiresAt - now) / 1000));
+
+      if (remaining <= 0 || now >= passkey.expiresAt) {
+        // Expired -> Purge from Supabase immediately so it is never stored
+        const existingMeta = data?.user?.user_metadata || {};
+        await supabaseAdmin.auth.admin.updateUserById(ADMIN_USER_ID, {
+          user_metadata: { ...existingMeta, dynamic_passkey: null }
+        });
         localStorage.removeItem(PASSKEY_STORAGE_KEY);
+        return { passkey: null, remainingSeconds: 0, isExpired: true };
       }
+
+      localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(passkey));
+      return { passkey, remainingSeconds: remaining, isExpired: false };
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[Sync Global Passkey Notice]:', err);
+  }
 
   return getActivePasskey();
 }
 
 /**
  * Verifies whether an entered student registration passkey is valid and unexpired (within 10-min window).
- * Checks centrally on the server first, falling back to local verification.
+ * Queries Supabase globally so ANY student on ANY phone/laptop can authenticate.
  */
 export async function verifyStudentPasskey(enteredCode: string): Promise<{ valid: boolean; error?: string }> {
   const cleanInput = (enteredCode || '').trim().toUpperCase();
@@ -118,37 +136,73 @@ export async function verifyStudentPasskey(enteredCode: string): Promise<{ valid
     return { valid: true };
   }
 
-  // 1. Check Global Server Verification across all devices
   try {
-    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/passkey/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: cleanInput }),
-      signal: AbortSignal.timeout(4000)
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data.valid) return { valid: true };
-      if (data.error) return { valid: false, error: data.error };
+    // 1. Fetch Global Live Passkey directly from Supabase
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(ADMIN_USER_ID);
+    
+    if (error) {
+      console.warn('[Supabase Passkey Read Error]:', error);
     }
-  } catch {}
 
-  // 2. Fallback to Local Verification
-  const { passkey, remainingSeconds, isExpired } = getActivePasskey();
+    const passkey: DynamicPasskey | null = data?.user?.user_metadata?.dynamic_passkey || null;
 
-  if (!passkey || isExpired || remainingSeconds <= 0) {
-    try { localStorage.removeItem(PASSKEY_STORAGE_KEY); } catch {}
-    return { 
-      valid: false, 
-      error: 'This authorization passkey has EXPIRED (10-minute validity exceeded) and has been deleted. Please request a fresh passkey from Admin.' 
+    if (passkey?.code && passkey?.expiresAt) {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((passkey.expiresAt - now) / 1000));
+
+      // Expired Check
+      if (remaining <= 0 || now >= passkey.expiresAt) {
+        // Auto-purge from Supabase immediately so no expired codes are stored
+        try {
+          const existingMeta = data?.user?.user_metadata || {};
+          await supabaseAdmin.auth.admin.updateUserById(ADMIN_USER_ID, {
+            user_metadata: { ...existingMeta, dynamic_passkey: null }
+          });
+          localStorage.removeItem(PASSKEY_STORAGE_KEY);
+        } catch {}
+
+        return {
+          valid: false,
+          error: 'This authorization passkey has EXPIRED (10-minute validity exceeded) and has been deleted. Please request a fresh passkey from Admin.'
+        };
+      }
+
+      // Valid Active Passkey Check
+      const targetCode = passkey.code.toUpperCase();
+      const targetNumeric = targetCode.replace('SDE-', '');
+
+      if (cleanInput === targetCode || cleanInput === targetNumeric) {
+        return { valid: true };
+      } else {
+        return {
+          valid: false,
+          error: `Invalid Authorization Passkey. Please check the code provided by Admin (e.g. ${targetCode.slice(0, 4)}***).`
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Passkey Verification Network Fallback]:', err);
+  }
+
+  // 2. Fallback to Local Storage Verification
+  const { passkey: localKey, remainingSeconds, isExpired } = getActivePasskey();
+
+  if (localKey && !isExpired && remainingSeconds > 0) {
+    const targetCode = localKey.code.toUpperCase();
+    const targetNumeric = targetCode.replace('SDE-', '');
+    if (cleanInput === targetCode || cleanInput === targetNumeric) {
+      return { valid: true };
+    }
+    return {
+      valid: false,
+      error: 'Invalid Authorization Passkey. Please check the 6-digit code provided by Admin.'
     };
   }
 
-  if (cleanInput !== passkey.code.toUpperCase() && cleanInput !== passkey.code.replace('SDE-', '').toUpperCase()) {
-    return { valid: false, error: 'Invalid Authorization Passkey. Please check the 6-digit code provided by Admin.' };
-  }
-
-  return { valid: true };
+  return { 
+    valid: false, 
+    error: 'No active authorization passkey found. Please ask the Admin to click "Generate New (10m)" in the Admin Dashboard.' 
+  };
 }
 
 /* ========================================================================= */
