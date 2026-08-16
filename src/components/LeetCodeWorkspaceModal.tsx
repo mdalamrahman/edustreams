@@ -1037,11 +1037,71 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     </div>
                   )}
 
-                  {/* Solution Code Frame */}
+                  {/* Solution Code Frame with Monaco Editor & Line Numbers */}
                   {hasWorkedSolution && activeSolutionCode ? (
                     <div className="space-y-3">
-                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto shadow-inner">
-                        <pre className="text-slate-200 leading-relaxed">{activeSolutionCode}</pre>
+                      <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-2xl">
+                        <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+                          <span className="text-slate-400 font-bold flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            Solution.{solutionLang === 'cpp' ? 'cpp' : solutionLang === 'python' ? 'py' : solutionLang === 'java' ? 'java' : solutionLang === 'javascript' ? 'js' : solutionLang === 'go' ? 'go' : 'rs'}
+                          </span>
+                          <span className="text-purple-400 text-[11px] uppercase font-bold">
+                            {solutionLang.toUpperCase()} 2026 Optimal
+                          </span>
+                        </div>
+                        <div className="h-72 w-full">
+                          <Editor
+                            height="100%"
+                            language={solutionLang === 'cpp' ? 'cpp' : solutionLang === 'python' ? 'python' : solutionLang === 'java' ? 'java' : solutionLang === 'javascript' ? 'javascript' : solutionLang === 'go' ? 'go' : 'rust'}
+                            theme="vs-dark"
+                            value={(() => {
+                              const raw = activeSolutionCode;
+                              const rawLines = raw.split('\n').filter(l => l.trim().length > 0);
+                              if (rawLines.length > 5 && rawLines.some(l => l.startsWith('    ') || l.startsWith('\t'))) {
+                                return raw;
+                              }
+                              if (solutionLang !== 'python') {
+                                const forLoops: string[] = [];
+                                let c = raw.replace(/for\s*\([^)]*\)/g, (m) => {
+                                  forLoops.push(m);
+                                  return `__FOR_LOOP_${forLoops.length - 1}__`;
+                                });
+                                c = c
+                                  .replace(/;\s*/g, ';\n')
+                                  .replace(/{\s*/g, ' {\n')
+                                  .replace(/}\s*/g, '\n}\n')
+                                  .replace(/public:\s*/g, 'public:\n')
+                                  .replace(/private:\s*/g, 'private:\n')
+                                  .replace(/\n\s*\n/g, '\n');
+                                forLoops.forEach((fl, idx) => {
+                                  c = c.replace(`__FOR_LOOP_${idx}__`, fl);
+                                });
+                                let ind = 0;
+                                return c.split('\n').map(line => {
+                                  const trimmed = line.trim();
+                                  if (!trimmed) return '';
+                                  if (trimmed.startsWith('}') || trimmed.startsWith('};')) ind = Math.max(0, ind - 1);
+                                  const res = trimmed === 'public:' || trimmed === 'private:' ? trimmed : '    '.repeat(ind) + trimmed;
+                                  if (trimmed.endsWith('{') && !trimmed.startsWith('//')) ind++;
+                                  return res;
+                                }).filter(l => l.length > 0).join('\n');
+                              }
+                              return raw;
+                            })()}
+                            options={{
+                              readOnly: true,
+                              minimap: { enabled: false },
+                              scrollBeyondLastLine: false,
+                              fontSize: 12,
+                              lineNumbers: 'on',
+                              folding: true,
+                              automaticLayout: true,
+                              renderLineHighlight: 'none',
+                              fontFamily: 'Fira Code, JetBrains Mono, monospace'
+                            }}
+                          />
+                        </div>
                       </div>
 
                       {/* Explanation Section */}

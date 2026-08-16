@@ -58,7 +58,26 @@ Return ONLY valid JSON matching this exact structure:
             content = r.json()["choices"][0]["message"]["content"]
             return json.loads(content)
     except Exception as e:
-        print(f"  [AI Error] {e}", flush=True)
+        print(f"  [Groq Error: {e}]", end=" ", flush=True)
+
+    # Fallback to Mistral API
+    try:
+        m_headers = {
+            "Authorization": "Bearer ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5",
+            "Content-Type": "application/json"
+        }
+        m_payload = {
+            "model": "mistral-small-latest",
+            "messages": [{"role": "user", "content": prompt}],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.2
+        }
+        mr = requests.post("https://api.mistral.ai/v1/chat/completions", headers=m_headers, json=m_payload, timeout=20)
+        if mr.status_code == 200:
+            content = mr.json()["choices"][0]["message"]["content"]
+            return json.loads(content)
+    except Exception as e:
+        print(f"  [Mistral Error: {e}]", flush=True)
 
     return {}
 
