@@ -958,7 +958,7 @@ export async function fetchEnrichedProblem(
             rust: data.starters?.rust || staticTemplate?.starters?.rust || dynamicFallback.starters.rust,
             sql: staticTemplate?.starters?.sql || dynamicFallback.starters.sql,
           },
-          solutions: staticTemplate?.solutions || dynamicFallback.solutions,
+          solutions: data.solutions || staticTemplate?.solutions || dynamicFallback.solutions,
         };
 
         try {

@@ -33,7 +33,7 @@ import {
   GripHorizontal
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
-import { requestMistralCodeReview, requestContextualAIChatResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
+import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
 import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -166,6 +166,45 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // AI Review state
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
+
+  // Solutions tab state
+  const [solutionLang, setSolutionLang] = useState<SupportedLanguage>(language);
+  const [aiGeneratedSolutions, setAiGeneratedSolutions] = useState<Record<string, OptimalSolutionResponse>>({});
+  const [isGeneratingSolution, setIsGeneratingSolution] = useState<boolean>(false);
+  const [copiedSolutionCode, setCopiedSolutionCode] = useState<boolean>(false);
+  const [appliedSolutionMsg, setAppliedSolutionMsg] = useState<boolean>(false);
+
+  const handleGenerateSolution = async (langToGen: SupportedLanguage = solutionLang) => {
+    setIsGeneratingSolution(true);
+    try {
+      const sol = await requestAIOptimalSolution(
+        cleanTitle,
+        problemTemplate.description,
+        langToGen,
+        problemTemplate.starters[langToGen]
+      );
+      if (sol) {
+        setAiGeneratedSolutions(prev => ({ ...prev, [langToGen]: sol }));
+      }
+    } catch (e) {
+      console.warn('AI Solution Generation Error:', e);
+    } finally {
+      setIsGeneratingSolution(false);
+    }
+  };
+
+  const handleApplySolutionToEditor = (solCode: string, langToApply: SupportedLanguage) => {
+    setLanguage(langToApply);
+    setCode(solCode);
+    setAppliedSolutionMsg(true);
+    setTimeout(() => setAppliedSolutionMsg(false), 2000);
+  };
+
+  const handleCopySolutionText = (textToCopy: string) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedSolutionCode(true);
+    setTimeout(() => setCopiedSolutionCode(false), 2000);
+  };
 
   // Dragging handlers for horizontal split pane
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -899,26 +938,139 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             )}
 
             {/* TAB 5: SOLUTIONS */}
-            {leftTab === 'solutions' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Optimal Multi-Language Solutions</h3>
-                  <button
-                    onClick={handleCopyCode}
-                    className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
-                  >
-                    {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedCode ? 'Copied' : 'Copy Solution'}</span>
-                  </button>
-                </div>
+            {leftTab === 'solutions' && (() => {
+              const staticSol = problemTemplate.solutions?.[solutionLang];
+              const aiSol = aiGeneratedSolutions[solutionLang];
+              const activeSolutionCode = aiSol?.code || (staticSol && staticSol !== problemTemplate.starters[solutionLang] ? staticSol : null);
+              const hasWorkedSolution = Boolean(activeSolutionCode);
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto">
-                  <pre className="text-slate-200">
-                    {problemTemplate.solutions?.[language] || problemTemplate.solutions?.cpp || problemTemplate.starters[language] || problemTemplate.starters.cpp}
-                  </pre>
+              return (
+                <div className="space-y-4 font-sans">
+                  {/* Top Bar: Language Tabs & Action Buttons */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                    {/* Solution Language Pills */}
+                    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800 overflow-x-auto no-scrollbar">
+                      {(['cpp', 'python', 'java', 'javascript', 'go', 'rust'] as SupportedLanguage[]).map((langKey) => (
+                        <button
+                          key={langKey}
+                          onClick={() => setSolutionLang(langKey)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                            solutionLang === langKey
+                              ? 'bg-purple-600 text-white shadow-md'
+                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                          }`}
+                        >
+                          {langKey === 'cpp' ? 'C++' : langKey === 'python' ? 'Python' : langKey === 'java' ? 'Java' : langKey === 'javascript' ? 'JS' : langKey === 'go' ? 'Go' : 'Rust'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleGenerateSolution(solutionLang)}
+                        disabled={isGeneratingSolution}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/90 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        title="Derive fresh optimal solution with SDETube AI"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 text-amber-300 ${isGeneratingSolution ? 'animate-spin' : 'animate-pulse'}`} />
+                        <span>{isGeneratingSolution ? 'Deriving...' : hasWorkedSolution ? 'Regenerate' : 'AI Generate'}</span>
+                      </button>
+
+                      {hasWorkedSolution && activeSolutionCode && (
+                        <>
+                          <button
+                            onClick={() => handleCopySolutionText(activeSolutionCode)}
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                            title="Copy Solution Code"
+                          >
+                            {copiedSolutionCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedSolutionCode ? 'Copied' : 'Copy'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleApplySolutionToEditor(activeSolutionCode, solutionLang)}
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                            title="Load code directly into editor"
+                          >
+                            <Code className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{appliedSolutionMsg ? 'Applied!' : 'Apply to Editor'}</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Complexity & Approach Header */}
+                  {hasWorkedSolution && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approach</div>
+                        <div className="text-xs font-bold text-indigo-400 mt-0.5 truncate">
+                          {aiSol?.approachName || 'Optimal Reference'}
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Time Complexity</div>
+                        <div className="text-xs font-mono font-bold text-emerald-400 mt-0.5">
+                          {aiSol?.timeComplexity || 'O(N) / Optimal'}
+                        </div>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 col-span-2 sm:col-span-1">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Space Complexity</div>
+                        <div className="text-xs font-mono font-bold text-cyan-400 mt-0.5">
+                          {aiSol?.spaceComplexity || 'O(1) Auxiliary'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solution Code Frame */}
+                  {hasWorkedSolution && activeSolutionCode ? (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto shadow-inner">
+                        <pre className="text-slate-200 leading-relaxed">{activeSolutionCode}</pre>
+                      </div>
+
+                      {/* Explanation Section */}
+                      {aiSol?.explanation && (
+                        <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+                          <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                            <Lightbulb className="w-4 h-4 text-amber-400" /> Algorithmic Intuition & Logic:
+                          </div>
+                          <div className="text-xs text-slate-300 leading-relaxed font-sans">
+                            <FormattedChatText text={aiSol.explanation} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Empty State / Trigger Prompt */
+                    <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800/80 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-800/60 flex items-center justify-center mx-auto text-purple-400 shadow-inner">
+                        <FileCode className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-200">No Pre-written Solution for {solutionLang.toUpperCase()}</h4>
+                        <p className="text-xs text-slate-400 max-w-md mx-auto">
+                          Click below to have the SDETube AI engine derive the complete optimal solution with time & space bounds in {solutionLang.toUpperCase()}.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleGenerateSolution(solutionLang)}
+                        disabled={isGeneratingSolution}
+                        className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles className={`w-4 h-4 text-amber-300 ${isGeneratingSolution ? 'animate-spin' : 'animate-pulse'}`} />
+                        <span>{isGeneratingSolution ? 'Generating Optimal Solution...' : `Generate ${solutionLang.toUpperCase()} Solution`}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* TAB 6: SUBMISSIONS */}
             {leftTab === 'submissions' && (
