@@ -25,6 +25,7 @@ import {
   Award
 } from 'lucide-react';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 
 interface AdminUserStat {
   id: string;
@@ -49,6 +50,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'online' | 'active'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dataSource, setDataSource] = useState<'supabase' | 'r2_backend'>('r2_backend');
   const [statsData, setStatsData] = useState<{
     totalActiveUsers: number;
     onlineUsers: number;
@@ -207,9 +209,29 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     }
   ]);
 
-  // Fetch real-time metrics from backend if available
+  // Fetch real-time metrics from Supabase & Backend
   const fetchAdminStats = async () => {
     setIsRefreshing(true);
+
+    // 1. Try fetching from Supabase tables
+    try {
+      const supaData = await fetchSupabaseLiveTelemetry();
+      if (supaData && supaData.isSupabaseLive) {
+        setDataSource('supabase');
+        setStatsData(prev => ({
+          ...prev,
+          totalTranscriptsStored: supaData.totalTranscriptsStored || prev.totalTranscriptsStored,
+          totalNotesStored: supaData.totalNotesStored || prev.totalNotesStored,
+          totalCodeExecutions: supaData.totalCodeExecutions || prev.totalCodeExecutions,
+          totalActiveUsers: supaData.totalActiveUsers || prev.totalActiveUsers
+        }));
+        if (supaData.users && supaData.users.length > 0) {
+          setUsersList(supaData.users as AdminUserStat[]);
+        }
+      }
+    } catch {}
+
+    // 2. Fetch backend & Cloudflare R2 counts
     try {
       const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/admin/metrics`);
       if (resp.ok) {
@@ -227,28 +249,23 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           mistralAiStatus: data.mistral_status || prev.mistralAiStatus,
           backendStatus: data.backend_status || 'Operational (Render/FastAPI)'
         }));
-      } else {
-        const healthResp = await fetch(`${TELEGRAM_BACKEND_URL}/api/health`);
-        if (healthResp.ok) {
-          const hData = await healthResp.json();
-          setStatsData(prev => ({
-            ...prev,
-            totalTranscriptsStored: hData.cached_artifacts_count ? hData.cached_artifacts_count + 167 : prev.totalTranscriptsStored,
-            backendStatus: hData.status === 'healthy' ? 'Operational (Render/FastAPI)' : 'Degraded'
-          }));
-        }
       }
     } catch {}
 
-    // Pull local solved stats for active session
+    // 3. Pull actual student progress from local session
     try {
-      const solved = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+      const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+      const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+      const combinedSolvedSet = new Set([
+        ...(Array.isArray(sde1) ? sde1 : []),
+        ...(Array.isArray(sde2) ? sde2 : [])
+      ]);
+      const solvedCount = combinedSolvedSet.size;
       const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
       const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
-      const solvedCount = Array.isArray(solved) ? solved.length : 0;
 
       setUsersList(prev => prev.map(u => {
-        if (u.email.includes('mdalamrahman4')) {
+        if (u.email.includes('mdalamrahman4') || (currentUserEmail && u.email === currentUserEmail)) {
           const calcHours = Number(Math.max(u.studyHours, (activeMins / 60) + (solvedCount * 0.25)).toFixed(1));
           return {
             ...u,
@@ -325,7 +342,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 </span>
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-400 text-[10px] font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Live Monitor
+                  {dataSource === 'supabase' ? 'Supabase PostgreSQL' : 'Cloudflare R2 & SQLite'}
                 </span>
               </div>
               <p className="text-xs text-slate-400">Global active learners, real-time presence, storage analytics, and user metrics</p>
