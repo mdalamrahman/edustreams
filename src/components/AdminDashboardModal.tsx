@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
+import { getAllRegisteredUsers } from '../lib/auth';
 
 interface AdminUserStat {
   id: string;
@@ -46,62 +47,60 @@ interface AdminDashboardModalProps {
   currentUserEmail?: string;
 }
 
+const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
+  const registered = getAllRegisteredUsers();
+  
+  // Real active session metrics
+  const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+  const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+  const combined = new Set([
+    ...(Array.isArray(sde1) ? sde1 : []),
+    ...(Array.isArray(sde2) ? sde2 : [])
+  ]);
+  const solved = combined.size;
+  const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
+  const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+  const correct = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
+  const accuracy = attempts > 0 ? Math.round((Math.max(solved, correct) / Math.max(1, attempts)) * 100) : (solved > 0 ? 100 : 0);
+
+  const activeEmail = (currentUserEmail || 'mdalamrahman4@gmail.com').toLowerCase();
+
+  return registered.map((u, idx) => {
+    const isCurrent = u.email.toLowerCase() === activeEmail || (activeEmail.includes('mdalamrahman4') && u.email.includes('mdalamrahman4'));
+    const isSuperAdmin = u.email.includes('mdalamrahman4');
+
+    return {
+      id: u.id || `usr-${idx + 1}`,
+      email: u.email,
+      name: isSuperAdmin ? `${u.name.replace(' (Admin)', '')} (Admin)` : u.name,
+      solvedCount: isCurrent ? solved : 0,
+      studyHours: isCurrent ? Number((activeMins / 60).toFixed(1)) : 0,
+      streakDays: isCurrent ? (solved > 0 || activeMins > 0 ? 1 : 0) : 0,
+      quizScorePercent: isCurrent ? accuracy : 0,
+      totalCodeRuns: isCurrent ? attempts : 0,
+      lastActive: isCurrent ? 'Active Now' : 'Offline',
+      isOnline: isCurrent,
+      joinedDate: u.createdAt || '2026-08-16'
+    };
+  });
+};
+
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClose, currentUserEmail }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'online' | 'active'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<'supabase' | 'r2_backend'>('r2_backend');
 
-  // Real User Stats (Zero Mock Users)
-  const [usersList, setUsersList] = useState<AdminUserStat[]>(() => {
-    try {
-      const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-      const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-      const combined = new Set([
-        ...(Array.isArray(sde1) ? sde1 : []),
-        ...(Array.isArray(sde2) ? sde2 : [])
-      ]);
-      const solved = combined.size;
-      const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
-      const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
-      const correct = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
-      const accuracy = attempts > 0 ? Math.round((Math.max(solved, correct) / Math.max(1, attempts)) * 100) : (solved > 0 ? 100 : 0);
-
-      const email = currentUserEmail || 'mdalamrahman4@gmail.com';
-      const name = email.split('@')[0];
-
-      return [
-        {
-          id: 'usr-admin-1',
-          email: email,
-          name: `${name} (Admin)`,
-          solvedCount: solved,
-          studyHours: Number((activeMins / 60).toFixed(1)),
-          streakDays: solved > 0 || activeMins > 0 ? 1 : 0,
-          quizScorePercent: accuracy,
-          totalCodeRuns: attempts,
-          lastActive: 'Active Now',
-          isOnline: true,
-          joinedDate: new Date().toISOString().slice(0, 10)
-        }
-      ];
-    } catch {
-      return [];
-    }
-  });
+  // Real Dynamic User Stats List
+  const [usersList, setUsersList] = useState<AdminUserStat[]>(() => buildRealUsersList(currentUserEmail));
 
   const [statsData, setStatsData] = useState(() => {
-    const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-    const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-    const combined = new Set([
-      ...(Array.isArray(sde1) ? sde1 : []),
-      ...(Array.isArray(sde2) ? sde2 : [])
-    ]);
+    const initialUsers = buildRealUsersList(currentUserEmail);
     const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
 
     return {
-      totalActiveUsers: 1,
-      onlineUsers: 1,
+      totalActiveUsers: initialUsers.length,
+      onlineUsers: initialUsers.filter(u => u.isOnline).length,
       totalTranscriptsStored: 176,
       totalNotesStored: 176,
       totalSdeProblems: 167,
@@ -117,6 +116,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const fetchAdminStats = async () => {
     setIsRefreshing(true);
 
+    const freshUsers = buildRealUsersList(currentUserEmail);
+    setUsersList(freshUsers);
+
     // 1. Check Supabase
     try {
       const supaData = await fetchSupabaseLiveTelemetry();
@@ -127,10 +129,18 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           totalTranscriptsStored: supaData.totalTranscriptsStored || prev.totalTranscriptsStored,
           totalNotesStored: supaData.totalNotesStored || prev.totalNotesStored,
           totalCodeExecutions: supaData.totalCodeExecutions || prev.totalCodeExecutions,
-          totalActiveUsers: supaData.users && supaData.users.length > 0 ? supaData.users.length : prev.totalActiveUsers
+          totalActiveUsers: supaData.users && supaData.users.length > 0 ? supaData.users.length : freshUsers.length
         }));
         if (supaData.users && supaData.users.length > 0) {
-          setUsersList(supaData.users as AdminUserStat[]);
+          // Merge Supabase users with local registry
+          const map = new Map<string, AdminUserStat>();
+          freshUsers.forEach(u => map.set(u.email.toLowerCase(), u));
+          (supaData.users as AdminUserStat[]).forEach(u => {
+            if (!map.has(u.email.toLowerCase())) {
+              map.set(u.email.toLowerCase(), u);
+            }
+          });
+          setUsersList(Array.from(map.values()));
         }
       }
     } catch {}
@@ -152,47 +162,6 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           backendStatus: data.backend_status || 'Operational (Render/FastAPI)'
         }));
       }
-    } catch {}
-
-    // 3. Pull actual student progress from local session
-    try {
-      const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-      const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-      const combinedSolvedSet = new Set([
-        ...(Array.isArray(sde1) ? sde1 : []),
-        ...(Array.isArray(sde2) ? sde2 : [])
-      ]);
-      const solvedCount = combinedSolvedSet.size;
-      const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
-      const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
-      const correct = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
-      const accuracy = attempts > 0 ? Math.round((Math.max(solvedCount, correct) / Math.max(1, attempts)) * 100) : (solvedCount > 0 ? 100 : 0);
-
-      const email = currentUserEmail || 'mdalamrahman4@gmail.com';
-      const name = email.split('@')[0];
-
-      setUsersList([
-        {
-          id: 'usr-admin-1',
-          email: email,
-          name: `${name} (Admin)`,
-          solvedCount: solvedCount,
-          studyHours: Number((activeMins / 60).toFixed(1)),
-          streakDays: solvedCount > 0 || activeMins > 0 ? 1 : 0,
-          quizScorePercent: accuracy,
-          totalCodeRuns: attempts,
-          lastActive: 'Active Now',
-          isOnline: true,
-          joinedDate: new Date().toISOString().slice(0, 10)
-        }
-      ]);
-
-      setStatsData(prev => ({
-        ...prev,
-        totalActiveUsers: 1,
-        onlineUsers: 1,
-        totalCodeExecutions: attempts
-      }));
     } catch {}
 
     setTimeout(() => setIsRefreshing(false), 500);

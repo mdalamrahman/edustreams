@@ -110,6 +110,56 @@ export function getCurrentStudent(): StudentUser | null {
   }
 }
 
+export function getAllRegisteredUsers(): Array<{ id: string; email: string; name: string; createdAt: string }> {
+  const map = new Map<string, { id: string; email: string; name: string; createdAt: string }>();
+
+  // 1. Check local registered user storage
+  try {
+    const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
+    if (usersJson) {
+      const users: Record<string, string> = JSON.parse(usersJson);
+      for (const [email] of Object.entries(users)) {
+        const cleanEmail = email.trim().toLowerCase();
+        const username = cleanEmail.split('@')[0];
+        map.set(cleanEmail, {
+          id: `usr-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
+          email: cleanEmail,
+          name: cleanEmail.includes('mdalamrahman4') ? `${username} (Admin)` : username,
+          createdAt: '2026-08-16'
+        });
+      }
+    }
+  } catch {}
+
+  // 2. Check current student session
+  const cur = getCurrentStudent();
+  if (cur?.email) {
+    const cleanEmail = cur.email.trim().toLowerCase();
+    const username = cleanEmail.split('@')[0];
+    if (!map.has(cleanEmail)) {
+      map.set(cleanEmail, {
+        id: cur.id || `usr-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
+        email: cleanEmail,
+        name: cleanEmail.includes('mdalamrahman4') ? `${username} (Admin)` : username,
+        createdAt: cur.created_at || new Date().toISOString().slice(0, 10)
+      });
+    }
+  }
+
+  // 3. Ensure Admin account is registered in list
+  const adminEmail = 'mdalamrahman4@gmail.com';
+  if (!map.has(adminEmail)) {
+    map.set(adminEmail, {
+      id: 'usr-admin-1',
+      email: adminEmail,
+      name: 'mdalamrahman4 (Admin)',
+      createdAt: '2026-08-01'
+    });
+  }
+
+  return Array.from(map.values());
+}
+
 export function signOutStudent() {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   supabase.auth.signOut().catch(() => {});
