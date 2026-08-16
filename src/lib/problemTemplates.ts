@@ -911,7 +911,7 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_lc_problem_v3_${cleanSlug}`;
+  const cacheKey = `edustream_lc_problem_v5_${cleanSlug}`;
 
   // 1. Instant 0ms browser cache check (only if valid official starters present)
   try {

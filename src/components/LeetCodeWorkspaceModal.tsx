@@ -39,6 +39,80 @@ import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
 
+export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
+  if (!raw) return '';
+  let code = raw.trim();
+  const rawLines = code.split('\n').filter(l => l.trim().length > 0);
+  if (rawLines.length > 5 && rawLines.some(l => l.startsWith('    ') || l.startsWith('\t'))) {
+    return code;
+  }
+
+  // 1. Python Multi-line Formatter
+  if (lang === 'python') {
+    code = code.replace(/;/g, '\n');
+    const patterns = [
+      /:\s*(def\s+)/g,
+      /:\s*(for\s+)/g,
+      /:\s*(while\s+)/g,
+      /:\s*(if\s+)/g,
+      /:\s*(elif\s+)/g,
+      /:\s*(else:)/g,
+      /:\s*(return\s+)/g,
+      /:\s*(pass\b)/g,
+      /:\s*(continue\b)/g,
+      /:\s*(break\b)/g,
+      /:\s*([a-zA-Z_]\w*(?:\[[^\]]*\])*\s*[,=])/g,
+      /:\s*([a-zA-Z_]\w*\.[a-zA-Z_]\w*\()/g
+    ];
+    for (const pat of patterns) {
+      code = code.replace(pat, ':\n$1');
+    }
+
+    const lines = code.split('\n').map(l => l.trim()).filter(Boolean);
+    let indent = 0;
+    const res: string[] = [];
+
+    for (const l of lines) {
+      if (l.startsWith('elif ') || l.startsWith('else:') || l.startsWith('except ') || l.startsWith('except:') || l.startsWith('finally:')) {
+        indent = Math.max(0, indent - 1);
+      }
+      res.push('    '.repeat(indent) + l);
+      if (l.endsWith(':')) {
+        indent++;
+      }
+    }
+    return res.join('\n');
+  }
+
+  // 2. C++, Java, JS, Go, Rust Multi-line Formatter
+  const forLoops: string[] = [];
+  let c = code.replace(/for\s*\([^)]*\)/g, (m) => {
+    forLoops.push(m);
+    return `__FOR_LOOP_${forLoops.length - 1}__`;
+  });
+  c = c
+    .replace(/;\s*/g, ';\n')
+    .replace(/{\s*/g, ' {\n')
+    .replace(/}\s*/g, '\n}\n')
+    .replace(/public:\s*/g, 'public:\n')
+    .replace(/private:\s*/g, 'private:\n')
+    .replace(/\n\s*\n/g, '\n');
+
+  forLoops.forEach((fl, idx) => {
+    c = c.replace(`__FOR_LOOP_${idx}__`, fl);
+  });
+
+  let ind = 0;
+  return c.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('}') || trimmed.startsWith('};')) ind = Math.max(0, ind - 1);
+    const res = trimmed === 'public:' || trimmed === 'private:' ? trimmed : '    '.repeat(ind) + trimmed;
+    if (trimmed.endsWith('{') && !trimmed.startsWith('//')) ind++;
+    return res;
+  }).filter(l => l.length > 0).join('\n');
+}
+
 interface LeetCodeWorkspaceModalProps {
   question?: QuizQuestion;
   problemTitle: string;
@@ -195,13 +269,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const handleApplySolutionToEditor = (solCode: string, langToApply: SupportedLanguage) => {
     setLanguage(langToApply);
-    setCode(solCode);
+    setCode(formatCodeForDisplay(solCode, langToApply));
     setAppliedSolutionMsg(true);
     setTimeout(() => setAppliedSolutionMsg(false), 2000);
   };
 
   const handleCopySolutionText = (textToCopy: string) => {
-    navigator.clipboard.writeText(textToCopy);
+    navigator.clipboard.writeText(formatCodeForDisplay(textToCopy, solutionLang));
     setCopiedSolutionCode(true);
     setTimeout(() => setCopiedSolutionCode(false), 2000);
   };
@@ -1055,40 +1129,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                             height="100%"
                             language={solutionLang === 'cpp' ? 'cpp' : solutionLang === 'python' ? 'python' : solutionLang === 'java' ? 'java' : solutionLang === 'javascript' ? 'javascript' : solutionLang === 'go' ? 'go' : 'rust'}
                             theme="vs-dark"
-                            value={(() => {
-                              const raw = activeSolutionCode;
-                              const rawLines = raw.split('\n').filter(l => l.trim().length > 0);
-                              if (rawLines.length > 5 && rawLines.some(l => l.startsWith('    ') || l.startsWith('\t'))) {
-                                return raw;
-                              }
-                              if (solutionLang !== 'python') {
-                                const forLoops: string[] = [];
-                                let c = raw.replace(/for\s*\([^)]*\)/g, (m) => {
-                                  forLoops.push(m);
-                                  return `__FOR_LOOP_${forLoops.length - 1}__`;
-                                });
-                                c = c
-                                  .replace(/;\s*/g, ';\n')
-                                  .replace(/{\s*/g, ' {\n')
-                                  .replace(/}\s*/g, '\n}\n')
-                                  .replace(/public:\s*/g, 'public:\n')
-                                  .replace(/private:\s*/g, 'private:\n')
-                                  .replace(/\n\s*\n/g, '\n');
-                                forLoops.forEach((fl, idx) => {
-                                  c = c.replace(`__FOR_LOOP_${idx}__`, fl);
-                                });
-                                let ind = 0;
-                                return c.split('\n').map(line => {
-                                  const trimmed = line.trim();
-                                  if (!trimmed) return '';
-                                  if (trimmed.startsWith('}') || trimmed.startsWith('};')) ind = Math.max(0, ind - 1);
-                                  const res = trimmed === 'public:' || trimmed === 'private:' ? trimmed : '    '.repeat(ind) + trimmed;
-                                  if (trimmed.endsWith('{') && !trimmed.startsWith('//')) ind++;
-                                  return res;
-                                }).filter(l => l.length > 0).join('\n');
-                              }
-                              return raw;
-                            })()}
+                            value={formatCodeForDisplay(activeSolutionCode, solutionLang)}
                             options={{
                               readOnly: true,
                               minimap: { enabled: false },
