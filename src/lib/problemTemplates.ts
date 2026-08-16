@@ -911,14 +911,14 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_lc_problem_${cleanSlug}`;
+  const cacheKey = `edustream_lc_problem_v3_${cleanSlug}`;
 
-  // 1. Instant 0ms browser cache check
+  // 1. Instant 0ms browser cache check (only if valid official starters present)
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed?.description && parsed?.starters) {
+      if (parsed?.description && parsed?.starters?.cpp && !parsed.starters.cpp.includes('setMatrixZeroes(vector<int>&')) {
         return parsed;
       }
     }

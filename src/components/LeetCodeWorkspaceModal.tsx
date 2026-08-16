@@ -592,18 +592,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </button>
 
           {/* Language Selector */}
-          <select
-            value={language}
-            onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
-            className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:border-purple-500 cursor-pointer"
-          >
-            <option value="cpp">C++ 20 (STL)</option>
-            <option value="python">Python 3</option>
-            <option value="java">Java 17</option>
-            <option value="javascript">JavaScript</option>
-            <option value="go">Go 1.21</option>
-            <option value="rust">Rust 1.75</option>
-          </select>
+          <div className="flex items-center space-x-1.5">
+            <select
+              value={language}
+              onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+              className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:border-purple-500 cursor-pointer"
+            >
+              <option value="cpp">C++ 20 (STL)</option>
+              <option value="python">Python 3</option>
+              <option value="java">Java 17</option>
+              <option value="javascript">JavaScript</option>
+              <option value="go">Go 1.21</option>
+              <option value="rust">Rust 1.75</option>
+            </select>
+
+            <button
+              onClick={() => setCode(problemTemplate.starters[language] || problemTemplate.starters.cpp)}
+              className="p-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              title="Reset code to clean official starter signature"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
           {/* Close Modal */}
           <button
