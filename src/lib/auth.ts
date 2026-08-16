@@ -54,6 +54,13 @@ export async function checkAndAutoLogin(): Promise<StudentUser | null> {
   return null;
 }
 
+const getRedirectUrl = (): string => {
+  if (typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')) {
+    return window.location.origin;
+  }
+  return 'https://sdetube.vercel.app';
+};
+
 /**
  * Signs up a student via Supabase Auth with email verification support.
  */
@@ -64,11 +71,13 @@ export async function signUpStudent(email: string, password: string): Promise<{
 }> {
   try {
     const cleanEmail = email.trim().toLowerCase();
+    const redirectUrl = getRedirectUrl();
+
     const { data, error } = await supabase.auth.signUp({ 
       email: cleanEmail, 
       password,
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined
+        emailRedirectTo: redirectUrl
       }
     });
 
@@ -156,9 +165,13 @@ export async function verifyEmailOtp(email: string, token: string): Promise<{ us
  */
 export async function resendVerificationEmail(email: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const redirectUrl = getRedirectUrl();
     const { error } = await supabase.auth.resend({
       type: 'signup',
-      email: email.trim().toLowerCase()
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: redirectUrl
+      }
     });
 
     if (error) {
