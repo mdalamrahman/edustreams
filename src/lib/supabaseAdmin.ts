@@ -60,10 +60,10 @@ export async function fetchSupabaseLiveTelemetry(): Promise<Partial<SupabaseAdmi
       return null;
     }
 
-    // Calculate real metrics from Supabase data
-    const totalTranscripts = (videoCount || (videos?.length || 0)) + 167; // + 167 Cloudflare R2 SDE problems
+    // Calculate genuine metrics from Supabase data
+    const totalTranscripts = (videoCount || (videos?.length || 0)) + 167; // 167 Cloudflare R2 SDE problems + video transcripts
     const totalNotes = (videoCount || (videos?.length || 0)) + 167;
-    const totalExecutions = (attemptCount || (attempts?.length || 0)) + 8940;
+    const totalExecutions = (attemptCount || (attempts?.length || 0));
 
     // Group attempts by user_id to build real user table
     const userStatsMap = new Map<string, any>();
@@ -74,16 +74,16 @@ export async function fetchSupabaseLiveTelemetry(): Promise<Partial<SupabaseAdmi
         if (!userStatsMap.has(uid)) {
           userStatsMap.set(uid, {
             id: uid,
-            email: att.user_email || `candidate-${uid.slice(0, 5)}@sdetube.edu`,
-            name: att.user_name || `Candidate ${uid.slice(0, 4)}`,
+            email: att.user_email || 'learner@sdetube.edu',
+            name: att.user_name || 'Learner',
             solvedCount: 0,
             studyHours: 0,
             streakDays: 1,
-            quizScorePercent: 85,
+            quizScorePercent: 100,
             totalCodeRuns: 0,
             lastActive: 'Active recently',
             isOnline: false,
-            joinedDate: att.attempted_at ? att.attempted_at.slice(0, 10) : '2026-08-01'
+            joinedDate: att.attempted_at ? att.attempted_at.slice(0, 10) : '2026-08-16'
           });
         }
         const user = userStatsMap.get(uid);
@@ -109,7 +109,7 @@ export async function fetchSupabaseLiveTelemetry(): Promise<Partial<SupabaseAdmi
       totalTranscriptsStored: totalTranscripts,
       totalNotesStored: totalNotes,
       totalCodeExecutions: totalExecutions,
-      totalActiveUsers: Math.max(liveUsers.length, 1428),
+      totalActiveUsers: liveUsers.length,
       users: liveUsers.length > 0 ? liveUsers : undefined
     };
   } catch (err) {

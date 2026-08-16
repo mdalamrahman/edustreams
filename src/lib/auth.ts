@@ -106,17 +106,14 @@ export function getAllRegisteredUsers(): Array<{ id: string; email: string; name
     });
   }
 
-  // 2. The 3 verified platform accounts
-  const platformAccounts = [
-    { email: 'mdalamrahman4@gmail.com', name: 'mdalamrahman4 (Admin)', id: 'usr-admin-1', createdAt: '2026-08-01' },
-    { email: 'candidate@sdetube.edu', name: 'Candidate Dev', id: 'usr-cand-2', createdAt: '2026-08-05' },
-    { email: 'student@edustream.org', name: 'SDE Student Learner', id: 'usr-stud-3', createdAt: '2026-08-10' }
-  ];
-
-  for (const acc of platformAccounts) {
-    if (!map.has(acc.email)) {
-      map.set(acc.email, acc);
-    }
+  // 2. Ensure the primary Admin account exists if not yet in local session
+  if (!map.has('mdalamrahman4@gmail.com')) {
+    map.set('mdalamrahman4@gmail.com', {
+      id: 'd0f83a4a-d9ca-4c01-98e6-111f9a962a95',
+      email: 'mdalamrahman4@gmail.com',
+      name: 'mdalamrahman4 (Admin)',
+      createdAt: '2026-08-01'
+    });
   }
 
   return Array.from(map.values());
