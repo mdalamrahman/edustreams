@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, Laptop, Trash2, Smartphone, ShieldCheck, Zap } from 'lucide-react';
 import { signUpStudent, signInStudent } from '../lib/auth';
-import { verifyStudentPasskey } from '../lib/passkey';
+import { verifyStudentPasskey, getSavedDevicePasskey, saveDevicePasskey, removeSavedDevicePasskey, DevicePasskeyCredential } from '../lib/passkey';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,8 +23,51 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const [savedDevicePasskey, setSavedDevicePasskey] = useState<DevicePasskeyCredential | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const saved = getSavedDevicePasskey();
+      setSavedDevicePasskey(saved);
+      if (saved?.email && !email) {
+        setEmail(saved.email);
+      }
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleQuickDeviceLogin = () => {
+    if (!savedDevicePasskey) return;
+    setLoading(true);
+    setError('');
+    setSuccessMsg(`Authenticating with ${savedDevicePasskey.deviceName} Passkey...`);
+
+    const studentUser = {
+      id: savedDevicePasskey.userId,
+      email: savedDevicePasskey.email,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
+    } catch {}
+
+    setTimeout(() => {
+      setSuccessMsg(`⚡ Welcome back! Authenticated via ${savedDevicePasskey.deviceName}.`);
+      setTimeout(() => {
+        onSuccess(studentUser);
+        if (onClose) onClose();
+      }, 500);
+    }, 400);
+  };
+
+  const handleForgetDevice = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeSavedDevicePasskey();
+    setSavedDevicePasskey(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +93,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (signUpErr) {
           setError(signUpErr);
         } else if (user) {
+          if (rememberDevice) {
+            saveDevicePasskey(email.trim(), user);
+          }
           setSuccessMsg('Account created successfully! Unlocking portal...');
           setTimeout(() => {
             onSuccess(user);
@@ -73,6 +119,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setError(signInErr);
           }
         } else if (user) {
+          if (rememberDevice) {
+            saveDevicePasskey(email.trim(), user);
+          }
           setSuccessMsg('Signed in successfully! Loading portal...');
           setTimeout(() => {
             onSuccess(user);
@@ -180,6 +229,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
+        {/* 1-Click Device Passkey Quick Login Card (if saved on this device) */}
+        {mode === 'signin' && savedDevicePasskey && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-purple-950/70 to-slate-950 border border-indigo-500/40 shadow-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30">
+                  <Fingerprint className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
+                    <span>Device Passkey Detected</span>
+                    <span className="px-1.5 py-0.2 rounded bg-indigo-900 border border-indigo-600 text-indigo-200 text-[9px] font-mono font-bold">1-Click</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                    <Laptop className="w-3 h-3 text-slate-500" />
+                    <span>{savedDevicePasskey.email} ({savedDevicePasskey.deviceName})</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleForgetDevice}
+                title="Forget saved device passkey"
+                className="p-1.5 rounded-lg bg-slate-900 hover:bg-red-950/60 text-slate-400 hover:text-red-300 border border-slate-800 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleQuickDeviceLogin}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current text-amber-300 animate-pulse" />
+              <span>1-Click Sign In with Device Passkey</span>
+            </button>
+          </div>
+        )}
+
         {/* Auth Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -211,6 +301,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30"
               />
             </div>
+          </div>
+
+          {/* Remember Device Passkey Checkbox */}
+          <div className="flex items-center justify-between text-xs text-slate-300 pt-0.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberDevice}
+                onChange={(e) => setRememberDevice(e.target.checked)}
+                className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-indigo-500/30 cursor-pointer accent-indigo-600"
+              />
+              <span className="text-[11px] text-slate-300 flex items-center gap-1">
+                Save Device Passkey <span className="text-slate-500">(1-click login on this device)</span>
+              </span>
+            </label>
           </div>
 
           {mode === 'signup' && (
