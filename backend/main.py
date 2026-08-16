@@ -1969,6 +1969,41 @@ async def get_attempts_history(user_id: Optional[str] = "student-1"):
     return []
 
 
+@app.post("/api/auth/register_confirmed")
+async def register_confirmed_user(payload: dict):
+    """Creates an auto-confirmed user in Supabase using the service role key."""
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password")
+    role = payload.get("role", "student")
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required.")
+
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo"
+    url = f"{SUPABASE_URL}/auth/v1/admin/users"
+
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json"
+    }
+    body = {
+        "email": email,
+        "password": password,
+        "email_confirm": True,
+        "user_metadata": {"role": role}
+    }
+    try:
+        r = requests.post(url, headers=headers, json=body, timeout=15)
+        if r.status_code in (200, 201):
+            return {"status": "ok", "user": r.json()}
+        else:
+            err = r.json()
+            return {"status": "error", "message": err.get("msg") or err.get("message") or "Failed to register in Supabase"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @app.get("/api/admin/metrics")
 async def get_admin_metrics():
     """Returns 100% real platform diagnostics, stored transcripts/notes counts, and real active user metrics."""
