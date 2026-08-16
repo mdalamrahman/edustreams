@@ -481,10 +481,15 @@ export function App() {
       setVideoArtifacts(null);
     }
 
+    let pollAttempts = 0;
+    const maxPollAttempts = 4;
+
     const pollStatus = () => {
+      if (pollAttempts >= maxPollAttempts) return;
+      pollAttempts += 1;
       const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
-      fetch(statusUrl)
+      fetch(statusUrl, { signal: AbortSignal.timeout(3500) })
         .then((r) => r.json())
         .then((statusData) => {
           if (!isMounted) return;
@@ -505,13 +510,12 @@ export function App() {
               if (!hasLocalComplete) {
                 setQuizLoading(true);
               }
-              pollTimer = setTimeout(pollStatus, 1500);
+              pollTimer = setTimeout(pollStatus, 3000);
             }
           }
         })
-        .catch((err) => {
-          console.warn('[EduStream Status Poll Notice]:', err);
-          if (isMounted) pollTimer = setTimeout(pollStatus, 2500);
+        .catch(() => {
+          // Silent catch if backend is sleeping or unreachable
         });
     };
 

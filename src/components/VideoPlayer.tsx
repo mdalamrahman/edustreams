@@ -314,7 +314,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const fetchTranscript = async () => {
       try {
         const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal: AbortSignal.timeout(4000) });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         
@@ -324,19 +324,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           try { localStorage.setItem(cacheKey, data.transcript); } catch {}
           if (pollInterval) clearInterval(pollInterval);
         }
-      } catch (err) {
-        console.warn('[EduStream Fast Transcript Notice]:', err);
-      }
+      } catch {}
     };
 
     fetchTranscript();
 
+    let attempts = 0;
     // Poll status while loading to update live progress bar
     pollInterval = setInterval(async () => {
-      if (isCancelled) return;
+      if (isCancelled || attempts > 3) {
+        if (pollInterval) clearInterval(pollInterval);
+        return;
+      }
+      attempts += 1;
       try {
         const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
-        const resp = await fetch(statusUrl);
+        const resp = await fetch(statusUrl, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) {
           const statusData = await resp.json();
           if (statusData?.transcript && statusData.transcript.length > 50) {
@@ -347,7 +350,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           }
         }
       } catch {}
-    }, 3000);
+    }, 4000);
 
     return () => {
       isCancelled = true;
