@@ -73,7 +73,7 @@ Return ONLY valid JSON matching this exact structure:
             "Content-Type": "application/json"
         }
         m_payload = {
-            "model": "mistral-small-latest",
+            "model": "mistral-large-latest",
             "messages": [{"role": "user", "content": prompt}],
             "response_format": {"type": "json_object"},
             "temperature": 0.2

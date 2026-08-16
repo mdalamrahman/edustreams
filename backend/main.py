@@ -1234,7 +1234,7 @@ Return a JSON object with EXACTLY these 4 keys:
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "mistral-small-latest",
+            "model": "mistral-large-latest",
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2
@@ -1825,7 +1825,7 @@ async def ai_code_review(req: CodeReviewRequest):
     }
     prompt = f"Analyze code in {req.language}:\n{req.code}\nStdout: {req.stdout}\nStderr: {req.stderr}"
     payload = {
-        "model": "mistral-small-latest",
+        "model": "mistral-large-latest",
         "messages": [{"role": "user", "content": prompt}]
     }
     try:
@@ -2021,7 +2021,7 @@ async def get_admin_metrics():
         "r2_bucket": "sdestream",
         "r2_storage_status": "Healthy (Cloudflare R2 Object Store)",
         "groq_status": "Active (Llama-3.1-8B-Instant)",
-        "mistral_status": "Active (Mistral-Small)",
+        "mistral_status": "Active (Mistral-Large-Latest)",
         "backend_status": "Operational (FastAPI / Render)",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }

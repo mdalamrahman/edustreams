@@ -131,7 +131,7 @@ General Guidelines:
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-small-latest',
+        model: 'mistral-large-latest',
         messages: messagesPayload,
         temperature: 0.3
       })
@@ -212,7 +212,7 @@ Return ONLY valid JSON.`;
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-small-latest',
+        model: 'mistral-large-latest',
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3
@@ -557,7 +557,7 @@ Evaluate time complexity (O(N), O(N log N), O(N^2), etc.), space complexity, cor
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-small-latest',
+        model: 'mistral-large-latest',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.2
       })
@@ -649,7 +649,7 @@ Return ONLY valid JSON.`;
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-small-latest',
+        model: 'mistral-large-latest',
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3
@@ -728,7 +728,40 @@ Output ONLY valid JSON matching this exact structure:
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
-  // 1. Try Groq (Llama 3.1 8B Instant) for ultra-fast generation
+  // 1. PRIMARY: Mistral AI (mistral-large-latest)
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
+      if (parsed.code) {
+        return {
+          code: parsed.code,
+          explanation: parsed.explanation || 'Optimal algorithmic solution.',
+          timeComplexity: parsed.timeComplexity || 'O(N)',
+          spaceComplexity: parsed.spaceComplexity || 'O(1)',
+          approachName: parsed.approachName || 'Optimal Approach'
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[Mistral Large Solution Notice]:', e);
+  }
+
+  // 2. FALLBACK: Groq Llama 3.1 8B Instant
   try {
     const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -760,39 +793,6 @@ Output ONLY valid JSON matching this exact structure:
     }
   } catch (e) {
     console.warn('[Groq Solution Notice]:', e);
-  }
-
-  // 2. Fallback to Mistral AI
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
-      if (parsed.code) {
-        return {
-          code: parsed.code,
-          explanation: parsed.explanation || 'Optimal algorithmic solution.',
-          timeComplexity: parsed.timeComplexity || 'O(N)',
-          spaceComplexity: parsed.spaceComplexity || 'O(1)',
-          approachName: parsed.approachName || 'Optimal Approach'
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('[Mistral Solution Notice]:', err);
   }
 
   return {

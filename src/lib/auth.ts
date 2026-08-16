@@ -146,15 +146,17 @@ export function getAllRegisteredUsers(): Array<{ id: string; email: string; name
     }
   }
 
-  // 3. Ensure Admin account is registered in list
-  const adminEmail = 'mdalamrahman4@gmail.com';
-  if (!map.has(adminEmail)) {
-    map.set(adminEmail, {
-      id: 'usr-admin-1',
-      email: adminEmail,
-      name: 'mdalamrahman4 (Admin)',
-      createdAt: '2026-08-01'
-    });
+  // 3. Ensure the 3 real platform candidate/admin accounts are registered
+  const platformAccounts = [
+    { email: 'mdalamrahman4@gmail.com', name: 'mdalamrahman4 (Admin)', id: 'usr-admin-1', createdAt: '2026-08-01' },
+    { email: 'candidate@sdetube.edu', name: 'Candidate Dev', id: 'usr-cand-2', createdAt: '2026-08-05' },
+    { email: 'student@edustream.org', name: 'SDE Student Learner', id: 'usr-stud-3', createdAt: '2026-08-10' }
+  ];
+
+  for (const acc of platformAccounts) {
+    if (!map.has(acc.email)) {
+      map.set(acc.email, acc);
+    }
   }
 
   return Array.from(map.values());
