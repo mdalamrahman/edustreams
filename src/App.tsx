@@ -273,44 +273,115 @@ export function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Real Dynamic Velocity Analytics State (persisted in localStorage)
+  // Real Dynamic Velocity Analytics State (persisted in localStorage & synced across SDE Sheet)
   const [totalSolved, setTotalSolved] = useState<number>(() => {
-    const saved = localStorage.getItem('edustream_total_solved');
-    return saved ? parseInt(saved, 10) : 0;
+    try {
+      const sdeSolved = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+      const generalSolved = parseInt(localStorage.getItem('edustream_total_solved') || '0', 10);
+      const sdeCount = Array.isArray(sdeSolved) ? sdeSolved.length : 0;
+      return Math.max(sdeCount, generalSolved);
+    } catch {
+      return 0;
+    }
   });
+
   const [totalActiveMins, setTotalActiveMins] = useState<number>(() => {
     const saved = localStorage.getItem('edustream_active_mins');
     return saved ? parseFloat(saved) : 0.0;
   });
+
   const [correctAttempts, setCorrectAttempts] = useState<number>(() => {
     const saved = localStorage.getItem('edustream_correct_attempts');
     return saved ? parseInt(saved, 10) : 0;
   });
+
   const [timeBreakdown, setTimeBreakdown] = useState(() => {
     const saved = localStorage.getItem('edustream_time_breakdown');
     return saved ? JSON.parse(saved) : { lecturesMins: 0, quizzesMins: 0, codingMins: 0 };
   });
 
-  // Storage Manager State
-  const [cacheUsageBytes, setCacheUsageBytes] = useState<number>(0);
-  const [cacheQuotaBytes, setCacheQuotaBytes] = useState<number>(12 * 1024 * 1024 * 1024);
-
+  // Re-sync analytics values whenever activeTab changes or on mount
   useEffect(() => {
-    if ('storage' in navigator && 'estimate' in navigator.storage) {
-      navigator.storage.estimate().then((estimate) => {
-        if (estimate.usage) setCacheUsageBytes(estimate.usage);
-        if (estimate.quota) setCacheQuotaBytes(estimate.quota);
-      });
+    try {
+      const sdeSolved1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+      const sdeSolved2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+      const combinedSolvedSet = new Set([
+        ...(Array.isArray(sdeSolved1) ? sdeSolved1 : []),
+        ...(Array.isArray(sdeSolved2) ? sdeSolved2 : [])
+      ]);
+      const sdeCount = combinedSolvedSet.size;
+      const generalSolved = parseInt(localStorage.getItem('edustream_total_solved') || '0', 10);
+      const combinedSolved = Math.max(sdeCount, generalSolved);
+      setTotalSolved(combinedSolved);
+
+      const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
+      setTotalActiveMins(activeMins);
+
+      const timeBreakdownSaved = localStorage.getItem('edustream_time_breakdown');
+      if (timeBreakdownSaved) {
+        setTimeBreakdown(JSON.parse(timeBreakdownSaved));
+      } else if (activeMins > 0 || combinedSolved > 0) {
+        const estimatedCodingMins = combinedSolved * 15;
+        const total = Math.max(activeMins, estimatedCodingMins);
+        setTimeBreakdown({
+          lecturesMins: Math.round(total * 0.3),
+          quizzesMins: Math.round(total * 0.1),
+          codingMins: Math.round(total * 0.6)
+        });
+      }
+
+      const savedCorrect = parseInt(localStorage.getItem('edustream_correct_attempts') || '0', 10);
+      setCorrectAttempts(Math.max(combinedSolved, savedCorrect));
+    } catch {}
+  }, [activeTab]);
+
+  const handleQuestionSolved = (timeTakenSeconds?: number, isCorrect?: boolean) => {
+    const mins = Math.max(0.5, Number(((timeTakenSeconds || 60) / 60).toFixed(1)));
+    setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
+
+    const totalAttempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10) + 1;
+    localStorage.setItem('edustream_total_attempts', totalAttempts.toString());
+
+    if (isCorrect !== false) {
+      setTotalSolved((prev) => prev + 1);
+      setCorrectAttempts((prev) => prev + 1);
+
+      if (sdeFullscreenProblem) {
+        try {
+          const saved1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+          if (!saved1.includes(sdeFullscreenProblem.id)) {
+            saved1.push(sdeFullscreenProblem.id);
+            localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(saved1));
+          }
+          const saved2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+          if (!saved2.includes(sdeFullscreenProblem.id)) {
+            saved2.push(sdeFullscreenProblem.id);
+            localStorage.setItem('sdestream_solved_problems', JSON.stringify(saved2));
+          }
+        } catch {}
+      }
     }
-  }, []);
 
-  // Save student progress to localStorage
-  useEffect(() => {
-    localStorage.setItem('edustream_total_solved', totalSolved.toString());
-    localStorage.setItem('edustream_active_mins', totalActiveMins.toString());
-    localStorage.setItem('edustream_correct_attempts', correctAttempts.toString());
-    localStorage.setItem('edustream_time_breakdown', JSON.stringify(timeBreakdown));
-  }, [totalSolved, totalActiveMins, correctAttempts, timeBreakdown]);
+    if (lessonSubTab === 'code' || sdeFullscreenProblem) {
+      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ 
+        ...prev, 
+        codingMins: Math.round(prev.codingMins + mins) 
+      }));
+    } else {
+      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ 
+        ...prev, 
+        quizzesMins: Math.round(prev.quizzesMins + mins) 
+      }));
+    }
+  };
+
+  const accuracyPercent = useMemo(() => {
+    const totalAttempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+    const validSolved = Math.max(totalSolved, correctAttempts);
+    if (validSolved === 0) return 0;
+    if (totalAttempts === 0) return 100;
+    return Math.min(100, Math.round((validSolved / Math.max(validSolved, totalAttempts)) * 100));
+  }, [totalSolved, correctAttempts]);
 
   // Fetch real video catalog from backend on mount
   useEffect(() => {
@@ -618,34 +689,6 @@ export function App() {
       window.history.pushState(null, '', `#/problem/${problem.id}`);
     }
   };
-
-  const handleQuestionSolved = (timeTakenSeconds: number, isCorrect: boolean) => {
-    const mins = Math.max(0.5, Number((timeTakenSeconds / 60).toFixed(1)));
-    setTotalSolved((prev) => prev + 1);
-    setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
-    if (isCorrect) setCorrectAttempts((prev) => prev + 1);
-
-    // Auto-solve in SDE Sheet / POTD
-    if (isCorrect && sdeFullscreenProblem) {
-      try {
-        const saved = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-        if (!saved.includes(sdeFullscreenProblem.id)) {
-          saved.push(sdeFullscreenProblem.id);
-          localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(saved));
-        }
-      } catch (e) {
-        console.warn('[SDETube SDE Sheet Auto-solve Error]:', e);
-      }
-    }
-
-    if (lessonSubTab === 'code') {
-      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ ...prev, codingMins: Math.round(prev.codingMins + mins) }));
-    } else {
-      setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ ...prev, quizzesMins: Math.round(prev.quizzesMins + mins) }));
-    }
-  };
-
-  const accuracyPercent = totalSolved > 0 ? Math.round((correctAttempts / totalSolved) * 100) : 0;
 
   const getChannelIcon = (icon: string) => {
     switch (icon) {

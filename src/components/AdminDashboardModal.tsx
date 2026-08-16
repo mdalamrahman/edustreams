@@ -211,36 +211,57 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const fetchAdminStats = async () => {
     setIsRefreshing(true);
     try {
-      const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/health`);
+      const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/admin/metrics`);
       if (resp.ok) {
         const data = await resp.json();
         setStatsData(prev => ({
           ...prev,
-          totalTranscriptsStored: data.cached_artifacts_count ? data.cached_artifacts_count + 167 : prev.totalTranscriptsStored,
-          backendStatus: data.status === 'healthy' ? 'Operational (Render/FastAPI)' : 'Degraded'
+          totalActiveUsers: data.active_users_count || prev.totalActiveUsers,
+          onlineUsers: data.online_users_count || prev.onlineUsers,
+          totalTranscriptsStored: data.total_transcripts_stored || prev.totalTranscriptsStored,
+          totalNotesStored: data.total_notes_stored || prev.totalNotesStored,
+          totalSdeProblems: data.total_sde_problems || 167,
+          totalCodeExecutions: data.total_code_runs || prev.totalCodeExecutions,
+          r2StorageStatus: data.r2_storage_status || prev.r2StorageStatus,
+          groqAiStatus: data.groq_status || prev.groqAiStatus,
+          mistralAiStatus: data.mistral_status || prev.mistralAiStatus,
+          backendStatus: data.backend_status || 'Operational (Render/FastAPI)'
         }));
+      } else {
+        const healthResp = await fetch(`${TELEGRAM_BACKEND_URL}/api/health`);
+        if (healthResp.ok) {
+          const hData = await healthResp.json();
+          setStatsData(prev => ({
+            ...prev,
+            totalTranscriptsStored: hData.cached_artifacts_count ? hData.cached_artifacts_count + 167 : prev.totalTranscriptsStored,
+            backendStatus: hData.status === 'healthy' ? 'Operational (Render/FastAPI)' : 'Degraded'
+          }));
+        }
       }
     } catch {}
 
-    // Pull local solved stats
+    // Pull local solved stats for active session
     try {
       const solved = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
       const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
-      if (solved.length > 0) {
-        setUsersList(prev => prev.map(u => {
-          if (u.email.includes('mdalamrahman4')) {
-            return {
-              ...u,
-              solvedCount: Math.max(u.solvedCount, solved.length),
-              studyHours: Number(Math.max(u.studyHours, (activeMins / 60)).toFixed(1))
-            };
-          }
-          return u;
-        }));
-      }
+      const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);
+      const solvedCount = Array.isArray(solved) ? solved.length : 0;
+
+      setUsersList(prev => prev.map(u => {
+        if (u.email.includes('mdalamrahman4')) {
+          const calcHours = Number(Math.max(u.studyHours, (activeMins / 60) + (solvedCount * 0.25)).toFixed(1));
+          return {
+            ...u,
+            solvedCount: Math.max(u.solvedCount, solvedCount),
+            studyHours: calcHours,
+            totalCodeRuns: Math.max(u.totalCodeRuns, attempts, solvedCount * 3)
+          };
+        }
+        return u;
+      }));
     } catch {}
 
-    setTimeout(() => setIsRefreshing(false), 600);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   useEffect(() => {

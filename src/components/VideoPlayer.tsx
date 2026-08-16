@@ -246,15 +246,31 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Auto-complete lecture when ≥70% of video duration watched
+  // Auto-complete lecture when ≥70% of video duration watched & track active study time
   useEffect(() => {
     const videoEl = videoRef.current;
-    if (!videoEl || autoCompleted) return;
+    if (!videoEl) return;
+    let lastTracked = Date.now();
+
     const handleTimeUpdate = () => {
       const dur = video.duration_seconds || videoEl.duration || 0;
       if (dur > 0 && videoEl.currentTime >= dur * 0.7 && !autoCompleted) {
         setAutoCompleted(true);
         if (onAutoComplete) onAutoComplete(video.id);
+      }
+
+      // Track active watch minutes every 5 seconds of playback
+      const now = Date.now();
+      if (!videoEl.paused && now - lastTracked >= 5000) {
+        const deltaMins = (now - lastTracked) / 60000;
+        lastTracked = now;
+        try {
+          const currentMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0') + deltaMins;
+          localStorage.setItem('edustream_active_mins', currentMins.toFixed(2));
+          const bd = JSON.parse(localStorage.getItem('edustream_time_breakdown') || '{"lecturesMins":0,"quizzesMins":0,"codingMins":0}');
+          bd.lecturesMins = Number((bd.lecturesMins + deltaMins).toFixed(2));
+          localStorage.setItem('edustream_time_breakdown', JSON.stringify(bd));
+        } catch {}
       }
     };
     videoEl.addEventListener('timeupdate', handleTimeUpdate);
