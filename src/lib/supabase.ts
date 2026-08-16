@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { Channel, Video } from './types';
 
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM';
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
+const rawUrl = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = (rawUrl && !rawUrl.includes('edustream-demo') && rawUrl.startsWith('http')) 
+  ? rawUrl 
+  : 'https://bbxwgezqiqjbmxthchfn.supabase.co';
+
+const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_ANON_KEY = (rawKey && !rawKey.includes('sb_publishable') && rawKey.length > 50)
+  ? rawKey
+  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM';
 
 /**
  * Single Responsibility Principle (SRP) Singleton Supabase Client:
