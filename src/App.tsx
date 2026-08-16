@@ -33,6 +33,7 @@ import { SDESheetExplorer } from './components/SDESheetExplorer';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
@@ -68,6 +69,22 @@ export function App() {
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
+
+  const handleOpenPotdDirectly = () => {
+    try {
+      const allProblems = SDE_SHEET_DATA;
+      const dayIndex = (new Date().getFullYear() * 365 + (new Date().getMonth() + 1) * 31 + new Date().getDate()) % allProblems.length;
+      const todayProblem = allProblems[dayIndex] || allProblems[0];
+      setSdeFullscreenProblem(todayProblem);
+      const match = dynamicVideos.find(v => v.title.toLowerCase().includes(todayProblem.name.toLowerCase()));
+      setSdeFullscreenVideo(match || null);
+    } catch {
+      if (SDE_SHEET_DATA[0]) {
+        setSdeFullscreenProblem(SDE_SHEET_DATA[0]);
+      }
+    }
+  };
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
     setAskAIMode(mode);
@@ -820,6 +837,8 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         selectedChannel={selectedChannelId}
         setSelectedChannel={handleSelectChannel}
         user={user}
+        onOpenAdmin={() => setIsAdminModalOpen(true)}
+        onOpenPotd={handleOpenPotdDirectly}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
@@ -838,7 +857,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                 <div>
                   <h2 className="text-lg font-bold text-slate-100 mb-1 flex items-center gap-2">
                     <Layers className="w-5 h-5 text-indigo-400" />
-                    Telegram Course Channels Hub
+                    Course Channels Hub
                   </h2>
                   <p className="text-xs text-slate-400">Click any channel card to open its dedicated lecture page and search bar</p>
                 </div>
@@ -1208,6 +1227,14 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           notes={videoArtifacts?.notes}
           onClose={() => setIsSqlModalOpen(false)}
           onCodeExecuted={handleQuestionSolved}
+        />
+      )}
+
+      {/* SuperAdmin Telemetry & User Analytics Portal */}
+      {isAdminModalOpen && (
+        <AdminDashboardModal
+          onClose={() => setIsAdminModalOpen(false)}
+          currentUserEmail={user?.email}
         />
       )}
 

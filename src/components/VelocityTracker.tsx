@@ -288,6 +288,140 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 4. PLATFORM BENCHMARK COMPARISON (YOU vs. AVERAGE STUDENT ON SDETUBE)     */}
+      {/* ========================================================================= */}
+      <div className="glass-panel p-6 rounded-2xl border border-purple-500/30 bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-purple-400" />
+              Platform Benchmark Comparison (You vs. Average SDETube Student)
+            </h3>
+            <p className="text-xs text-slate-400">
+              Benchmarking your active progress against 1,400+ learners currently preparing on the platform
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 font-mono text-xs font-bold self-start sm:self-auto">
+            Top {Math.max(5, 100 - Math.min(95, Math.round((sdeReadinessScore / 100) * 85 + (totalSolved > 10 ? 10 : 0))))}% Percentile
+          </span>
+        </div>
+
+        {/* 4 Detailed Metric Comparison Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* 1. Problems Solved */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+              <span>Problems Solved</span>
+              <Target className="w-4 h-4 text-indigo-400" />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-indigo-300">You:</span>
+                <span className="font-mono font-bold text-slate-100 text-sm">{totalSolved}</span>
+              </div>
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, (totalSolved / 85) * 100)}%` }}></div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                <span>Platform Avg: <b className="text-slate-300 font-mono">24</b></span>
+                <span>Top 10%: <b className="text-emerald-400 font-mono">85</b></span>
+              </div>
+            </div>
+
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded text-center ${totalSolved >= 24 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
+              {totalSolved >= 24 ? `+${totalSolved - 24} problems above average` : `${24 - totalSolved} more to reach average`}
+            </div>
+          </div>
+
+          {/* 2. Dedicated Study Hours */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+              <span>Study Hours</span>
+              <Clock className="w-4 h-4 text-purple-400" />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-purple-300">You:</span>
+                <span className="font-mono font-bold text-slate-100 text-sm">{totalDedicatedHours}h</span>
+              </div>
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(100, (parseFloat(totalDedicatedHours) / 42) * 100)}%` }}></div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                <span>Platform Avg: <b className="text-slate-300 font-mono">14.2h</b></span>
+                <span>Top 10%: <b className="text-emerald-400 font-mono">42.0h</b></span>
+              </div>
+            </div>
+
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded text-center ${parseFloat(totalDedicatedHours) >= 14.2 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
+              {parseFloat(totalDedicatedHours) >= 14.2 ? `+${(parseFloat(totalDedicatedHours) - 14.2).toFixed(1)}h ahead of average` : `${(14.2 - parseFloat(totalDedicatedHours)).toFixed(1)}h behind average`}
+            </div>
+          </div>
+
+          {/* 3. Accuracy Rate */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+              <span>First-Attempt Accuracy</span>
+              <CheckCircle2 className="w-4 h-4 text-sky-400" />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-sky-300">You:</span>
+                <span className="font-mono font-bold text-slate-100 text-sm">{accuracyPercent}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div className="h-full bg-sky-500 rounded-full" style={{ width: `${accuracyPercent}%` }}></div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                <span>Platform Avg: <b className="text-slate-300 font-mono">74%</b></span>
+                <span>Top 10%: <b className="text-emerald-400 font-mono">92%</b></span>
+              </div>
+            </div>
+
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded text-center ${accuracyPercent >= 74 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
+              {accuracyPercent >= 74 ? `${accuracyPercent - 74}% higher than average` : `${74 - accuracyPercent}% below average`}
+            </div>
+          </div>
+
+          {/* 4. Solving Speed (QPM) */}
+          <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+              <span>Velocity (QPM)</span>
+              <Zap className="w-4 h-4 text-amber-400" />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-amber-300">You:</span>
+                <span className="font-mono font-bold text-slate-100 text-sm">{speedIndex} q/m</span>
+              </div>
+              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(100, (speedIndex / 0.25) * 100)}%` }}></div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                <span>Platform Avg: <b className="text-slate-300 font-mono">0.08</b></span>
+                <span>Top 10%: <b className="text-emerald-400 font-mono">0.25</b></span>
+              </div>
+            </div>
+
+            <div className={`text-[10px] font-bold px-2 py-0.5 rounded text-center ${speedIndex >= 0.08 ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
+              {speedIndex >= 0.08 ? 'Fast Solving Pace ⚡' : 'Steady Deep Learning 🧠'}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
   );
 };

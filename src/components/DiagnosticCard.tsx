@@ -115,7 +115,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
           {/* Recommended Lectures to Review */}
           <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
             <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-indigo-400" /> Recommended Telegram Lecture Reviews
+              <BookOpen className="w-4 h-4 text-indigo-400" /> Recommended EduStream Lecture Reviews
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {report.recommended_lectures.map((lec, idx) => (

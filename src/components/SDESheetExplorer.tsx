@@ -228,8 +228,12 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </div>
 
             <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <div 
+                onClick={() => onOpenCodingFullscreen && onOpenCodingFullscreen(potdProblem)}
+                className="space-y-0.5 cursor-pointer group/title"
+                title="Click to directly solve POTD in coding workspace"
+              >
+                <div className="text-sm font-bold text-slate-100 group-hover/title:text-purple-300 transition-colors flex items-center gap-2">
                   <span className="line-clamp-1">{potdProblem.name}</span>
                   <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold border ${
                     potdProblem.difficulty === 'Easy'
@@ -250,7 +254,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 {onOpenCodingFullscreen && (
                   <button
                     onClick={() => onOpenCodingFullscreen(potdProblem)}
-                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 flex items-center space-x-1.5 active:scale-95 border border-purple-400/40"
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 flex items-center space-x-1.5 active:scale-95 border border-purple-400/40 cursor-pointer"
                   >
                     <Terminal className="w-3.5 h-3.5 text-cyan-300" />
                     <span>{isPotdSolved ? 'Review POTD' : 'Solve POTD'}</span>

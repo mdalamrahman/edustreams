@@ -14,7 +14,10 @@ import {
   ChevronDown,
   CheckCircle,
   Sparkles,
-  Layers
+  Layers,
+  Flame,
+  ShieldCheck,
+  Terminal
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 
@@ -25,6 +28,8 @@ interface NavbarProps {
   setSelectedChannel: (channelId: string) => void;
   user: any;
   onOpenAuthModal?: () => void;
+  onOpenAdmin?: () => void;
+  onOpenPotd?: () => void;
   onSignOut: () => void;
 }
 
@@ -33,6 +38,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   user,
   onOpenAuthModal,
+  onOpenAdmin,
+  onOpenPotd,
   onSignOut,
 }) => {
   const { isMobile } = useDevice();
@@ -40,6 +47,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isAdminUser = Boolean(
+    user?.email && (
+      user.email.toLowerCase().includes('mdalamrahman4') || 
+      user.email.toLowerCase() === 'mdalamrahman4@gmail.com'
+    )
+  );
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -140,6 +154,31 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right User & Auth Section with Dropdown Menu */}
           <div className="flex items-center space-x-2" ref={dropdownRef}>
+            
+            {/* POTD Quick Action Button */}
+            {onOpenPotd && (
+              <button
+                onClick={onOpenPotd}
+                className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm cursor-pointer group"
+                title="Directly open today's coding challenge (Problem of the Day)"
+              >
+                <Flame className="w-3.5 h-3.5 fill-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
+                <span>POTD</span>
+              </button>
+            )}
+
+            {/* Admin Shield Button for mdalamrahman4 */}
+            {isAdminUser && onOpenAdmin && (
+              <button
+                onClick={onOpenAdmin}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600 hover:to-indigo-600 border border-purple-500/50 text-purple-200 hover:text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20 cursor-pointer animate-pulse"
+                title="SuperAdmin Portal: Active Users, Transcripts & Telemetry"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-300" />
+                <span className="hidden md:inline">Admin Portal</span>
+              </button>
+            )}
+
             {user ? (
               <div className="relative">
                 <button
@@ -166,6 +205,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>Active SDE Session</span>
                       </div>
                     </div>
+
+                    {/* Admin Portal Option inside Dropdown */}
+                    {isAdminUser && onOpenAdmin && (
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          onOpenAdmin();
+                        }}
+                        className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 hover:text-white border border-purple-700/50 text-xs font-bold transition-colors group text-left"
+                      >
+                        <div className="p-1 rounded-lg bg-purple-900 text-amber-300">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1">
+                          <div>SuperAdmin Portal</div>
+                          <div className="text-[10px] text-purple-300 font-normal">Active Users & Telemetry</div>
+                        </div>
+                      </button>
+                    )}
 
                     {/* Option 1: DOWNLOAD WEBAPP */}
                     <button
