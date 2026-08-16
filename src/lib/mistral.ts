@@ -728,7 +728,7 @@ Output ONLY valid JSON matching this exact structure:
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
-  // 1. Try Groq (Llama 3.3 70B) for ultra-fast generation
+  // 1. Try Groq (Llama 3.1 8B Instant) for ultra-fast generation
   try {
     const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -738,7 +738,7 @@ Output ONLY valid JSON matching this exact structure:
         'Authorization': `Bearer ${groqKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.1

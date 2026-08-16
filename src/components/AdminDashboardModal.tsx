@@ -106,7 +106,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
       totalSdeProblems: 167,
       totalCodeExecutions: attempts,
       r2StorageStatus: 'Healthy (sdestream bucket)',
-      groqAiStatus: 'Active (Llama-3.3-70B)',
+      groqAiStatus: 'Active (Llama-3.1-8B-Instant)',
       mistralAiStatus: 'Active (Mistral-Small)',
       backendStatus: 'Operational (Render/FastAPI)'
     };

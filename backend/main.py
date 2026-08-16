@@ -536,7 +536,7 @@ async def read_root_and_health():
         "cached_entities_count": len(_entity_cache),
         "cached_artifacts_count": len(cache),
         "active_background_tasks_count": len(active_background_tasks),
-        "ai_engine": "EduStream AI Engine (Llama-3.3-70b / Mistral)",
+        "ai_engine": "EduStream AI Engine (Mistral-Small / Llama-3.1-8b)",
         "speech_engine": "EduStream AI Speech Engine",
         "timestamp": datetime.utcnow().isoformat() + "Z"
     }
@@ -1152,7 +1152,7 @@ def transcribe_with_groq_whisper(audio_file_path: str) -> str:
 
 def generate_all_ai_artifacts_from_transcript(transcript: str, title: str) -> dict:
     """
-    Uses Mistral AI primarily (with Groq Llama-3.3-70b fallback) to parse the real video transcript
+    Uses Mistral AI primarily (with Groq Llama-3.1-8b fallback) to parse the real video transcript
     and generate Algomaster.io-grade SDE Study Notes, 5 MCQs, Detailed Coding Problem, and Visual Simulation Steps in strict JSON format.
     All content is strictly grounded in the transcript.
     """
@@ -1248,7 +1248,7 @@ Return a JSON object with EXACTLY these 4 keys:
         except Exception as e:
             print(f"[Mistral AI Generation Notice]: {e}")
 
-    # 2. FALLBACK PROVIDER: Groq Llama-3.3-70b
+    # 2. FALLBACK PROVIDER: Groq Llama-3.1-8b
     if not data and GROQ_API_KEY:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -1256,13 +1256,13 @@ Return a JSON object with EXACTLY these 4 keys:
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": "llama-3.1-8b-instant",
             "response_format": {"type": "json_object"},
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.2
         }
         try:
-            print(f"[EduStream AI Engine Fallback] Synthesizing via Groq Llama-3.3-70b for '{title}'...")
+            print(f"[EduStream AI Engine Fallback] Synthesizing via Groq Llama-3.1-8b for '{title}'...")
             resp = requests.post(url, headers=headers, json=payload, timeout=35)
             if resp.status_code == 200:
                 data = json.loads(resp.json()["choices"][0]["message"]["content"])
@@ -2020,7 +2020,7 @@ async def get_admin_metrics():
         "total_code_runs": real_code_runs,
         "r2_bucket": "sdestream",
         "r2_storage_status": "Healthy (Cloudflare R2 Object Store)",
-        "groq_status": "Active (Llama-3.3-70B-versatile)",
+        "groq_status": "Active (Llama-3.1-8B-Instant)",
         "mistral_status": "Active (Mistral-Small)",
         "backend_status": "Operational (FastAPI / Render)",
         "timestamp": datetime.utcnow().isoformat() + "Z"
