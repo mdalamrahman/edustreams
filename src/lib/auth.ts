@@ -7,100 +7,77 @@ export interface StudentUser {
 }
 
 const AUTH_STORAGE_KEY = 'edustream_student_session';
-const USERS_STORAGE_KEY = 'edustream_student_users';
 
+// Clean up any legacy password storage for security and privacy
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('edustream_student_users');
+  } catch {}
+}
+
+/**
+ * Signs up a student strictly via Supabase Auth (No LocalStorage password storage).
+ */
 export async function signUpStudent(email: string, password: string): Promise<{ user: StudentUser | null; error: string | null }> {
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (!error && data?.user) {
+    const { data, error } = await supabase.auth.signUp({ 
+      email: email.trim().toLowerCase(), 
+      password 
+    });
+
+    if (error) {
+      return { user: null, error: error.message };
+    }
+
+    if (data?.user) {
       const studentUser: StudentUser = {
         id: data.user.id,
-        email: data.user.email || email,
-        created_at: new Date().toISOString(),
+        email: data.user.email || email.trim().toLowerCase(),
+        created_at: data.user.created_at || new Date().toISOString(),
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
       return { user: studentUser, error: null };
     }
-    if (error) {
-      const msg = (error.message || '').toLowerCase();
-      // If error is genuine Supabase user error (e.g. Password too short, invalid format), return it.
-      // If error is network/fetch/DNS resolution error due to demo URL, fall through to local session.
-      const isNetworkErr = msg.includes('fetch') || msg.includes('network') || msg.includes('resolved') || msg.includes('failed to fetch');
-      if (!isNetworkErr) {
-        return { user: null, error: error.message };
-      }
-    }
+
+    return { user: null, error: 'Registration failed. Please check your inputs.' };
   } catch (err: any) {
-    console.warn('[EduStream Auth] Supabase endpoint notice:', err);
+    return { user: null, error: err?.message || 'Authentication service error.' };
   }
-
-  // Fallback local session management when remote Supabase URL is not configured
-  const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-  const users: Record<string, string> = usersJson ? JSON.parse(usersJson) : {};
-
-  if (users[email.toLowerCase()]) {
-    return { user: null, error: 'User already registered with this email. Please sign in instead.' };
-  }
-
-  users[email.toLowerCase()] = password;
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-
-  const studentUser: StudentUser = {
-    id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    email: email.toLowerCase(),
-    created_at: new Date().toISOString(),
-  };
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
-
-  return { user: studentUser, error: null };
 }
 
+/**
+ * Signs in a student strictly via Supabase Auth.
+ */
 export async function signInStudent(email: string, password: string): Promise<{ user: StudentUser | null; error: string | null }> {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error && data?.user) {
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email: email.trim().toLowerCase(), 
+      password 
+    });
+
+    if (error) {
+      return { user: null, error: error.message };
+    }
+
+    if (data?.user) {
       const studentUser: StudentUser = {
         id: data.user.id,
-        email: data.user.email || email,
-        created_at: new Date().toISOString(),
+        email: data.user.email || email.trim().toLowerCase(),
+        created_at: data.user.created_at || new Date().toISOString(),
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
       return { user: studentUser, error: null };
     }
-    if (error) {
-      const msg = (error.message || '').toLowerCase();
-      const isNetworkErr = msg.includes('fetch') || msg.includes('network') || msg.includes('resolved') || msg.includes('failed to fetch');
-      if (!isNetworkErr) {
-        return { user: null, error: error.message };
-      }
-    }
+
+    return { user: null, error: 'Sign in failed. Please verify your credentials.' };
   } catch (err: any) {
-    console.warn('[EduStream Auth] Supabase endpoint notice:', err);
+    return { user: null, error: err?.message || 'Authentication service error.' };
   }
-
-  const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-  const users: Record<string, string> = usersJson ? JSON.parse(usersJson) : {};
-
-  const savedPassword = users[email.toLowerCase()];
-  if (savedPassword && savedPassword !== password) {
-    return { user: null, error: 'Invalid password. Please check your credentials.' };
-  }
-
-  if (!savedPassword) {
-    users[email.toLowerCase()] = password;
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  }
-
-  const studentUser: StudentUser = {
-    id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    email: email.toLowerCase(),
-    created_at: new Date().toISOString(),
-  };
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
-
-  return { user: studentUser, error: null };
 }
 
+/**
+ * Retrieves the current student session.
+ */
 export function getCurrentStudent(): StudentUser | null {
   try {
     const sessionJson = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -110,43 +87,26 @@ export function getCurrentStudent(): StudentUser | null {
   }
 }
 
+/**
+ * Discovers real platform candidate profiles from active session & Supabase.
+ */
 export function getAllRegisteredUsers(): Array<{ id: string; email: string; name: string; createdAt: string }> {
   const map = new Map<string, { id: string; email: string; name: string; createdAt: string }>();
 
-  // 1. Check local registered user storage
-  try {
-    const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-    if (usersJson) {
-      const users: Record<string, string> = JSON.parse(usersJson);
-      for (const [email] of Object.entries(users)) {
-        const cleanEmail = email.trim().toLowerCase();
-        const username = cleanEmail.split('@')[0];
-        map.set(cleanEmail, {
-          id: `usr-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
-          email: cleanEmail,
-          name: cleanEmail.includes('mdalamrahman4') ? `${username} (Admin)` : username,
-          createdAt: '2026-08-16'
-        });
-      }
-    }
-  } catch {}
-
-  // 2. Check current student session
+  // 1. Check current authenticated student session
   const cur = getCurrentStudent();
   if (cur?.email) {
     const cleanEmail = cur.email.trim().toLowerCase();
     const username = cleanEmail.split('@')[0];
-    if (!map.has(cleanEmail)) {
-      map.set(cleanEmail, {
-        id: cur.id || `usr-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
-        email: cleanEmail,
-        name: cleanEmail.includes('mdalamrahman4') ? `${username} (Admin)` : username,
-        createdAt: cur.created_at || new Date().toISOString().slice(0, 10)
-      });
-    }
+    map.set(cleanEmail, {
+      id: cur.id || `usr-${cleanEmail.replace(/[^a-z0-9]/g, '')}`,
+      email: cleanEmail,
+      name: cleanEmail.includes('mdalamrahman4') ? `${username} (Admin)` : username,
+      createdAt: cur.created_at || new Date().toISOString().slice(0, 10)
+    });
   }
 
-  // 3. Ensure the 3 real platform candidate/admin accounts are registered
+  // 2. The 3 verified platform accounts
   const platformAccounts = [
     { email: 'mdalamrahman4@gmail.com', name: 'mdalamrahman4 (Admin)', id: 'usr-admin-1', createdAt: '2026-08-01' },
     { email: 'candidate@sdetube.edu', name: 'Candidate Dev', id: 'usr-cand-2', createdAt: '2026-08-05' },

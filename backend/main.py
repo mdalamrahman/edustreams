@@ -33,8 +33,8 @@ ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5")
 
 # Supabase Configuration for Multi-User Global Persistence
-SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://edustream-demo.supabase.co"
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or ""
+SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://bbxwgezqiqjbmxthchfn.supabase.co"
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM"
 
 # Media Storage Directory (saves downloaded videos locally for instant range seeking)
 MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", r"C:\Users\User\Desktop\edustreamfiles")
