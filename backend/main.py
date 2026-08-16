@@ -601,6 +601,34 @@ async def get_problem_route(slug: str):
     return {"error": f"Problem '{slug}' not found in Cloudflare R2", "slug": slug}
 
 
+@app.get("/api/image/{image_name:path}")
+async def get_problem_image_route(image_name: str):
+    """
+    Streams problem illustrations and diagrams stored in Cloudflare R2.
+    Auto-downloads and caches from LeetCode assets on cache miss.
+    """
+    from fastapi.responses import Response
+    clean_name = image_name.replace("https://assets.leetcode.com/uploads/", "").replace("http://assets.leetcode.com/uploads/", "").lstrip("/")
+    
+    res = r2_storage.fetch_image(clean_name)
+    if res:
+        img_bytes, content_type = res
+        return Response(content=img_bytes, media_type=content_type, headers={"Cache-Control": "public, max-age=31536000"})
+    
+    # Auto-fetch from LeetCode and cache in R2
+    lc_url = f"https://assets.leetcode.com/uploads/{clean_name}"
+    try:
+        resp = requests.get(lc_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        if resp.status_code == 200:
+            ct = resp.headers.get("Content-Type") or "image/jpeg"
+            r2_storage.upload_image(clean_name, resp.content, ct)
+            return Response(content=resp.content, media_type=ct, headers={"Cache-Control": "public, max-age=31536000"})
+    except Exception as e:
+        print(f"[R2 Image Auto-fetch Notice]: {e}")
+    
+    return Response(status_code=404)
+
+
 # -------------------------------------------------------------------
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------

@@ -231,4 +231,64 @@ class CloudflareR2Storage:
             pass
         return None
 
+    def upload_image(self, image_name: str, data: bytes, content_type: str = "image/jpeg") -> Optional[str]:
+        """Uploads a problem illustration/diagram to Cloudflare R2 under images/{image_name}."""
+        import re
+        clean_name = re.sub(r'[^a-zA-Z0-9_\-\./]', '_', image_name.strip())
+        key = f"images/{clean_name}"
+
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=data, ContentType=content_type)
+                print(f"[R2 Image Upload Boto3] {key} ({len(data)} bytes, {content_type})")
+                return key
+            except Exception as e:
+                print(f"[R2 Image Upload Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("PUT", key, data)
+            headers["Content-Type"] = content_type
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+            resp = requests.put(url, headers=headers, data=data, timeout=15)
+            if resp.status_code in [200, 201]:
+                print(f"[R2 Image Upload SigV4] {key} ({len(data)} bytes, {content_type})")
+                return key
+        except Exception as e:
+            print(f"[R2 Image Upload SigV4 Error]: {e}")
+        return None
+
+    def fetch_image(self, image_name: str) -> Optional[tuple]:
+        """Fetches raw image bytes and content-type from Cloudflare R2. Returns (bytes, content_type)."""
+        import re
+        clean_name = re.sub(r'[^a-zA-Z0-9_\-\./]', '_', image_name.strip())
+        key = f"images/{clean_name}"
+
+        ext = clean_name.split('.')[-1].lower() if '.' in clean_name else 'jpg'
+        content_type_map = {
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+            'png': 'image/png', 'gif': 'image/gif',
+            'svg': 'image/svg+xml', 'webp': 'image/webp'
+        }
+        content_type = content_type_map.get(ext, 'image/jpeg')
+
+        if self._boto_client:
+            try:
+                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                body = resp["Body"].read()
+                ct = resp.get("ContentType") or content_type
+                return (body, ct)
+            except Exception:
+                pass
+
+        try:
+            headers = self._get_sigv4_headers("GET", key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                ct = resp.headers.get("Content-Type") or content_type
+                return (resp.content, ct)
+        except Exception:
+            pass
+        return None
+
 r2_storage = CloudflareR2Storage()
