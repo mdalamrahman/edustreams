@@ -31,10 +31,9 @@ export async function renderKrokiDiagram(source: string, diagramType: DiagramTyp
     });
 
     if (!response.ok) {
-      const errText = await response.text().catch(() => '');
       return {
         svg: null,
-        error: `Kroki Syntax/Render Error (${response.status}): ${errText || 'Invalid diagram markup'}`
+        error: `Visual Architecture Syntax Error: Please verify your class and interface definitions.`
       };
     }
 
@@ -43,7 +42,7 @@ export async function renderKrokiDiagram(source: string, diagramType: DiagramTyp
   } catch (err: any) {
     return {
       svg: null,
-      error: err?.message || 'Network error connecting to Kroki API.'
+      error: 'Visual diagram rendering service temporarily unavailable.'
     };
   }
 }

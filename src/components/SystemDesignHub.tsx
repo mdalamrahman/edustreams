@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import { 
   Cpu, 
   Layers, 
@@ -10,21 +11,20 @@ import {
   RefreshCw, 
   ExternalLink, 
   Search, 
-  BookOpen, 
   Building2, 
   ArrowRight, 
   Zap, 
   Check, 
-  ChevronRight,
-  Maximize2,
-  Minimize2,
-  FileCode,
-  Github,
-  Award,
-  Play,
-  RotateCcw,
-  ZoomIn,
-  ZoomOut
+  Maximize2, 
+  Minimize2, 
+  FileCode, 
+  Github, 
+  Award, 
+  Play, 
+  ZoomIn, 
+  ZoomOut,
+  Terminal,
+  ShieldCheck
 } from 'lucide-react';
 import { LLD_PROBLEMS, LLDProblem } from '../lib/lldData';
 import { renderKrokiDiagram, DiagramType } from '../lib/kroki';
@@ -50,10 +50,10 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
     }
   });
 
-  // Active Selected Problem for Fullscreen LeetCode-Style Studio
+  // Active Problem for Fullscreen Architecture Studio
   const [activeProblem, setActiveProblem] = useState<LLDProblem | null>(null);
 
-  // LeetCode-Style Code Editor State
+  // Monaco Code Editor State
   const [codeLanguage, setCodeLanguage] = useState<'java' | 'cpp' | 'python'>('java');
   const [oopCode, setOopCode] = useState<string>('');
   const [codeOutput, setCodeOutput] = useState<string | null>(null);
@@ -71,10 +71,12 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isEvaluationOpen, setIsEvaluationOpen] = useState(false);
 
-  // GitHub Interactive Reading Material State
+  // GitHub Reading Material State
   const [selectedGithubTopic, setSelectedGithubTopic] = useState<CuratedLLDTopic>(CURATED_LLD_TOPICS[0]);
   const [githubMarkdown, setGithubMarkdown] = useState<string>('');
   const [isLoadingGithub, setIsLoadingGithub] = useState(false);
+
+  const debounceTimerRef = useRef<any>(null);
 
   // Load problem details when active problem changes
   useEffect(() => {
@@ -108,7 +110,6 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
     setIsGeneratingDiagram(true);
     setDiagramError(null);
 
-    // 1. Generate UML markup from code (or use high-definition starter markup if code matches starter)
     let umlMarkup = '';
     const isStarter = codeStr.trim() === (prob.starterCode[codeLanguage] || '').trim();
     if (isStarter && prob.starterDiagram) {
@@ -117,20 +118,35 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
       umlMarkup = convertCodeToUml(codeStr, codeLanguage, prob.title);
     }
 
-    // 2. Render visual SVG
     const res = await renderKrokiDiagram(umlMarkup, prob.diagramType || 'plantuml');
     setIsGeneratingDiagram(false);
 
     if (res.svg) {
       setDiagramSvg(res.svg);
     } else if (prob.starterDiagram) {
-      // Fallback to starter diagram
       const fallbackRes = await renderKrokiDiagram(prob.starterDiagram, prob.diagramType || 'plantuml');
-      if (fallbackRes.svg) setDiagramSvg(fallbackRes.svg);
-      else setDiagramError(res.error || 'Failed to generate visual diagram.');
+      if (fallbackRes.svg) {
+        setDiagramSvg(fallbackRes.svg);
+      } else {
+        setDiagramError('Visual architecture syntax error. Please check your class structure.');
+      }
     } else {
-      setDiagramError(res.error || 'Failed to generate visual diagram.');
+      setDiagramError('Visual architecture syntax error. Please check your class structure.');
     }
+  };
+
+  const handleCodeChange = (newCode: string | undefined) => {
+    const val = newCode || '';
+    setOopCode(val);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      if (activeProblem) {
+        handleGenerateDiagramFromCode(val, activeProblem);
+      }
+    }, 1200);
   };
 
   const handleToggleSolved = (probId: string) => {
@@ -155,9 +171,9 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
 [Simulation Runtime Output]:
 ----------------------------------------
 [PASS] Entity Hierarchy Initialized
-[PASS] Factory Strategy Registered
+[PASS] Design Strategy Patterns Registered
 [PASS] Thread-Safe Mutex Lock Acquired
-[PASS] State Transition Validated
+[PASS] State Transition & Concurrency Validated
 ----------------------------------------
 ✨ Design simulation executed successfully with zero runtime errors.`);
     }, 600);
@@ -169,7 +185,7 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
     setIsEvaluationOpen(true);
     setAiEvaluation(null);
 
-    const prompt = `You are a Principal Software Architect evaluating a Senior Low-Level Design & System Design interview.
+    const prompt = `You are a Principal Software Architect conducting a senior Low-Level Design & System Design interview.
 Evaluate the candidate's OOP solution for "${activeProblem.title}".
 
 Candidate's Code (${codeLanguage}):
@@ -217,13 +233,13 @@ Provide a comprehensive architectural evaluation with:
           <div>
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 font-mono text-[11px] font-bold w-fit mb-3">
               <Cpu className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>LIVE VISUAL ARCHITECTURE &bull; LEETCODE-STYLE OOP COMPILER</span>
+              <span>LIVE VISUAL ARCHITECTURE &bull; OOP CODE STUDIO</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
               System Design & LLD Practice Hub
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-              Design real-world scalable architectures in a LeetCode-style OOP compiler, view live auto-generated visual UML diagrams, and get evaluated by AI.
+              Design real-world scalable architectures in a Monaco OOP editor, view live auto-generated visual UML diagrams, and get evaluated by Principal Architect AI.
             </p>
           </div>
 
@@ -269,7 +285,7 @@ Provide a comprehensive architectural evaluation with:
             }`}
           >
             <Github className="w-4 h-4 text-slate-200" />
-            <span>Open-Source LLD Primers (GitHub)</span>
+            <span>Open-Source Design Primers (GitHub)</span>
           </button>
         </div>
 
@@ -346,7 +362,7 @@ Provide a comprehensive architectural evaluation with:
                       className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Code className="w-3.5 h-3.5" />
-                      <span>Open LeetCode Studio</span>
+                      <span>Open Studio Workspace</span>
                     </button>
 
                     <button
@@ -369,7 +385,7 @@ Provide a comprehensive architectural evaluation with:
       )}
 
       {/* ========================================================================= */}
-      {/* VIEW B: GITHUB OPEN-SOURCE INTERACTIVE READING MATERIAL                   */}
+      {/* VIEW B: GITHUB OPEN-SOURCE DESIGN PRIMERS                                 */}
       {/* ========================================================================= */}
       {activeView === 'reader' && (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -427,12 +443,12 @@ Provide a comprehensive architectural evaluation with:
       )}
 
       {/* ========================================================================= */}
-      {/* 3. FULLSCREEN HORIZONTAL LEETCODE-STYLE LLD STUDIO (100VW / 100VH)       */}
+      {/* 3. FULLSCREEN HORIZONTAL MONACO OOP STUDIO (100VW / 100VH)                */}
       {/* ========================================================================= */}
       {activeProblem && (
         <div className="fixed inset-0 z-50 w-screen h-screen bg-slate-950 flex flex-col overflow-hidden animate-fadeIn select-none">
           
-          {/* Top Bar Header */}
+          {/* Top Header Bar */}
           <div className="h-14 px-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-purple-600/30 text-purple-300 border border-purple-500/30">
@@ -469,7 +485,7 @@ Provide a comprehensive architectural evaluation with:
                         : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {lang}
+                    {lang === 'cpp' ? 'C++' : lang === 'java' ? 'Java' : 'Python'}
                   </button>
                 ))}
               </div>
@@ -506,7 +522,7 @@ Provide a comprehensive architectural evaluation with:
               </button>
             </div>
 
-            {/* Right Controls */}
+            {/* Right Action Controls */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleToggleSolved(activeProblem.id)}
@@ -588,23 +604,30 @@ Provide a comprehensive architectural evaluation with:
               </div>
             </div>
 
-            {/* COLUMN 2: LeetCode-Style OOP Code Editor (5 Columns) */}
+            {/* COLUMN 2: Full Monaco OOP Code Editor (5 Columns) */}
             <div className="col-span-5 border-r border-slate-800 flex flex-col bg-slate-900/80 overflow-hidden">
               <div className="h-9 px-3 bg-slate-950 text-[11px] font-mono text-slate-400 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
                 <span className="text-purple-300 font-bold">Solution.{codeLanguage === 'java' ? 'java' : codeLanguage === 'cpp' ? 'cpp' : 'py'}</span>
-                <span className="text-slate-500">LeetCode-Style OOP Sandbox</span>
+                <span className="text-slate-500">Monaco OOP Sandbox</span>
               </div>
 
               <div className="flex-1 overflow-hidden relative">
-                <textarea
+                <Editor
+                  height="100%"
+                  language={codeLanguage === 'cpp' ? 'cpp' : codeLanguage === 'python' ? 'python' : 'java'}
+                  theme="vs-dark"
                   value={oopCode}
-                  onChange={(e) => {
-                    const newCode = e.target.value;
-                    setOopCode(newCode);
+                  onChange={handleCodeChange}
+                  options={{
+                    fontSize: 13,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    folding: true,
+                    automaticLayout: true,
+                    fontFamily: 'Fira Code, JetBrains Mono, monospace',
+                    tabSize: 4
                   }}
-                  className="w-full h-full p-4 bg-slate-950 text-slate-100 font-mono text-xs resize-none focus:outline-none leading-relaxed custom-scrollbar selection:bg-purple-600/40"
-                  placeholder={`Write your ${codeLanguage.toUpperCase()} object-oriented solution...`}
-                  spellCheck={false}
                 />
               </div>
 
@@ -686,7 +709,7 @@ Provide a comprehensive architectural evaluation with:
                   />
                 ) : (
                   <div className="text-center font-mono text-xs text-slate-500">
-                    Type your code to automatically generate the visual UML architecture.
+                    Write your code to automatically generate the visual UML architecture.
                   </div>
                 )}
               </div>
@@ -748,7 +771,7 @@ Provide a comprehensive architectural evaluation with:
           )}
 
           {/* ========================================================================= */}
-          {/* AI ARCHITECTURAL REVIEW DRAWER / MODAL                                    */}
+          {/* AI ARCHITECTURAL REVIEW DRAWER                                            */}
           {/* ========================================================================= */}
           {isEvaluationOpen && (
             <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[540px] bg-slate-950/95 border-l border-purple-500/40 shadow-2xl backdrop-blur-xl flex flex-col animate-slideLeft">

@@ -340,24 +340,28 @@ class TokenBucket:
     starterDiagram: `@startuml
 title Elevator System Architecture
 
-enum Direction { UP, DOWN, IDLE }
+enum Direction {
+  UP
+  DOWN
+  IDLE
+}
 
 class ElevatorCar {
   - id: int
   - currentFloor: int
   - direction: Direction
-  + addStop(floor: int)
-  + step()
+  + addDestination(floor: int): void
+  + step(): void
 }
 
 interface DispatchStrategy {
-  + selectCar(cars: List<ElevatorCar>, floor: int, dir: Direction): ElevatorCar
+  + selectCar(cars: List, floor: int, dir: Direction): ElevatorCar
 }
 
 class ElevatorController {
-  - cars: List<ElevatorCar>
+  - cars: List
   - strategy: DispatchStrategy
-  + requestElevator(floor: int, dir: Direction)
+  + requestElevator(floor: int, dir: Direction): void
 }
 
 ElevatorController o-- ElevatorCar
