@@ -38,6 +38,7 @@ import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
+import { recordRealActivity } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
@@ -331,12 +332,15 @@ export function App() {
 
   const handleQuestionSolved = (timeTakenSeconds?: number, isCorrect?: boolean) => {
     const mins = Math.max(0.5, Number(((timeTakenSeconds || 60) / 60).toFixed(1)));
+    const correct = isCorrect !== false;
+
+    // Record real persistent activity into daily analytics log
+    const actType = (lessonSubTab === 'code' || sdeFullscreenProblem) ? 'coding' : 'quiz';
+    recordRealActivity(actType, mins, correct ? 1 : 0, correct);
+
     setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
 
-    const totalAttempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10) + 1;
-    localStorage.setItem('edustream_total_attempts', totalAttempts.toString());
-
-    if (isCorrect !== false) {
+    if (correct) {
       setTotalSolved((prev) => prev + 1);
       setCorrectAttempts((prev) => prev + 1);
 
@@ -356,7 +360,7 @@ export function App() {
       }
     }
 
-    if (lessonSubTab === 'code' || sdeFullscreenProblem) {
+    if (actType === 'coding') {
       setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ 
         ...prev, 
         codingMins: Math.round(prev.codingMins + mins) 
