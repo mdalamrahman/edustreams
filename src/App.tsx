@@ -36,6 +36,7 @@ import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SystemDesignHub } from './components/SystemDesignHub';
 import { POTDModal } from './components/POTDModal';
+import { DashboardLandingPage } from './components/DashboardLandingPage';
 import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
@@ -55,7 +56,7 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings'>('channels');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings'>('dashboard');
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
@@ -86,8 +87,8 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'sde_sheet' ? 'sde-sheet' : tab === 'system_design' ? 'system-design' : tab}`;
+  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'sde-sheet' : tab === 'system_design' ? 'system-design' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -110,7 +111,7 @@ export function App() {
   // Synchronize state on browser back/forward or hash change
   useEffect(() => {
     const handleHashSync = () => {
-      const hash = window.location.hash || '#/channels';
+      const hash = window.location.hash || '#/dashboard';
       if (hash.startsWith('#/problem/')) {
         const pIdStr = hash.replace('#/problem/', '');
         const found = SDE_SHEET_DATA.find((p) => p.id.toString() === pIdStr || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === pIdStr.toLowerCase().replace(/[^a-z0-9]/g, ''));
@@ -128,7 +129,9 @@ export function App() {
         }
       } else {
         setSdeFullscreenProblem(null);
-        if (hash.startsWith('#/channel/')) {
+        if (hash.startsWith('#/dashboard')) {
+          setActiveTab('dashboard');
+        } else if (hash.startsWith('#/channel/')) {
           const chId = hash.replace('#/channel/', '');
           setSelectedChannelId(chId);
           setChannelViewMode('detail');
@@ -145,9 +148,11 @@ export function App() {
           setActiveTab('system_design');
         } else if (hash.startsWith('#/analytics')) {
           setActiveTab('analytics');
-        } else {
+        } else if (hash.startsWith('#/channels')) {
           setActiveTab('channels');
           setChannelViewMode('overview');
+        } else {
+          setActiveTab('dashboard');
         }
       }
     };
@@ -867,7 +872,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative">
       
-      {/* Navbar */}
+      {/* Navbar with Hamburger Drawer */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={(tab) => {
@@ -878,15 +883,28 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         user={user}
         onOpenAdmin={() => setIsAdminModalOpen(true)}
         onOpenPotd={handleOpenPotdDirectly}
+        onOpenSqlWorkspace={() => setIsSqlModalOpen(true)}
+        onOpenAskAI={() => setIsAskAIOpen(true)}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
         }}
       />
 
-      {/* Main Content Area: Expansive Full Horizontal Width for SDE Sheet */}
+      {/* Main Content Area */}
       <main className={`flex-1 w-full mx-auto py-6 ${activeTab === 'sde_sheet' ? 'max-w-[98%] px-2 sm:px-4' : 'max-w-7xl px-4 sm:px-6 lg:px-8'}`}>
         
+        {/* VIEW 0: POST-LOGIN STUDENT DASHBOARD / COMMAND CENTER */}
+        {activeTab === 'dashboard' && (
+          <DashboardLandingPage
+            user={user}
+            onNavigate={navigateTo}
+            onOpenSdeProblem={handleOpenCodingFullscreen}
+            onOpenSqlWorkspace={() => setIsSqlModalOpen(true)}
+            onOpenAskAI={() => setIsAskAIOpen(true)}
+          />
+        )}
+
         {/* VIEW 1: TELEGRAM CHANNELS OVERVIEW & DEDICATED CHANNEL PAGES */}
         {activeTab === 'channels' && (
           <div>

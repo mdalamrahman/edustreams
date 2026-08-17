@@ -233,10 +233,10 @@ Provide a comprehensive architectural evaluation with:
           <div>
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 font-mono text-[11px] font-bold w-fit mb-3">
               <Cpu className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>LIVE VISUAL ARCHITECTURE &bull; OOP CODE STUDIO</span>
+              <span>SDETUBE &bull; LIVE VISUAL ARCHITECTURE &bull; OOP CODE STUDIO</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
-              System Design & LLD Practice Hub
+              SDETube System Design & LLD Practice Hub
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
               Design real-world scalable architectures in a Monaco OOP editor, view live auto-generated visual UML diagrams, and get evaluated by Principal Architect AI.
@@ -455,6 +455,7 @@ Provide a comprehensive architectural evaluation with:
                 <Cpu className="w-4 h-4" />
               </div>
               <div className="flex items-center gap-2">
+                <span className="font-extrabold text-[11px] text-purple-400 font-mono tracking-wider px-2 py-0.5 rounded bg-purple-950/80 border border-purple-800/60">SDETUBE LLD</span>
                 <h3 className="text-sm font-bold text-slate-100 truncate max-w-md">{activeProblem.title}</h3>
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border ${
                   activeProblem.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
