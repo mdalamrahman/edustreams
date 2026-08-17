@@ -109,7 +109,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const { error: gErr } = await signInWithGoogle();
     if (gErr) {
       setLoading(false);
-      setError(gErr);
+      if (gErr.toLowerCase().includes('provider is not enabled') || gErr.toLowerCase().includes('unsupported provider')) {
+        setError('Google Provider is not enabled yet in your Supabase Dashboard. Please enable Google in Supabase -> Authentication -> Providers.');
+      } else {
+        setError(gErr);
+      }
     }
   };
 
