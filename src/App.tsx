@@ -1214,7 +1214,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           />
         )}
 
-        {/* VIEW 2.8: SYSTEM DESIGN & LLD PRACTICE HUB (KROKI API & MISTRAL AI) */}
+        {/* VIEW 2.8: SYSTEM DESIGN & LLD PRACTICE HUB (VISUAL ARCHITECTURE & MISTRAL AI) */}
         {activeTab === 'system_design' && (
           <SystemDesignHub />
         )}

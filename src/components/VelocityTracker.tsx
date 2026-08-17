@@ -108,7 +108,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
             <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mt-2">
               <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700" style={{ width: `${lldPct}%` }}></div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Kroki Visual UML Diagrams + OOP Code + Mistral AI Design Evaluation</p>
+            <p className="text-[11px] text-slate-400 mt-2">Visual UML Architecture Diagrams + OOP Code + AI Design Evaluation</p>
           </div>
         </div>
 
@@ -283,7 +283,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
               <div>
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="flex items-center gap-1.5 text-slate-300">
-                    <Cpu className="w-3.5 h-3.5 text-purple-400" /> LLD Kroki Diagrams
+                    <Cpu className="w-3.5 h-3.5 text-purple-400" /> LLD Architecture Diagrams
                   </span>
                   <span className="font-mono text-purple-300 font-bold">{timeBreakdown.lldMins || 0} mins ({lldTimePct}%)</span>
                 </div>
