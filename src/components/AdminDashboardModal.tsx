@@ -30,7 +30,7 @@ import {
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 import { getAllRegisteredUsers } from '../lib/auth';
-import { getActivePasskey, generateDynamicPasskey, DynamicPasskey } from '../lib/passkey';
+import { getActivePasskey, generateDynamicPasskey, syncGlobalActivePasskey, DynamicPasskey } from '../lib/passkey';
 
 interface AdminUserStat {
   id: string;
@@ -104,6 +104,12 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [copiedPasskey, setCopiedPasskey] = useState(false);
 
   useEffect(() => {
+    // Initial fetch directly from Supabase Auth
+    syncGlobalActivePasskey().then((active) => {
+      setCurrentPasskey(active.passkey);
+      setRemainingSeconds(active.remainingSeconds);
+    });
+
     const timer = setInterval(() => {
       const active = getActivePasskey();
       setCurrentPasskey(active.passkey);

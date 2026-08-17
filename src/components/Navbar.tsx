@@ -17,9 +17,13 @@ import {
   Layers,
   Flame,
   ShieldCheck,
-  Terminal
+  Terminal,
+  Fingerprint,
+  Zap,
+  Check
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
+import { addPasskeyToSupabase } from '../lib/auth';
 
 interface NavbarProps {
   activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings';
@@ -46,6 +50,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isAdminUser = Boolean(
@@ -54,6 +60,19 @@ export const Navbar: React.FC<NavbarProps> = ({
       user.email.toLowerCase() === 'mdalamrahman4@gmail.com'
     )
   );
+
+  const handleAddPasskey = async () => {
+    if (!user) return;
+    setPasskeyLoading(true);
+    setPasskeyNotice(null);
+
+    const res = await addPasskeyToSupabase(user);
+    setPasskeyLoading(false);
+    setPasskeyNotice(res.message);
+    setTimeout(() => {
+      setPasskeyNotice(null);
+    }, 4500);
+  };
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -90,6 +109,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
+      {/* Passkey Sync Toast Notification */}
+      {passkeyNotice && (
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-2xl bg-indigo-950/95 border border-indigo-500/80 shadow-2xl backdrop-blur-xl text-indigo-100 text-xs font-semibold flex items-center gap-3 animate-fadeIn">
+          <div className="p-2 rounded-xl bg-indigo-600/40 text-indigo-300 border border-indigo-400/40">
+            <Fingerprint className="w-5 h-5 text-indigo-300 animate-pulse" />
+          </div>
+          <div>
+            <div className="font-bold text-slate-100 flex items-center gap-1.5">
+              <span>Supabase Passkey Engine</span>
+              <span className="px-1.5 py-0.2 rounded bg-indigo-900 border border-indigo-600 text-indigo-200 text-[9px] font-mono">Linked</span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5 max-w-xs">{passkeyNotice}</p>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
           
@@ -197,14 +232,42 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-2 z-50 animate-fadeIn space-y-1">
                     
-                    {/* User Info Header */}
-                    <div className="p-2.5 border-b border-slate-800">
-                      <div className="text-xs font-bold text-slate-200 truncate">{user.email || 'Authorized Student'}</div>
-                      <div className="text-[10px] text-emerald-400 font-mono flex items-center gap-1 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        <span>Active SDE Session</span>
+                    {/* User Info Header with clickable passkey registration */}
+                    <div 
+                      onClick={handleAddPasskey}
+                      className="p-2.5 border-b border-slate-800 hover:bg-slate-800/60 rounded-xl cursor-pointer transition-colors group"
+                      title="Click to register or sync Passkey for this account"
+                    >
+                      <div className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
+                        {user.email || 'Authorized Student'}
+                      </div>
+                      <div className="text-[10px] text-indigo-400 font-mono flex items-center justify-between mt-1">
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          <span>Active Session</span>
+                        </span>
+                        <span className="text-[9px] bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-700 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                          + Passkey
+                        </span>
                       </div>
                     </div>
+
+                    {/* Option 1: ADD / SYNC PASSKEY TO SUPABASE */}
+                    <button
+                      onClick={handleAddPasskey}
+                      disabled={passkeyLoading}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-indigo-600/20 text-indigo-300 hover:text-indigo-100 text-xs font-bold transition-colors group text-left cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="p-1 rounded-lg bg-indigo-950 border border-indigo-800 text-indigo-400 group-hover:text-white">
+                        <Fingerprint className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1">
+                        <div>Add / Sync Passkey</div>
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          {passkeyLoading ? 'Linking to Supabase...' : 'Save Passkey in Supabase'}
+                        </div>
+                      </div>
+                    </button>
 
                     {/* Admin Portal Option inside Dropdown */}
                     {isAdminUser && onOpenAdmin && (
@@ -225,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </button>
                     )}
 
-                    {/* Option 1: DOWNLOAD WEBAPP */}
+                    {/* Option 2: DOWNLOAD WEBAPP */}
                     <button
                       onClick={handleInstallWebApp}
                       className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl hover:bg-purple-600/20 text-purple-300 hover:text-purple-100 text-xs font-bold transition-colors group text-left"
@@ -239,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </div>
                     </button>
 
-                    {/* Option 2: SIGN OUT */}
+                    {/* Option 3: SIGN OUT */}
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);

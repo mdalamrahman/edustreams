@@ -18,12 +18,14 @@ import {
   Wifi,
   WifiOff,
   BookOpen,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { AINotesAndSimulation } from './AINotesAndSimulation';
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { Video } from '../lib/types';
 import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { getCurrentStudent } from '../lib/auth';
 
 interface VideoPlayerProps {
   video: Video;
@@ -193,9 +195,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
+  const currentStudent = getCurrentStudent();
+  const isAdmin = Boolean(
+    currentStudent?.email && (
+      currentStudent.email.toLowerCase().includes('mdalamrahman4') ||
+      currentStudent.email.toLowerCase() === 'mdalamrahman4@gmail.com'
+    )
+  );
+
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false);
 
   const handleDownloadVideoFile = async () => {
+    if (!isAdmin) {
+      alert('🔒 Access Restricted: Video downloads are strictly reserved for Administrator accounts.');
+      return;
+    }
     setIsDownloadingVideo(true);
     const cleanName = `${(video.title || 'lecture').replace(/[^\w\s.-]/gi, '')}.mp4`;
     const downloadEndpoint = (video.channel_id && video.telegram_message_id)
@@ -451,14 +465,25 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <span className="hidden sm:inline">Fullscreen</span>
           </button>
 
-          <button
-            onClick={handleDownloadVideoFile}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-all shadow-md"
-            title="Download Video File directly to disk"
-          >
-            <DownloadCloud className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Download</span>
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={handleDownloadVideoFile}
+              disabled={isDownloadingVideo}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-700 transition-all shadow-md cursor-pointer"
+              title="Download Video File directly to disk (Admin Access)"
+            >
+              <DownloadCloud className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isDownloadingVideo ? 'Downloading...' : 'Download'}</span>
+            </button>
+          ) : (
+            <div 
+              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-950 text-slate-500 border border-slate-900 cursor-not-allowed select-none"
+              title="Video downloads are restricted to Administrator accounts."
+            >
+              <Lock className="w-3 h-3 text-slate-600" />
+              <span className="text-[11px]">Stream Only</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -492,6 +517,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               ref={videoRef}
               src={streamSrc}
               controls={false}
+              controlsList="nodownload"
+              onContextMenu={(e) => { if (!isAdmin) e.preventDefault(); }}
               crossOrigin="anonymous"
               playsInline
               preload="metadata"
