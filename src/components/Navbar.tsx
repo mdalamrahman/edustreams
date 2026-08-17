@@ -182,7 +182,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Sticky Navbar */}
       <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
           
           {/* Left: Hamburger Menu Button + Logo */}
           <div className="flex items-center space-x-3">

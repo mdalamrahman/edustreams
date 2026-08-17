@@ -32,6 +32,7 @@ import { fetchGitHubMarkdown, CURATED_LLD_TOPICS, CuratedLLDTopic } from '../lib
 import { markLLDProblemSolved } from '../lib/analytics';
 import { requestMistralChat } from '../lib/mistral';
 import { convertCodeToUml } from '../lib/codeToUml';
+import { FormattedChatText } from './FormattedChatText';
 
 interface SystemDesignHubProps {
   onOpenDirectProblem?: (problemId: string) => void;
@@ -434,8 +435,8 @@ Provide a comprehensive architectural evaluation with:
                 Fetching open-source primer via GitHub REST API...
               </div>
             ) : (
-              <div className="prose prose-invert max-w-none text-xs sm:text-sm text-slate-300 leading-relaxed font-sans overflow-x-auto whitespace-pre-wrap max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {githubMarkdown}
+              <div className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans overflow-x-auto max-h-[650px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                <FormattedChatText text={githubMarkdown} />
               </div>
             )}
           </div>

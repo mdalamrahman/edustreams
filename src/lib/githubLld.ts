@@ -38,13 +38,45 @@ export const CURATED_LLD_TOPICS: CuratedLLDTopic[] = [
   },
   {
     id: 'awesome-lld-parking-lot',
-    title: 'Parking Lot LLD Architecture & SOLID Principles',
+    title: 'Low-Level Design Patterns & SOLID Principles',
     category: 'Low Level Design',
     repo: 'ashishps1/awesome-low-level-design',
     path: 'README.md',
-    description: 'Comprehensive object-oriented low level design interview solutions and patterns.'
+    description: 'Comprehensive object-oriented low level design interview solutions, concurrency, and patterns.'
+  },
+  {
+    id: 'system-design-interview-framework',
+    title: 'System Design Interview Cheatsheet & Framework',
+    category: 'System Design',
+    repo: 'madd86/awesome-system-design',
+    path: 'README.md',
+    description: 'A curated list of System Design and Software Architecture resources for SDE 2 & 3 interviews.'
+  },
+  {
+    id: 'gof-oop-principles',
+    title: 'SOLID Principles & Clean Code Architecture',
+    category: 'Architecture',
+    repo: 'ryanmcdermott/clean-code-javascript',
+    path: 'README.md',
+    description: 'Clean code and SOLID design principles translated for modern object-oriented software engineering.'
   }
 ];
+
+/**
+ * Cleans translation headers and unwanted raw badge text from repository README files.
+ */
+export function sanitizeGitHubMarkdown(raw: string): string {
+  if (!raw) return '';
+  let cleaned = raw;
+
+  // Remove translation table headers like "*[English](README.md) · [日本語](README-ja.md)..."
+  cleaned = cleaned.replace(/\*\[English\]\(README\.md\)[^\n]*\*/gi, '');
+  cleaned = cleaned.replace(/\*\*Help \[translate\][^\n]*\*\*/gi, '');
+  cleaned = cleaned.replace(/\[!\[Build Status\][^\n]*\n?/gi, '');
+  cleaned = cleaned.replace(/\[!\[License\][^\n]*\n?/gi, '');
+
+  return cleaned.trim();
+}
 
 /**
  * Fetches raw markdown content from a GitHub repository via raw.githubusercontent.com or GitHub REST API.
@@ -63,7 +95,7 @@ export async function fetchGitHubMarkdown(repo: string, path: string): Promise<{
 
     if (res.ok) {
       const text = await res.text();
-      return { content: text, error: null };
+      return { content: sanitizeGitHubMarkdown(text), error: null };
     }
 
     // 2. Fallback to GitHub REST API
@@ -76,7 +108,7 @@ export async function fetchGitHubMarkdown(repo: string, path: string): Promise<{
 
     if (apiRes.ok) {
       const text = await apiRes.text();
-      return { content: text, error: null };
+      return { content: sanitizeGitHubMarkdown(text), error: null };
     }
 
     return { content: null, error: `Failed to fetch GitHub material (${apiRes.status})` };
