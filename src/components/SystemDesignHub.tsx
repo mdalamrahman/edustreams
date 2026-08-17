@@ -36,6 +36,7 @@ import { requestMistralChat } from '../lib/mistral';
 import { convertCodeToUml } from '../lib/codeToUml';
 import { FormattedChatText } from './FormattedChatText';
 import { executeCode } from '../lib/compiler';
+import { GitHubArticleReader } from './GitHubArticleReader';
 
 interface SystemDesignHubProps {
   onOpenDirectProblem?: (problemId: string) => void;
@@ -818,8 +819,8 @@ Provide a comprehensive architectural evaluation with:
 
           {/* GitHub Primers Reader View */}
           {activeView === 'reader' && (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-1 space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-3 space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Curated Repositories</h3>
                 {CURATED_LLD_TOPICS.map((topic) => (
                   <button
@@ -841,33 +842,12 @@ Provide a comprehensive architectural evaluation with:
                 ))}
               </div>
 
-              <div className="lg:col-span-3 glass-panel p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl space-y-4">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-100">{selectedGithubTopic.title}</h3>
-                    <span className="text-xs font-mono text-slate-400">{selectedGithubTopic.repo}/{selectedGithubTopic.path}</span>
-                  </div>
-                  <a
-                    href={`https://github.com/${selectedGithubTopic.repo}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold"
-                  >
-                    <Github className="w-3.5 h-3.5" />
-                    <span>View on GitHub</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-
-                {isLoadingGithub ? (
-                  <div className="py-16 text-center text-slate-400 font-mono text-xs animate-pulse">
-                    Fetching open-source primer via GitHub REST API...
-                  </div>
-                ) : (
-                  <div className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans overflow-x-auto max-h-[650px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                    <FormattedChatText text={githubMarkdown} />
-                  </div>
-                )}
+              <div className="lg:col-span-9">
+                <GitHubArticleReader
+                  topic={selectedGithubTopic}
+                  markdown={githubMarkdown}
+                  isLoading={isLoadingGithub}
+                />
               </div>
             </div>
           )}
