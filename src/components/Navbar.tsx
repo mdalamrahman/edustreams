@@ -20,14 +20,15 @@ import {
   Terminal,
   Fingerprint,
   Zap,
-  Check
+  Check,
+  Cpu
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
 
 interface NavbarProps {
-  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings') => void;
+  activeTab: 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings';
+  setActiveTab: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -172,6 +173,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-300" />
               <span>SDE Sheet</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('system_design')}
+              className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                activeTab === 'system_design'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                  : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40 border border-purple-900/40'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-300" />
+              <span>System Design / LLD</span>
             </button>
 
             <button

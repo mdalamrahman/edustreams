@@ -34,6 +34,8 @@ import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { SystemDesignHub } from './components/SystemDesignHub';
+import { POTDModal } from './components/POTDModal';
 import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
@@ -53,7 +55,7 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings'>('channels');
+  const [activeTab, setActiveTab] = useState<'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings'>('channels');
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
@@ -71,20 +73,10 @@ export function App() {
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
+  const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
 
   const handleOpenPotdDirectly = () => {
-    try {
-      const allProblems = SDE_SHEET_DATA;
-      const dayIndex = (new Date().getFullYear() * 365 + (new Date().getMonth() + 1) * 31 + new Date().getDate()) % allProblems.length;
-      const todayProblem = allProblems[dayIndex] || allProblems[0];
-      setSdeFullscreenProblem(todayProblem);
-      const match = dynamicVideos.find(v => v.title.toLowerCase().includes(todayProblem.name.toLowerCase()));
-      setSdeFullscreenVideo(match || null);
-    } catch {
-      if (SDE_SHEET_DATA[0]) {
-        setSdeFullscreenProblem(SDE_SHEET_DATA[0]);
-      }
-    }
+    setIsPotdModalOpen(true);
   };
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
@@ -94,8 +86,8 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'channels' | 'lesson' | 'sde_sheet' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'sde_sheet' ? 'sde-sheet' : tab}`;
+  const navigateTo = (tab: 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'sde_sheet' ? 'sde-sheet' : tab === 'system_design' ? 'system-design' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -149,6 +141,8 @@ export function App() {
           setActiveTab('lesson');
         } else if (hash.startsWith('#/sde-sheet')) {
           setActiveTab('sde_sheet');
+        } else if (hash.startsWith('#/system-design')) {
+          setActiveTab('system_design');
         } else if (hash.startsWith('#/analytics')) {
           setActiveTab('analytics');
         } else {
@@ -1220,6 +1214,11 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           />
         )}
 
+        {/* VIEW 2.8: SYSTEM DESIGN & LLD PRACTICE HUB (KROKI API & MISTRAL AI) */}
+        {activeTab === 'system_design' && (
+          <SystemDesignHub />
+        )}
+
         {/* VIEW 3: DYNAMIC VELOCITY ANALYTICS & MISTRAL DIAGNOSTICS */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
@@ -1305,6 +1304,14 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
             setShowMobileGating(false);
             setLessonSubTab('quiz');
           }}
+        />
+      )}
+
+      {/* Dual POTD Challenge Modal (SDETube Curated + Official LeetCode POTD) */}
+      {isPotdModalOpen && (
+        <POTDModal
+          onClose={() => setIsPotdModalOpen(false)}
+          onSolveSdeProblem={handleOpenCodingFullscreen}
         />
       )}
 

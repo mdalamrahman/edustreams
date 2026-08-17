@@ -804,3 +804,57 @@ Output ONLY valid JSON matching this exact structure:
   };
 }
 
+/**
+ * Standard chat completion helper with Mistral Large and Groq fallback.
+ */
+export async function requestMistralChat(messages: Array<{ role: string; content: string }>): Promise<{ content: string }> {
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        messages,
+        temperature: 0.3
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return { content: data.choices[0]?.message?.content || 'No response generated.' };
+    }
+  } catch (e) {
+    console.warn('[Mistral Chat Notice]:', e);
+  }
+
+  // Fallback: Groq Llama 3.1 8B Instant
+  try {
+    const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages,
+        temperature: 0.2
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return { content: data.choices[0]?.message?.content || 'No response generated.' };
+    }
+  } catch (e) {
+    console.warn('[Groq Chat Notice]:', e);
+  }
+
+  return { content: 'Unable to reach AI evaluation engine at this moment.' };
+}
+
+
