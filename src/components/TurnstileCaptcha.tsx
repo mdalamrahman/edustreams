@@ -88,15 +88,11 @@ export const TurnstileCaptcha: React.FC<TurnstileCaptchaProps> = ({
   }, [theme]);
 
   return (
-    <div className={`flex flex-col items-center justify-center my-3 ${className}`}>
+    <div className={`flex flex-col items-center justify-center my-2 ${className}`}>
       <div 
         ref={containerRef} 
-        className="min-h-[65px] min-w-[300px] flex items-center justify-center rounded-xl overflow-hidden shadow-inner"
+        className="min-h-[65px] min-w-[300px] flex items-center justify-center rounded-xl overflow-hidden"
       />
-      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-1 select-none">
-        <ShieldCheck className="w-3 h-3 text-emerald-400" />
-        <span>Cloudflare Turnstile Bot Defense Active</span>
-      </div>
     </div>
   );
 };
