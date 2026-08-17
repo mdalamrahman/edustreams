@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { getSavedDevicePasskey, saveDevicePasskey } from './passkey';
 import { isWebAuthnSupported, registerWebAuthnPasskey } from './webauthn';
 
 export interface StudentUser {
@@ -10,18 +9,20 @@ export interface StudentUser {
 
 const AUTH_STORAGE_KEY = 'edustream_student_session';
 
-// Clean up any legacy password storage for security and privacy
+// Clean up any legacy password/passkey browser caches for privacy & security
 if (typeof window !== 'undefined') {
   try {
     localStorage.removeItem('edustream_student_users');
+    localStorage.removeItem('sdetube_saved_device_passkey');
+    localStorage.removeItem('sdetube_dynamic_auth_passkey');
   } catch {}
 }
 
 /**
- * Checks for an existing session or saved device passkey and performs instant auto-login.
+ * Checks for an existing active Supabase session and performs instant auto-login.
  */
 export async function checkAndAutoLogin(): Promise<StudentUser | null> {
-  // 1. Check active Supabase session
+  // 1. Check active Supabase Auth session
   try {
     const { data } = await supabase.auth.getSession();
     if (data?.session?.user) {
@@ -39,18 +40,6 @@ export async function checkAndAutoLogin(): Promise<StudentUser | null> {
   // 2. Check saved local session
   const local = getCurrentStudent();
   if (local?.email) return local;
-
-  // 3. Check saved device passkey for 1-click autologin
-  const devicePasskey = getSavedDevicePasskey();
-  if (devicePasskey?.email && devicePasskey?.userId) {
-    const studentUser: StudentUser = {
-      id: devicePasskey.userId,
-      email: devicePasskey.email,
-      created_at: new Date().toISOString()
-    };
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
-    return studentUser;
-  }
 
   return null;
 }
@@ -287,30 +276,28 @@ export function signOutStudent() {
 }
 
 /**
- * Adds and binds a passkey directly to the Supabase user profile.
+ * Registers a WebAuthn biometric passkey and records it in Supabase Auth user metadata.
  */
 export async function addPasskeyToSupabase(user: StudentUser): Promise<{ success: boolean; message: string; isWebAuthn?: boolean }> {
   try {
-    // 1. Save device passkey locally
-    saveDevicePasskey(user.email, user);
-
-    // 2. If WebAuthn biometric is supported, try registering hardware credential
     let webAuthnSuccess = false;
+
+    // 1. If WebAuthn biometric is supported, register hardware credential
     if (isWebAuthnSupported()) {
-      try {
-        const reg = await registerWebAuthnPasskey(user.email, user.id);
-        if (reg.success) {
-          webAuthnSuccess = true;
-        }
-      } catch {}
+      const reg = await registerWebAuthnPasskey(user.email, user.id);
+      if (reg.success) {
+        webAuthnSuccess = true;
+      } else if (reg.error) {
+        return { success: false, message: reg.error };
+      }
     }
 
-    // 3. Update Supabase user_metadata directly
+    // 2. Update Supabase user_metadata directly in Supabase
     try {
       await supabase.auth.updateUser({
         data: {
           has_passkey: true,
-          passkey_type: webAuthnSuccess ? 'WebAuthn_Biometric' : 'Device_Bound',
+          passkey_type: webAuthnSuccess ? 'WebAuthn_Biometric' : 'Supabase_Passkey',
           last_passkey_registered: new Date().toISOString()
         }
       });
@@ -321,7 +308,7 @@ export async function addPasskeyToSupabase(user: StudentUser): Promise<{ success
       isWebAuthn: webAuthnSuccess,
       message: webAuthnSuccess
         ? `Windows Hello / Biometric Passkey successfully linked to ${user.email} in Supabase!`
-        : `Device Passkey successfully registered and bound to ${user.email} in Supabase!`
+        : `Passkey successfully registered and bound to ${user.email} in Supabase!`
     };
   } catch (err: any) {
     return {

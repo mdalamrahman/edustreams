@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, Laptop, Trash2, Smartphone, ShieldCheck, Zap, Shield, Globe, ArrowRight, RefreshCw } from 'lucide-react';
+import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, ShieldCheck, Zap, Shield, ArrowRight, RefreshCw } from 'lucide-react';
 import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle } from '../lib/auth';
-import { verifyStudentPasskey, getSavedDevicePasskey, saveDevicePasskey, removeSavedDevicePasskey, DevicePasskeyCredential } from '../lib/passkey';
-import { isWebAuthnSupported, authenticateWithWebAuthn, registerWebAuthnPasskey } from '../lib/webauthn';
+import { verifyStudentPasskey } from '../lib/passkey';
+import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,18 +25,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const [savedDevicePasskey, setSavedDevicePasskey] = useState<DevicePasskeyCredential | null>(null);
   const [supportsBiometrics, setSupportsBiometrics] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      const saved = getSavedDevicePasskey();
-      setSavedDevicePasskey(saved);
       setSupportsBiometrics(isWebAuthnSupported());
-      if (saved?.email && !email) {
-        setEmail(saved.email);
-      }
     }
   }, [isOpen]);
 
@@ -45,62 +38,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleWebAuthnBiometricLogin = async () => {
     setLoading(true);
     setError('');
-    setSuccessMsg('Touch your sensor / scan Face ID or Windows Hello...');
-
-    const result = await authenticateWithWebAuthn(email.trim() || undefined);
-    if (!result.success) {
-      setLoading(false);
-      setError(result.error || 'Biometric verification failed.');
-      return;
-    }
-
-    const matchedEmail = result.email || email || 'mdalamrahman4@gmail.com';
-    const studentUser = {
-      id: `usr-${matchedEmail.replace(/[^a-z0-9]/g, '')}`,
-      email: matchedEmail,
-      created_at: new Date().toISOString()
-    };
+    setSuccessMsg('Scanning Windows Hello / Touch ID / Hardware Passkey...');
 
     try {
-      localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
-    } catch {}
+      const result = await authenticateWithWebAuthn(email.trim() || undefined);
+      if (!result.success) {
+        setLoading(false);
+        setError(result.error || 'Biometric verification failed.');
+        return;
+      }
 
-    setSuccessMsg(`🛡️ Verified! Authenticated via Windows Hello / Biometric Passkey.`);
-    setTimeout(() => {
-      onSuccess(studentUser);
-      if (onClose) onClose();
-    }, 500);
-  };
+      const matchedEmail = result.email || email || 'mdalamrahman4@gmail.com';
+      const studentUser = {
+        id: `usr-${matchedEmail.replace(/[^a-z0-9]/g, '')}`,
+        email: matchedEmail,
+        created_at: new Date().toISOString()
+      };
 
-  const handleQuickDeviceLogin = () => {
-    if (!savedDevicePasskey) return;
-    setLoading(true);
-    setError('');
-    setSuccessMsg(`Authenticating with ${savedDevicePasskey.deviceName} Passkey...`);
+      try {
+        localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
+      } catch {}
 
-    const studentUser = {
-      id: savedDevicePasskey.userId,
-      email: savedDevicePasskey.email,
-      created_at: new Date().toISOString()
-    };
-
-    try {
-      localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
-    } catch {}
-
-    setTimeout(() => {
-      setSuccessMsg(`⚡ Welcome back! Authenticated via ${savedDevicePasskey.deviceName}.`);
+      setSuccessMsg(`🛡️ Authenticated via Supabase Biometric Passkey!`);
       setTimeout(() => {
         onSuccess(studentUser);
         if (onClose) onClose();
       }, 500);
-    }, 400);
-  };
-
-  const handleForgetDevice = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    removeSavedDevicePasskey();
-    setSavedDevicePasskey(null);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err?.message || 'Passkey verification failed.');
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -133,9 +100,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (otpErr) {
         setError(otpErr);
       } else if (user) {
-        if (rememberDevice) {
-          saveDevicePasskey(email, user);
-        }
         setSuccessMsg('Email verified successfully! Loading portal...');
         setTimeout(() => {
           onSuccess(user);
@@ -174,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (mode === 'signup') {
       const passkeyCheck = await verifyStudentPasskey(authCode);
       if (!passkeyCheck.valid) {
-        setError(passkeyCheck.error || 'Invalid or expired student authorization passkey. Passkeys expire after 10 minutes.');
+        setError(passkeyCheck.error || 'Invalid or expired student authorization passkey. Passkeys expire after 10 minutes in Supabase.');
         return;
       }
 
@@ -188,9 +152,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           setMode('verify_otp');
           setSuccessMsg(`Confirmation email sent to ${email.trim()}. Please enter the 6-digit OTP code below or click the link in your inbox.`);
         } else if (user) {
-          if (rememberDevice) {
-            saveDevicePasskey(email.trim(), user);
-          }
           setSuccessMsg('Account created successfully! Unlocking portal...');
           setTimeout(() => {
             onSuccess(user);
@@ -217,9 +178,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setError(signInErr);
           }
         } else if (user) {
-          if (rememberDevice) {
-            saveDevicePasskey(email.trim(), user);
-          }
           setSuccessMsg('Signed in successfully! Loading portal...');
           setTimeout(() => {
             onSuccess(user);
@@ -284,7 +242,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {mode === 'verify_otp'
               ? `Enter the 6-digit verification code sent to ${email || 'your email'}`
               : mode === 'signin' 
-              ? 'Enter your credentials or use 1-click Passkey.' 
+              ? 'Enter your credentials or use Supabase Passkey.' 
               : 'Enter your details and 10-minute dynamic passkey to register.'}
           </p>
         </div>
@@ -343,59 +301,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* 1-Click Device Passkey Quick Login Card (if saved on this device) */}
-        {mode === 'signin' && savedDevicePasskey && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-purple-950/70 to-slate-950 border border-indigo-500/40 shadow-xl space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 border border-indigo-500/30">
-                  <Fingerprint className="w-4 h-4 text-indigo-400" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                    <span>Device Passkey Detected</span>
-                    <span className="px-1.5 py-0.2 rounded bg-indigo-900 border border-indigo-600 text-indigo-200 text-[9px] font-mono font-bold">1-Click</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <Laptop className="w-3 h-3 text-slate-500" />
-                    <span>{savedDevicePasskey.email} ({savedDevicePasskey.deviceName})</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleForgetDevice}
-                title="Forget saved device passkey"
-                className="p-1.5 rounded-lg bg-slate-900 hover:bg-red-950/60 text-slate-400 hover:text-red-300 border border-slate-800 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleQuickDeviceLogin}
-                disabled={loading}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Zap className="w-3.5 h-3.5 fill-current text-amber-300 animate-pulse" />
-                <span>1-Click Device Passkey</span>
-              </button>
-
-              {supportsBiometrics && (
-                <button
-                  type="button"
-                  onClick={handleWebAuthnBiometricLogin}
-                  disabled={loading}
-                  title="Sign in via Windows Hello / Touch ID / Face ID"
-                  className="px-3 py-2.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-600 text-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Fingerprint className="w-4 h-4 text-purple-300" />
-                  <span className="hidden sm:inline">Biometric</span>
-                </button>
-              )}
-            </div>
+        {/* Supabase Hardware / Biometric Passkey Quick Sign-In Option */}
+        {mode === 'signin' && supportsBiometrics && (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={handleWebAuthnBiometricLogin}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-950 via-indigo-950 to-purple-950 hover:from-purple-900 hover:to-indigo-900 border border-purple-600/50 text-purple-200 hover:text-white font-bold text-xs shadow-md shadow-purple-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <Fingerprint className="w-4 h-4 text-purple-300" />
+              <span>Sign In with Supabase Passkey (Windows Hello / Touch ID)</span>
+            </button>
           </div>
         )}
 
@@ -485,26 +402,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
-            {/* Remember Device Passkey Checkbox */}
-            <div className="flex items-center justify-between text-xs text-slate-300 pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberDevice}
-                  onChange={(e) => setRememberDevice(e.target.checked)}
-                  className="w-4 h-4 rounded bg-slate-950 border-slate-700 text-indigo-600 focus:ring-indigo-500/30 cursor-pointer accent-indigo-600"
-                />
-                <span className="text-[11px] text-slate-300 flex items-center gap-1">
-                  Save Device Passkey <span className="text-slate-500">(1-click login on this device)</span>
-                </span>
-              </label>
-            </div>
-
             {mode === 'signup' && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-indigo-300">
-                    Dynamic Admin Authorization Passkey <span className="text-red-400">*</span>
+                    Dynamic Supabase Authorization Passkey <span className="text-red-400">*</span>
                   </label>
                   <span className="text-[10px] font-mono text-amber-400 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-amber-400" /> 10-Min Validity
@@ -522,7 +424,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Enter the dynamic passkey generated by the Admin (valid for 10 minutes from creation).
+                  Enter the dynamic passkey generated by Admin (synced directly in Supabase).
                 </p>
               </div>
             )}
@@ -530,10 +432,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
-                <span className="animate-spin font-mono text-xs">Authenticating...</span>
+                <span className="animate-spin font-mono text-xs">Authenticating with Supabase...</span>
               ) : mode === 'signin' ? (
                 <>
                   <LogIn className="w-4 h-4" />
@@ -542,7 +444,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               ) : (
                 <>
                   <UserPlus className="w-4 h-4" />
-                  <span>Verify Code & Register</span>
+                  <span>Verify Code & Register in Supabase</span>
                 </>
               )}
             </button>

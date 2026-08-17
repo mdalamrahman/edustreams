@@ -30,7 +30,7 @@ import {
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 import { getAllRegisteredUsers } from '../lib/auth';
-import { getActivePasskey, generateDynamicPasskey, syncGlobalActivePasskey, DynamicPasskey } from '../lib/passkey';
+import { generateDynamicPasskey, syncGlobalActivePasskey, DynamicPasskey } from '../lib/passkey';
 
 interface AdminUserStat {
   id: string;
@@ -98,9 +98,9 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   // Real Dynamic User Stats List
   const [usersList, setUsersList] = useState<AdminUserStat[]>(() => buildRealUsersList(currentUserEmail));
 
-  // Dynamic 10-Minute Student Registration Passkey State
-  const [currentPasskey, setCurrentPasskey] = useState<DynamicPasskey | null>(() => getActivePasskey().passkey);
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => getActivePasskey().remainingSeconds);
+  // Dynamic 10-Minute Student Registration Passkey State (Direct from Supabase Auth)
+  const [currentPasskey, setCurrentPasskey] = useState<DynamicPasskey | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
   const [copiedPasskey, setCopiedPasskey] = useState(false);
 
   useEffect(() => {
@@ -111,9 +111,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
     });
 
     const timer = setInterval(() => {
-      const active = getActivePasskey();
-      setCurrentPasskey(active.passkey);
-      setRemainingSeconds(active.remainingSeconds);
+      setRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          setCurrentPasskey(null);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
