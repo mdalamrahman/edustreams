@@ -3,6 +3,7 @@ import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv
 import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle } from '../lib/auth';
 import { verifyStudentPasskey } from '../lib/passkey';
 import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
+import { TurnstileCaptcha } from './TurnstileCaptcha';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [authCode, setAuthCode] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -116,7 +118,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleResendOtp = async () => {
     setLoading(true);
     setError('');
-    const { success, error: resendErr } = await resendVerificationEmail(email);
+    const { success, error: resendErr } = await resendVerificationEmail(email, captchaToken);
     setLoading(false);
     if (success) {
       setSuccessMsg('A fresh verification link & OTP has been sent to your email.');
@@ -144,7 +146,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       setLoading(true);
       try {
-        const { user, needsEmailVerification, error: signUpErr } = await signUpStudent(email.trim(), password);
+        const { user, needsEmailVerification, error: signUpErr } = await signUpStudent(email.trim(), password, captchaToken);
 
         if (signUpErr) {
           setError(signUpErr);
@@ -166,7 +168,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } else {
       setLoading(true);
       try {
-        const { user, error: signInErr } = await signInStudent(email.trim(), password);
+        const { user, error: signInErr } = await signInStudent(email.trim(), password, captchaToken);
 
         if (signInErr) {
           if (signInErr.toLowerCase().includes('email not confirmed')) {
@@ -428,6 +430,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </p>
               </div>
             )}
+
+            {/* Cloudflare Turnstile Captcha Widget */}
+            <TurnstileCaptcha 
+              onVerify={(token) => setCaptchaToken(token)} 
+              onExpire={() => setCaptchaToken('')}
+            />
 
             <button
               type="submit"

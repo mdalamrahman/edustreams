@@ -52,9 +52,9 @@ const getRedirectUrl = (): string => {
 };
 
 /**
- * Signs up a student via Supabase Auth with email verification support.
+ * Signs up a student via Supabase Auth with email verification and Cloudflare Turnstile captcha support.
  */
-export async function signUpStudent(email: string, password: string): Promise<{ 
+export async function signUpStudent(email: string, password: string, captchaToken?: string): Promise<{ 
   user: StudentUser | null; 
   needsEmailVerification?: boolean; 
   error: string | null 
@@ -63,12 +63,17 @@ export async function signUpStudent(email: string, password: string): Promise<{
     const cleanEmail = email.trim().toLowerCase();
     const redirectUrl = getRedirectUrl();
 
+    const options: any = {
+      emailRedirectTo: redirectUrl
+    };
+    if (captchaToken) {
+      options.captchaToken = captchaToken;
+    }
+
     const { data, error } = await supabase.auth.signUp({ 
       email: cleanEmail, 
       password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
+      options
     });
 
     if (error) {
@@ -151,17 +156,22 @@ export async function verifyEmailOtp(email: string, token: string): Promise<{ us
 }
 
 /**
- * Resends the confirmation link / OTP email to the student.
+ * Resends the confirmation link / OTP email to the student with optional Turnstile Captcha.
  */
-export async function resendVerificationEmail(email: string): Promise<{ success: boolean; error?: string }> {
+export async function resendVerificationEmail(email: string, captchaToken?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const redirectUrl = getRedirectUrl();
+    const options: any = {
+      emailRedirectTo: redirectUrl
+    };
+    if (captchaToken) {
+      options.captchaToken = captchaToken;
+    }
+
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: redirectUrl
-      }
+      options
     });
 
     if (error) {
@@ -197,13 +207,19 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
 }
 
 /**
- * Signs in a student strictly via Supabase Auth.
+ * Signs in a student strictly via Supabase Auth with Cloudflare Turnstile captcha support.
  */
-export async function signInStudent(email: string, password: string): Promise<{ user: StudentUser | null; error: string | null }> {
+export async function signInStudent(email: string, password: string, captchaToken?: string): Promise<{ user: StudentUser | null; error: string | null }> {
   try {
+    const options: any = {};
+    if (captchaToken) {
+      options.captchaToken = captchaToken;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({ 
       email: email.trim().toLowerCase(), 
-      password 
+      password,
+      options
     });
 
     if (error) {
