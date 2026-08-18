@@ -40,6 +40,9 @@ import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemAppro
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -283,6 +286,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     setTimeout(() => setCopiedSolutionCode(false), 2000);
   };
 
+  // ── Billing Modals State ──
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.05, action: 'Running Code' });
+
   // Dragging handlers for horizontal split pane
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -477,6 +485,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Run Code / Submit
   const handleExecute = async (isSubmission: boolean = false) => {
+    const cost = isSubmission ? PRICING_CONFIG.CODE_SUBMIT_DSA_LLD : PRICING_CONFIG.COMPILER_RUN_DSA_LLD;
+    const actionLabel = isSubmission ? 'Submitting & Judging Solution (20 paise)' : 'Running Code via Compiler (5 paise)';
+
+    if (!canAffordAction(cost)) {
+      setInsufficientMeta({ cost, action: actionLabel });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      cost,
+      isSubmission ? 'CODE_SUBMIT' : 'COMPILER_RUN',
+      `${isSubmission ? '🎯 DSA Code Submit' : '⚡ DSA Compiler Run'} (${language.toUpperCase()}): ${cleanTitle}`
+    );
+
     setIsExecuting(true);
     setConsoleTab('result');
     if (isConsoleMinimized) setIsConsoleMinimized(false);
@@ -562,6 +585,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const handleSendAiMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt || aiInputText;
     if (!textToSend.trim() || isAiReplying) return;
+
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
+        action: 'AI Teaching Assistant Chat (0.2 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.AI_CHAT_MESSAGE,
+      'AI_CHAT',
+      `🤖 DSA AI Assistant Chat: ${cleanTitle}`
+    );
 
     const userMessage: ChatMessage = { role: 'user', content: textToSend.trim() };
     setAiChatMessages(prev => [...prev, userMessage]);
@@ -1721,6 +1759,25 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

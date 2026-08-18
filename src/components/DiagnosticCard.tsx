@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle2, AlertTriangle, BookOpen, RefreshCw, Award } from 'lucide-react';
 import { requestMistralDiagnostic } from '../lib/mistral';
 import { AIDiagnosticReport } from '../lib/types';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 interface DiagnosticCardProps {
   totalSolved: number;
@@ -16,8 +19,22 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
 }) => {
   const [report, setReport] = useState<AIDiagnosticReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
 
-  const fetchDiagnostic = async () => {
+  const fetchDiagnostic = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      if (!canAffordAction(PRICING_CONFIG.ANALYTICS_AI_REFRESH)) {
+        setIsInsufficientCreditsOpen(true);
+        return;
+      }
+      deductCredits(
+        PRICING_CONFIG.ANALYTICS_AI_REFRESH,
+        'ANALYTICS_REFRESH',
+        '📊 Analytics AI Diagnostic Report Refresh (₹1.00)'
+      );
+    }
+
     setIsLoading(true);
     const res = await requestMistralDiagnostic(totalSolved, totalMins, accuracyPercent);
     setReport(res);
@@ -25,7 +42,7 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
   };
 
   useEffect(() => {
-    fetchDiagnostic();
+    fetchDiagnostic(false);
   }, [totalSolved, totalMins, accuracyPercent]);
 
   return (
@@ -49,12 +66,12 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
         </div>
 
         <button
-          onClick={fetchDiagnostic}
+          onClick={() => fetchDiagnostic(true)}
           disabled={isLoading}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold transition-all"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold transition-all cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-purple-400' : ''}`} />
-          <span>Refresh Diagnostic</span>
+          <span>Refresh Diagnostic (₹1.00)</span>
         </button>
       </div>
 
@@ -129,6 +146,25 @@ export const DiagnosticCard: React.FC<DiagnosticCardProps> = ({
 
         </div>
       ) : null}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={1.00}
+        actionName="Refreshing AI Academic Diagnostic Report (₹1.00)"
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

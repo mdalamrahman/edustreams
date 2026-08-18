@@ -58,6 +58,9 @@ import {
   BarChart3,
   LayoutDashboard,
   Type,
+  ShieldCheck,
+  ShieldAlert,
+  Eye,
   Square,
   User,
   Users,
@@ -67,15 +70,15 @@ import {
   Clock,
   Timer,
   Building2,
-  Eye,
-  ShieldCheck,
-  ShieldAlert,
-  HelpCircle,
   PenTool,
-  Pencil
+  Pencil,
+  Minimize2
 } from 'lucide-react';
 import { requestMistralChat } from '../lib/mistral';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 export interface HLDNode {
   id: string;
@@ -336,6 +339,11 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   const [connections, setConnections] = useState<HLDConnection[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isConfirmRevealOpen, setIsConfirmRevealOpen] = useState(false);
+  const [isFullscreenExcalidraw, setIsFullscreenExcalidraw] = useState(false);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 1.0, action: 'AI Architecture Review' });
+  const [sessionStudioCharged, setSessionStudioCharged] = useState(false);
   
   // Selection & Dragging
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -449,6 +457,24 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
 
   // Add Component from Catalog to Canvas
   const handleAddComponent = (templateItem: typeof COMPONENT_CATALOG[0]['items'][0]) => {
+    // If not charged for Architecture Studio platform drawing today, charge 50 paise (₹0.50)
+    if (!sessionStudioCharged) {
+      if (!canAffordAction(PRICING_CONFIG.HLD_STUDIO_PLATFORM_DRAWING)) {
+        setInsufficientMeta({
+          cost: PRICING_CONFIG.HLD_STUDIO_PLATFORM_DRAWING,
+          action: 'using Architecture Studio drawing platform (50 paise)'
+        });
+        setIsInsufficientCreditsOpen(true);
+        return;
+      }
+      deductCredits(
+        PRICING_CONFIG.HLD_STUDIO_PLATFORM_DRAWING,
+        'HLD_STUDIO_DRAW',
+        '🏗️ High-Level Design Architecture Studio Platform Access (₹0.50)'
+      );
+      setSessionStudioCharged(true);
+    }
+
     const id = `node-${Date.now()}`;
     const newNode: HLDNode = {
       id,
@@ -586,6 +612,23 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
 
   // Run AI Architecture Evaluation
   const handleRunAiEvaluation = async () => {
+    // Check if candidate can afford ₹1.00 for HLD AI Evaluation
+    if (!canAffordAction(PRICING_CONFIG.AI_EVALUATION_HLD)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_EVALUATION_HLD,
+        action: 'High-Level Design AI Principal Architecture Review (₹1.00)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    // Deduct ₹1.00
+    deductCredits(
+      PRICING_CONFIG.AI_EVALUATION_HLD,
+      'AI_EVALUATION_HLD',
+      `🏛️ HLD AI Principal Review: ${problem?.title || 'Distributed System Design'}`
+    );
+
     setIsEvaluating(true);
     setIsAiDrawerOpen(true);
     setAiReport(null);
@@ -762,8 +805,31 @@ Provide an authoritative, highly structured Principal Review with:
 
       {/* ── EXCALIDRAW WHITEBOARD MODE ── */}
       {studioMode === 'excalidraw' && (
-        <div className="space-y-3">
-          <div className="w-full h-[740px] rounded-3xl overflow-hidden border border-purple-500/30 shadow-2xl bg-slate-950">
+        <div className={`space-y-3 ${isFullscreenExcalidraw ? 'fixed inset-0 z-[99999] bg-slate-950 p-3 sm:p-5 flex flex-col w-screen h-screen' : ''}`}>
+          
+          {/* Top Bar inside Fullscreen */}
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                <PenTool className="w-3.5 h-3.5 text-pink-400" />
+                <span>Excalidraw Visual Whiteboard</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800">
+                100% Free Drawing
+              </span>
+            </div>
+
+            <button
+              onClick={() => setIsFullscreenExcalidraw(f => !f)}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+              title={isFullscreenExcalidraw ? "Exit Fullscreen" : "Full Screen Excalidraw Canvas"}
+            >
+              {isFullscreenExcalidraw ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" /> : <Maximize2 className="w-3.5 h-3.5 text-purple-400" />}
+              <span>{isFullscreenExcalidraw ? "Exit Fullscreen" : "Fullscreen Excalidraw"}</span>
+            </button>
+          </div>
+
+          <div className={`w-full rounded-3xl overflow-hidden border border-purple-500/30 shadow-2xl bg-slate-950 ${isFullscreenExcalidraw ? 'flex-1' : 'h-[740px]'}`}>
             <iframe 
               src="https://excalidraw.com" 
               title="Excalidraw Whiteboard"
@@ -777,7 +843,7 @@ Provide an authoritative, highly structured Principal Review with:
             <div className="flex-1 w-full">
               <label className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Architecture Notes & Rationale for AI Evaluation:</span>
+                <span>Architecture Notes & Rationale for AI Evaluation (₹1.00):</span>
               </label>
               <input
                 type="text"
@@ -793,7 +859,7 @@ Provide an authoritative, highly structured Principal Review with:
               className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 cursor-pointer disabled:opacity-50 flex-shrink-0"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Evaluate Excalidraw Design</span>
+              <span>Evaluate Excalidraw Design (₹1.00)</span>
             </button>
           </div>
         </div>
@@ -1305,6 +1371,25 @@ Provide an authoritative, highly structured Principal Review with:
           </div>
         </div>
       )}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={Math.max(50, Math.ceil(insufficientMeta.cost * 10))}
+      />
 
     </div>
   );

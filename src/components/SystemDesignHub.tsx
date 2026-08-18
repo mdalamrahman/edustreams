@@ -38,6 +38,9 @@ import { executeCode } from '../lib/compiler';
 import { GitHubArticleReader } from './GitHubArticleReader';
 import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 export const HLD_PRACTICE_PROBLEMS: HLDProblemSpec[] = [
   {
@@ -252,6 +255,11 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
   const [githubMarkdown, setGithubMarkdown] = useState<string>('');
   const [isLoadingGithub, setIsLoadingGithub] = useState(false);
 
+  // ── Billing Modals State ──
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.75, action: 'LLD AI Review' });
+
   // ── HLD Practice Canvas State ──
   const [activeHldProblem, setActiveHldProblem] = useState<HLDProblemSpec | null>(null);
   const [isFreeformHldCanvas, setIsFreeformHldCanvas] = useState(false);
@@ -322,6 +330,23 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
    */
   const handleRunOnlineCompiler = async () => {
     if (!activeProblem) return;
+
+    // Check compiler run fee (5 paise = ₹0.05)
+    if (!canAffordAction(PRICING_CONFIG.COMPILER_RUN_DSA_LLD)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.COMPILER_RUN_DSA_LLD,
+        action: 'Compiling LLD Code (5 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.COMPILER_RUN_DSA_LLD,
+      'COMPILER_RUN',
+      `⚡ LLD Compiler Run (${codeLanguage.toUpperCase()}): ${activeProblem.title}`
+    );
+
     setIsRunningCode(true);
     setCodeOutput('⏳ Compiling via Online Compiler Engine...');
     setCompiledSuccessfully(false);
@@ -355,6 +380,23 @@ ${res.stderr || res.stdout || 'Syntax error detected. Fix your code and try agai
 
   const handleAIEvaluate = async () => {
     if (!activeProblem) return;
+
+    // Check LLD AI review fee (75 paise = ₹0.75)
+    if (!canAffordAction(PRICING_CONFIG.AI_EVALUATION_LLD)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_EVALUATION_LLD,
+        action: 'Low-Level Design AI OOP Review (75 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.AI_EVALUATION_LLD,
+      'AI_EVALUATION_LLD',
+      `🧩 LLD AI OOP Review: ${activeProblem.title}`
+    );
+
     setIsEvaluating(true);
     setIsEvaluationOpen(true);
     setAiEvaluation(null);
@@ -971,6 +1013,25 @@ Provide:
 
         </div>
       )}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

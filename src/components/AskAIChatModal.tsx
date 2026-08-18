@@ -25,6 +25,9 @@ import {
 import { requestContextualAIChatResponse, ChatMessage, ContextualChatPayload } from '../lib/mistral';
 import { Video, QuizQuestion } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 export type AskAIMode = 'video' | 'notes' | 'quiz' | 'code';
 
@@ -63,6 +66,9 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
   const [inputMsg, setInputMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.002, action: 'AI Teaching Assistant Chat' });
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -138,10 +144,25 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
     const query = textToSend || inputMsg;
     if (!query.trim() || isLoading) return;
 
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
+        action: 'AI Teaching Assistant Chat (0.2 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.AI_CHAT_MESSAGE,
+      'AI_CHAT',
+      `🤖 AI TA Chat: ${cleanTitle}`
+    );
+
     const userEntry: ChatMessage = { role: 'user', content: query.trim() };
     const updatedMessages = [...messages, userEntry];
-    setMessages(updatedMessages);
     if (!textToSend) setInputMsg('');
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     const payload: ContextualChatPayload = {
@@ -573,6 +594,25 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
         )}
 
       </div>
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

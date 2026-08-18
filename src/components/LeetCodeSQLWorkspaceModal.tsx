@@ -32,6 +32,9 @@ import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } fr
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 interface LeetCodeSQLWorkspaceModalProps {
   problemTitle: string;
@@ -222,8 +225,28 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     } catch {}
   };
 
+  // ── Billing Modals State ──
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.10, action: 'Running SQL Query' });
+
   // Run & Judge SQL
   const handleExecute = async (isSubmission: boolean = false) => {
+    if (!canAffordAction(PRICING_CONFIG.SQL_RUN_JUDGE)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.SQL_RUN_JUDGE,
+        action: 'Running SQL Query on Database Engine (10 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.SQL_RUN_JUDGE,
+      'SQL_RUN',
+      `🗄️ SQL Query Run: ${cleanTitle}`
+    );
+
     setIsExecuting(true);
     setConsoleTab('result');
     if (isConsoleMinimized) setIsConsoleMinimized(false);
@@ -275,6 +298,21 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const handleSendAiMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt || aiInputText;
     if (!textToSend.trim() || isAiReplying) return;
+
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
+        action: 'SQL AI Teaching Assistant Chat (0.2 paise)'
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.AI_CHAT_MESSAGE,
+      'AI_CHAT',
+      `🤖 SQL AI Assistant Chat: ${cleanTitle}`
+    );
 
     const userMessage: ChatMessage = { role: 'user', content: textToSend.trim() };
     setAiChatMessages(prev => [...prev, userMessage]);
@@ -1091,6 +1129,25 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
           </div>
         </div>
       )}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

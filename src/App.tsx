@@ -45,6 +45,9 @@ import { recordRealActivity } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
+import { handleVideoViewBilling, canAffordAction, deductCredits, PRICING_CONFIG } from './lib/billing';
+import { InsufficientCreditsModal } from './components/InsufficientCreditsModal';
+import { WalletTopupModal } from './components/WalletTopupModal';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -75,9 +78,27 @@ export function App() {
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState<boolean>(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 2.0, action: 'Accessing Video Lecture' });
 
   const handleOpenPotdDirectly = () => {
     setIsPotdModalOpen(true);
+  };
+
+  const handleOpenVideoWithBilling = (v: Video, destination: 'channels' | 'sde_sheet' = 'channels') => {
+    const billRes = handleVideoViewBilling(v.id, v.title, user?.email);
+    if (!billRes.success) {
+      setInsufficientMeta({
+        cost: billRes.cost,
+        action: `Unlocking Video Lecture (${billRes.cost === 2 ? 'First-time: ₹2.00' : 'Re-watch: ₹1.00'}): ${v.title}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+    setSelectedVideo(v);
+    setReturnTarget(destination);
+    navigateTo('lesson', { videoId: v.id });
   };
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
@@ -617,8 +638,7 @@ export function App() {
     const currentIndex = currentList.findIndex((v) => v.id === selectedVideo.id);
     if (currentIndex >= 0 && currentIndex < currentList.length - 1) {
       const nextVid = currentList[currentIndex + 1];
-      setSelectedVideo(nextVid);
-      navigateTo('lesson', { videoId: nextVid.id });
+      handleOpenVideoWithBilling(nextVid, returnTarget);
     }
   };
 
@@ -627,8 +647,7 @@ export function App() {
     const currentIndex = currentList.findIndex((v) => v.id === selectedVideo.id);
     if (currentIndex > 0) {
       const prevVid = currentList[currentIndex - 1];
-      setSelectedVideo(prevVid);
-      navigateTo('lesson', { videoId: prevVid.id });
+      handleOpenVideoWithBilling(prevVid, returnTarget);
     }
   };
 
@@ -660,10 +679,7 @@ export function App() {
     }
 
     if (match) {
-      setSelectedVideo(match);
-      setSelectedChannelId(match.channel_id);
-      setReturnTarget('sde_sheet');
-      navigateTo('lesson', { videoId: match.id });
+      handleOpenVideoWithBilling(match, 'sde_sheet');
     }
   };
 
@@ -887,6 +903,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         onOpenPotd={handleOpenPotdDirectly}
         onOpenSqlWorkspace={() => setIsSqlModalOpen(true)}
         onOpenAskAI={() => setIsAskAIOpen(true)}
+        onOpenWallet={() => setIsWalletModalOpen(true)}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
@@ -1071,9 +1088,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => {
-                                setSelectedVideo(v);
-                                setReturnTarget('channels');
-                                navigateTo('lesson', { videoId: v.id });
+                                handleOpenVideoWithBilling(v, 'channels');
                               }}
                               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
                             >
@@ -1391,6 +1406,25 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         currentTimestamp={askAITimestamp}
         activeMCQ={activeVideoQuiz && activeVideoQuiz.length > 0 ? activeVideoQuiz[0] : undefined}
         codingProblem={videoArtifacts?.coding_problem}
+      />
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletModalOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        initialAmount={50}
       />
 
     </div>

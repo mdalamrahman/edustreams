@@ -23,14 +23,28 @@ import {
   Cpu,
   Layers,
   Award,
-  KeyRound,
-  Copy,
-  Check
+  KeyRound, 
+  Copy, 
+  Check,
+  CreditCard,
+  QrCode,
+  PlusCircle,
+  XCircle,
+  Eye
 } from 'lucide-react';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 import { getAllRegisteredUsers } from '../lib/auth';
 import { generateDynamicPasskey, syncGlobalActivePasskey, DynamicPasskey } from '../lib/passkey';
+import { 
+  getAllTopupRequests, 
+  approveTopupRequest, 
+  rejectTopupRequest, 
+  adminAddCredits, 
+  getUserWallet, 
+  TopupRequest, 
+  UserWallet 
+} from '../lib/billing';
 
 interface AdminUserStat {
   id: string;
@@ -97,6 +111,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   // Real Dynamic User Stats List
   const [usersList, setUsersList] = useState<AdminUserStat[]>(() => buildRealUsersList(currentUserEmail));
+
+  // Billing Tab State
+  const [adminTab, setAdminTab] = useState<'telemetry' | 'billing'>('telemetry');
+  const [topupRequests, setTopupRequests] = useState<TopupRequest[]>(() => getAllTopupRequests());
+  const [topupFilter, setTopupFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualAmount, setManualAmount] = useState<string>('50');
+  const [manualNote, setManualNote] = useState('Admin manual credit top-up');
+  const [manualSuccessMsg, setManualSuccessMsg] = useState<string | null>(null);
+  const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
+
+  const refreshTopups = () => {
+    setTopupRequests(getAllTopupRequests());
+  };
 
   // Dynamic 10-Minute Student Registration Passkey State (Direct from Supabase Auth)
   const [currentPasskey, setCurrentPasskey] = useState<DynamicPasskey | null>(null);
@@ -310,357 +338,715 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
           </div>
         </div>
 
+        {/* Navigation Subtabs */}
+        <div className="px-6 pt-3 pb-0 bg-slate-950 border-b border-slate-800 flex items-center space-x-3">
+          <button
+            onClick={() => setAdminTab('telemetry')}
+            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'telemetry'
+                ? 'border-purple-500 text-purple-300 bg-purple-950/40'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Telemetry & Infrastructure</span>
+          </button>
+
+          <button
+            onClick={() => {
+              refreshTopups();
+              setAdminTab('billing');
+            }}
+            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer ${
+              adminTab === 'billing'
+                ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Billing, Top-ups & User Credits</span>
+            {topupRequests.filter(r => r.status === 'PENDING').length > 0 && (
+              <span className="px-2 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[10px] animate-pulse">
+                {topupRequests.filter(r => r.status === 'PENDING').length} PENDING
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Scrollable Dashboard Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">
           
-          {/* Dynamic 10-Minute Student Registration Passkey Generator */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-950 border border-purple-500/40 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-lg bg-purple-600/30 text-purple-300 border border-purple-500/40">
-                  <KeyRound className="w-4 h-4" />
-                </span>
-                <h3 className="text-sm font-bold text-slate-100">
-                  Student Registration Authorization Key (10-Min Dynamic Passkey)
+          {/* ========================================================================= */}
+          {/* TAB 1: TELEMETRY & INFRASTRUCTURE                                         */}
+          {/* ========================================================================= */}
+          {adminTab === 'telemetry' && (
+            <>
+              {/* Dynamic 10-Minute Student Registration Passkey Generator */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-950 border border-purple-500/40 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                      <KeyRound className="w-4 h-4" />
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-100">
+                      Student Registration Authorization Key (10-Min Dynamic Passkey)
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      remainingSeconds > 0 
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60' 
+                        : 'bg-red-950/80 text-red-300 border-red-700/60'
+                    }`}>
+                      {remainingSeconds > 0 ? 'ACTIVE KEY' : 'EXPIRED'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-xl">
+                    Students must enter this active passkey to register for an account. Passkeys automatically expire after 10 minutes for platform security.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Passkey Display Box */}
+                  <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/90 border border-purple-500/50 rounded-xl shadow-inner">
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Passkey Code</div>
+                      <div className="text-lg font-black font-mono tracking-widest text-purple-100">
+                        {currentPasskey?.code || 'SDE-------'}
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-800 mx-1"></div>
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5 text-amber-400" /> Validity
+                      </div>
+                      <div className={`text-xs font-mono font-bold ${remainingSeconds > 60 ? 'text-amber-300' : 'text-red-400 animate-pulse'}`}>
+                        {remainingSeconds > 0 ? formatCountdown(remainingSeconds) : '00:00'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <button
+                    onClick={handleCopyPasskey}
+                    disabled={!currentPasskey?.code}
+                    className="px-3 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-900 border border-purple-600/60 text-purple-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                  >
+                    {copiedPasskey ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-300">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Passkey</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleGenerateNewPasskey}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/30"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Generate New (10m)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. Global Metrics Row (5 Real Metrics Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                
+                {/* Card 1: Active Users */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/60 via-slate-950 to-slate-950 border border-indigo-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-indigo-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Learners</span>
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    {usersList.length}
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Live Authenticated
+                  </div>
+                </div>
+
+                {/* Card 2: Users Online Now */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-slate-950 to-slate-950 border border-emerald-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-emerald-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Online Right Now</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2 flex items-baseline gap-1.5">
+                    <span>{usersList.filter(u => u.isOnline).length}</span>
+                    <span className="text-xs font-normal text-slate-400">concurrent</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">Real-time Heartbeat</div>
+                </div>
+
+                {/* Card 3: Transcripts Stored */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/60 via-slate-950 to-slate-950 border border-purple-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-purple-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Stored Transcripts</span>
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    {statsData.totalTranscriptsStored}
+                  </div>
+                  <div className="text-[11px] text-purple-300 mt-1">100% Synced to R2</div>
+                </div>
+
+                {/* Card 4: Notes & Summaries */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-950/60 via-slate-950 to-slate-950 border border-sky-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-sky-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Notes & Synopses</span>
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    {statsData.totalNotesStored}
+                  </div>
+                  <div className="text-[11px] text-sky-300 mt-1">Algomaster Cheat Sheets</div>
+                </div>
+
+                {/* Card 5: Total Code Runs */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950 to-slate-950 border border-amber-500/30 shadow-lg col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between text-amber-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Code Runs</span>
+                    <Terminal className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    {statsData.totalCodeExecutions}
+                  </div>
+                  <div className="text-[11px] text-amber-300 mt-1">167 SDE Problems</div>
+                </div>
+
+              </div>
+
+              {/* 2. Infrastructure & Cloud Engine Diagnostics */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-purple-400" />
+                  Infrastructure & Cloud Storage Health
                 </h3>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                  remainingSeconds > 0 
-                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60' 
-                    : 'bg-red-950/80 text-red-300 border-red-700/60'
-                }`}>
-                  {remainingSeconds > 0 ? 'ACTIVE KEY' : 'EXPIRED'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 max-w-xl">
-                Students must enter this active passkey to register for an account. Passkeys automatically expire after 10 minutes for platform security.
-              </p>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] font-bold text-slate-400">Cloudflare R2 Object Store</div>
+                      <div className="text-xs font-mono font-bold text-emerald-400">{statsData.r2StorageStatus}</div>
+                    </div>
+                    <Database className="w-4 h-4 text-emerald-400" />
+                  </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Passkey Display Box */}
-              <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-950/90 border border-purple-500/50 rounded-xl shadow-inner">
-                <div className="text-center">
-                  <div className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Passkey Code</div>
-                  <div className="text-lg font-black font-mono tracking-widest text-purple-100">
-                    {currentPasskey?.code || 'SDE-------'}
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] font-bold text-slate-400">Primary AI Inference</div>
+                      <div className="text-xs font-mono font-bold text-indigo-300">Active (Mistral-Large-Latest)</div>
+                    </div>
+                    <Cpu className="w-4 h-4 text-indigo-400" />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] font-bold text-slate-400">Fallback AI Engine</div>
+                      <div className="text-xs font-mono font-bold text-purple-300">Active (Llama-3.1-8B-Instant)</div>
+                    </div>
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] font-bold text-slate-400">FastAPI Telethon Service</div>
+                      <div className="text-xs font-mono font-bold text-sky-400">{statsData.backendStatus}</div>
+                    </div>
+                    <CheckCircle2 className="w-4 h-4 text-sky-400" />
+                  </div>
+
+                </div>
+              </div>
+
+              {/* 3. User-Wise Telemetry & Performance Table */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-4">
+                
+                {/* Table Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-indigo-400" />
+                      User-Wise Performance & Activity Telemetry
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono font-bold">
+                      {filteredUsers.length} Users
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search student email/name..."
+                        className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 w-48 sm:w-60 font-sans"
+                      />
+                    </div>
+
+                    {/* Filter Role Buttons */}
+                    <div className="flex items-center rounded-xl bg-slate-900 p-0.5 border border-slate-800 text-xs">
+                      <button
+                        onClick={() => setFilterRole('all')}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${filterRole === 'all' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setFilterRole('online')}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${filterRole === 'online' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        Online
+                      </button>
+                      <button
+                        onClick={() => setFilterRole('active')}
+                        className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${filterRole === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                      >
+                        Active Learners
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="h-7 w-px bg-slate-800 mx-1"></div>
-                <div className="text-center">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
-                    <Clock className="w-2.5 h-2.5 text-amber-400" /> Validity
-                  </div>
-                  <div className={`text-xs font-mono font-bold ${remainingSeconds > 60 ? 'text-amber-300' : 'text-red-400 animate-pulse'}`}>
-                    {remainingSeconds > 0 ? formatCountdown(remainingSeconds) : '00:00'}
-                  </div>
-                </div>
-              </div>
 
-              {/* Action Buttons */}
-              <button
-                onClick={handleCopyPasskey}
-                disabled={!currentPasskey?.code}
-                className="px-3 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-900 border border-purple-600/60 text-purple-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
-              >
-                {copiedPasskey ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-300">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Passkey</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={handleGenerateNewPasskey}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/30"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Generate New (10m)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 1. Global Metrics Row (5 Real Metrics Cards) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-            
-            {/* Card 1: Active Users */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/60 via-slate-950 to-slate-950 border border-indigo-500/30 shadow-lg">
-              <div className="flex items-center justify-between text-indigo-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Learners</span>
-                <Users className="w-4 h-4" />
-              </div>
-              <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {usersList.length}
-              </div>
-              <div className="text-[11px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Live Authenticated
-              </div>
-            </div>
-
-            {/* Card 2: Users Online Now */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-slate-950 to-slate-950 border border-emerald-500/30 shadow-lg">
-              <div className="flex items-center justify-between text-emerald-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Online Right Now</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              </div>
-              <div className="text-2xl font-black text-slate-100 font-mono mt-2 flex items-baseline gap-1.5">
-                <span>{usersList.filter(u => u.isOnline).length}</span>
-                <span className="text-xs font-normal text-slate-400">concurrent</span>
-              </div>
-              <div className="text-[11px] text-slate-400 mt-1">Real-time Heartbeat</div>
-            </div>
-
-            {/* Card 3: Transcripts Stored */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/60 via-slate-950 to-slate-950 border border-purple-500/30 shadow-lg">
-              <div className="flex items-center justify-between text-purple-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Stored Transcripts</span>
-                <FileText className="w-4 h-4" />
-              </div>
-              <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {statsData.totalTranscriptsStored}
-              </div>
-              <div className="text-[11px] text-purple-300 mt-1">Cloudflare R2 & SQLite</div>
-            </div>
-
-            {/* Card 4: Notes & Summaries Stored */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-950/60 via-slate-950 to-slate-950 border border-sky-500/30 shadow-lg">
-              <div className="flex items-center justify-between text-sky-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Notes & Summaries</span>
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {statsData.totalNotesStored}
-              </div>
-              <div className="text-[11px] text-sky-300 mt-1">Algomaster Synopses</div>
-            </div>
-
-            {/* Card 5: Total Code Runs */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950 to-slate-950 border border-amber-500/30 shadow-lg col-span-2 sm:col-span-1">
-              <div className="flex items-center justify-between text-amber-400">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Code Runs</span>
-                <Terminal className="w-4 h-4" />
-              </div>
-              <div className="text-2xl font-black text-slate-100 font-mono mt-2">
-                {statsData.totalCodeExecutions}
-              </div>
-              <div className="text-[11px] text-amber-300 mt-1">167 SDE Problems</div>
-            </div>
-
-          </div>
-
-          {/* 2. Infrastructure & Cloud Engine Diagnostics */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-              <Server className="w-4 h-4 text-purple-400" />
-              Infrastructure & Cloud Storage Health
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold text-slate-400">Cloudflare R2 Object Store</div>
-                  <div className="text-xs font-mono font-bold text-emerald-400">{statsData.r2StorageStatus}</div>
-                </div>
-                <Database className="w-4 h-4 text-emerald-400" />
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold text-slate-400">Primary AI Inference</div>
-                  <div className="text-xs font-mono font-bold text-indigo-300">Active (Mistral-Large-Latest)</div>
-                </div>
-                <Cpu className="w-4 h-4 text-indigo-400" />
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold text-slate-400">Fallback AI Engine</div>
-                  <div className="text-xs font-mono font-bold text-purple-300">Active (Llama-3.1-8B-Instant)</div>
-                </div>
-                <Sparkles className="w-4 h-4 text-purple-400" />
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-bold text-slate-400">FastAPI Telethon Service</div>
-                  <div className="text-xs font-mono font-bold text-sky-400">{statsData.backendStatus}</div>
-                </div>
-                <CheckCircle2 className="w-4 h-4 text-sky-400" />
-              </div>
-
-            </div>
-          </div>
-
-          {/* 3. User-Wise Telemetry & Performance Table */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-4">
-            
-            {/* Table Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-2">
-                <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-400" />
-                  User-Wise Performance & Activity Telemetry
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono font-bold">
-                  {filteredUsers.length} Users
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search candidate name / email..."
-                    className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 w-48 sm:w-60"
-                  />
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-900 border border-slate-800">
-                  <button
-                    onClick={() => setFilterRole('all')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterRole === 'all' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setFilterRole('online')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterRole === 'online' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                  >
-                    Online Now
-                  </button>
-                  <button
-                    onClick={() => setFilterRole('active')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterRole === 'active' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                  >
-                    Top Solvers
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Table Container */}
-            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-800/80">
-              <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-900/90 text-slate-400 uppercase font-mono text-[10px] tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="py-3 px-4">Learner / Email</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3 text-center">SDE Solved</th>
-                    <th className="py-3 px-3 text-center">Study Time</th>
-                    <th className="py-3 px-3 text-center">Streak</th>
-                    <th className="py-3 px-3 text-center">Accuracy / Quiz</th>
-                    <th className="py-3 px-3 text-center">Code Runs</th>
-                    <th className="py-3 px-4 text-right">Last Active</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-900 bg-slate-950 font-mono">
-                  {filteredUsers.map((u) => {
-                    const isSuperAdmin = u.email.includes('mdalamrahman4');
-                    const solvePercent = Math.min(100, Math.round((u.solvedCount / 167) * 100));
-
-                    return (
-                      <tr key={u.id} className="hover:bg-slate-900/50 transition-colors">
-                        
-                        {/* Name & Email */}
-                        <td className="py-3 px-4 font-sans">
-                          <div className="flex items-center space-x-2.5">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${isSuperAdmin ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                              {u.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-slate-100 flex items-center gap-1.5">
-                                <span>{u.name}</span>
-                                {isSuperAdmin && (
-                                  <span className="px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-700 text-[9px] font-mono">
-                                    ADMIN
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Online Status */}
-                        <td className="py-3 px-3 font-sans">
-                          {u.isOnline ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                              Online
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-900 text-slate-500 text-[10px]">
-                              Offline
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Solved Problems */}
-                        <td className="py-3 px-3 text-center">
-                          <div className="inline-flex flex-col items-center">
-                            <span className="text-slate-100 font-bold">{u.solvedCount} / 167</span>
-                            <div className="w-16 h-1.5 bg-slate-900 rounded-full overflow-hidden mt-1 border border-slate-800">
-                              <div 
-                                className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full" 
-                                style={{ width: `${solvePercent}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Study Time */}
-                        <td className="py-3 px-3 text-center text-slate-300">
-                          <div className="flex items-center justify-center gap-1">
-                            <Clock className="w-3 h-3 text-purple-400" />
-                            <span>{u.studyHours}h</span>
-                          </div>
-                        </td>
-
-                        {/* Streak Days */}
-                        <td className="py-3 px-3 text-center text-amber-400 font-bold">
-                          <div className="flex items-center justify-center gap-1">
-                            <Flame className="w-3 h-3 fill-amber-400" />
-                            <span>{u.streakDays}d</span>
-                          </div>
-                        </td>
-
-                        {/* Quiz Score / Accuracy */}
-                        <td className="py-3 px-3 text-center">
-                          <span className={`font-bold ${u.quizScorePercent >= 90 ? 'text-emerald-400' : u.quizScorePercent >= 75 ? 'text-sky-400' : u.quizScorePercent > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
-                            {u.quizScorePercent}%
-                          </span>
-                        </td>
-
-                        {/* Code Runs */}
-                        <td className="py-3 px-3 text-center text-indigo-300">
-                          {u.totalCodeRuns}
-                        </td>
-
-                        {/* Last Active */}
-                        <td className="py-3 px-4 text-right text-slate-400 text-[11px] font-sans">
-                          {u.lastActive}
-                        </td>
-
+                {/* Table View */}
+                <div className="overflow-x-auto rounded-xl border border-slate-800/80">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-3 px-4">Student & Status</th>
+                        <th className="py-3 px-3 text-center">DSA Solved</th>
+                        <th className="py-3 px-3 text-center">Study Time</th>
+                        <th className="py-3 px-3 text-center">Streak</th>
+                        <th className="py-3 px-3 text-center">Quiz Score</th>
+                        <th className="py-3 px-3 text-center">Code Runs</th>
+                        <th className="py-3 px-4 text-right">Last Active</th>
                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                      {filteredUsers.map((u) => {
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-900/50 transition-colors">
+                            {/* User Name & Status */}
+                            <td className="py-3 px-4">
+                              <div className="flex items-center space-x-2.5">
+                                <div className="relative">
+                                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                    {u.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-950 ${u.isOnline ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-200 flex items-center gap-1.5">
+                                    {u.name}
+                                    {u.email.includes('mdalamrahman4') && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] bg-purple-950 text-purple-300 border border-purple-800">
+                                        SuperAdmin
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-sans">{u.email}</div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Solved Problems */}
+                            <td className="py-3 px-3 text-center">
+                              <span className="px-2 py-0.5 rounded-md bg-purple-950/80 border border-purple-800/60 text-purple-300 font-bold">
+                                {u.solvedCount}
+                              </span>
+                            </td>
+
+                            {/* Study Hours */}
+                            <td className="py-3 px-3 text-center text-slate-300">
+                              {u.studyHours}h
+                            </td>
+
+                            {/* Streak Days */}
+                            <td className="py-3 px-3 text-center">
+                              <div className="inline-flex items-center space-x-1 text-amber-400 font-bold">
+                                <Flame className="w-3 h-3 fill-amber-400" />
+                                <span>{u.streakDays}d</span>
+                              </div>
+                            </td>
+
+                            {/* Quiz Score / Accuracy */}
+                            <td className="py-3 px-3 text-center">
+                              <span className={`font-bold ${u.quizScorePercent >= 90 ? 'text-emerald-400' : u.quizScorePercent >= 75 ? 'text-sky-400' : u.quizScorePercent > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                                {u.quizScorePercent}%
+                              </span>
+                            </td>
+
+                            {/* Code Runs */}
+                            <td className="py-3 px-3 text-center text-indigo-300">
+                              {u.totalCodeRuns}
+                            </td>
+
+                            {/* Last Active */}
+                            <td className="py-3 px-4 text-right text-slate-400 text-[11px] font-sans">
+                              {u.lastActive}
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            </>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 2: BILLING, TOP-UP APPROVALS & WALLET CREDITS                         */}
+          {/* ========================================================================= */}
+          {adminTab === 'billing' && (
+            <div className="space-y-6">
+              
+              {/* Top Banner KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/60 via-slate-950 to-slate-950 border border-emerald-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-emerald-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Top-up Inflow</span>
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    ₹{topupRequests.filter(r => r.status === 'APPROVED').reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-emerald-300 mt-1">UPI: mdalamrahman6@gmail.com</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950 to-slate-950 border border-amber-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-amber-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending UPI Approvals</span>
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-300 font-mono mt-2">
+                    {topupRequests.filter(r => r.status === 'PENDING').length} Requests
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1">Awaiting UTR verification</div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-950/60 via-slate-950 to-slate-950 border border-purple-500/30 shadow-lg">
+                  <div className="flex items-center justify-between text-purple-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Registered Wallets</span>
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-100 font-mono mt-2">
+                    {usersList.length} Active
+                  </div>
+                  <div className="text-[11px] text-purple-300 mt-1">Auto-credited ₹10 welcome bonus</div>
+                </div>
+              </div>
+
+              {/* Manual Credit Grantor Form */}
+              <div className="p-5 rounded-2xl bg-slate-950 border border-purple-500/30 shadow-xl space-y-4">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
+                    <PlusCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-100">SuperAdmin Manual Credit Grantor</h3>
+                    <p className="text-xs text-slate-400">Directly add or adjust wallet balance credits for any registered student</p>
+                  </div>
+                </div>
+
+                {manualSuccessMsg && (
+                  <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-semibold flex items-center justify-between">
+                    <span>{manualSuccessMsg}</span>
+                    <button onClick={() => setManualSuccessMsg(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  {/* Select User */}
+                  <div className="sm:col-span-5 space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Student Email</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        value={manualEmail}
+                        onChange={(e) => setManualEmail(e.target.value)}
+                        placeholder="e.g. student@gmail.com"
+                        list="admin_registered_users"
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-purple-500 font-mono"
+                      />
+                      <datalist id="admin_registered_users">
+                        {usersList.map((u) => (
+                          <option key={u.id} value={u.email}>{u.name}</option>
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Amount (₹) */}
+                  <div className="sm:col-span-3 space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={manualAmount}
+                      onChange={(e) => setManualAmount(e.target.value)}
+                      placeholder="e.g. 50"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-emerald-400 font-bold font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  {/* Reason */}
+                  <div className="sm:col-span-4 space-y-1">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Admin Reason / Note</label>
+                    <input
+                      type="text"
+                      value={manualNote}
+                      onChange={(e) => setManualNote(e.target.value)}
+                      placeholder="e.g. Offline UPI cash payment verified"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick amount chips + submit */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[11px] text-slate-500 font-mono">Quick:</span>
+                    {[20, 50, 100, 200, 500].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setManualAmount(amt.toString())}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer ${
+                          manualAmount === amt.toString()
+                            ? 'bg-purple-600 border-purple-500 text-white'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        +₹{amt}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (!manualEmail.trim()) {
+                        alert('Please enter a target student email');
+                        return;
+                      }
+                      const num = parseFloat(manualAmount);
+                      if (isNaN(num) || num <= 0) {
+                        alert('Please enter a valid amount');
+                        return;
+                      }
+                      adminAddCredits(manualEmail.trim(), num, manualNote || 'Admin manual credit grant');
+                      setManualSuccessMsg(`Successfully credited ₹${num.toFixed(2)} to ${manualEmail}!`);
+                      refreshTopups();
+                      setTimeout(() => setManualSuccessMsg(null), 4000);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/30 flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Credit User Wallet</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* UPI Recharge Requests Verification Table */}
+              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-emerald-400" />
+                      Candidate UPI Recharge Verification Queue
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono font-bold">
+                      {topupRequests.length} Total
+                    </span>
+                  </div>
+
+                  {/* Filter chips */}
+                  <div className="flex items-center rounded-xl bg-slate-900 p-0.5 border border-slate-800 text-xs font-semibold">
+                    {(['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setTopupFilter(status)}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          topupFilter === status
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-800/80">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-3 px-4">Date & Time</th>
+                        <th className="py-3 px-3">Student Email</th>
+                        <th className="py-3 px-3 text-center">Amount (₹)</th>
+                        <th className="py-3 px-3">UTR / Txn ID</th>
+                        <th className="py-3 px-3">Payee Details</th>
+                        <th className="py-3 px-3 text-center">Screenshot</th>
+                        <th className="py-3 px-3 text-center">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                      {topupRequests
+                        .filter((r) => topupFilter === 'ALL' || r.status === topupFilter)
+                        .map((req) => (
+                          <tr key={req.id} className="hover:bg-slate-900/50 transition-colors">
+                            <td className="py-3 px-4 text-slate-400 text-[11px]">
+                              {new Date(req.createdAt).toLocaleString()}
+                            </td>
+                            <td className="py-3 px-3 font-bold text-slate-200">
+                              {req.userEmail}
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-emerald-400 text-sm">
+                              ₹{req.amount.toFixed(2)}
+                            </td>
+                            <td className="py-3 px-3 font-mono text-purple-300 font-bold select-all">
+                              {req.transactionId}
+                            </td>
+                            <td className="py-3 px-3 text-slate-300">
+                              {req.payeeDetails}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              {req.screenshotBase64 ? (
+                                <button
+                                  onClick={() => setPreviewScreenshot(req.screenshotBase64 || null)}
+                                  className="px-2 py-1 rounded bg-slate-900 border border-slate-700 hover:border-purple-500 text-purple-300 text-[10px] inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View Proof</span>
+                                </button>
+                              ) : (
+                                <span className="text-slate-600 text-[11px]">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                req.status === 'APPROVED'
+                                  ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
+                                  : req.status === 'PENDING'
+                                  ? 'bg-amber-950 text-amber-300 border-amber-800 animate-pulse'
+                                  : 'bg-red-950 text-red-300 border-red-800'
+                              }`}>
+                                {req.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              {req.status === 'PENDING' ? (
+                                <div className="inline-flex items-center space-x-1.5">
+                                  <button
+                                    onClick={() => {
+                                      approveTopupRequest(req.id, currentUserEmail);
+                                      refreshTopups();
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold shadow transition-all cursor-pointer"
+                                  >
+                                    Approve & Credit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      rejectTopupRequest(req.id, 'Payment verification rejected by admin');
+                                      refreshTopups();
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 border border-red-800 text-[11px] font-bold transition-all cursor-pointer"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 text-[11px]">Completed</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      {topupRequests.filter((r) => topupFilter === 'ALL' || r.status === topupFilter).length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="py-8 text-center text-slate-500 italic">
+                            No recharge requests matching {topupFilter} status.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* All Registered User Wallets Overview */}
+              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <Users className="w-4 h-4 text-purple-400" />
+                    Student Wallets Balance Overview
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {usersList.map((u) => {
+                    const wallet = getUserWallet(u.email);
+                    return (
+                      <div key={u.id} className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold text-slate-200 truncate max-w-[160px]">{u.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono truncate max-w-[160px]">{u.email}</div>
+                          <div className="text-xs font-black font-mono text-emerald-400 mt-1">
+                            Balance: ₹{wallet.balance.toFixed(2)}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setManualEmail(u.email);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white border border-slate-700 text-[11px] font-bold transition-all cursor-pointer"
+                        >
+                          + Add Credits
+                        </button>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </div>
+              </div>
 
-          </div>
+            </div>
+          )}
 
         </div>
+
+        {/* Screenshot Lightbox Modal */}
+        {previewScreenshot && (
+          <div 
+            className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setPreviewScreenshot(null)}
+          >
+            <div className="relative max-w-lg max-h-[85vh] bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setPreviewScreenshot(null)}
+                className="absolute top-4 right-4 p-2 rounded-xl bg-slate-950/80 text-slate-300 hover:text-white border border-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <img src={previewScreenshot} alt="Payment Proof" className="max-w-full max-h-[80vh] object-contain rounded-xl" />
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

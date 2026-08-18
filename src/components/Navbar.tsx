@@ -20,10 +20,12 @@ import {
   Database, 
   Bot, 
   ArrowRight,
-  Check
+  Check,
+  CreditCard
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
+import { getUserWallet } from '../lib/billing';
 
 interface NavbarProps {
   activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings';
@@ -36,6 +38,7 @@ interface NavbarProps {
   onOpenPotd?: () => void;
   onOpenSqlWorkspace?: () => void;
   onOpenAskAI?: () => void;
+  onOpenWallet?: () => void;
   onSignOut: () => void;
 }
 
@@ -48,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPotd,
   onOpenSqlWorkspace,
   onOpenAskAI,
+  onOpenWallet,
   onSignOut,
 }) => {
   const { isMobile } = useDevice();
@@ -57,7 +61,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(() => getUserWallet(user?.email).balance);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateBal = () => {
+      setWalletBalance(getUserWallet(user?.email).balance);
+    };
+    updateBal();
+    window.addEventListener('sdetube_wallet_updated', updateBal);
+    return () => window.removeEventListener('sdetube_wallet_updated', updateBal);
+  }, [user?.email]);
 
   const isAdminUser = Boolean(
     user?.email && (
@@ -220,9 +234,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Right Section: POTD Quick Action + User Avatar & Menu */}
+          {/* Right Section: Wallet Balance + POTD Quick Action + User Avatar & Menu */}
           <div className="flex items-center space-x-2.5" ref={dropdownRef}>
             
+            {/* Live Wallet Balance Pill */}
+            {onOpenWallet && (
+              <button
+                onClick={onOpenWallet}
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-bold font-mono transition-all shadow-md cursor-pointer group"
+                title="SDETube Credits Wallet. Click to Recharge via UPI QR"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                <span>₹{walletBalance.toFixed(2)}</span>
+              </button>
+            )}
+
             {/* POTD Quick Action Button */}
             {onOpenPotd && (
               <button
@@ -392,8 +418,28 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <div className="pt-3 border-t border-slate-800/80 mt-3">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-1">
-                  Developer Utilities
+                  Credits & Utilities
                 </div>
+
+                {onOpenWallet && (
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      onOpenWallet();
+                    }}
+                    className="w-full p-3 rounded-2xl text-left hover:bg-slate-900/80 text-emerald-300 transition-all flex items-center justify-between cursor-pointer group bg-slate-900/50 border border-emerald-500/30 mb-1.5"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-400">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold font-mono">Wallet: ₹{walletBalance.toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-400">Recharge Credits via UPI QR</div>
+                      </div>
+                    </div>
+                  </button>
+                )}
 
                 {onOpenSqlWorkspace && (
                   <button
