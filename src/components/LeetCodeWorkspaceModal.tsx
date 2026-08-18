@@ -41,6 +41,7 @@ import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
 import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
 
@@ -255,6 +256,22 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isSolutionRevealed, setIsSolutionRevealed] = useState<boolean>(false);
 
   const handleGenerateSolution = async (langToGen: SupportedLanguage = solutionLang) => {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_OPTIMAL_SOLUTION_GEN, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_OPTIMAL_SOLUTION_GEN,
+        action: `Generating AI Optimal Multi-Approach Solution (${langToGen.toUpperCase()}): ${cleanTitle}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+    deductCredits(
+      PRICING_CONFIG.AI_OPTIMAL_SOLUTION_GEN,
+      'AI_OPTIMAL_SOLUTION',
+      `💡 AI Optimal Solution (${langToGen.toUpperCase()}): ${cleanTitle}`,
+      user?.email
+    );
+
     setIsGeneratingSolution(true);
     try {
       const sol = await requestAIOptimalSolution(
@@ -554,6 +571,22 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // AI Review
   const handleAIReview = async () => {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_CODE_REVIEW_DSA, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_CODE_REVIEW_DSA,
+        action: `Senior AI Code Review & Feedback (50 paise): ${cleanTitle}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+    deductCredits(
+      PRICING_CONFIG.AI_CODE_REVIEW_DSA,
+      'AI_CODE_REVIEW',
+      `🔍 Senior AI Code Review (50p): ${cleanTitle}`,
+      user?.email
+    );
+
     setIsReviewing(true);
     setLeftTab('aireview');
     try {
@@ -586,10 +619,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const textToSend = customPrompt || aiInputText;
     if (!textToSend.trim() || isAiReplying) return;
 
-    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE, user?.email)) {
       setInsufficientMeta({
         cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
-        action: 'AI Teaching Assistant Chat (0.2 paise)'
+        action: 'AI Teaching Assistant Chat (20 paise)'
       });
       setIsInsufficientCreditsOpen(true);
       return;
@@ -598,7 +632,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     deductCredits(
       PRICING_CONFIG.AI_CHAT_MESSAGE,
       'AI_CHAT',
-      `🤖 DSA AI Assistant Chat: ${cleanTitle}`
+      `🤖 DSA AI Assistant Chat: ${cleanTitle}`,
+      user?.email
     );
 
     const userMessage: ChatMessage = { role: 'user', content: textToSend.trim() };

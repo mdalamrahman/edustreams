@@ -228,6 +228,23 @@ export function App() {
 
   const handleAttemptMoreQuestions = async () => {
     if (!selectedVideo) return;
+
+    if (!canAffordAction(PRICING_CONFIG.AI_QUIZ_GEN_BATCH, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_QUIZ_GEN_BATCH,
+        action: `Generating AI Quiz Question Batch (50 paise): ${selectedVideo.title}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.AI_QUIZ_GEN_BATCH,
+      'AI_QUIZ_GEN',
+      `📝 AI Quiz Batch Generation (50p): ${selectedVideo.title}`,
+      user?.email
+    );
+
     setIsGeneratingMoreQuiz(true);
     try {
       const chObj = MOCK_CHANNELS.find((c) => c.id === selectedVideo.channel_id);

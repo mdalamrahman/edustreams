@@ -19,6 +19,10 @@ import {
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, CodeTAReview } from '../lib/mistral';
 import { CodeExecutionResult, QuizQuestion } from '../lib/types';
+import { canAffordAction, deductCredits, PRICING_CONFIG } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 import { LeetCodeWorkspaceModal } from './LeetCodeWorkspaceModal';
 
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
@@ -147,6 +151,9 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [testCaseResults, setTestCaseResults] = useState<{ input: string; expected: string; actual: string; passed: boolean }[]>([]);
   const [isCopiedStarter, setIsCopiedStarter] = useState(false);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.05, action: 'Running Code in Compiler' });
 
   useEffect(() => {
     if (codingProblem) {
@@ -227,6 +234,23 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   };
 
   const handleRunCode = async () => {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.COMPILER_RUN_DSA_LLD, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.COMPILER_RUN_DSA_LLD,
+        action: `Running Code in Compiler (5 paise): ${activeQ?.question || 'Lecture Challenge'}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.COMPILER_RUN_DSA_LLD,
+      'COMPILER_RUN',
+      `⚡ Compiler Run (5p): ${activeQ?.question || 'Lecture Challenge'}`,
+      user?.email
+    );
+
     setIsExecuting(true);
     setExecutionResult(null);
     setAiReview(null);
@@ -252,13 +276,6 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     } else {
       setTestCaseResults([]);
     }
-
-    // Trigger Mistral AI evaluation for test cases automatically
-    setIsAnalyzingAI(true);
-    requestMistralCodeReview(code, language, result.stdout, result.stderr, question?.question || 'Lecture Challenge')
-      .then((review) => setAiReview(review))
-      .catch((err) => console.warn('[Mistral TA Notice]:', err))
-      .finally(() => setIsAnalyzingAI(false));
 
     // Save submission attempt to localStorage history
     const submissionEntry = {
@@ -301,9 +318,23 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   };
 
   const handleRequestAITA = async () => {
-    if (!executionResult) {
-      await handleRunCode();
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_CODE_REVIEW_DSA, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.AI_CODE_REVIEW_DSA,
+        action: `Senior AI Code Review & Feedback (50 paise): ${question?.question || 'Algorithm Challenge'}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
     }
+
+    deductCredits(
+      PRICING_CONFIG.AI_CODE_REVIEW_DSA,
+      'AI_CODE_REVIEW',
+      `🔍 Senior AI Code Review (50p): ${question?.question || 'Algorithm Challenge'}`,
+      user?.email
+    );
+
     setIsAnalyzingAI(true);
     setActiveBottomTab('ai_ta');
 
@@ -734,6 +765,24 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
           </div>
         </div>
       )}
+
+      {/* Insufficient Credits Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Topup Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+      />
     </div>
   );
 };

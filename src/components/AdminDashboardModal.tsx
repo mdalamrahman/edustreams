@@ -721,7 +721,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   <div className="text-2xl font-black text-slate-100 font-mono mt-2">
                     ₹{topupRequests.filter(r => r.status === 'APPROVED').reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
                   </div>
-                  <div className="text-[11px] text-emerald-300 mt-1">UPI: mdalamrahman6@gmail.com</div>
+                  <div className="text-[11px] text-emerald-300 mt-1">UPI: mdalamrahman6@ptyes</div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/60 via-slate-950 to-slate-950 border border-amber-500/30 shadow-lg">

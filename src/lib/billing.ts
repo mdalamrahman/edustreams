@@ -9,7 +9,10 @@ export const PRICING_CONFIG = {
   DAILY_USAGE_FEE: 1.00,             // ₹1 per day usage fee after logging in
   VIDEO_FIRST_TIME: 2.00,            // ₹2 for opening each video for the first time
   VIDEO_SUBSEQUENT: 1.00,            // ₹1 from subsequent times
-  AI_CHAT_MESSAGE: 0.002,            // 0.2 paise per AI chat message
+  AI_CHAT_MESSAGE: 0.20,             // 20 paise (₹0.20) per AI LLM chat response
+  AI_CODE_REVIEW_DSA: 0.50,          // 50 paise (₹0.50) per senior AI Code Review
+  AI_OPTIMAL_SOLUTION_GEN: 0.50,     // 50 paise (₹0.50) per AI optimal solution generation
+  AI_QUIZ_GEN_BATCH: 0.50,           // 50 paise (₹0.50) per on-demand AI quiz batch generation
   AI_EVALUATION_HLD: 1.00,           // ₹1 for AI evaluation of HLD
   AI_EVALUATION_LLD: 0.75,           // ₹0.75 (75 paise) for AI evaluation of LLD
   COMPILER_RUN_DSA_LLD: 0.05,        // 5 paise (₹0.05) per compiler run
@@ -22,7 +25,7 @@ export const PRICING_CONFIG = {
 
 export const UPI_CONFIG = {
   PAYEE_NAME: 'md alam rahman',
-  PAYEE_UPI_ID: 'mdalamrahman6@gmail.com',
+  PAYEE_UPI_ID: 'mdalamrahman6@ptyes',
   ACCOUNT_LABEL: 'SDETube Platform Top-up'
 };
 
@@ -32,6 +35,9 @@ export type BillingActionType =
   | 'VIDEO_FIRST_TIME'
   | 'VIDEO_SUBSEQUENT'
   | 'AI_CHAT'
+  | 'AI_CODE_REVIEW'
+  | 'AI_OPTIMAL_SOLUTION'
+  | 'AI_QUIZ_GEN'
   | 'AI_EVALUATION_HLD'
   | 'AI_EVALUATION_LLD'
   | 'COMPILER_RUN'

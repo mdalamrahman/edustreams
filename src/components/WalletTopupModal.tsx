@@ -518,7 +518,22 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
                   <span className="text-slate-300">🤖 AI Teaching Assistant Chat</span>
-                  <strong className="text-slate-200 font-mono">0.2 Paise (₹0.002)</strong>
+                  <strong className="text-slate-200 font-mono">20 Paise (₹0.20) / response</strong>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-300">🔍 DSA AI Code Review & Feedback</span>
+                  <strong className="text-slate-200 font-mono">50 Paise (₹0.50)</strong>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-300">💡 AI Optimal Solution Generator</span>
+                  <strong className="text-slate-200 font-mono">50 Paise (₹0.50)</strong>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-300">📝 AI Quiz Generation Batch</span>
+                  <strong className="text-slate-200 font-mono">50 Paise (₹0.50)</strong>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
@@ -528,7 +543,7 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
                   <span className="text-slate-300">🧩 LLD AI OOP Evaluation</span>
-                  <strong className="text-slate-200 font-mono">₹0.75</strong>
+                  <strong className="text-slate-200 font-mono">₹0.75 (75 Paise)</strong>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">

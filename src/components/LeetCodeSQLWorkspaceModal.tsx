@@ -33,6 +33,7 @@ import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
 import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
 
@@ -299,10 +300,11 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     const textToSend = customPrompt || aiInputText;
     if (!textToSend.trim() || isAiReplying) return;
 
-    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE, user?.email)) {
       setInsufficientMeta({
         cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
-        action: 'SQL AI Teaching Assistant Chat (0.2 paise)'
+        action: 'SQL AI Teaching Assistant Chat (20 paise)'
       });
       setIsInsufficientCreditsOpen(true);
       return;
@@ -311,7 +313,8 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     deductCredits(
       PRICING_CONFIG.AI_CHAT_MESSAGE,
       'AI_CHAT',
-      `🤖 SQL AI Assistant Chat: ${cleanTitle}`
+      `🤖 SQL AI Assistant Chat: ${cleanTitle}`,
+      user?.email
     );
 
     const userMessage: ChatMessage = { role: 'user', content: textToSend.trim() };

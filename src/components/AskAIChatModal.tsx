@@ -26,6 +26,7 @@ import { requestContextualAIChatResponse, ChatMessage, ContextualChatPayload } f
 import { Video, QuizQuestion } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
 
@@ -144,10 +145,11 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
     const query = textToSend || inputMsg;
     if (!query.trim() || isLoading) return;
 
-    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE)) {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.AI_CHAT_MESSAGE, user?.email)) {
       setInsufficientMeta({
         cost: PRICING_CONFIG.AI_CHAT_MESSAGE,
-        action: 'AI Teaching Assistant Chat (0.2 paise)'
+        action: 'AI Teaching Assistant Chat (20 paise)'
       });
       setIsInsufficientCreditsOpen(true);
       return;
@@ -156,7 +158,8 @@ export const AskAIChatModal: React.FC<AskAIChatModalProps> = ({
     deductCredits(
       PRICING_CONFIG.AI_CHAT_MESSAGE,
       'AI_CHAT',
-      `🤖 AI TA Chat: ${cleanTitle}`
+      `🤖 AI TA Chat Response: ${cleanTitle}`,
+      user?.email
     );
 
     const userEntry: ChatMessage = { role: 'user', content: query.trim() };
