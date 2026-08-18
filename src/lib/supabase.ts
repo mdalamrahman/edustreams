@@ -69,6 +69,15 @@ export const MOCK_CHANNELS: Channel[] = [
     icon: 'network',
     created_at: new Date().toISOString(),
     post_count: 40
+  },
+  {
+    id: 'ch-hld-05',
+    telegram_channel_id: -1004600000000,
+    category_name: 'High Level Design',
+    description: 'NeetCode System Design: Scalable Architecture, CDN, Load Balancers, Caching, Message Queues & Microservices (HD Lectures)',
+    icon: 'layers',
+    created_at: new Date().toISOString(),
+    post_count: 0
   }
 ];
 

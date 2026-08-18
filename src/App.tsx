@@ -696,6 +696,7 @@ export function App() {
       case 'code-2': return <Code2 className="w-5 h-5 text-indigo-400" />;
       case 'cpu': return <Cpu className="w-5 h-5 text-purple-400" />;
       case 'database': return <Database className="w-5 h-5 text-emerald-400" />;
+      case 'layers': return <Layers className="w-5 h-5 text-amber-400" />;
       default: return <Network className="w-5 h-5 text-sky-400" />;
     }
   };

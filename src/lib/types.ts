@@ -1,4 +1,4 @@
-export type CategoryName = 'DSA' | 'System Design' | 'DBMS' | 'Computer Networks';
+export type CategoryName = 'DSA' | 'System Design' | 'DBMS' | 'Computer Networks' | 'High Level Design';
 
 export interface Channel {
   id: string;
