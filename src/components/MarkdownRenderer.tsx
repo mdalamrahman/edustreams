@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Copy, Check, Terminal, ExternalLink } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Copy, Check, Terminal, ExternalLink, Table } from 'lucide-react';
 
 interface MarkdownRendererProps {
   content: string;
@@ -7,7 +7,7 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
-  const [copiedIdx, setCopiedIdx] = React.useState<number | null>(null);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   const handleCopy = (code: string, idx: number) => {
     navigator.clipboard.writeText(code);
@@ -16,9 +16,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
   };
 
   /**
-   * Parses inline formatting: **bold**, *italic*, `code`, [link](url), etc.
+   * Parses inline formatting: **bold**, *italic*, `code`, [link](url), ~~strikethrough~~, badges.
    */
   const renderInline = (str: string): React.ReactNode[] => {
+    if (!str) return [];
     const parts: React.ReactNode[] = [];
     const regex = /(\[([^\]]+)\]\(([^)]+)\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*|~~[^~]+~~)/g;
     let lastIndex = 0;
@@ -50,9 +51,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
       }
       // 2. Bold **text**
       else if (raw.startsWith('**') && raw.endsWith('**')) {
+        const inner = raw.slice(2, -2);
         parts.push(
           <strong key={match.index} className="font-bold text-slate-100">
-            {raw.slice(2, -2)}
+            {inner}
           </strong>
         );
       }
@@ -92,7 +94,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
   };
 
   /**
-   * Parses structured blocks (headings, code blocks, lists, blockquotes, horizontal rules).
+   * Helper to split markdown table line with escaped pipe protection
+   */
+  const splitTableLine = (line: string): string[] => {
+    return line
+      .split(/(?<!\\)\|/)
+      .map(c => c.trim().replace(/\\\|/g, '|'))
+      .filter((c, idx, arr) => (idx > 0 && idx < arr.length - 1) || c.length > 0);
+  };
+
+  /**
+   * Parses structured blocks (tables, headings, code blocks, lists, blockquotes, horizontal rules).
    */
   const renderedElements = useMemo(() => {
     if (!content) return null;
@@ -117,6 +129,72 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
         elements.push(<hr key={`hr-${i}`} className="border-t border-slate-800 my-4" />);
         i++;
         continue;
+      }
+
+      // ── Markdown Table Detection ──
+      // Look for lines containing pipes `|` that look like a table
+      if (trimmed.startsWith('|') || (trimmed.includes('|') && i + 1 < lines.length && lines[i + 1].includes('---'))) {
+        const tableLines: string[] = [];
+        while (i < lines.length && (lines[i].trim().startsWith('|') || lines[i].trim().includes('|'))) {
+          tableLines.push(lines[i].trim());
+          i++;
+        }
+
+        if (tableLines.length >= 2) {
+          const rawHeader = tableLines[0];
+          const headers = splitTableLine(rawHeader);
+
+          const dataRows: string[][] = [];
+          for (let r = 1; r < tableLines.length; r++) {
+            const rowStr = tableLines[r];
+            // Skip markdown table divider line (e.g. |---|---| or |:---|:---:|)
+            if (/^\|?(\s*:?-+:?\s*\|)+\s*$/.test(rowStr) || rowStr.replace(/[|\s-:]/g, '') === '') {
+              continue;
+            }
+            const cols = splitTableLine(rowStr);
+            if (cols.length > 0) {
+              dataRows.push(cols);
+            }
+          }
+
+          elements.push(
+            <div key={`table-${i}`} className="overflow-x-auto my-4 rounded-2xl border border-slate-800 bg-slate-950/90 shadow-2xl custom-scrollbar">
+              <table className="w-full text-left text-xs border-collapse min-w-[500px]">
+                <thead>
+                  <tr className="bg-slate-900 border-b border-slate-800 text-purple-300 font-bold uppercase tracking-wider text-[11px]">
+                    {headers.map((h, hIdx) => (
+                      <th key={hIdx} className="py-3 px-4 font-mono">
+                        {renderInline(h)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {dataRows.map((row, rIdx) => (
+                    <tr key={rIdx} className="hover:bg-slate-900/60 transition-colors">
+                      {row.map((cell, cIdx) => {
+                        // Highlight score cells with a colored badge
+                        const isScore = /\b\d{1,3}\s*\/\s*100\b/.test(cell);
+                        return (
+                          <td key={cIdx} className="py-2.5 px-4 text-slate-300 font-sans leading-relaxed">
+                            {isScore ? (
+                              <span className="px-2.5 py-1 rounded-lg bg-purple-950 border border-purple-800/80 text-purple-300 font-mono font-bold text-xs inline-block">
+                                {renderInline(cell)}
+                              </span>
+                            ) : (
+                              renderInline(cell)
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+          continue;
+        }
       }
 
       // Headings (# H1, ## H2, ### H3, #### H4)
@@ -184,12 +262,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
               >
                 {copiedIdx === currentIdx ? (
                   <>
-                    <Check className="w-3 h-3 text-emerald-400" />
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-emerald-400 font-bold">Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-3.5 h-3.5" />
                     <span>Copy</span>
                   </>
                 )}
@@ -220,14 +298,27 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
         continue;
       }
 
-      // Unordered Lists (- item, * item, or emojis like ✅, ❌)
-      if (trimmed.match(/^[-*+]\s+/) || trimmed.startsWith('✅') || trimmed.startsWith('❌') || trimmed.startsWith('⚡') || trimmed.startsWith('🚨') || trimmed.startsWith('🔄') || trimmed.startsWith('🛠️') || trimmed.startsWith('🏆')) {
+      // Unordered Lists (- item, * item, or emojis like ✅, ❌, 📌, 🎯, ⚡)
+      if (
+        trimmed.match(/^[-*+]\s+/) ||
+        trimmed.startsWith('✅') ||
+        trimmed.startsWith('❌') ||
+        trimmed.startsWith('📌') ||
+        trimmed.startsWith('🎯') ||
+        trimmed.startsWith('⚡') ||
+        trimmed.startsWith('🚨') ||
+        trimmed.startsWith('🔄') ||
+        trimmed.startsWith('🛠️') ||
+        trimmed.startsWith('🏆')
+      ) {
         const listItems: string[] = [];
         while (
           i < lines.length &&
           (lines[i].trim().match(/^[-*+]\s+/) ||
            lines[i].trim().startsWith('✅') ||
            lines[i].trim().startsWith('❌') ||
+           lines[i].trim().startsWith('📌') ||
+           lines[i].trim().startsWith('🎯') ||
            lines[i].trim().startsWith('⚡') ||
            lines[i].trim().startsWith('🚨') ||
            lines[i].trim().startsWith('🔄') ||
@@ -241,7 +332,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
           <ul key={`ul-${i}`} className="space-y-1.5 my-2.5 pl-1 list-none text-xs sm:text-sm">
             {listItems.map((li, lIdx) => (
               <li key={lIdx} className="flex items-start gap-2 text-slate-200 leading-relaxed">
-                {!li.startsWith('✅') && !li.startsWith('❌') && !li.startsWith('⚡') && !li.startsWith('🚨') && !li.startsWith('🔄') && !li.startsWith('🛠️') && !li.startsWith('🏆') && (
+                {!li.startsWith('✅') && !li.startsWith('❌') && !li.startsWith('📌') && !li.startsWith('🎯') && !li.startsWith('⚡') && !li.startsWith('🚨') && !li.startsWith('🔄') && !li.startsWith('🛠️') && !li.startsWith('🏆') && (
                   <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
                 )}
                 <span className="flex-1">{renderInline(li)}</span>
@@ -283,8 +374,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
         !lines[i].trim().match(/^[-*+]\s+/) &&
         !lines[i].trim().match(/^\d+\.\s+/) &&
         lines[i].trim() !== '---' &&
+        !lines[i].trim().startsWith('|') &&
         !lines[i].trim().startsWith('✅') &&
-        !lines[i].trim().startsWith('❌')
+        !lines[i].trim().startsWith('❌') &&
+        !lines[i].trim().startsWith('📌') &&
+        !lines[i].trim().startsWith('🎯')
       ) {
         paraLines.push(lines[i].trim());
         i++;
@@ -303,7 +397,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
   }, [content]);
 
   return (
-    <div className={`space-y-1 select-text ${className}`}>
+    <div className={`space-y-1 select-text font-sans leading-relaxed ${className}`}>
       {renderedElements}
     </div>
   );

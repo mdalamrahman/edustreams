@@ -24,7 +24,9 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  GripVertical
+  GripVertical,
+  Lock,
+  Eye
 } from 'lucide-react';
 import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } from '../lib/sqlJudge';
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
@@ -169,6 +171,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
   const [aiInputText, setAiInputText] = useState<string>('');
   const [isAiReplying, setIsAiReplying] = useState<boolean>(false);
+  const [isSolutionRevealed, setIsSolutionRevealed] = useState<boolean>(false);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -542,22 +545,43 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
             {/* TAB 3: SOLUTIONS */}
             {leftTab === 'solutions' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Canonical Solution Query</h3>
+              !isSolutionRevealed ? (
+                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4 my-4 animate-fadeIn">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center mx-auto text-cyan-300">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-slate-100">Canonical SQL Query Protected</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Write your query in the SQL editor and click Run Query first to test your solution before checking the reference solution.
+                    </p>
+                  </div>
                   <button
-                    onClick={handleCopySolution}
-                    className="flex items-center space-x-1 text-xs text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
+                    onClick={() => setIsSolutionRevealed(true)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold shadow-lg shadow-cyan-900/30 cursor-pointer transition-all flex items-center gap-1.5 mx-auto hover:scale-105"
                   >
-                    {copiedSolution ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedSolution ? 'Copied' : 'Copy Solution'}</span>
+                    <Eye className="w-4 h-4" />
+                    <span>Reveal Canonical SQL</span>
                   </button>
                 </div>
+              ) : (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Canonical Solution Query</h3>
+                    <button
+                      onClick={handleCopySolution}
+                      className="flex items-center space-x-1 text-xs text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
+                    >
+                      {copiedSolution ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedSolution ? 'Copied' : 'Copy Solution'}</span>
+                    </button>
+                  </div>
 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto">
-                  <pre className="text-emerald-300 whitespace-pre-wrap">{sqlProblem.solutionSql.trim()}</pre>
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-xs overflow-x-auto">
+                    <pre className="text-emerald-300 whitespace-pre-wrap">{sqlProblem.solutionSql.trim()}</pre>
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
             {/* TAB 4: SUBMISSIONS */}

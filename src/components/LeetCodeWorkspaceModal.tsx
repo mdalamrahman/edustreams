@@ -30,7 +30,9 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  GripHorizontal
+  GripHorizontal,
+  Lock,
+  Eye
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -247,6 +249,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isGeneratingSolution, setIsGeneratingSolution] = useState<boolean>(false);
   const [copiedSolutionCode, setCopiedSolutionCode] = useState<boolean>(false);
   const [appliedSolutionMsg, setAppliedSolutionMsg] = useState<boolean>(false);
+  const [isSolutionRevealed, setIsSolutionRevealed] = useState<boolean>(false);
 
   const handleGenerateSolution = async (langToGen: SupportedLanguage = solutionLang) => {
     setIsGeneratingSolution(true);
@@ -1027,6 +1030,29 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               const aiSol = aiGeneratedSolutions[solutionLang];
               const activeSolutionCode = aiSol?.code || (staticSol && staticSol !== problemTemplate.starters[solutionLang] ? staticSol : null);
               const hasWorkedSolution = Boolean(activeSolutionCode);
+
+              if (!isSolutionRevealed) {
+                return (
+                  <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4 my-4 animate-fadeIn">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-950/80 border border-purple-800 flex items-center justify-center mx-auto text-purple-300">
+                      <Lock className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-100">Official Solution Protected</h4>
+                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                        Try implementing your algorithm and running the test cases first before checking the reference solution.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setIsSolutionRevealed(true)}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-900/30 cursor-pointer transition-all flex items-center gap-1.5 mx-auto hover:scale-105"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Reveal Official Solution</span>
+                    </button>
+                  </div>
+                );
+              }
 
               return (
                 <div className="space-y-4 font-sans">
