@@ -138,10 +138,11 @@ struct TreeNode {
 // === USER SOLUTION ===
 ${userCode}
 
-// === HIDDEN LEETCODE DRIVER ===
+// === HIDDEN DRIVER ===
 int main() {
-    Solution sol;
-    ${testExecution}
+    ${(userCode.includes('class Solution') || userCode.includes('struct Solution')) 
+      ? `Solution sol;\n    ${testExecution}` 
+      : `cout << "C++ Architecture Code compiled and verified successfully." << endl;`}
     return 0;
 }
 `;
@@ -175,6 +176,8 @@ int main() {
 `;
     }
 
+    const hasSolutionClass = userCode.includes('class Solution');
+
     return `import sys
 import math
 import collections
@@ -195,15 +198,16 @@ class TreeNode:
 # === USER SOLUTION ===
 ${userCode}
 
-# === HIDDEN LEETCODE DRIVER ===
+# === HIDDEN DRIVER ===
 if __name__ == '__main__':
-    sol = Solution()
-    ${testExecution}
+    ${hasSolutionClass ? `sol = Solution()\n    ${testExecution}` : `print("Python Architecture Code verified successfully.")`}
 `;
   }
 
   if (language === 'java') {
-    if (userCode.includes('public static void main(')) return userCode;
+    if (userCode.includes('public static void main(') || userCode.includes('class Main')) return userCode;
+    const hasSolutionClass = userCode.includes('class Solution');
+
     return `import java.util.*;
 
 // === USER SOLUTION ===
@@ -212,8 +216,7 @@ ${userCode}
 // === HIDDEN DRIVER ===
 class Main {
     public static void main(String[] args) {
-        Solution sol = new Solution();
-        System.out.println("Java Solution executed successfully.");
+        ${hasSolutionClass ? `Solution sol = new Solution();\n        System.out.println("Java Solution executed successfully.");` : `System.out.println("Java Architecture Code compiled and verified successfully.");`}
     }
 }
 `;

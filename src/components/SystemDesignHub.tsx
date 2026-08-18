@@ -122,6 +122,90 @@ export const HLD_PRACTICE_PROBLEMS: HLDProblemSpec[] = [
       'Configurable rate limiting rules per tier/endpoint.'
     ],
     expectedScale: '10 Billion Requests / day • 150k QPS peak • <1ms latency overhead per request'
+  },
+  {
+    id: 'hld-cloud-storage',
+    title: 'Design Dropbox / Google Drive (File Sync)',
+    difficulty: 'Hard',
+    companies: ['Google', 'Dropbox', 'Microsoft', 'Amazon'],
+    description: 'Design a distributed cloud file synchronization and storage service with 4MB chunked deduplication, block-level delta sync, and strong metadata consistency.',
+    requirements: [
+      'Resumable chunked file uploads and downloads (4MB blocks).',
+      'Data deduplication by SHA-256 hash across global files to save storage.',
+      'Real-time synchronization notifications across connected desktop/mobile clients.',
+      'File versioning (up to 30 revisions) and conflict resolution.'
+    ],
+    expectedScale: '500M Registered Users • 100M Daily Active Users • 50PB New Storage / month • 100k Sync Events / sec'
+  },
+  {
+    id: 'hld-payment-gateway',
+    title: 'Design Stripe / Idempotent Payment Gateway',
+    difficulty: 'Hard',
+    companies: ['Stripe', 'Square', 'PayPal', 'Amazon', 'Visa'],
+    description: 'Design a fault-tolerant, double-entry ledger payment gateway ensuring exactly-once processing via Idempotency Keys and distributed 2-Phase Commit transactions.',
+    requirements: [
+      'Process card and bank payments with merchant API keys.',
+      'Strict Idempotency Keys (UUID) to prevent double charges on network timeouts.',
+      'Immutable Double-Entry Ledger for auditing every credit and debit balance.',
+      'Asynchronous webhook delivery for charge.success and charge.failed events.'
+    ],
+    expectedScale: '1 Billion API Calls / day • 10,000 TPS Peak • Zero double-charge tolerance (99.999% reliability)'
+  },
+  {
+    id: 'hld-flash-sale',
+    title: 'Design E-Commerce Flash Sale (Amazon / Flipkart)',
+    difficulty: 'Hard',
+    companies: ['Amazon', 'Flipkart', 'Alibaba', 'Walmart'],
+    description: 'Design a flash sale inventory reservation system capable of handling 100,000+ orders/second during peak seconds without overselling or database deadlock.',
+    requirements: [
+      'Accurate real-time inventory decrement (Atomic Redis Lua scripts / distributed lock).',
+      'Order placement queue with Kafka / RabbitMQ to rate-limit database writes.',
+      'Virtual waiting room queue for incoming traffic surges.',
+      'Automatic inventory release if order is unpaid after 15 minutes.'
+    ],
+    expectedScale: '50 Million Users Active • 500,000 peak QPS at 12:00:00 • 100k items sold in 3 seconds'
+  },
+  {
+    id: 'hld-music-streaming',
+    title: 'Design Spotify / Music Streaming Platform',
+    difficulty: 'Hard',
+    companies: ['Spotify', 'Apple', 'Amazon', 'Tencent'],
+    description: 'Design a global audio streaming infrastructure supporting instant playback starting, Ogg Vorbis / AAC compression, personalized Daily Mix playlists, and offline song downloads.',
+    requirements: [
+      'Low latency audio streaming with pre-fetching the first 10 seconds of songs.',
+      'Collaborative playlists with real-time sync across friends.',
+      'Personalized music recommendation pipeline (Collaborative Filtering + Graph embeddings).',
+      'Artist analytics dashboard and royalties calculation pipeline.'
+    ],
+    expectedScale: '600 Million Active Users • 100M Tracks • 500k Concurrent Audio Streams • 40 Gbps Edge Audio Egress'
+  },
+  {
+    id: 'hld-web-crawler',
+    title: 'Design Distributed Web Crawler (Googlebot)',
+    difficulty: 'Hard',
+    companies: ['Google', 'Microsoft', 'OpenAI', 'Yandex'],
+    description: 'Design a scalable web crawler capable of traversing billions of web pages, respecting robots.txt politeness, detecting duplicate content via SimHash, and feeding a search index.',
+    requirements: [
+      'URL Frontier queue with politeness (domain rate limiting) and priority scoring.',
+      'HTML fetcher, DNS resolver cache, and content parser.',
+      'Duplicate URL and near-duplicate content detection (SimHash / Bloom Filters).',
+      'Dead link filtering and crawler traps prevention.'
+    ],
+    expectedScale: '10 Billion Web Pages / month • 4,000 Pages / sec • 500TB raw HTML fetched monthly'
+  },
+  {
+    id: 'hld-metrics-monitoring',
+    title: 'Design Distributed Metrics & Alerting (Prometheus / Datadog)',
+    difficulty: 'Hard',
+    companies: ['Datadog', 'Amazon', 'Cloudflare', 'Splunk', 'Grafana'],
+    description: 'Design a time-series metrics ingestion and querying system capable of collecting CPU, memory, and custom application counters with real-time alerting rules.',
+    requirements: [
+      'High-throughput time-series metric ingestion (timestamp, metric_name, tags, value).',
+      'Downsampling and rollup compression for long-term retention (Gorilla compression).',
+      'Query engine supporting PromQL-like aggregation (p99 latency, rate, sum).',
+      'Threshold and anomaly alerting engine with PagerDuty / Slack integrations.'
+    ],
+    expectedScale: '100 Million Metric Data Points / sec • 10 TB Ingested / day • Sub-200ms Dashboard Query Latency'
   }
 ];
 
@@ -582,23 +666,31 @@ Provide:
                   </div>
                 </div>
 
-                <div className="flex-1 p-8 overflow-auto flex items-center justify-center bg-slate-950/90 custom-scrollbar min-h-[500px]">
+                <div className="flex-1 p-6 overflow-x-auto overflow-y-auto bg-slate-950/90 custom-scrollbar min-h-[500px] flex items-start justify-start">
                   {isGeneratingDiagram ? (
-                    <div className="text-center font-mono text-sm text-slate-400 animate-pulse">
+                    <div className="w-full py-32 text-center font-mono text-sm text-slate-400 animate-pulse">
                       Generating architecture diagram from compiled code...
                     </div>
                   ) : diagramError ? (
-                    <div className="p-6 rounded-2xl bg-red-950/60 border border-red-800 text-sm text-red-200 font-mono max-w-lg text-center">
-                      {diagramError}
+                    <div className="w-full flex justify-center py-20">
+                      <div className="p-6 rounded-2xl bg-red-950/60 border border-red-800 text-sm text-red-200 font-mono max-w-lg text-center">
+                        {diagramError}
+                      </div>
                     </div>
                   ) : diagramSvg ? (
-                    <div 
-                      style={{ transform: `scale(${diagramZoom})`, transformOrigin: 'center center', transition: 'transform 0.2s' }}
-                      dangerouslySetInnerHTML={{ __html: diagramSvg }} 
-                      className="max-w-full filter drop-shadow-lg"
-                    />
+                    <div className="min-w-full flex justify-center p-4">
+                      <div 
+                        style={{ 
+                          transform: `scale(${diagramZoom})`, 
+                          transformOrigin: 'top center', 
+                          transition: 'transform 0.15s ease-out' 
+                        }}
+                        dangerouslySetInnerHTML={{ __html: diagramSvg }} 
+                        className="filter drop-shadow-2xl select-none"
+                      />
+                    </div>
                   ) : (
-                    <div className="text-center font-mono text-sm text-slate-500 space-y-2">
+                    <div className="w-full text-center py-28 font-mono text-sm text-slate-500 space-y-2">
                       <Eye className="w-12 h-12 mx-auto text-slate-600 mb-4" />
                       <p>No diagram yet.</p>
                       <p className="text-xs text-slate-600">Compile your code successfully first, then the diagram will be generated automatically.</p>

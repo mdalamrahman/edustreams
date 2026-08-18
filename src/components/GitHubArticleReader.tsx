@@ -13,7 +13,12 @@ import {
   Clock, 
   Type, 
   ArrowUp,
-  Search
+  Search,
+  PanelLeftClose,
+  PanelLeft,
+  Sun,
+  Moon,
+  AlignLeft
 } from 'lucide-react';
 import { CuratedLLDTopic } from '../lib/githubLld';
 
@@ -35,7 +40,8 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
   isLoading
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
+  const [baseFontSize, setBaseFontSize] = useState<number>(16); // Dynamic px size (14 - 24)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeChapterId, setActiveChapterId] = useState<string>('');
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
   const [tocSearch, setTocSearch] = useState('');
@@ -95,7 +101,6 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
    */
   const renderInline = (str: string, repo: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = [];
-    // Matches: [text](url), ![alt](src), **bold**, *italic*, `code`
     const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -115,7 +120,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           src = `https://raw.githubusercontent.com/${repo}/master/${src.replace(/^\.\//, '')}`;
         }
         parts.push(
-          <span key={match.index} className="block my-4 text-center">
+          <span key={match.index} className="block my-5 text-center">
             <img
               src={src}
               alt={alt}
@@ -123,7 +128,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
               loading="lazy"
             />
             {alt && alt !== 'Diagram' && (
-              <span className="text-[11px] text-slate-400 mt-1 block font-mono">{alt}</span>
+              <span className="text-xs text-slate-400 mt-1.5 block font-mono">{alt}</span>
             )}
           </span>
         );
@@ -168,7 +173,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
       // 4. Inline Code `code`
       else if (raw.startsWith('`') && raw.endsWith('`')) {
         parts.push(
-          <code key={match.index} className="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-purple-300 font-mono text-[12px]">
+          <code key={match.index} className="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-purple-300 font-mono text-[0.9em]">
             {raw.slice(1, -1)}
           </code>
         );
@@ -207,13 +212,12 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
       const line = rawLines[lineIdx];
       const trimmed = line.trim();
 
-      // 1. Skip Empty Lines
       if (!trimmed) {
         lineIdx++;
         continue;
       }
 
-      // 2. Headings (# H1, ## H2, ### H3)
+      // Headings (# H1, ## H2, ### H3)
       const headingMatch = trimmed.match(/^(#{1,4})\s+(.+)$/);
       if (headingMatch) {
         const level = headingMatch[1].length;
@@ -226,7 +230,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
             <h1
               key={lineIdx}
               id={`heading-${id}`}
-              className="text-2xl sm:text-3xl font-black text-slate-100 pt-6 pb-2 border-b border-slate-800 tracking-tight flex items-center gap-2"
+              className="text-2xl sm:text-3xl font-black text-slate-100 pt-6 pb-3 border-b border-slate-800 tracking-tight flex items-center gap-2.5"
             >
               <span className="text-purple-400">#</span>
               <span>{renderInline(text, topic.repo)}</span>
@@ -237,7 +241,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
             <h2
               key={lineIdx}
               id={`heading-${id}`}
-              className="text-xl sm:text-2xl font-extrabold text-slate-100 pt-6 pb-2 border-b border-slate-800/80 tracking-tight flex items-center gap-2"
+              className="text-xl sm:text-2xl font-extrabold text-slate-100 pt-6 pb-2.5 border-b border-slate-800/80 tracking-tight flex items-center gap-2"
             >
               <span className="text-indigo-400">##</span>
               <span>{renderInline(text, topic.repo)}</span>
@@ -248,7 +252,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
             <h3
               key={lineIdx}
               id={`heading-${id}`}
-              className="text-base sm:text-lg font-bold text-indigo-200 pt-4 pb-1 tracking-tight flex items-center gap-1.5"
+              className="text-lg sm:text-xl font-bold text-indigo-200 pt-4 pb-1.5 tracking-tight flex items-center gap-1.5"
             >
               <span className="text-sky-400">###</span>
               <span>{renderInline(text, topic.repo)}</span>
@@ -256,7 +260,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           );
         } else {
           blocks.push(
-            <h4 key={lineIdx} id={`heading-${id}`} className="text-sm font-bold text-purple-300 pt-2">
+            <h4 key={lineIdx} id={`heading-${id}`} className="text-base font-bold text-purple-300 pt-3">
               {renderInline(text, topic.repo)}
             </h4>
           );
@@ -265,7 +269,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         continue;
       }
 
-      // 3. Fenced Code Blocks (```lang ... ```)
+      // Fenced Code Blocks (```lang ... ```)
       if (trimmed.startsWith('```')) {
         const lang = trimmed.slice(3).trim() || 'code';
         const codeLines: string[] = [];
@@ -280,17 +284,17 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         const currentIdx = codeBlockCount++;
 
         blocks.push(
-          <div key={`code-${lineIdx}`} className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl my-4">
-            <div className="h-9 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+          <div key={`code-${lineIdx}`} className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden shadow-2xl my-5">
+            <div className="h-10 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
               <span className="text-purple-300 font-bold uppercase">{lang}</span>
               <button
                 onClick={() => handleCopyCode(fullCode, currentIdx)}
-                className="flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
                 {copiedCodeIdx === currentIdx ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400">Copied</span>
+                    <span className="text-emerald-400 font-bold">Copied!</span>
                   </>
                 ) : (
                   <>
@@ -300,7 +304,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
                 )}
               </button>
             </div>
-            <pre className="p-4 text-xs sm:text-sm font-mono text-slate-200 overflow-x-auto whitespace-pre leading-relaxed custom-scrollbar">
+            <pre className="p-4 overflow-x-auto text-xs sm:text-sm font-mono text-emerald-300/90 leading-relaxed custom-scrollbar">
               <code>{fullCode}</code>
             </pre>
           </div>
@@ -308,49 +312,36 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         continue;
       }
 
-      // 4. Blockquotes (> ...)
+      // Blockquotes (> quote)
       if (trimmed.startsWith('>')) {
         const quoteLines: string[] = [];
         while (lineIdx < rawLines.length && rawLines[lineIdx].trim().startsWith('>')) {
-          quoteLines.push(rawLines[lineIdx].trim().replace(/^>\s?/, ''));
+          quoteLines.push(rawLines[lineIdx].trim().replace(/^>\s*/, ''));
           lineIdx++;
         }
         blocks.push(
-          <blockquote
-            key={`quote-${lineIdx}`}
-            className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-transparent border-l-4 border-indigo-500 text-slate-300 text-xs sm:text-sm italic my-4 space-y-1 shadow-sm"
-          >
+          <blockquote key={`quote-${lineIdx}`} className="border-l-4 border-purple-500 bg-purple-950/20 pl-4 py-3 my-4 rounded-r-2xl text-slate-200 italic">
             {quoteLines.map((ql, qIdx) => (
-              <p key={qIdx}>{renderInline(ql, topic.repo)}</p>
+              <p key={qIdx} className="my-1">{renderInline(ql, topic.repo)}</p>
             ))}
           </blockquote>
         );
         continue;
       }
 
-      // 5. Horizontal Rule (---, ***, ___)
-      if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
-        blocks.push(<hr key={`hr-${lineIdx}`} className="border-t border-slate-800/80 my-6" />);
-        lineIdx++;
-        continue;
-      }
-
-      // 6. Bullet Lists (- ..., * ..., + ...)
-      if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('+ ')) {
+      // Unordered Lists (- item or * item)
+      if (trimmed.match(/^[-*]\s+/)) {
         const listItems: string[] = [];
-        while (
-          lineIdx < rawLines.length && 
-          (rawLines[lineIdx].trim().startsWith('- ') || rawLines[lineIdx].trim().startsWith('* ') || rawLines[lineIdx].trim().startsWith('+ '))
-        ) {
-          listItems.push(rawLines[lineIdx].trim().replace(/^[-*+]\s+/, ''));
+        while (lineIdx < rawLines.length && rawLines[lineIdx].trim().match(/^[-*]\s+/)) {
+          listItems.push(rawLines[lineIdx].trim().replace(/^[-*]\s+/, ''));
           lineIdx++;
         }
         blocks.push(
-          <ul key={`ul-${lineIdx}`} className="space-y-2 my-3 pl-2">
-            {listItems.map((item, idx) => (
-              <li key={idx} className="flex items-start gap-2.5 text-slate-300 text-xs sm:text-sm leading-relaxed">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2 flex-shrink-0" />
-                <span>{renderInline(item, topic.repo)}</span>
+          <ul key={`ul-${lineIdx}`} className="space-y-2 my-4 pl-2 list-none">
+            {listItems.map((li, lIdx) => (
+              <li key={lIdx} className="flex items-start gap-2.5 text-slate-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-2.5 flex-shrink-0" />
+                <span className="flex-1">{renderInline(li, topic.repo)}</span>
               </li>
             ))}
           </ul>
@@ -358,18 +349,19 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         continue;
       }
 
-      // 7. Numbered Lists (1. ..., 2. ...)
-      if (/^\d+\.\s+/.test(trimmed)) {
-        const numItems: string[] = [];
-        while (lineIdx < rawLines.length && /^\d+\.\s+/.test(rawLines[lineIdx].trim())) {
-          numItems.push(rawLines[lineIdx].trim().replace(/^\d+\.\s+/, ''));
+      // Ordered Lists (1. item)
+      if (trimmed.match(/^\d+\.\s+/)) {
+        const listItems: string[] = [];
+        while (lineIdx < rawLines.length && rawLines[lineIdx].trim().match(/^\d+\.\s+/)) {
+          listItems.push(rawLines[lineIdx].trim().replace(/^\d+\.\s+/, ''));
           lineIdx++;
         }
         blocks.push(
-          <ol key={`ol-${lineIdx}`} className="space-y-2 my-3 pl-2 list-decimal list-inside text-slate-300 text-xs sm:text-sm leading-relaxed">
-            {numItems.map((item, idx) => (
-              <li key={idx} className="pl-1">
-                <span>{renderInline(item, topic.repo)}</span>
+          <ol key={`ol-${lineIdx}`} className="space-y-2 my-4 pl-2 list-none">
+            {listItems.map((li, lIdx) => (
+              <li key={lIdx} className="flex items-start gap-2.5 text-slate-200">
+                <span className="font-mono text-xs font-bold text-indigo-400 mt-0.5 flex-shrink-0">{lIdx + 1}.</span>
+                <span className="flex-1">{renderInline(li, topic.repo)}</span>
               </li>
             ))}
           </ol>
@@ -377,76 +369,70 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         continue;
       }
 
-      // 8. Markdown Tables (| ... |)
-      if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.includes('|')) {
-        const tableLines: string[] = [];
-        while (lineIdx < rawLines.length && rawLines[lineIdx].trim().startsWith('|') && rawLines[lineIdx].trim().endsWith('|')) {
-          tableLines.push(rawLines[lineIdx].trim());
-          lineIdx++;
-        }
-
-        if (tableLines.length >= 2) {
-          const headers = tableLines[0].split('|').slice(1, -1).map(h => h.trim());
-          let rowStart = 1;
-          if (tableLines[1].replace(/[\s\:\-\|]/g, '').length === 0) rowStart = 2;
-
-          const rows = tableLines.slice(rowStart).map(r => r.split('|').slice(1, -1).map(c => c.trim()));
-
-          blocks.push(
-            <div key={`table-${lineIdx}`} className="overflow-x-auto my-4 rounded-2xl border border-slate-800 bg-slate-950 shadow-xl custom-scrollbar">
-              <table className="w-full text-left text-xs sm:text-sm">
-                <thead className="bg-slate-900/90 border-b border-slate-800 text-purple-300 font-bold">
-                  <tr>
-                    {headers.map((h, hIdx) => (
-                      <th key={hIdx} className="p-3 font-mono">{renderInline(h, topic.repo)}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {rows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-slate-900/40 transition-colors">
-                      {row.map((cell, cIdx) => (
-                        <td key={cIdx} className="p-3 text-slate-300 font-sans">{renderInline(cell, topic.repo)}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-          continue;
-        }
+      // Regular Paragraphs
+      const paraLines: string[] = [];
+      while (
+        lineIdx < rawLines.length &&
+        rawLines[lineIdx].trim() &&
+        !rawLines[lineIdx].trim().match(/^(#{1,4})\s+/) &&
+        !rawLines[lineIdx].trim().startsWith('```') &&
+        !rawLines[lineIdx].trim().startsWith('>') &&
+        !rawLines[lineIdx].trim().match(/^[-*]\s+/) &&
+        !rawLines[lineIdx].trim().match(/^\d+\.\s+/)
+      ) {
+        paraLines.push(rawLines[lineIdx].trim());
+        lineIdx++;
       }
 
-      // 9. Standard Paragraph Block
-      blocks.push(
-        <p key={`p-${lineIdx}`} className="text-slate-300 text-xs sm:text-sm leading-relaxed my-3 font-sans">
-          {renderInline(line, topic.repo)}
-        </p>
-      );
-      lineIdx++;
+      if (paraLines.length > 0) {
+        blocks.push(
+          <p key={`p-${lineIdx}`} className="text-slate-200 my-3 leading-relaxed">
+            {renderInline(paraLines.join(' '), topic.repo)}
+          </p>
+        );
+      }
     }
 
     return blocks;
   }, [markdown, topic.repo]);
 
   return (
-    <div className={`w-full ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col animate-fadeIn select-text' : 'space-y-4'}`}>
+    <div className={`w-full transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col p-4 sm:p-6 animate-fadeIn overflow-hidden' 
+        : 'space-y-4'
+    }`}>
       
-      {/* Top Reading Controls Header Bar */}
-      <div className={`p-4 sm:p-5 rounded-3xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-4 shadow-xl ${isFullscreen ? 'border-b rounded-none' : ''}`}>
+      {/* Top Header & Reading Controls Bar */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+        
+        {/* Left: Topic Title & Reading Statistics */}
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-2xl bg-purple-600/20 text-purple-300 border border-purple-500/30">
-            <BookOpen className="w-4 h-4" />
+          {isFullscreen && (
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer ${
+                isSidebarOpen ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
+              }`}
+              title={isSidebarOpen ? 'Minimize Chapters Sidebar' : 'Show Chapters Sidebar'}
+            >
+              {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
+              <span className="hidden sm:inline">{isSidebarOpen ? 'Hide Index' : 'Show Index'}</span>
+            </button>
+          )}
+
+          <div className="p-2.5 rounded-2xl bg-purple-950/80 text-purple-300 border border-purple-800/60 hidden sm:block">
+            <BookOpen className="w-5 h-5" />
           </div>
+
           <div>
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-100 flex items-center gap-2">
-              <span>{topic.title}</span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-950 border border-purple-800 text-[10px] font-mono text-purple-300">
+            <div className="flex items-center space-x-2">
+              <span className="font-extrabold text-[10px] text-purple-400 font-mono tracking-wider px-2 py-0.5 rounded-lg bg-purple-950 border border-purple-800/60">
                 {topic.category}
               </span>
-            </h3>
-            <div className="flex items-center gap-3 text-xs text-slate-400 font-mono mt-0.5">
+              <h3 className="text-sm sm:text-base font-bold text-slate-100 truncate max-w-md">{topic.title}</h3>
+            </div>
+            <div className="flex items-center space-x-2 text-[11px] text-slate-400 mt-0.5">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3 text-amber-400" />
                 <span>{readingStats.mins} Min Read</span>
@@ -454,33 +440,28 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
               <span>&bull;</span>
               <span>{readingStats.words.toLocaleString()} Words</span>
               <span>&bull;</span>
-              <span>{topic.repo}</span>
+              <span className="truncate max-w-[140px]">{topic.repo}</span>
             </div>
           </div>
         </div>
 
-        {/* Right Toolbar Controls */}
-        <div className="flex items-center gap-2.5">
-          {/* Font Size Adjuster */}
-          <div className="flex bg-slate-900 p-0.5 rounded-xl border border-slate-800 text-xs font-bold">
+        {/* Right Toolbar Controls: Font Scaling (A-, A, A+) & Fullscreen */}
+        <div className="flex items-center gap-2">
+          
+          {/* Dynamic Font Size Stepper (A-, A, A+) */}
+          <div className="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
             <button
-              onClick={() => setFontSize('sm')}
-              className={`px-2.5 py-1 rounded-lg text-xs cursor-pointer ${fontSize === 'sm' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Small Text"
+              onClick={() => setBaseFontSize(s => Math.max(13, s - 2))}
+              className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif"
+              title="Decrease Font Size (A-)"
             >
               A-
             </button>
+            <span className="px-2 font-mono text-[11px] text-purple-400 font-bold">{baseFontSize}px</span>
             <button
-              onClick={() => setFontSize('base')}
-              className={`px-2.5 py-1 rounded-lg text-xs cursor-pointer ${fontSize === 'base' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Default Text"
-            >
-              A
-            </button>
-            <button
-              onClick={() => setFontSize('lg')}
-              className={`px-2.5 py-1 rounded-lg text-xs cursor-pointer ${fontSize === 'lg' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-              title="Large Text"
+              onClick={() => setBaseFontSize(s => Math.min(24, s + 2))}
+              className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif text-sm font-bold"
+              title="Increase Font Size (A+)"
             >
               A+
             </button>
@@ -489,10 +470,10 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           {/* Fullscreen Reading Mode */}
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader Mode'}
           >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            {isFullscreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-purple-400" />}
             <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader'}</span>
           </button>
 
@@ -501,7 +482,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
             href={`https://github.com/${topic.repo}`}
             target="_blank"
             rel="noreferrer"
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5"
+            className="p-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5"
             title="View on GitHub"
           >
             <Github className="w-4 h-4" />
@@ -511,11 +492,13 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
       </div>
 
       {/* Main Two-Column Reader Canvas: Chapter Navigator (TOC) + Markdown Stream */}
-      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${isFullscreen ? 'flex-1 p-6 overflow-hidden' : ''}`}>
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${isFullscreen ? 'flex-1 overflow-hidden min-h-0' : ''}`}>
         
-        {/* Left: Chapter / Table of Contents Navigator (3 Columns) */}
-        {chapters.length > 0 && (
-          <div className={`lg:col-span-3 glass-panel p-5 rounded-3xl border border-slate-800 bg-slate-950/80 flex flex-col ${isFullscreen ? 'h-full overflow-hidden' : 'max-h-[680px]'}`}>
+        {/* Left: Chapter / Table of Contents Navigator */}
+        {chapters.length > 0 && isSidebarOpen && (
+          <div className={`lg:col-span-3 glass-panel p-5 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col ${
+            isFullscreen ? 'h-full overflow-hidden' : 'max-h-[680px]'
+          } animate-fadeIn`}>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 flex-shrink-0">
               <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
                 <ListOrdered className="w-4 h-4" />
@@ -541,7 +524,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
                 <button
                   key={idx}
                   onClick={() => scrollToChapter(ch.id)}
-                  className={`w-full text-left py-1.5 px-2.5 rounded-xl text-xs transition-all flex items-center justify-between cursor-pointer group ${
+                  className={`w-full text-left py-2 px-3 rounded-xl text-xs transition-all flex items-center justify-between cursor-pointer group ${
                     activeChapterId === ch.id
                       ? 'bg-purple-600 text-white font-bold shadow-md'
                       : ch.level === 1 
@@ -559,10 +542,10 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
         )}
 
-        {/* Right: Rich Structured Article Reader (9 Columns) */}
+        {/* Right: Rich Structured Article Reader */}
         <div 
           ref={contentRef}
-          className={`${chapters.length > 0 ? 'lg:col-span-9' : 'lg:col-span-12'} glass-panel p-6 sm:p-10 rounded-3xl border border-slate-800 bg-slate-900/60 shadow-2xl overflow-y-auto custom-scrollbar ${
+          className={`${(chapters.length > 0 && isSidebarOpen) ? 'lg:col-span-9' : 'lg:col-span-12'} glass-panel p-6 sm:p-12 rounded-3xl border border-slate-800 bg-slate-900/60 shadow-2xl overflow-y-auto custom-scrollbar ${
             isFullscreen ? 'h-full' : 'max-h-[720px]'
           }`}
         >
@@ -571,9 +554,10 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
               Fetching and rendering open-source primer via GitHub REST API...
             </div>
           ) : (
-            <div className={`space-y-4 ${
-              fontSize === 'sm' ? 'text-xs' : fontSize === 'lg' ? 'text-base' : 'text-sm'
-            }`}>
+            <div 
+              style={{ fontSize: `${baseFontSize}px`, lineHeight: 1.8 }}
+              className="max-w-4xl mx-auto space-y-4 font-sans tracking-normal select-text"
+            >
               {renderedBlocks}
             </div>
           )}
