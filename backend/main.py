@@ -2,6 +2,7 @@ import os
 import io
 import math
 import time
+import random
 from datetime import datetime
 import asyncio
 import subprocess
@@ -26,7 +27,7 @@ from telethon.tl.functions.channels import GetFullChannelRequest
 # Environment Variables
 API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
@@ -43,6 +44,7 @@ try:
 except Exception:
     MEDIA_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "media_storage")
     os.makedirs(MEDIA_STORAGE_DIR, exist_ok=True)
+DATA_DIR = MEDIA_STORAGE_DIR
 print(f"[Media Storage] Active video storage directory: {MEDIA_STORAGE_DIR}")
 
 # Shared Global In-Memory & Disk AI Cache
@@ -368,12 +370,13 @@ def fetch_artifacts_from_supabase(chat_id: str, msg_id: int, title: str) -> Opti
         print(f"[Supabase / R2 Fetch Notice]: {e}")
     return None
 
-# Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX)
+# Target Educational Channel IDs (Bot API format: -100XXXXXXXXXX or -55XXXXXXXXX)
 CHANNEL_IDS = {
     "DSA": int(os.getenv("TELEGRAM_CHANNEL_DSA", "-1004390749731")),
     "System Design": int(os.getenv("TELEGRAM_CHANNEL_SYSTEM_DESIGN", "-1004329144420")),
     "DBMS": int(os.getenv("TELEGRAM_CHANNEL_DBMS", "-1004332462419")),
     "Computer Networks": int(os.getenv("TELEGRAM_CHANNEL_CN", "-1004308430774")),
+    "High Level Design": int(os.getenv("TELEGRAM_CHANNEL_HLD", "-5501631117")),
 }
 
 # Optional Channel Invite Links (read dynamically from environment)
@@ -382,6 +385,7 @@ CHANNEL_INVITE_LINKS = {
     "System Design": os.getenv("TELEGRAM_INVITE_SYSTEM_DESIGN", ""),
     "DBMS": os.getenv("TELEGRAM_INVITE_DBMS", ""),
     "Computer Networks": os.getenv("TELEGRAM_INVITE_CN", ""),
+    "High Level Design": os.getenv("TELEGRAM_INVITE_HLD", ""),
 }
 
 # Telethon MTProto client (bot or user session)
@@ -404,7 +408,7 @@ async def get_client() -> TelegramClient:
                 await _telethon_client.start()  # type: ignore
                 me = await _telethon_client.get_me()
                 print(f"[Telethon User] Connected as: {me.first_name} (@{me.username or me.id})")
-            else:
+            elif BOT_TOKEN:
                 _telethon_client = TelegramClient(
                     "edustream_bot.session", API_ID, API_HASH,
                     connection_retries=5,
@@ -413,6 +417,14 @@ async def get_client() -> TelegramClient:
                 await _telethon_client.start(bot_token=BOT_TOKEN)  # type: ignore
                 me = await _telethon_client.get_me()
                 print(f"[Telethon Bot] Connected as: @{me.username} (ID: {me.id})")
+            else:
+                _telethon_client = TelegramClient(
+                    "edustream_bot.session", API_ID, API_HASH,
+                    connection_retries=5,
+                    retry_delay=2,
+                )
+                await _telethon_client.connect()
+                print("[Telethon] Connected without credentials (read-only mode)")
 
             # Pre-warm entity cache for all configured channels via iter_dialogs
             if SESSION_STRING:
