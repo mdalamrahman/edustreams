@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { 
   Cpu, 
@@ -24,20 +24,9 @@ import {
   Play, 
   ZoomIn, 
   ZoomOut,
-  Terminal,
-  Columns,
-  Sparkle,
   X,
-  Globe,
-  Server,
-  Database,
-  Shield,
-  Cloud,
-  Box,
-  MonitorSmartphone,
   PlusCircle,
-  Trash2,
-  Move
+  LayoutTemplate
 } from 'lucide-react';
 import { LLD_PROBLEMS, LLDProblem } from '../lib/lldData';
 import { renderKrokiDiagram, DiagramType } from '../lib/kroki';
@@ -45,40 +34,95 @@ import { fetchGitHubMarkdown, CURATED_LLD_TOPICS, CuratedLLDTopic } from '../lib
 import { markLLDProblemSolved } from '../lib/analytics';
 import { requestMistralChat } from '../lib/mistral';
 import { convertCodeToUml } from '../lib/codeToUml';
-import { FormattedChatText } from './FormattedChatText';
 import { executeCode } from '../lib/compiler';
 import { GitHubArticleReader } from './GitHubArticleReader';
+import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 
-/* ── HLD Practice Hub Types ── */
-interface HLDComponent {
-  id: string;
-  type: string;
-  label: string;
-  x: number;
-  y: number;
-}
-
-const HLD_COMPONENT_PALETTE = [
-  { type: 'client', label: 'Client / Browser', icon: MonitorSmartphone, color: 'text-sky-400' },
-  { type: 'cdn', label: 'CDN', icon: Globe, color: 'text-emerald-400' },
-  { type: 'load_balancer', label: 'Load Balancer', icon: Layers, color: 'text-amber-400' },
-  { type: 'api_gateway', label: 'API Gateway', icon: Shield, color: 'text-indigo-400' },
-  { type: 'service', label: 'Microservice', icon: Server, color: 'text-purple-400' },
-  { type: 'database', label: 'Database', icon: Database, color: 'text-emerald-400' },
-  { type: 'cache', label: 'Cache (Redis)', icon: Zap, color: 'text-rose-400' },
-  { type: 'queue', label: 'Message Queue', icon: Box, color: 'text-orange-400' },
-  { type: 'storage', label: 'Object Storage', icon: Cloud, color: 'text-cyan-400' },
-];
-
-const HLD_PRACTICE_PROBLEMS = [
-  { id: 'hld-url-shortener', title: 'Design URL Shortener (TinyURL)', difficulty: 'Medium' as const, companies: ['Google', 'Meta', 'Amazon'] },
-  { id: 'hld-twitter-feed', title: 'Design Twitter / X Feed', difficulty: 'Hard' as const, companies: ['Meta', 'Twitter', 'Google'] },
-  { id: 'hld-chat-app', title: 'Design WhatsApp / Messenger', difficulty: 'Hard' as const, companies: ['Meta', 'Microsoft', 'Google'] },
-  { id: 'hld-video-streaming', title: 'Design YouTube / Netflix', difficulty: 'Hard' as const, companies: ['Google', 'Netflix', 'Amazon'] },
-  { id: 'hld-uber', title: 'Design Uber / Ride Sharing', difficulty: 'Hard' as const, companies: ['Uber', 'Lyft', 'Google'] },
-  { id: 'hld-notification', title: 'Design Notification System', difficulty: 'Medium' as const, companies: ['Meta', 'Amazon', 'Apple'] },
-  { id: 'hld-rate-limiter', title: 'Design Rate Limiter', difficulty: 'Medium' as const, companies: ['Stripe', 'Cloudflare', 'Amazon'] },
-  { id: 'hld-search-engine', title: 'Design Web Crawler & Search', difficulty: 'Hard' as const, companies: ['Google', 'Microsoft', 'Amazon'] },
+export const HLD_PRACTICE_PROBLEMS: HLDProblemSpec[] = [
+  {
+    id: 'hld-url-shortener',
+    title: 'Design URL Shortener (TinyURL)',
+    difficulty: 'Medium',
+    companies: ['Google', 'Meta', 'Amazon', 'Microsoft'],
+    description: 'Design a distributed, highly available URL shortening service that generates compact 7-character aliases for long URLs with sub-10ms redirection latency.',
+    requirements: [
+      'Shorten long URL into unique 7-char Base62 alias (e.g. tiny.url/xyz123).',
+      'Redirect short URL HTTP 301/302 to original destination with sub-10ms latency.',
+      'Analytics tracking (click count, geolocations, referral sources).',
+      'Custom alias support and optional TTL expiration dates.'
+    ],
+    expectedScale: '100M URLs generated / month • 10B Redirects / month (100:1 Read ratio) • 4k QPS Writes / 400k QPS Reads'
+  },
+  {
+    id: 'hld-twitter-feed',
+    title: 'Design Twitter / X Timeline & News Feed',
+    difficulty: 'Hard',
+    companies: ['Meta', 'Twitter', 'Google', 'Uber'],
+    description: 'Design a scalable social media newsfeed system capable of fan-out on write and fan-out on read for active vs celebrity users with low latency feed generation.',
+    requirements: [
+      'Post tweets (text, images, video links) and follow/unfollow users.',
+      'Generate Home Timeline (aggregated tweets from followed users sorted reverse chronologically).',
+      'Handle celebrity accounts (millions of followers) with hybrid fan-out model.',
+      'Sub-200ms timeline delivery under heavy read traffic.'
+    ],
+    expectedScale: '300M Daily Active Users • 500M Tweets / day • 6k Tweets/sec average (100k peak) • Timeline Reads: 300k QPS'
+  },
+  {
+    id: 'hld-chat-app',
+    title: 'Design WhatsApp / Messenger (Real-Time Chat)',
+    difficulty: 'Hard',
+    companies: ['Meta', 'Microsoft', 'Google', 'Telegram'],
+    description: 'Design an end-to-end encrypted real-time 1-on-1 and group messaging platform with message delivery receipts (sent, delivered, read), media uploads, and online presence.',
+    requirements: [
+      'Bi-directional real-time messaging via persistent WebSockets / TCP.',
+      'Message status tracking: Single check (Sent), Double check (Delivered), Blue check (Read).',
+      'Offline message queueing and synchronization across devices.',
+      'Group chats with up to 1,000 participants and media attachments.'
+    ],
+    expectedScale: '2 Billion Active Users • 100 Billion Messages / day • 1.2M Messages / sec • Millions of concurrent WebSockets'
+  },
+  {
+    id: 'hld-video-streaming',
+    title: 'Design YouTube / Netflix Video Streaming',
+    difficulty: 'Hard',
+    companies: ['Google', 'Netflix', 'Amazon', 'Apple'],
+    description: 'Design a global video streaming platform supporting chunked video uploads, distributed asynchronous transcoding pipelines, adaptive bitrate streaming (HLS/DASH), and CDN caching.',
+    requirements: [
+      'Seamless multi-resolution streaming (4K, 1080p, 720p, 480p, 360p) via adaptive bitrate.',
+      'Resumable chunked video uploads with automated transcoding job queue.',
+      'Global CDN edge caching for popular videos with high cache hit ratio (>95%).',
+      'Video metadata, comments, search, and view count aggregation.'
+    ],
+    expectedScale: '2.5B Monthly Users • 500 hours uploaded per min • 1B hours watched daily • 100+ Tbps peak egress bandwidth'
+  },
+  {
+    id: 'hld-uber',
+    title: 'Design Uber / Ride Sharing Location Engine',
+    difficulty: 'Hard',
+    companies: ['Uber', 'Lyft', 'Google', 'DoorDash'],
+    description: 'Design a real-time geospatial location tracking and dispatching system using QuadTrees or Google S2 / Uber H3 hexagonal spatial indexing for drivers and riders.',
+    requirements: [
+      'Real-time driver location updates every 3-5 seconds.',
+      'Geospatial search for nearest available drivers within radius in <100ms.',
+      'Trip lifecycle management: Request -> Matching -> Trip Active -> Completed.',
+      'Dynamic surge pricing calculation based on supply and demand heatmaps.'
+    ],
+    expectedScale: '100M Active Riders • 5M Active Drivers • 1M Location Updates / sec • Sub-50ms Geospatial Query Response'
+  },
+  {
+    id: 'hld-rate-limiter',
+    title: 'Design Distributed API Rate Limiter',
+    difficulty: 'Medium',
+    companies: ['Stripe', 'Cloudflare', 'Amazon', 'Twilio'],
+    description: 'Design a high-throughput, low-latency rate limiting middleware service using Sliding Window Log and Token Bucket algorithms with distributed Redis synchronization.',
+    requirements: [
+      'Enforce per-client / per-IP rate limits across multi-region server clusters.',
+      'Return HTTP 429 with Retry-After headers when limit is exceeded.',
+      'Sub-millisecond processing overhead per incoming API request.',
+      'Configurable rate limiting rules per tier/endpoint.'
+    ],
+    expectedScale: '10 Billion Requests / day • 150k QPS peak • <1ms latency overhead per request'
+  }
 ];
 
 interface SystemDesignHubProps {
@@ -123,15 +167,11 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
   const [githubMarkdown, setGithubMarkdown] = useState<string>('');
   const [isLoadingGithub, setIsLoadingGithub] = useState(false);
 
-  // ── HLD Practice State ──
-  const [activeHldProblem, setActiveHldProblem] = useState<typeof HLD_PRACTICE_PROBLEMS[0] | null>(null);
-  const [hldComponents, setHldComponents] = useState<HLDComponent[]>([]);
-  const [hldNextId, setHldNextId] = useState(1);
-  const [hldAiReview, setHldAiReview] = useState<string | null>(null);
-  const [isHldReviewing, setIsHldReviewing] = useState(false);
-  const [hldNotes, setHldNotes] = useState('');
+  // ── HLD Practice Canvas State ──
+  const [activeHldProblem, setActiveHldProblem] = useState<HLDProblemSpec | null>(null);
+  const [isFreeformHldCanvas, setIsFreeformHldCanvas] = useState(false);
 
-  // Load starter stub on problem open (don't generate diagram until compile succeeds)
+  // Load starter stub on problem open
   useEffect(() => {
     if (activeProblem) {
       const starter = activeProblem.starterCode[codeLanguage] || activeProblem.starterCode.java;
@@ -262,61 +302,6 @@ Provide:
     }
   };
 
-  // ── HLD Practice Functions ──
-  const handleAddHldComponent = (type: string, label: string) => {
-    const newComp: HLDComponent = {
-      id: `hld-comp-${hldNextId}`,
-      type,
-      label: `${label} ${hldNextId}`,
-      x: 50 + Math.random() * 400,
-      y: 50 + Math.random() * 300,
-    };
-    setHldComponents(prev => [...prev, newComp]);
-    setHldNextId(prev => prev + 1);
-  };
-
-  const handleRemoveHldComponent = (id: string) => {
-    setHldComponents(prev => prev.filter(c => c.id !== id));
-  };
-
-  const handleHldAIReview = async () => {
-    if (!activeHldProblem) return;
-    setIsHldReviewing(true);
-    setHldAiReview(null);
-
-    const componentsList = hldComponents.map(c => `- ${c.label} (${c.type})`).join('\n');
-    const prompt = `You are a Principal System Design Architect reviewing a High-Level Design (HLD) solution for "${activeHldProblem.title}".
-
-The candidate has placed these components in their architecture:
-${componentsList || '(No components placed yet)'}
-
-Additional notes from candidate:
-${hldNotes || '(None)'}
-
-Provide a comprehensive HLD review covering:
-1. Architecture Score (0-100) & Missing Components
-2. Scalability Analysis (can it handle 10M+ DAU?)
-3. Single Points of Failure & Redundancy
-4. Data Flow Correctness
-5. Caching Strategy Assessment
-6. Suggested Improvements & Best Practices
-7. What components are missing for production readiness?`;
-
-    try {
-      const response = await requestMistralChat([
-        { role: 'system', content: 'You are a Principal System Design Architect at a FAANG company reviewing High-Level Design interview solutions.' },
-        { role: 'user', content: prompt }
-      ]);
-      setHldAiReview(response.content);
-    } catch {
-      setHldAiReview('Review could not be completed. Please try again.');
-    } finally {
-      setIsHldReviewing(false);
-    }
-  };
-
-  const rightWidth = 100 - 30 - 40; // fallback
-
   const filteredProblems = useMemo(() => {
     return LLD_PROBLEMS.filter((p) => {
       const matchesCat = selectedCategory === 'ALL' || p.category === selectedCategory;
@@ -328,10 +313,18 @@ Provide a comprehensive HLD review covering:
     });
   }, [selectedCategory, searchQuery]);
 
+  const filteredHldProblems = useMemo(() => {
+    return HLD_PRACTICE_PROBLEMS.filter((p) => {
+      return !searchQuery || 
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        p.companies.some(c => c.toLowerCase().includes(searchQuery.toLowerCase()));
+    });
+  }, [searchQuery]);
+
   return (
     <div className="w-full space-y-6 animate-fadeIn pb-12">
       
-      {/* ═══ LLD STUDIO VIEW (In-Page, No Popup) ═══ */}
+      {/* ═══ 1. LLD STUDIO VIEW (In-Page, 2-Panel, Diagram Popup) ═══ */}
       {activeProblem ? (
         <div className="w-full space-y-4 animate-fadeIn">
           
@@ -642,149 +635,18 @@ Provide a comprehensive HLD review covering:
 
         </div>
 
-      ) : activeHldProblem ? (
-        /* ═══ HLD PRACTICE STUDIO ═══ */
-        <div className="w-full space-y-4 animate-fadeIn">
-          
-          {/* HLD Header */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-slate-950 border border-amber-500/30 shadow-xl flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => { setActiveHldProblem(null); setHldComponents([]); setHldAiReview(null); setHldNotes(''); }}
-                className="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>All HLD Questions</span>
-              </button>
-              <span className="font-extrabold text-[11px] text-amber-400 font-mono tracking-wider px-2.5 py-1 rounded-xl bg-amber-950/80 border border-amber-800/60">
-                SDETUBE HLD
-              </span>
-              <h3 className="text-sm sm:text-base font-bold text-slate-100">{activeHldProblem.title}</h3>
-            </div>
-            <button
-              onClick={handleHldAIReview}
-              disabled={isHldReviewing}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isHldReviewing ? 'Reviewing...' : 'AI Architecture Review'}</span>
-            </button>
-          </div>
-
-          <div className="w-full flex flex-col lg:flex-row gap-4 min-h-[650px]">
-            
-            {/* LEFT: Component Palette & Notes */}
-            <div className="w-full lg:w-[25%] glass-panel p-5 rounded-3xl border border-slate-800/80 bg-slate-950/80 space-y-5 overflow-y-auto custom-scrollbar">
-              <div>
-                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Architecture Components</span>
-                </h4>
-                <p className="text-[11px] text-slate-400 mb-4">Click to add components to your design canvas.</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {HLD_COMPONENT_PALETTE.map((comp) => (
-                    <button
-                      key={comp.type}
-                      onClick={() => handleAddHldComponent(comp.type, comp.label)}
-                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 text-left transition-all cursor-pointer group"
-                    >
-                      <comp.icon className={`w-4 h-4 ${comp.color} group-hover:scale-110 transition-transform`} />
-                      <span className="text-xs text-slate-300 font-semibold">{comp.label}</span>
-                      <PlusCircle className="w-3 h-3 text-slate-600 group-hover:text-amber-400 ml-auto transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Design Notes</h4>
-                <textarea
-                  value={hldNotes}
-                  onChange={(e) => setHldNotes(e.target.value)}
-                  placeholder="Describe your architecture decisions, data flow, scaling strategy..."
-                  className="w-full h-32 p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-indigo-500 font-sans leading-relaxed"
-                />
-              </div>
-            </div>
-
-            {/* CENTER: Architecture Design Canvas */}
-            <div className="w-full lg:w-[50%] glass-panel rounded-3xl border border-amber-500/20 bg-slate-900/60 overflow-hidden flex flex-col shadow-2xl">
-              <div className="h-10 px-4 bg-slate-950 text-[11px] font-mono text-slate-400 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
-                <span className="text-amber-300 font-bold flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Architecture Canvas — {hldComponents.length} Components</span>
-                </span>
-                <button
-                  onClick={() => setHldComponents([])}
-                  className="text-slate-500 hover:text-red-400 text-[10px] flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Clear</span>
-                </button>
-              </div>
-
-              <div className="flex-1 p-4 overflow-auto custom-scrollbar relative bg-[radial-gradient(circle,_rgba(255,255,255,0.02)_1px,_transparent_1px)] bg-[length:24px_24px]" style={{ minHeight: 500 }}>
-                {hldComponents.length === 0 ? (
-                  <div className="absolute inset-0 flex items-center justify-center text-center">
-                    <div className="space-y-3">
-                      <Layers className="w-16 h-16 mx-auto text-slate-700" />
-                      <p className="text-sm text-slate-500 font-mono">Click components on the left to build your architecture</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-4 justify-center items-start pt-4">
-                    {hldComponents.map((comp) => {
-                      const palette = HLD_COMPONENT_PALETTE.find(p => p.type === comp.type);
-                      const IconComp = palette?.icon || Box;
-                      return (
-                        <div
-                          key={comp.id}
-                          className="relative p-4 rounded-2xl bg-slate-950/90 border border-slate-700 hover:border-amber-500/60 shadow-xl min-w-[140px] text-center group transition-all"
-                        >
-                          <button
-                            onClick={() => handleRemoveHldComponent(comp.id)}
-                            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
-                          >
-                            ×
-                          </button>
-                          <IconComp className={`w-8 h-8 mx-auto mb-2 ${palette?.color || 'text-slate-400'}`} />
-                          <p className="text-xs font-bold text-slate-200">{comp.label}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">{comp.type}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* RIGHT: AI Review Panel */}
-            <div className="w-full lg:w-[25%] glass-panel p-5 rounded-3xl border border-slate-800/80 bg-slate-950/80 overflow-y-auto custom-scrollbar space-y-4">
-              <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>AI Architecture Review</span>
-              </h4>
-              
-              {isHldReviewing ? (
-                <div className="py-16 text-center text-slate-400 font-mono text-xs animate-pulse">
-                  Analyzing your system design architecture...
-                </div>
-              ) : hldAiReview ? (
-                <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
-                  {hldAiReview}
-                </div>
-              ) : (
-                <div className="py-16 text-center text-slate-500 text-xs font-mono space-y-2">
-                  <Sparkles className="w-10 h-10 mx-auto text-slate-600 mb-3" />
-                  <p>Place your system design components and click "AI Architecture Review" to get a comprehensive evaluation.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      ) : (activeHldProblem || isFreeformHldCanvas) ? (
+        /* ═══ 2. HLD DRAGGABLE ARCHITECTURE STUDIO CANVAS ═══ */
+        <HLDArchitectureCanvas
+          problem={activeHldProblem || undefined}
+          onBack={() => {
+            setActiveHldProblem(null);
+            setIsFreeformHldCanvas(false);
+          }}
+        />
 
       ) : (
-        /* ═══ MAIN HUB VIEW ═══ */
+        /* ═══ 3. MAIN HUB VIEW (LLD Problems, HLD Problems, Design Primers) ═══ */
         <div className="space-y-6">
           
           {/* Hub Header Banner */}
@@ -793,15 +655,16 @@ Provide a comprehensive HLD review covering:
               <div>
                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 font-mono text-[11px] font-bold w-fit mb-3">
                   <Cpu className="w-3.5 h-3.5 text-amber-300" />
-                  <span>SDETUBE &bull; LLD + HLD PRACTICE &bull; OOP CODE STUDIO</span>
+                  <span>SDETUBE &bull; LLD + HLD PRACTICE &bull; OOP CODE & ARCHITECTURE STUDIO</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
-                  SDETube System Design & LLD Practice Hub
+                  SDETube System Design & Architecture Hub
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                  Practice LLD with Monaco code editor & online compiler, build HLD architectures with drag-and-drop components, and get evaluated by AI.
+                  Solve real-world LLD problems with Monaco OOP compiler, build high-availability distributed systems on an interactive draggable HLD canvas with directional data flows, and get evaluated by AI.
                 </p>
               </div>
+
               <div className="flex items-center gap-3">
                 <div className="px-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
                   <div className="text-xs font-bold text-purple-400">LLD Solved</div>
@@ -809,11 +672,18 @@ Provide a comprehensive HLD review covering:
                     {solvedLldIds.length} <span className="text-xs text-slate-500">/ {LLD_PROBLEMS.length}</span>
                   </div>
                 </div>
+
+                <div className="px-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+                  <div className="text-xs font-bold text-amber-400">HLD Tracks</div>
+                  <div className="text-xl font-black text-slate-100 font-mono mt-0.5">
+                    {HLD_PRACTICE_PROBLEMS.length} <span className="text-xs text-slate-500">Tracks</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Main Navigation Tabs */}
+          {/* Main Navigation Tabs & Freeform Canvas Trigger */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-4 flex-wrap">
             <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
               <button
@@ -845,18 +715,30 @@ Provide a comprehensive HLD review covering:
               </button>
             </div>
 
-            {(activeView === 'lld_problems' || activeView === 'hld_practice') && (
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 text-purple-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by company, pattern, topic..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500"
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {activeView === 'hld_practice' && (
+                <button
+                  onClick={() => setIsFreeformHldCanvas(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Open Freeform Canvas</span>
+                </button>
+              )}
+
+              {(activeView === 'lld_problems' || activeView === 'hld_practice') && (
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-purple-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by company, pattern, topic..."
+                    className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* LLD Questions Grid */}
@@ -918,31 +800,42 @@ Provide a comprehensive HLD review covering:
 
           {/* HLD Practice Grid */}
           {activeView === 'hld_practice' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {HLD_PRACTICE_PROBLEMS.filter(p => !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.companies.some(c => c.toLowerCase().includes(searchQuery.toLowerCase()))).map((prob) => (
-                <div key={prob.id} className="glass-panel p-6 rounded-3xl border border-slate-800/80 hover:border-amber-500/80 hover:bg-amber-950/10 transition-all flex flex-col justify-between group">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredHldProblems.map((prob) => (
+                <div key={prob.id} className="glass-panel p-6 rounded-3xl border border-slate-800/80 hover:border-amber-500/80 hover:bg-amber-950/10 transition-all flex flex-col justify-between group shadow-xl">
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="px-2.5 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-[10px] font-mono font-bold text-amber-300">
-                        HLD
+                        HLD ARCHITECTURE
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
                         prob.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' : 'bg-rose-950 border-rose-700 text-rose-300'
                       }`}>{prob.difficulty}</span>
                     </div>
+
                     <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors mb-2">{prob.title}</h3>
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-4">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{prob.companies.join(', ')}</span>
+                    <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">{prob.description}</p>
+                    
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 mb-4 text-[11px]">
+                      <p className="text-amber-400 font-bold mb-1">Scale Target:</p>
+                      <p className="text-slate-300 font-mono text-[10px] line-clamp-2">{prob.expectedScale}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setActiveHldProblem(prob)}
-                    className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Design Architecture</span>
-                  </button>
+
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mb-4 truncate">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate">{prob.companies.join(', ')}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setActiveHldProblem(prob)}
+                      className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Open HLD Visual Studio</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
