@@ -43,6 +43,7 @@ import {
   Crosshair
 } from 'lucide-react';
 import { requestMistralChat } from '../lib/mistral';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export interface HLDNode {
   id: string;
@@ -290,6 +291,27 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
       handleFitToScreen();
     }, 100);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Non-passive Wheel Listener for Smooth Panning & Zooming without console errors
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    const handleWheelNative = (e: WheelEvent) => {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) {
+        setZoom(z => Math.min(2.5, Math.max(0.35, z - e.deltaY * 0.002)));
+      } else {
+        setPan(p => ({
+          x: p.x - e.deltaX,
+          y: p.y - e.deltaY
+        }));
+      }
+    };
+
+    el.addEventListener('wheel', handleWheelNative, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheelNative);
   }, []);
 
   // Get Port Absolute Coordinates for a node
@@ -661,17 +683,6 @@ Evaluate this high-level architecture thoroughly and provide a structured review
           ref={canvasRef}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
-          onWheel={(e) => {
-            e.preventDefault();
-            if (e.ctrlKey || e.metaKey) {
-              setZoom(z => Math.min(2.5, Math.max(0.35, z - e.deltaY * 0.002)));
-            } else {
-              setPan(p => ({
-                x: p.x - e.deltaX,
-                y: p.y - e.deltaY
-              }));
-            }
-          }}
           onMouseDown={(e) => {
             // Drag on background starts canvas panning
             setIsPanning(true);
@@ -1077,9 +1088,10 @@ Evaluate this high-level architecture thoroughly and provide a structured review
                 <p className="text-slate-500 text-[11px]">Analyzing caching hit ratios, SPOFs, DB replication, and async message streaming</p>
               </div>
             ) : aiReport ? (
-              <div className="p-5 rounded-2xl bg-slate-900/90 border border-indigo-900/50 text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
-                {aiReport}
-              </div>
+              <MarkdownRenderer 
+                content={aiReport} 
+                className="p-5 rounded-2xl bg-slate-900/90 border border-indigo-900/50 shadow-xl" 
+              />
             ) : null}
           </div>
         </div>

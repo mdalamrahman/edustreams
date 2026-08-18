@@ -125,10 +125,12 @@ class ParkingSpot {
 
     public synchronized boolean isAvailable() {
         // TODO: Check if spot is unoccupied
-        return vehicle == null;
+        // TODO: Check if spot is vacant
+        return false;
     }
 
     public synchronized boolean assign(Vehicle v) {
+        // TODO: Validate spot type and assign vehicle thread-safely
         // TODO: Validate spot type and assign vehicle thread-safely
         return false;
     }

@@ -37,6 +37,7 @@ import { convertCodeToUml } from '../lib/codeToUml';
 import { executeCode } from '../lib/compiler';
 import { GitHubArticleReader } from './GitHubArticleReader';
 import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export const HLD_PRACTICE_PROBLEMS: HLDProblemSpec[] = [
   {
@@ -717,9 +718,10 @@ Provide:
                     Evaluating OOP architecture against SOLID principles...
                   </div>
                 ) : aiEvaluation ? (
-                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-purple-900/50 text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-                    {aiEvaluation}
-                  </div>
+                  <MarkdownRenderer 
+                    content={aiEvaluation} 
+                    className="p-5 rounded-2xl bg-slate-900/90 border border-purple-900/50 shadow-xl" 
+                  />
                 ) : null}
               </div>
             </div>
