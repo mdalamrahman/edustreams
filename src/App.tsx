@@ -394,6 +394,7 @@ export function App() {
           'System Design': 'ch-sd-02',
           'DBMS': 'ch-dbms-03',
           'Computer Networks': 'ch-cn-04',
+          'High Level Design': 'ch-hld-05',
         };
 
         for (const [chName, chData] of Object.entries(channels) as [string, any][]) {

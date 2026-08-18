@@ -658,6 +658,9 @@ TITLE_SEARCH_MAP = {
     -1004308430774: "striver cn",
     1004308430774: "striver cn",
     4308430774: "striver cn",
+    -5501631117: "neetcode system design hld",
+    5501631117: "neetcode system design hld",
+    -1005501631117: "neetcode system design hld",
 }
 
 
@@ -666,6 +669,7 @@ MOCK_CHANNEL_ID_MAP = {
     "ch-sd-02": -1004329144420,
     "ch-dbms-03": -1004332462419,
     "ch-cn-04": -1004308430774,
+    "ch-hld-05": -5501631117,
 }
 
 
@@ -829,6 +833,29 @@ async def fetch_channel_videos(chat_id: int, limit: int = 0):
                 if limit > 0 and len(videos) >= limit:
                     break
 
+        # If empty (e.g. bot permissions on basic group), load cached HLD video catalog fallback
+        if len(videos) == 0 and str(chat_id) in ["-5501631117", "5501631117", "-1005501631117", "ch-hld-05"]:
+            hld_path = os.path.join(os.path.dirname(__file__), "hld_videos.json")
+            if os.path.exists(hld_path):
+                try:
+                    with open(hld_path, "r", encoding="utf-8") as f:
+                        hld_data = json.load(f)
+                        for item in hld_data:
+                            videos.append({
+                                "msg_id": item.get("telegram_message_id", 0),
+                                "file_id": item.get("telegram_file_id", ""),
+                                "file_name": (item.get("attachments", [{}])[0].get("file_name") if item.get("attachments") else item.get("title", "")) or item.get("title", ""),
+                                "size_bytes": item.get("attachments", [{}])[0].get("file_size_bytes", 30000000) if item.get("attachments") else 30000000,
+                                "size_mb": round((item.get("attachments", [{}])[0].get("file_size_bytes", 30000000) if item.get("attachments") else 30000000) / (1024 * 1024), 1),
+                                "duration": item.get("duration_seconds", 300),
+                                "mime_type": "video/mp4",
+                                "caption": item.get("telegram_caption", ""),
+                                "date": item.get("created_at"),
+                                "stream_url": f"/stream/{chat_id}/{item.get('telegram_message_id')}",
+                            })
+                except Exception as ex:
+                    print(f"[Catalog Fallback Error]: {ex}")
+
         # Sort chronologically: oldest message first (ascending msg_id)
         videos.sort(key=lambda v: v["msg_id"])
 
@@ -836,6 +863,28 @@ async def fetch_channel_videos(chat_id: int, limit: int = 0):
 
     except Exception as e:
         print(f"[Catalog] Error for chat {chat_id}: {e}")
+        # Final fallback for HLD
+        if str(chat_id) in ["-5501631117", "5501631117", "-1005501631117", "ch-hld-05"]:
+            hld_path = os.path.join(os.path.dirname(__file__), "hld_videos.json")
+            if os.path.exists(hld_path):
+                try:
+                    with open(hld_path, "r", encoding="utf-8") as f:
+                        hld_data = json.load(f)
+                        fallback_vids = [{
+                            "msg_id": item.get("telegram_message_id", 0),
+                            "file_id": item.get("telegram_file_id", ""),
+                            "file_name": item.get("title", ""),
+                            "size_bytes": 30000000,
+                            "size_mb": 30.0,
+                            "duration": item.get("duration_seconds", 300),
+                            "mime_type": "video/mp4",
+                            "caption": item.get("telegram_caption", ""),
+                            "date": item.get("created_at"),
+                            "stream_url": f"/stream/{chat_id}/{item.get('telegram_message_id')}",
+                        } for item in hld_data]
+                        return {"chat_id": chat_id, "count": len(fallback_vids), "videos": fallback_vids}
+                except Exception:
+                    pass
         return {"chat_id": chat_id, "count": 0, "videos": [], "error": str(e)}
 
 

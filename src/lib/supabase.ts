@@ -5178,4 +5178,565 @@ export const MOCK_VIDEOS: Video[] = [
     }
   ]
 }
+,
+{
+  "id": "tg-exact-hld-7310",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700559",
+  "telegram_message_id": 7310,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 00 - Computer Architecture",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 31.5 MB]\nFile: 00 - Computer Architecture.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 00 - Computer Architecture.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7310",
+  "created_at": "2026-08-18T05:39:23+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7310",
+      "video_id": "tg-exact-hld-7310",
+      "telegram_file_id": "6062096723394700559",
+      "file_name": "00 - Computer Architecture.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 33028211,
+      "download_url": "/api/download/-5501631117/7310?file_name=00 - Computer Architecture.mp4",
+      "created_at": "2026-08-18T05:39:23+00:00",
+      "caption": "Lecture Video Attachment (00 - Computer Architecture.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7311",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700560",
+  "telegram_message_id": 7311,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 01 - Application Architecture",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 23.9 MB]\nFile: 01 - Application Architecture.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 01 - Application Architecture.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7311",
+  "created_at": "2026-08-18T05:40:47+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7311",
+      "video_id": "tg-exact-hld-7311",
+      "telegram_file_id": "6062096723394700560",
+      "file_name": "01 - Application Architecture.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 25048547,
+      "download_url": "/api/download/-5501631117/7311?file_name=01 - Application Architecture.mp4",
+      "created_at": "2026-08-18T05:40:47+00:00",
+      "caption": "Lecture Video Attachment (01 - Application Architecture.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7312",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700564",
+  "telegram_message_id": 7312,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 02 - Design Requirements",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 62.3 MB]\nFile: 02 - Design Requirements.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 02 - Design Requirements.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7312",
+  "created_at": "2026-08-18T05:42:30+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7312",
+      "video_id": "tg-exact-hld-7312",
+      "telegram_file_id": "6062096723394700564",
+      "file_name": "02 - Design Requirements.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 65325617,
+      "download_url": "/api/download/-5501631117/7312?file_name=02 - Design Requirements.mp4",
+      "created_at": "2026-08-18T05:42:30+00:00",
+      "caption": "Lecture Video Attachment (02 - Design Requirements.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7313",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700566",
+  "telegram_message_id": 7313,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 03 - Networking Basics",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 45.4 MB]\nFile: 03 - Networking Basics.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 03 - Networking Basics.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7313",
+  "created_at": "2026-08-18T05:47:11+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7313",
+      "video_id": "tg-exact-hld-7313",
+      "telegram_file_id": "6062096723394700566",
+      "file_name": "03 - Networking Basics.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 47569003,
+      "download_url": "/api/download/-5501631117/7313?file_name=03 - Networking Basics.mp4",
+      "created_at": "2026-08-18T05:47:11+00:00",
+      "caption": "Lecture Video Attachment (03 - Networking Basics.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7314",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700567",
+  "telegram_message_id": 7314,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 04 - TCP and UDP",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 27.3 MB]\nFile: 04 - TCP and UDP.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 04 - TCP and UDP.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7314",
+  "created_at": "2026-08-18T05:47:34+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7314",
+      "video_id": "tg-exact-hld-7314",
+      "telegram_file_id": "6062096723394700567",
+      "file_name": "04 - TCP and UDP.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 28638872,
+      "download_url": "/api/download/-5501631117/7314?file_name=04 - TCP and UDP.mp4",
+      "created_at": "2026-08-18T05:47:34+00:00",
+      "caption": "Lecture Video Attachment (04 - TCP and UDP.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7315",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700568",
+  "telegram_message_id": 7315,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 05 - DNS",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 29.1 MB]\nFile: 05 - DNS.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 05 - DNS.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7315",
+  "created_at": "2026-08-18T05:48:55+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7315",
+      "video_id": "tg-exact-hld-7315",
+      "telegram_file_id": "6062096723394700568",
+      "file_name": "05 - DNS.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 30482652,
+      "download_url": "/api/download/-5501631117/7315?file_name=05 - DNS.mp4",
+      "created_at": "2026-08-18T05:48:55+00:00",
+      "caption": "Lecture Video Attachment (05 - DNS.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7316",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700571",
+  "telegram_message_id": 7316,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 06 - HTTP",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 102.2 MB]\nFile: 06 - HTTP.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 06 - HTTP.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7316",
+  "created_at": "2026-08-18T05:50:25+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7316",
+      "video_id": "tg-exact-hld-7316",
+      "telegram_file_id": "6062096723394700571",
+      "file_name": "06 - HTTP.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 107147503,
+      "download_url": "/api/download/-5501631117/7316?file_name=06 - HTTP.mp4",
+      "created_at": "2026-08-18T05:50:25+00:00",
+      "caption": "Lecture Video Attachment (06 - HTTP.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7317",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700584",
+  "telegram_message_id": 7317,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 07 - WebSockets",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 36.0 MB]\nFile: 07 - WebSockets.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 07 - WebSockets.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7317",
+  "created_at": "2026-08-18T06:11:17+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7317",
+      "video_id": "tg-exact-hld-7317",
+      "telegram_file_id": "6062096723394700584",
+      "file_name": "07 - WebSockets.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 37774161,
+      "download_url": "/api/download/-5501631117/7317?file_name=07 - WebSockets.mp4",
+      "created_at": "2026-08-18T06:11:17+00:00",
+      "caption": "Lecture Video Attachment (07 - WebSockets.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7318",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700587",
+  "telegram_message_id": 7318,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 08 - API Paradigms",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 102.1 MB]\nFile: 08 - API Paradigms.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 08 - API Paradigms.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7318",
+  "created_at": "2026-08-18T06:17:06+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7318",
+      "video_id": "tg-exact-hld-7318",
+      "telegram_file_id": "6062096723394700587",
+      "file_name": "08 - API Paradigms.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 107070738,
+      "download_url": "/api/download/-5501631117/7318?file_name=08 - API Paradigms.mp4",
+      "created_at": "2026-08-18T06:17:06+00:00",
+      "caption": "Lecture Video Attachment (08 - API Paradigms.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7319",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700593",
+  "telegram_message_id": 7319,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 09 - API Design",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 98.9 MB]\nFile: 09 - API Design.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 09 - API Design.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7319",
+  "created_at": "2026-08-18T06:21:20+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7319",
+      "video_id": "tg-exact-hld-7319",
+      "telegram_file_id": "6062096723394700593",
+      "file_name": "09 - API Design.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 103659593,
+      "download_url": "/api/download/-5501631117/7319?file_name=09 - API Design.mp4",
+      "created_at": "2026-08-18T06:21:20+00:00",
+      "caption": "Lecture Video Attachment (09 - API Design.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7320",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700603",
+  "telegram_message_id": 7320,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 10 - Caching",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 65.4 MB]\nFile: 10 - Caching.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 10 - Caching.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7320",
+  "created_at": "2026-08-18T06:37:36+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7320",
+      "video_id": "tg-exact-hld-7320",
+      "telegram_file_id": "6062096723394700603",
+      "file_name": "10 - Caching.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 68591044,
+      "download_url": "/api/download/-5501631117/7320?file_name=10 - Caching.mp4",
+      "created_at": "2026-08-18T06:37:36+00:00",
+      "caption": "Lecture Video Attachment (10 - Caching.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7321",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700610",
+  "telegram_message_id": 7321,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 11 - CDNs",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 96.9 MB]\nFile: 11 - CDNs.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 11 - CDNs.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7321",
+  "created_at": "2026-08-18T06:57:46+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7321",
+      "video_id": "tg-exact-hld-7321",
+      "telegram_file_id": "6062096723394700610",
+      "file_name": "11 - CDNs.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 101649872,
+      "download_url": "/api/download/-5501631117/7321?file_name=11 - CDNs.mp4",
+      "created_at": "2026-08-18T06:57:46+00:00",
+      "caption": "Lecture Video Attachment (11 - CDNs.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7322",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700645",
+  "telegram_message_id": 7322,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 12 - Proxies and Load Balancing",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 39.3 MB]\nFile: 12 - Proxies and Load Balancing.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 12 - Proxies and Load Balancing.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7322",
+  "created_at": "2026-08-18T07:34:58+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7322",
+      "video_id": "tg-exact-hld-7322",
+      "telegram_file_id": "6062096723394700645",
+      "file_name": "12 - Proxies and Load Balancing.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 41211504,
+      "download_url": "/api/download/-5501631117/7322?file_name=12 - Proxies and Load Balancing.mp4",
+      "created_at": "2026-08-18T07:34:58+00:00",
+      "caption": "Lecture Video Attachment (12 - Proxies and Load Balancing.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7323",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700650",
+  "telegram_message_id": 7323,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 13 - Consistent Hashing",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 40.8 MB]\nFile: 13 - Consistent Hashing.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 13 - Consistent Hashing.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7323",
+  "created_at": "2026-08-18T07:41:32+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7323",
+      "video_id": "tg-exact-hld-7323",
+      "telegram_file_id": "6062096723394700650",
+      "file_name": "13 - Consistent Hashing.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 42830666,
+      "download_url": "/api/download/-5501631117/7323?file_name=13 - Consistent Hashing.mp4",
+      "created_at": "2026-08-18T07:41:32+00:00",
+      "caption": "Lecture Video Attachment (13 - Consistent Hashing.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7324",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700652",
+  "telegram_message_id": 7324,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 14 - SQL",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 58.2 MB]\nFile: 14 - SQL.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 14 - SQL.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7324",
+  "created_at": "2026-08-18T07:41:57+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7324",
+      "video_id": "tg-exact-hld-7324",
+      "telegram_file_id": "6062096723394700652",
+      "file_name": "14 - SQL.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 61069655,
+      "download_url": "/api/download/-5501631117/7324?file_name=14 - SQL.mp4",
+      "created_at": "2026-08-18T07:41:57+00:00",
+      "caption": "Lecture Video Attachment (14 - SQL.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7325",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700653",
+  "telegram_message_id": 7325,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 15 - NoSQL",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 50.0 MB]\nFile: 15 - NoSQL.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 15 - NoSQL.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7325",
+  "created_at": "2026-08-18T07:42:18+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7325",
+      "video_id": "tg-exact-hld-7325",
+      "telegram_file_id": "6062096723394700653",
+      "file_name": "15 - NoSQL.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 52406343,
+      "download_url": "/api/download/-5501631117/7325?file_name=15 - NoSQL.mp4",
+      "created_at": "2026-08-18T07:42:18+00:00",
+      "caption": "Lecture Video Attachment (15 - NoSQL.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7326",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700658",
+  "telegram_message_id": 7326,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 16 - Replication and Sharding",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 51.4 MB]\nFile: 16 - Replication and Sharding.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 16 - Replication and Sharding.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7326",
+  "created_at": "2026-08-18T07:45:04+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7326",
+      "video_id": "tg-exact-hld-7326",
+      "telegram_file_id": "6062096723394700658",
+      "file_name": "16 - Replication and Sharding.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 53898498,
+      "download_url": "/api/download/-5501631117/7326?file_name=16 - Replication and Sharding.mp4",
+      "created_at": "2026-08-18T07:45:04+00:00",
+      "caption": "Lecture Video Attachment (16 - Replication and Sharding.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7327",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700659",
+  "telegram_message_id": 7327,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 17 - CAP Theorem",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 41.5 MB]\nFile: 17 - CAP Theorem.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 17 - CAP Theorem.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7327",
+  "created_at": "2026-08-18T07:45:29+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7327",
+      "video_id": "tg-exact-hld-7327",
+      "telegram_file_id": "6062096723394700659",
+      "file_name": "17 - CAP Theorem.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 43498157,
+      "download_url": "/api/download/-5501631117/7327?file_name=17 - CAP Theorem.mp4",
+      "created_at": "2026-08-18T07:45:29+00:00",
+      "caption": "Lecture Video Attachment (17 - CAP Theorem.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7328",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700660",
+  "telegram_message_id": 7328,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 18 - Object Storage",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 15.0 MB]\nFile: 18 - Object Storage.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 18 - Object Storage.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7328",
+  "created_at": "2026-08-18T07:45:38+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7328",
+      "video_id": "tg-exact-hld-7328",
+      "telegram_file_id": "6062096723394700660",
+      "file_name": "18 - Object Storage.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 15699269,
+      "download_url": "/api/download/-5501631117/7328?file_name=18 - Object Storage.mp4",
+      "created_at": "2026-08-18T07:45:38+00:00",
+      "caption": "Lecture Video Attachment (18 - Object Storage.mp4)"
+    }
+  ]
+},
+{
+  "id": "tg-exact-hld-7329",
+  "channel_id": "ch-hld-05",
+  "telegram_file_id": "6062096723394700663",
+  "telegram_message_id": 7329,
+  "sender_username": "@NeetCode_Faculty",
+  "title": "HLD Lecture 19 - Message Queues",
+  "telegram_caption": "\ud83d\udccc [HLD Module | Size: 22.3 MB]\nFile: 19 - Message Queues.mp4\nCourse: Neetcode System Design HLD",
+  "duration_seconds": 300,
+  "transcript": "NeetCode System Design High Level Design Lecture: 19 - Message Queues.mp4. High-definition stream.",
+  "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7329",
+  "created_at": "2026-08-18T07:45:51+00:00",
+  "quiz_json": [],
+  "attachments": [
+    {
+      "id": "att-exact-hld-7329",
+      "video_id": "tg-exact-hld-7329",
+      "telegram_file_id": "6062096723394700663",
+      "file_name": "19 - Message Queues.mp4",
+      "file_type": "mp4",
+      "file_size_bytes": 23408388,
+      "download_url": "/api/download/-5501631117/7329?file_name=19 - Message Queues.mp4",
+      "created_at": "2026-08-18T07:45:51+00:00",
+      "caption": "Lecture Video Attachment (19 - Message Queues.mp4)"
+    }
+  ]
+}
 ];
