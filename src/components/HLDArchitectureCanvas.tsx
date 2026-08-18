@@ -40,7 +40,39 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeft,
-  Crosshair
+  Crosshair,
+  Smartphone,
+  Laptop,
+  Flame,
+  Binary,
+  FolderArchive,
+  Workflow,
+  Network,
+  Split,
+  Boxes,
+  Key,
+  CreditCard,
+  Bell,
+  Mail,
+  LineChart,
+  BarChart3,
+  LayoutDashboard,
+  Type,
+  Square,
+  User,
+  Users,
+  Share2,
+  Compass,
+  Webhook,
+  Clock,
+  Timer,
+  Building2,
+  Eye,
+  ShieldCheck,
+  ShieldAlert,
+  HelpCircle,
+  PenTool,
+  Pencil
 } from 'lucide-react';
 import { requestMistralChat } from '../lib/mistral';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -54,7 +86,7 @@ export interface HLDNode {
   y: number;
   width: number;
   height: number;
-  category: 'client' | 'gateway' | 'compute' | 'storage' | 'cache' | 'queue' | 'security';
+  category: 'client' | 'gateway' | 'compute' | 'storage' | 'cache' | 'queue' | 'security' | 'observability';
   iconKey: string;
   color: string;
   bgColor: string;
@@ -86,60 +118,116 @@ export interface HLDProblemSpec {
 
 const ICON_MAP: Record<string, any> = {
   client: MonitorSmartphone,
+  mobile: Smartphone,
+  desktop: Laptop,
+  user: User,
   cdn: Globe,
+  dns: Network,
+  reverse_proxy: Server,
   load_balancer: Layers,
-  api_gateway: Shield,
+  api_gateway: ShieldCheck,
+  rate_limiter: ShieldAlert,
+  security: Lock,
   app_server: Server,
   worker: Cpu,
-  database: Database,
-  nosql: HardDrive,
-  cache: Zap,
-  queue: Box,
-  storage: Cloud,
-  search: Search,
-  security: Lock,
+  serverless: Zap,
   websocket: Radio,
-  monitoring: Activity
+  auth: Key,
+  payment: CreditCard,
+  notification: Bell,
+  database: Database,
+  replica_db: Database,
+  nosql: HardDrive,
+  key_value: Boxes,
+  graph_db: Share2,
+  timeseries: LineChart,
+  vector_db: Binary,
+  storage: FolderArchive,
+  data_warehouse: Building2,
+  search: Search,
+  cache: Flame,
+  memcached: Zap,
+  lock_mgr: Lock,
+  queue: Box,
+  kafka: Activity,
+  event_stream: Workflow,
+  spark: Cpu,
+  monitoring: BarChart3,
+  tracing: Compass,
+  logging: FileCode,
+  alerting: Bell,
+  container_box: Square
 };
 
 export const COMPONENT_CATALOG = [
   {
-    category: 'Clients & Edge',
+    category: 'Clients & Edge (Ingress)',
     items: [
-      { type: 'client', label: 'Web & Mobile Client', sublabel: 'React / iOS / Android', iconKey: 'client', category: 'client' as const, color: 'text-sky-400', bgColor: 'bg-sky-950/40', borderColor: 'border-sky-500/60', glowColor: 'rgba(56, 189, 248, 0.2)' },
-      { type: 'cdn', label: 'CDN Edge Network', sublabel: 'Cloudflare / CloudFront', iconKey: 'cdn', category: 'client' as const, color: 'text-cyan-400', bgColor: 'bg-cyan-950/40', borderColor: 'border-cyan-500/60', glowColor: 'rgba(34, 211, 238, 0.2)' },
+      { type: 'client', label: 'Web / Browser Client', sublabel: 'React / Next.js SPA', iconKey: 'desktop', category: 'client' as const, color: 'text-sky-400', bgColor: 'bg-sky-950/40', borderColor: 'border-sky-500/60', glowColor: 'rgba(56, 189, 248, 0.2)' },
+      { type: 'mobile', label: 'Mobile Client (iOS/Android)', sublabel: 'Native App / Push Token', iconKey: 'mobile', category: 'client' as const, color: 'text-blue-400', bgColor: 'bg-blue-950/40', borderColor: 'border-blue-500/60', glowColor: 'rgba(96, 165, 250, 0.2)' },
+      { type: 'user', label: 'User / Actor Persona', sublabel: 'End User / Tenant', iconKey: 'user', category: 'client' as const, color: 'text-indigo-300', bgColor: 'bg-indigo-950/40', borderColor: 'border-indigo-500/60', glowColor: 'rgba(165, 180, 252, 0.2)' },
+      { type: 'cdn', label: 'CDN (Cloudflare / CloudFront)', sublabel: 'Edge Static & HLS Cache', iconKey: 'cdn', category: 'client' as const, color: 'text-cyan-400', bgColor: 'bg-cyan-950/40', borderColor: 'border-cyan-500/60', glowColor: 'rgba(34, 211, 238, 0.2)' },
+      { type: 'dns', label: 'Anycast DNS (Route 53)', sublabel: 'Latency & Geo Routing', iconKey: 'dns', category: 'client' as const, color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
     ]
   },
   {
-    category: 'Traffic & Gateway',
+    category: 'Traffic & Gateways',
     items: [
-      { type: 'load_balancer', label: 'Load Balancer (ALB/NLB)', sublabel: 'Round Robin / Least Conn', iconKey: 'load_balancer', category: 'gateway' as const, color: 'text-amber-400', bgColor: 'bg-amber-950/40', borderColor: 'border-amber-500/60', glowColor: 'rgba(251, 191, 36, 0.2)' },
-      { type: 'api_gateway', label: 'API Gateway & Rate Limiter', sublabel: 'Auth / Routing / Throttling', iconKey: 'api_gateway', category: 'gateway' as const, color: 'text-indigo-400', bgColor: 'bg-indigo-950/40', borderColor: 'border-indigo-500/60', glowColor: 'rgba(129, 140, 248, 0.2)' },
-      { type: 'security', label: 'WAF & DDoS Shield', sublabel: 'IP Filter / TLS Termination', iconKey: 'security', category: 'security' as const, color: 'text-rose-400', bgColor: 'bg-rose-950/40', borderColor: 'border-rose-500/60', glowColor: 'rgba(244, 63, 94, 0.2)' },
+      { type: 'load_balancer', label: 'Load Balancer (ALB / NLB)', sublabel: 'Round-Robin / Least Conn', iconKey: 'load_balancer', category: 'gateway' as const, color: 'text-amber-400', bgColor: 'bg-amber-950/40', borderColor: 'border-amber-500/60', glowColor: 'rgba(251, 191, 36, 0.2)' },
+      { type: 'api_gateway', label: 'API Gateway (Kong / Envoy)', sublabel: 'Routing / TLS / SSL Termination', iconKey: 'api_gateway', category: 'gateway' as const, color: 'text-indigo-400', bgColor: 'bg-indigo-950/40', borderColor: 'border-indigo-500/60', glowColor: 'rgba(129, 140, 248, 0.2)' },
+      { type: 'rate_limiter', label: 'Rate Limiter Middleware', sublabel: 'Token Bucket / Sliding Window', iconKey: 'rate_limiter', category: 'gateway' as const, color: 'text-violet-400', bgColor: 'bg-violet-950/40', borderColor: 'border-violet-500/60', glowColor: 'rgba(167, 139, 250, 0.2)' },
+      { type: 'security', label: 'WAF & DDoS Shield', sublabel: 'IP Filter / Bot Protection', iconKey: 'security', category: 'security' as const, color: 'text-rose-400', bgColor: 'bg-rose-950/40', borderColor: 'border-rose-500/60', glowColor: 'rgba(244, 63, 94, 0.2)' },
     ]
   },
   {
     category: 'Compute & Microservices',
     items: [
-      { type: 'app_server', label: 'Application Service Cluster', sublabel: 'Stateless REST / gRPC', iconKey: 'app_server', category: 'compute' as const, color: 'text-purple-400', bgColor: 'bg-purple-950/40', borderColor: 'border-purple-500/60', glowColor: 'rgba(192, 132, 252, 0.2)' },
-      { type: 'worker', label: 'Async Worker & Processor', sublabel: 'Background Job Consumer', iconKey: 'worker', category: 'compute' as const, color: 'text-pink-400', bgColor: 'bg-pink-950/40', borderColor: 'border-pink-500/60', glowColor: 'rgba(244, 114, 182, 0.2)' },
-      { type: 'websocket', label: 'WebSocket Push Server', sublabel: 'Bi-directional Realtime', iconKey: 'websocket', category: 'compute' as const, color: 'text-blue-400', bgColor: 'bg-blue-950/40', borderColor: 'border-blue-500/60', glowColor: 'rgba(96, 165, 250, 0.2)' },
+      { type: 'app_server', label: 'App Service Pod (Cluster)', sublabel: 'Stateless REST / gRPC', iconKey: 'app_server', category: 'compute' as const, color: 'text-purple-400', bgColor: 'bg-purple-950/40', borderColor: 'border-purple-500/60', glowColor: 'rgba(192, 132, 252, 0.2)' },
+      { type: 'worker', label: 'Async Job Worker (Celery/Go)', sublabel: 'Background Task Consumer', iconKey: 'worker', category: 'compute' as const, color: 'text-pink-400', bgColor: 'bg-pink-950/40', borderColor: 'border-pink-500/60', glowColor: 'rgba(244, 114, 182, 0.2)' },
+      { type: 'serverless', label: 'Serverless (AWS Lambda)', sublabel: 'Event-driven Compute', iconKey: 'serverless', category: 'compute' as const, color: 'text-yellow-400', bgColor: 'bg-yellow-950/40', borderColor: 'border-yellow-500/60', glowColor: 'rgba(250, 204, 21, 0.2)' },
+      { type: 'websocket', label: 'WebSocket Gateway', sublabel: 'Bi-directional Realtime Push', iconKey: 'websocket', category: 'compute' as const, color: 'text-blue-400', bgColor: 'bg-blue-950/40', borderColor: 'border-blue-500/60', glowColor: 'rgba(96, 165, 250, 0.2)' },
+      { type: 'auth', label: 'Auth & IAM (OAuth / JWT)', sublabel: 'Keycloak / Auth0 / Tokens', iconKey: 'auth', category: 'security' as const, color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
+      { type: 'payment', label: 'Payment Gateway (Stripe)', sublabel: 'Idempotency & Webhooks', iconKey: 'payment', category: 'compute' as const, color: 'text-green-400', bgColor: 'bg-green-950/40', borderColor: 'border-green-500/60', glowColor: 'rgba(74, 222, 128, 0.2)' },
+      { type: 'notification', label: 'Notification Hub', sublabel: 'FCM / APNs / Twilio SMS', iconKey: 'notification', category: 'compute' as const, color: 'text-amber-300', bgColor: 'bg-amber-950/40', borderColor: 'border-amber-500/60', glowColor: 'rgba(252, 211, 77, 0.2)' },
     ]
   },
   {
-    category: 'Databases & Storage',
+    category: 'Databases & Persistent Stores',
     items: [
-      { type: 'database', label: 'Relational DB (PostgreSQL)', sublabel: 'Master-Replica (ACID)', iconKey: 'database', category: 'storage' as const, color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
-      { type: 'nosql', label: 'NoSQL DB (Cassandra/Mongo)', sublabel: 'High Throughput Key-Value', iconKey: 'nosql', category: 'storage' as const, color: 'text-teal-400', bgColor: 'bg-teal-950/40', borderColor: 'border-teal-500/60', glowColor: 'rgba(45, 212, 191, 0.2)' },
-      { type: 'storage', label: 'Blob / Object Storage (S3)', sublabel: 'Images / Videos / Static Data', iconKey: 'storage', category: 'storage' as const, color: 'text-orange-400', bgColor: 'bg-orange-950/40', borderColor: 'border-orange-500/60', glowColor: 'rgba(251, 146, 60, 0.2)' },
+      { type: 'database', label: 'PostgreSQL / MySQL Primary', sublabel: 'Master Write Instance (ACID)', iconKey: 'database', category: 'storage' as const, color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
+      { type: 'replica_db', label: 'Read Replica Cluster', sublabel: 'Horizontal Scale for Read QPS', iconKey: 'replica_db', category: 'storage' as const, color: 'text-teal-400', bgColor: 'bg-teal-950/40', borderColor: 'border-teal-500/60', glowColor: 'rgba(45, 212, 191, 0.2)' },
+      { type: 'nosql', label: 'NoSQL DB (Cassandra/Mongo)', sublabel: 'High-Write Partitioned Scale', iconKey: 'nosql', category: 'storage' as const, color: 'text-cyan-400', bgColor: 'bg-cyan-950/40', borderColor: 'border-cyan-500/60', glowColor: 'rgba(34, 211, 238, 0.2)' },
+      { type: 'key_value', label: 'Key-Value (DynamoDB)', sublabel: 'Single-digit ms Key Lookup', iconKey: 'key_value', category: 'storage' as const, color: 'text-blue-400', bgColor: 'bg-blue-950/40', borderColor: 'border-blue-500/60', glowColor: 'rgba(96, 165, 250, 0.2)' },
+      { type: 'graph_db', label: 'Graph DB (Neo4j / Neptune)', sublabel: 'Social Graph & Traversal', iconKey: 'graph_db', category: 'storage' as const, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-950/40', borderColor: 'border-fuchsia-500/60', glowColor: 'rgba(232, 121, 249, 0.2)' },
+      { type: 'timeseries', label: 'Time-Series DB (InfluxDB)', sublabel: 'Metrics & Rollup Logs', iconKey: 'timeseries', category: 'storage' as const, color: 'text-sky-400', bgColor: 'bg-sky-950/40', borderColor: 'border-sky-500/60', glowColor: 'rgba(56, 189, 248, 0.2)' },
+      { type: 'vector_db', label: 'Vector DB (Pinecone / Milvus)', sublabel: 'Embeddings & Semantic Search', iconKey: 'vector_db', category: 'storage' as const, color: 'text-violet-400', bgColor: 'bg-violet-950/40', borderColor: 'border-violet-500/60', glowColor: 'rgba(167, 139, 250, 0.2)' },
+      { type: 'storage', label: 'Blob / Object Storage (AWS S3)', sublabel: 'Media / Videos / Raw Payloads', iconKey: 'storage', category: 'storage' as const, color: 'text-orange-400', bgColor: 'bg-orange-950/40', borderColor: 'border-orange-500/60', glowColor: 'rgba(251, 146, 60, 0.2)' },
+      { type: 'data_warehouse', label: 'Data Warehouse (Snowflake)', sublabel: 'Big Data OLAP & ETL', iconKey: 'data_warehouse', category: 'storage' as const, color: 'text-indigo-400', bgColor: 'bg-indigo-950/40', borderColor: 'border-indigo-500/60', glowColor: 'rgba(129, 140, 248, 0.2)' },
       { type: 'search', label: 'Search Engine (Elasticsearch)', sublabel: 'Full-text & Inverted Index', iconKey: 'search', category: 'storage' as const, color: 'text-yellow-400', bgColor: 'bg-yellow-950/40', borderColor: 'border-yellow-500/60', glowColor: 'rgba(250, 204, 21, 0.2)' },
     ]
   },
   {
-    category: 'Caching & Messaging',
+    category: 'Caching & Fast Memory',
     items: [
-      { type: 'cache', label: 'Distributed Cache (Redis)', sublabel: 'Sub-ms Key-Value & Eviction', iconKey: 'cache', category: 'cache' as const, color: 'text-red-400', bgColor: 'bg-red-950/40', borderColor: 'border-red-500/60', glowColor: 'rgba(248, 113, 113, 0.2)' },
-      { type: 'queue', label: 'Message Broker (Kafka / SQS)', sublabel: 'Pub/Sub & Partitioned Stream', iconKey: 'queue', category: 'queue' as const, color: 'text-lime-400', bgColor: 'bg-lime-950/40', borderColor: 'border-lime-500/60', glowColor: 'rgba(163, 230, 53, 0.2)' },
+      { type: 'cache', label: 'Redis Cluster (Cache)', sublabel: 'Sub-ms Key-Value & Eviction', iconKey: 'cache', category: 'cache' as const, color: 'text-red-400', bgColor: 'bg-red-950/40', borderColor: 'border-red-500/60', glowColor: 'rgba(248, 113, 113, 0.2)' },
+      { type: 'memcached', label: 'Memcached (Simple Key-Val)', sublabel: 'Multi-threaded Pure Cache', iconKey: 'memcached', category: 'cache' as const, color: 'text-amber-400', bgColor: 'bg-amber-950/40', borderColor: 'border-amber-500/60', glowColor: 'rgba(251, 191, 36, 0.2)' },
+      { type: 'lock_mgr', label: 'Distributed Lock (Redlock)', sublabel: 'Concurrency Leader Election', iconKey: 'lock_mgr', category: 'cache' as const, color: 'text-rose-400', bgColor: 'bg-rose-950/40', borderColor: 'border-rose-500/60', glowColor: 'rgba(244, 63, 94, 0.2)' },
+    ]
+  },
+  {
+    category: 'Streaming & Messaging',
+    items: [
+      { type: 'kafka', label: 'Apache Kafka Event Stream', sublabel: 'Partitioned Log / High QPS', iconKey: 'kafka', category: 'queue' as const, color: 'text-lime-400', bgColor: 'bg-lime-950/40', borderColor: 'border-lime-500/60', glowColor: 'rgba(163, 230, 53, 0.2)' },
+      { type: 'queue', label: 'Message Queue (RabbitMQ/SQS)', sublabel: 'FIFO / Pub-Sub Message Broker', iconKey: 'queue', category: 'queue' as const, color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
+      { type: 'spark', label: 'Streaming Processor (Flink/Spark)', sublabel: 'Realtime Aggregation Pipeline', iconKey: 'spark', category: 'compute' as const, color: 'text-orange-400', bgColor: 'bg-orange-950/40', borderColor: 'border-orange-500/60', glowColor: 'rgba(251, 146, 60, 0.2)' },
+    ]
+  },
+  {
+    category: 'Observability & Reliability',
+    items: [
+      { type: 'monitoring', label: 'Prometheus & Metrics Scraper', sublabel: 'Timeseries Counters & Gauges', iconKey: 'monitoring', category: 'observability' as const, color: 'text-teal-400', bgColor: 'bg-teal-950/40', borderColor: 'border-teal-500/60', glowColor: 'rgba(45, 212, 191, 0.2)' },
+      { type: 'tracing', label: 'Distributed Tracing (Jaeger)', sublabel: 'OpenTelemetry Spans & Flamegraph', iconKey: 'tracing', category: 'observability' as const, color: 'text-purple-400', bgColor: 'bg-purple-950/40', borderColor: 'border-purple-500/60', glowColor: 'rgba(192, 132, 252, 0.2)' },
+      { type: 'logging', label: 'Central Log Store (ELK/Loki)', sublabel: 'Log Aggregation & Alerts', iconKey: 'logging', category: 'observability' as const, color: 'text-yellow-400', bgColor: 'bg-yellow-950/40', borderColor: 'border-yellow-500/60', glowColor: 'rgba(250, 204, 21, 0.2)' },
     ]
   }
 ];
@@ -220,9 +308,33 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   problem,
   onBack
 }) => {
-  const [nodes, setNodes] = useState<HLDNode[]>(() => PREBUILT_TEMPLATES[0].nodes as any);
-  const [connections, setConnections] = useState<HLDConnection[]>(() => PREBUILT_TEMPLATES[0].connections as any);
+  // Mode selection: Interactive Node Studio vs Excalidraw vs Diagrams.net (draw.io)
+  const [studioMode, setStudioMode] = useState<'studio' | 'excalidraw' | 'diagrams_net'>('studio');
+
+  // Initial starter state (starts with clean single entrypoint or empty canvas for practice)
+  const initialStarterNodes: HLDNode[] = useMemo(() => [
+    {
+      id: 'node-client-start',
+      type: 'client',
+      label: 'Client / User App',
+      sublabel: 'Web & Mobile Traffic',
+      x: 60,
+      y: 220,
+      width: 165,
+      height: 76,
+      category: 'client',
+      iconKey: 'client',
+      color: 'text-sky-400',
+      bgColor: 'bg-sky-950/40',
+      borderColor: 'border-sky-500/60',
+      glowColor: 'rgba(56, 189, 248, 0.2)'
+    }
+  ], []);
+
+  const [nodes, setNodes] = useState<HLDNode[]>(() => initialStarterNodes);
+  const [connections, setConnections] = useState<HLDConnection[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isConfirmRevealOpen, setIsConfirmRevealOpen] = useState(false);
   
   // Selection & Dragging
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -324,33 +436,60 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     }
   }, []);
 
-  // Compute Bezier Curve String
-  const getBezierPath = useCallback((x1: number, y1: number, x2: number, y2: number, fromPort: string, toPort: string) => {
-    const dx = Math.abs(x2 - x1) * 0.45;
-    const dy = Math.abs(y2 - y1) * 0.45;
-    let cx1 = x1, cy1 = y1, cx2 = x2, cy2 = y2;
-
-    if (fromPort === 'right') cx1 += Math.max(dx, 40);
-    else if (fromPort === 'left') cx1 -= Math.max(dx, 40);
-    else if (fromPort === 'bottom') cy1 += Math.max(dy, 40);
-    else if (fromPort === 'top') cy1 -= Math.max(dy, 40);
-
-    if (toPort === 'right') cx2 += Math.max(dx, 40);
-    else if (toPort === 'left') cx2 -= Math.max(dx, 40);
-    else if (toPort === 'bottom') cy2 += Math.max(dy, 40);
-    else if (toPort === 'top') cy2 -= Math.max(dy, 40);
-
-    return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
-  }, []);
-
-  // Handle Dragging Nodes or Panning Canvas
-  const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (!canvasRef.current) return;
+  // Convert screen coordinates to canvas-space coordinates
+  const screenToCanvas = useCallback((clientX: number, clientY: number) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
-    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
-    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
+    return {
+      x: (clientX - rect.left - pan.x) / zoom,
+      y: (clientY - rect.top - pan.y) / zoom
+    };
+  }, [pan, zoom]);
 
-    setMouseCanvasPos({ x: canvasX, y: canvasY });
+  // Add Component from Catalog to Canvas
+  const handleAddComponent = (templateItem: typeof COMPONENT_CATALOG[0]['items'][0]) => {
+    const id = `node-${Date.now()}`;
+    const newNode: HLDNode = {
+      id,
+      type: templateItem.type,
+      label: templateItem.label,
+      sublabel: templateItem.sublabel,
+      x: -pan.x / zoom + 260 + (Math.random() * 80),
+      y: -pan.y / zoom + 180 + (Math.random() * 80),
+      width: 175,
+      height: 76,
+      category: templateItem.category,
+      iconKey: templateItem.iconKey,
+      color: templateItem.color,
+      bgColor: templateItem.bgColor,
+      borderColor: templateItem.borderColor,
+      glowColor: templateItem.glowColor,
+    };
+    setNodes(prev => [...prev, newNode]);
+    setSelectedNodeId(id);
+  };
+
+  // Dragging Nodes
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    if (activeTool === 'connect') return;
+
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    const canvasPos = screenToCanvas(e.clientX, e.clientY);
+    setDraggingNodeId(nodeId);
+    setDragOffset({
+      x: canvasPos.x - node.x,
+      y: canvasPos.y - node.y
+    });
+    setSelectedNodeId(nodeId);
+    setSelectedConnId(null);
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    const canvasPos = screenToCanvas(e.clientX, e.clientY);
+    setMouseCanvasPos(canvasPos);
 
     if (isPanning) {
       setPan({
@@ -361,15 +500,15 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     }
 
     if (draggingNodeId) {
-      setNodes(prev => prev.map(n => {
-        if (n.id === draggingNodeId) {
-          const rawX = canvasX - dragOffset.x;
-          const rawY = canvasY - dragOffset.y;
-          const snapX = Math.round(rawX / 16) * 16;
-          const snapY = Math.round(rawY / 16) * 16;
-          return { ...n, x: Math.max(0, snapX), y: Math.max(0, snapY) };
+      setNodes(prev => prev.map(node => {
+        if (node.id === draggingNodeId) {
+          return {
+            ...node,
+            x: Math.round(canvasPos.x - dragOffset.x),
+            y: Math.round(canvasPos.y - dragOffset.y)
+          };
         }
-        return n;
+        return node;
       }));
     }
   };
@@ -377,89 +516,34 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   const handleCanvasMouseUp = () => {
     setDraggingNodeId(null);
     setIsPanning(false);
+    if (connectingStart) {
+      setConnectingStart(null);
+    }
   };
 
-  const handleNodeMouseDown = (e: React.MouseEvent, node: HLDNode) => {
-    e.stopPropagation();
-    if (activeTool === 'pan') return;
-    setSelectedNodeId(node.id);
-    setSelectedConnId(null);
-
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const canvasX = (e.clientX - rect.left - pan.x) / zoom;
-    const canvasY = (e.clientY - rect.top - pan.y) / zoom;
-
-    setDraggingNodeId(node.id);
-    setDragOffset({
-      x: canvasX - node.x,
-      y: canvasY - node.y
-    });
-  };
-
-  // Start Drawing Connection Arrow from a Port
+  // Port Click to Connect
   const handlePortMouseDown = (e: React.MouseEvent, nodeId: string, port: 'top' | 'right' | 'bottom' | 'left') => {
     e.stopPropagation();
-    setConnectingStart({ nodeId, port });
-  };
-
-  // Complete Connection Arrow on a Target Port
-  const handlePortMouseUp = (e: React.MouseEvent, targetNodeId: string, targetPort: 'top' | 'right' | 'bottom' | 'left') => {
-    e.stopPropagation();
-    if (!connectingStart) return;
-
-    if (connectingStart.nodeId !== targetNodeId) {
-      const newConn: HLDConnection = {
-        id: `conn-${Date.now()}`,
-        fromNodeId: connectingStart.nodeId,
-        toNodeId: targetNodeId,
-        fromPort: connectingStart.port,
-        toPort: targetPort,
-        label: connLabelInput || 'REST',
-        style: connStyleInput,
-        color: '#818cf8'
-      };
-      setConnections(prev => [...prev, newConn]);
+    if (!connectingStart) {
+      setConnectingStart({ nodeId, port });
+    } else {
+      if (connectingStart.nodeId !== nodeId) {
+        const newConn: HLDConnection = {
+          id: `conn-${Date.now()}`,
+          fromNodeId: connectingStart.nodeId,
+          toNodeId: nodeId,
+          fromPort: connectingStart.port,
+          toPort: port,
+          label: connLabelInput,
+          style: connStyleInput,
+          color: '#818cf8'
+        };
+        setConnections(prev => [...prev, newConn]);
+      }
+      setConnectingStart(null);
     }
-    setConnectingStart(null);
   };
 
-  // Add Component to Canvas
-  const handleAddComponent = (item: any) => {
-    const nextId = `node-${Date.now()}`;
-    const newNode: HLDNode = {
-      id: nextId,
-      type: item.type,
-      label: item.label,
-      sublabel: item.sublabel,
-      x: Math.max(50, (-pan.x + 150) / zoom + Math.random() * 80),
-      y: Math.max(50, (-pan.y + 150) / zoom + Math.random() * 80),
-      width: 170,
-      height: 76,
-      category: item.category,
-      iconKey: item.iconKey,
-      color: item.color,
-      bgColor: item.bgColor,
-      borderColor: item.borderColor,
-      glowColor: item.glowColor
-    };
-    setNodes(prev => [...prev, newNode]);
-    setSelectedNodeId(nextId);
-  };
-
-  // Load a Prebuilt Template
-  const handleLoadTemplate = (template: typeof PREBUILT_TEMPLATES[0]) => {
-    setNodes(template.nodes as any);
-    setConnections(template.connections as any);
-    setSelectedNodeId(null);
-    setSelectedConnId(null);
-    setAiReport(null);
-    setTimeout(() => {
-      handleFitToScreen();
-    }, 50);
-  };
-
-  // Delete Selected Node or Connection
   const handleDeleteSelected = () => {
     if (selectedNodeId) {
       setNodes(prev => prev.filter(n => n.id !== selectedNodeId));
@@ -471,83 +555,106 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     }
   };
 
-  // Keyboard shortcut for deleting
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-        handleDeleteSelected();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, selectedConnId]);
+  const handleClearCanvas = () => {
+    setNodes([]);
+    setConnections([]);
+    setSelectedNodeId(null);
+    setSelectedConnId(null);
+  };
 
-  // AI Deep Architecture Evaluation
+  const handleLoadTemplate = (tmpl: typeof PREBUILT_TEMPLATES[0]) => {
+    setNodes(tmpl.nodes as HLDNode[]);
+    setConnections(tmpl.connections as HLDConnection[]);
+    setSelectedNodeId(null);
+    setSelectedConnId(null);
+    setTimeout(() => handleFitToScreen(), 100);
+  };
+
+  const handleRevealReferenceSolution = () => {
+    // Find matching template or default to 3-tier
+    let match = PREBUILT_TEMPLATES.find(t => 
+      problem?.id && (
+        (problem.id.includes('url') && t.id.includes('tinyurl')) ||
+        (problem.id.includes('video') && t.id.includes('netflix'))
+      )
+    );
+    if (!match) match = PREBUILT_TEMPLATES[0];
+    handleLoadTemplate(match);
+    setIsConfirmRevealOpen(false);
+  };
+
+  // Run AI Architecture Evaluation
   const handleRunAiEvaluation = async () => {
     setIsEvaluating(true);
     setIsAiDrawerOpen(true);
     setAiReport(null);
 
-    const nodeSummary = nodes.map(n => `- [${n.label}] (${n.type}) | Role: ${n.sublabel || 'N/A'}`).join('\n');
-    const connSummary = connections.map(c => {
-      const from = nodes.find(n => n.id === c.fromNodeId)?.label || c.fromNodeId;
-      const to = nodes.find(n => n.id === c.toNodeId)?.label || c.toNodeId;
-      return `- ${from} --> (${c.label || 'Connection'}) --> ${to}`;
-    }).join('\n');
+    const topologySummary = {
+      problem: problem?.title || 'Interactive Distributed System Design Studio',
+      difficulty: problem?.difficulty || 'Hard',
+      requirements: problem?.requirements || [],
+      expectedScale: problem?.expectedScale || '10M DAU, 100k QPS',
+      nodes: nodes.map(n => ({ id: n.id, type: n.type, label: n.label, sublabel: n.sublabel, category: n.category })),
+      connections: connections.map(c => {
+        const from = nodes.find(n => n.id === c.fromNodeId)?.label;
+        const to = nodes.find(n => n.id === c.toNodeId)?.label;
+        return `${from} -> ${to} [${c.label}] (${c.style})`;
+      })
+    };
 
-    const prompt = `You are a Principal Cloud & Distributed Systems Architect reviewing a High-Level Design (HLD) diagram.
+    const prompt = `You are a Principal Cloud Infrastructure Architect and Staff System Design Interviewer at Meta, Google, and Netflix.
+Critique and grade the following High-Level System Architecture Diagram created by a senior candidate:
 
-${problem ? `Problem Target: "${problem.title}"\nDescription: ${problem.description}\nExpected Scale: ${problem.expectedScale}\n` : 'Problem Target: General High-Throughput Distributed System\n'}
+TOPOLOGY UNDER REVIEW:
+${JSON.stringify(topologySummary, null, 2)}
 
-Architecture Components Placed (${nodes.length}):
-${nodeSummary || '(None)'}
+Provide an authoritative, highly structured Principal Review with:
+1. **Architecture Score & Seniority Assessment**:
+   - Provide a score breakdown table with columns: | Category | Score (0-100) | Justification |
+   - Final Score out of 100.
+   - Seniority level (Junior, Mid, Senior Architect L6, Principal L7+).
 
-Directed Data Flow Connections (${connections.length}):
-${connSummary || '(None)'}
+2. **Strengths (What was designed well)**:
+   - Specific praise for caching layers, separation of concerns, and decoupling.
 
-Evaluate this high-level architecture thoroughly and provide a structured review:
-1. 🏆 Architecture Score (0-100) & Seniority Assessment (Mid / Senior / Staff / Principal Architect)
-2. ⚡ Scalability & High Availability (Can it support high throughput / multi-region? Caching hit ratio & DB sharding)
-3. 🚨 Single Points of Failure (SPOF) & Security Vulnerabilities (e.g., direct DB access without API Gateway, missing rate limiting)
-4. 🔄 Data Flow & Protocol Verification (REST vs gRPC vs Kafka Event Streaming)
-5. 🛠️ Concrete Production Improvements & Missing Components (e.g. Redis Cluster, Message Broker, CDN, Async Workers, DLQ)`;
+3. **Critical Gaps & SPOFs (Single Points of Failure)**:
+   - Identify missing components (e.g. Rate limiting, DB sharding/replication, Kafka event queue, CDN, Circuit breakers, Observability).
+
+4. **10M DAU Scale & Resilience Hardening**:
+   - Step-by-step architectural recommendations to handle 10x traffic bursts.`;
 
     try {
-      const response = await requestMistralChat([
-        { role: 'system', content: 'You are a world-class Principal Distributed Systems Architect conducting a FAANG senior System Design interview.' },
-        { role: 'user', content: prompt }
-      ]);
-      setAiReport(response.content);
-    } catch {
-      setAiReport('AI Evaluation could not be completed. Please check your network connection and try again.');
+      const response = await requestMistralChat([{ role: 'user', content: prompt }]);
+      setAiReport(response.content || 'No review generated.');
+    } catch (e) {
+      setAiReport(`### ⚠️ AI Review Offline\n\nCould not connect to the cloud evaluation service. Please check your API key or internet connection.`);
     } finally {
       setIsEvaluating(false);
     }
   };
 
   return (
-    <div className="w-full space-y-4 animate-fadeIn select-none">
+    <div className="w-full space-y-4">
       
       {/* ── Top Header Toolbar ── */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-slate-950 border border-indigo-500/30 shadow-2xl flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-3">
         
-        {/* Left: Breadcrumbs & Problem Info */}
+        {/* Left: Problem Title & Back Button */}
         <div className="flex items-center space-x-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              className="p-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Back to Problems Hub"
             >
-              <X className="w-4 h-4" />
-              <span>Back</span>
+              <ArrowRight className="w-4 h-4 rotate-180" />
             </button>
           )}
 
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-[10px] text-amber-400 font-mono tracking-wider px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-800/60">
-                HLD ARCHITECTURE STUDIO
+                HLD SYSTEM DESIGN STUDIO
               </span>
               {problem?.difficulty && (
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-purple-950 text-purple-300 border border-purple-800">
@@ -556,14 +663,57 @@ Evaluate this high-level architecture thoroughly and provide a structured review
               )}
             </div>
             <h3 className="text-sm sm:text-base font-bold text-slate-100 mt-0.5 truncate max-w-md">
-              {problem?.title || 'Interactive Distributed System Design Studio'}
+              {problem?.title || 'Interactive Distributed System Architecture Studio'}
             </h3>
           </div>
         </div>
 
-        {/* Right Action Tools: Templates, AI Evaluation, Clear Canvas */}
+        {/* Studio Mode Switcher: Interactive Studio vs Excalidraw vs Diagrams.net */}
+        <div className="flex items-center p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
+          <button
+            onClick={() => setStudioMode('studio')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+              studioMode === 'studio' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            <span>Architecture Studio</span>
+          </button>
+          <button
+            onClick={() => setStudioMode('excalidraw')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+              studioMode === 'excalidraw' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5 text-pink-400" />
+            <span>Excalidraw</span>
+          </button>
+          <button
+            onClick={() => setStudioMode('diagrams_net')}
+            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+              studioMode === 'diagrams_net' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Workflow className="w-3.5 h-3.5 text-amber-300" />
+            <span>Diagrams.net (Draw.io)</span>
+          </button>
+        </div>
+
+        {/* Right Action Tools: Templates, Reveal Solution, AI Review */}
         <div className="flex items-center gap-2">
           
+          {/* Reveal Solution / Reference Architecture Button */}
+          {problem && (
+            <button
+              onClick={() => setIsConfirmRevealOpen(true)}
+              className="px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Reveal Reference Architecture Solution"
+            >
+              <Eye className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Reveal Solution</span>
+            </button>
+          )}
+
           {/* Prebuilt Architecture Templates */}
           <div className="relative group">
             <button className="px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md">
@@ -586,14 +736,16 @@ Evaluate this high-level architecture thoroughly and provide a structured review
           </div>
 
           {/* Fit to View */}
-          <button
-            onClick={handleFitToScreen}
-            className="px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-            title="Auto-Fit All Components to Screen"
-          >
-            <Crosshair className="w-4 h-4 text-emerald-400" />
-            <span className="hidden sm:inline">Fit View</span>
-          </button>
+          {studioMode === 'studio' && (
+            <button
+              onClick={handleFitToScreen}
+              className="px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Auto-Fit All Components to Screen"
+            >
+              <Crosshair className="w-4 h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Fit View</span>
+            </button>
+          )}
 
           {/* AI Principal Review */}
           <button
@@ -607,446 +759,486 @@ Evaluate this high-level architecture thoroughly and provide a structured review
         </div>
       </div>
 
-      {/* ── Main Two-Column Studio: Component Catalog + Drag-and-Drop Canvas ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start min-h-[720px] relative">
-        
-        {/* ── LEFT: Extensible Component Library Box ── */}
-        {isSidebarOpen && (
-          <div className="w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/95 flex flex-col space-y-4 overflow-y-auto max-h-[780px] custom-scrollbar flex-shrink-0 animate-fadeIn">
-            
-            {/* Header with "Hide Library" button directly inside the library box */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div>
-                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Component Library</span>
-                </h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">Click to drop on canvas</p>
-              </div>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
-                title="Hide Component Library"
-              >
-                <PanelLeftClose className="w-3.5 h-3.5" />
-                <span>Hide</span>
-              </button>
-            </div>
-
-            <div className="space-y-4 flex-1">
-              {COMPONENT_CATALOG.map((section, sIdx) => (
-                <div key={sIdx} className="space-y-2">
-                  <p className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-wider px-1">
-                    {section.category}
-                  </p>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    {section.items.map((item) => {
-                      const IconCmp = ICON_MAP[item.iconKey] || Box;
-                      return (
-                        <button
-                          key={item.type}
-                          onClick={() => handleAddComponent(item)}
-                          className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800/80 hover:border-indigo-500/60 text-left transition-all cursor-pointer group shadow-sm"
-                        >
-                          <div className={`p-2 rounded-xl bg-slate-950 border border-slate-800 ${item.color} group-hover:scale-110 transition-transform`}>
-                            <IconCmp className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
-                              {item.label}
-                            </p>
-                            <p className="text-[10px] text-slate-500 truncate font-mono">
-                              {item.sublabel}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick Tips */}
-            <div className="p-3 rounded-2xl bg-indigo-950/30 border border-indigo-900/40 text-[11px] text-indigo-200 space-y-1">
-              <p className="font-bold flex items-center gap-1">
-                <Info className="w-3.5 h-3.5 text-indigo-400" />
-                <span>How to scroll & connect:</span>
-              </p>
-              <p className="text-slate-400">Drag anywhere on canvas or use mouse wheel to pan left/right/up/down. Hover over node ports (●) to connect data flows.</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── CENTER / RIGHT: Interactive High-Level Design Canvas ── */}
-        <div 
-          ref={canvasRef}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseDown={(e) => {
-            // Drag on background starts canvas panning
-            setIsPanning(true);
-            setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-            setSelectedNodeId(null);
-            setSelectedConnId(null);
-          }}
-          className="flex-1 glass-panel rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-2xl min-h-[720px] w-full"
-          style={{
-            cursor: isPanning ? 'grabbing' : 'grab'
-          }}
-        >
-          
-          {/* Canvas Background Grid Pattern */}
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-40"
-            style={{
-              backgroundImage: `radial-gradient(circle, rgba(148, 163, 184, 0.15) 1.5px, transparent 1.5px)`,
-              backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-              backgroundPosition: `${pan.x}px ${pan.y}px`
-            }}
+      {/* ── IFRAME MODES: Excalidraw or Diagrams.net ── */}
+      {studioMode === 'excalidraw' && (
+        <div className="w-full h-[780px] rounded-3xl overflow-hidden border border-purple-500/30 shadow-2xl bg-slate-950">
+          <iframe 
+            src="https://excalidraw.com" 
+            title="Excalidraw Whiteboard"
+            className="w-full h-full border-0"
+            allow="clipboard-read; clipboard-write"
           />
+        </div>
+      )}
 
-          {/* ── Floating "Show Library" Button when Sidebar is Hidden ── */}
-          {!isSidebarOpen && (
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="absolute top-4 left-4 z-20 px-3.5 py-2 rounded-2xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold shadow-2xl border border-indigo-400/60 backdrop-blur-md flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
-              title="Open Component Library"
-            >
-              <PanelLeft className="w-4 h-4" />
-              <span>+ Component Library</span>
-            </button>
+      {studioMode === 'diagrams_net' && (
+        <div className="w-full h-[780px] rounded-3xl overflow-hidden border border-amber-500/30 shadow-2xl bg-slate-950">
+          <iframe 
+            src="https://app.diagrams.net/?embed=1&ui=dark&spin=1&proto=json" 
+            title="Diagrams.net (Draw.io)"
+            className="w-full h-full border-0"
+            allow="clipboard-read; clipboard-write"
+          />
+        </div>
+      )}
+
+      {/* ── INTERACTIVE STUDIO MODE: Drag-and-Drop Node Canvas ── */}
+      {studioMode === 'studio' && (
+        <div className="flex flex-col lg:flex-row gap-4 items-start min-h-[720px] relative">
+          
+          {/* ── LEFT: Extensible Component Library Box ── */}
+          {isSidebarOpen && (
+            <div className="w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/95 flex flex-col space-y-4 overflow-y-auto max-h-[780px] custom-scrollbar flex-shrink-0 animate-fadeIn">
+              
+              {/* Header with "Hide Library" button directly inside the library box */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Component Library</span>
+                  </h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Click to drop on canvas</p>
+                </div>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                  title="Hide Component Library"
+                >
+                  <PanelLeftClose className="w-3.5 h-3.5" />
+                  <span>Hide</span>
+                </button>
+              </div>
+
+              <div className="space-y-4 flex-1">
+                {COMPONENT_CATALOG.map((section, sIdx) => (
+                  <div key={sIdx} className="space-y-2">
+                    <p className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-wider px-1">
+                      {section.category}
+                    </p>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {section.items.map((item) => {
+                        const IconCmp = ICON_MAP[item.iconKey] || Box;
+                        return (
+                          <button
+                            key={item.type}
+                            onClick={() => handleAddComponent(item)}
+                            className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-850 border border-slate-800/80 hover:border-indigo-500/60 text-left transition-all cursor-pointer group shadow-sm"
+                          >
+                            <div className={`p-2 rounded-xl bg-slate-950 border border-slate-800 ${item.color} group-hover:scale-110 transition-transform`}>
+                              <IconCmp className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
+                                {item.label}
+                              </p>
+                              <p className="text-[10px] text-slate-500 truncate font-mono">
+                                {item.sublabel}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Quick Tips */}
+              <div className="p-3 rounded-2xl bg-indigo-950/30 border border-indigo-900/40 text-[11px] text-indigo-200 space-y-1">
+                <p className="font-bold flex items-center gap-1">
+                  <Info className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Interactive Instructions</span>
+                </p>
+                <p className="text-slate-400">1. Click any component above to drop it.</p>
+                <p className="text-slate-400">2. Drag node connector dots to draw arrows.</p>
+                <p className="text-slate-400">3. Click <strong>AI Review</strong> to grade your topology.</p>
+              </div>
+            </div>
           )}
 
-          {/* ── Floating Left / Right / Up / Down Navigation Controls ── */}
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl backdrop-blur-md shadow-2xl">
-            <button
-              onClick={() => setPan(p => ({ ...p, x: p.x + 180 }))}
-              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
-              title="Pan Left (Scroll Left)"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setPan(p => ({ ...p, y: p.y + 180 }))}
-              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
-              title="Pan Up (Scroll Up)"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setPan(p => ({ ...p, y: p.y - 180 }))}
-              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
-              title="Pan Down (Scroll Down)"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setPan(p => ({ ...p, x: p.x - 180 }))}
-              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
-              title="Pan Right (Scroll Right)"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* ── Canvas Viewport Zoom & Reset Controls ── */}
-          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl backdrop-blur-md shadow-xl text-xs">
-            <button
-              onClick={() => setZoom(z => Math.min(2.2, z + 0.15))}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 cursor-pointer"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <span className="px-2 font-mono text-[11px] text-slate-400 font-bold">{Math.round(zoom * 100)}%</span>
-            <button
-              onClick={() => setZoom(z => Math.max(0.35, z - 0.15))}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 cursor-pointer"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleFitToScreen}
-              className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold cursor-pointer"
-              title="Fit to Screen"
-            >
-              Fit
-            </button>
-            <button
-              onClick={() => { setZoom(1.0); setPan({ x: 0, y: 0 }); }}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 cursor-pointer"
-              title="Reset to (0,0)"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* ── Scaled & Panned Canvas Layer ── */}
-          <div
+          {/* ── CENTER / RIGHT: Interactive High-Level Design Canvas ── */}
+          <div 
+            ref={canvasRef}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseDown={(e) => {
+              // Drag on background starts canvas panning
+              setIsPanning(true);
+              setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+              setSelectedNodeId(null);
+              setSelectedConnId(null);
+            }}
+            className="flex-1 glass-panel rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-2xl min-h-[720px] w-full"
             style={{
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: '0 0',
-              width: '5000px',
-              height: '4000px',
-              position: 'absolute',
-              top: 0,
-              left: 0
+              cursor: isPanning ? 'grabbing' : 'grab'
             }}
           >
             
-            {/* ── SVG Connection Lines Layer ── */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-              <defs>
-                <marker
-                  id="hld-arrow"
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="6"
-                  markerHeight="6"
-                  orient="auto-start-reverse"
+            {/* Canvas Background Grid Pattern */}
+            <div 
+              className="absolute inset-0 pointer-events-none opacity-40"
+              style={{
+                backgroundImage: `radial-gradient(circle, rgba(148, 163, 184, 0.15) 1.5px, transparent 1.5px)`,
+                backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+                backgroundPosition: `${pan.x}px ${pan.y}px`
+              }}
+            />
+
+            {/* ── Floating "Show Library" Button when Sidebar is Hidden ── */}
+            {!isSidebarOpen && (
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="absolute top-4 left-4 z-20 px-3.5 py-2 rounded-2xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold shadow-2xl border border-indigo-400/60 backdrop-blur-md flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
+                title="Open Component Library"
+              >
+                <PanelLeft className="w-4 h-4" />
+                <span>+ Component Library</span>
+              </button>
+            )}
+
+            {/* ── Floating Left / Right / Up / Down Navigation Controls ── */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl backdrop-blur-md shadow-2xl">
+              <button
+                onClick={() => setPan(p => ({ ...p, x: p.x + 180 }))}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                title="Pan Left (Scroll Left)"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPan(p => ({ ...p, y: p.y + 180 }))}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                title="Pan Up (Scroll Up)"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPan(p => ({ ...p, y: p.y - 180 }))}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                title="Pan Down (Scroll Down)"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPan(p => ({ ...p, x: p.x - 180 }))}
+                className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                title="Pan Right (Scroll Right)"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* ── Floating Canvas Viewport & Tooling Controls (Bottom Center) ── */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center gap-2 bg-slate-900/90 border border-slate-800/90 p-2 rounded-2xl shadow-2xl backdrop-blur-md">
+              {/* Connector Style Options */}
+              <div className="flex items-center space-x-1 pr-2 border-r border-slate-800">
+                <input
+                  type="text"
+                  value={connLabelInput}
+                  onChange={(e) => setConnLabelInput(e.target.value)}
+                  placeholder="Protocol / Label"
+                  className="w-28 px-2 py-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  onClick={() => setConnStyleInput(s => s === 'solid' ? 'dashed' : 'solid')}
+                  className="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 hover:text-white cursor-pointer"
+                  title="Toggle Solid vs Dashed Connection Line"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#818cf8" />
-                </marker>
-                <marker
-                  id="hld-arrow-selected"
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="7"
-                  markerHeight="7"
-                  orient="auto-start-reverse"
+                  {connStyleInput === 'solid' ? '— Solid' : '- - Dashed'}
+                </button>
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="flex items-center space-x-1 pr-2 border-r border-slate-800">
+                <button
+                  onClick={() => setZoom(z => Math.max(0.35, z - 0.15))}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                  title="Zoom Out"
                 >
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="#fbbf24" />
-                </marker>
-              </defs>
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-[11px] font-mono text-indigo-400 font-bold px-1 min-w-[44px] text-center">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  onClick={() => setZoom(z => Math.min(2.0, z + 0.15))}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleFitToScreen}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-emerald-400 cursor-pointer"
+                  title="Auto Fit to Screen"
+                >
+                  <Crosshair className="w-4 h-4" />
+                </button>
+              </div>
 
-              {/* Render Connections */}
-              {connections.map((conn) => {
-                const fromNode = nodes.find(n => n.id === conn.fromNodeId);
-                const toNode = nodes.find(n => n.id === conn.toNodeId);
-                if (!fromNode || !toNode) return null;
+              {/* Actions: Delete & Clear */}
+              {(selectedNodeId || selectedConnId) && (
+                <button
+                  onClick={handleDeleteSelected}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-950 border border-rose-800 text-rose-300 hover:bg-rose-900 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                  title="Delete Selected Item"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              )}
 
-                const p1 = getPortPos(fromNode, conn.fromPort);
-                const p2 = getPortPos(toNode, conn.toPort);
-                const pathStr = getBezierPath(p1.x, p1.y, p2.x, p2.y, conn.fromPort, conn.toPort);
-                const midX = (p1.x + p2.x) / 2;
-                const midY = (p1.y + p2.y) / 2;
+              <button
+                onClick={handleClearCanvas}
+                className="px-2.5 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-bold cursor-pointer transition-colors"
+                title="Clear Canvas"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            </div>
 
-                const isSelected = selectedConnId === conn.id;
+            {/* ── Scaled & Panned SVG / Nodes Layer ── */}
+            <div 
+              className="absolute inset-0 origin-top-left pointer-events-none"
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
+              }}
+            >
+              {/* SVG Connecting Lines Layer */}
+              <svg className="absolute inset-0 overflow-visible w-full h-full pointer-events-none">
+                <defs>
+                  <marker id="arrow-solid" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#818cf8" />
+                  </marker>
+                  <marker id="arrow-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f43f5e" />
+                  </marker>
+                </defs>
+
+                {/* Render Permanent Connections */}
+                {connections.map((conn) => {
+                  const fromNode = nodes.find(n => n.id === conn.fromNodeId);
+                  const toNode = nodes.find(n => n.id === conn.toNodeId);
+                  if (!fromNode || !toNode) return null;
+
+                  const p1 = getPortPos(fromNode, conn.fromPort);
+                  const p2 = getPortPos(toNode, conn.toPort);
+                  const isSelected = selectedConnId === conn.id;
+
+                  // Curved Cubic Bézier path calculation
+                  const dx = p2.x - p1.x;
+                  const dy = p2.y - p1.y;
+                  const cx1 = p1.x + (conn.fromPort === 'right' ? Math.max(40, dx / 2) : conn.fromPort === 'left' ? -Math.max(40, -dx / 2) : 0);
+                  const cy1 = p1.y + (conn.fromPort === 'bottom' ? Math.max(40, dy / 2) : conn.fromPort === 'top' ? -Math.max(40, -dy / 2) : 0);
+                  const cx2 = p2.x + (conn.toPort === 'left' ? -Math.max(40, -dx / 2) : conn.toPort === 'right' ? Math.max(40, dx / 2) : 0);
+                  const cy2 = p2.y + (conn.toPort === 'top' ? -Math.max(40, -dy / 2) : conn.toPort === 'bottom' ? Math.max(40, dy / 2) : 0);
+
+                  const pathD = `M ${p1.x} ${p1.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${p2.x} ${p2.y}`;
+                  const midX = (p1.x + p2.x) / 2;
+                  const midY = (p1.y + p2.y) / 2;
+
+                  return (
+                    <g key={conn.id} className="pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedConnId(conn.id); setSelectedNodeId(null); }}>
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke="transparent"
+                        strokeWidth={14}
+                      />
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke={isSelected ? '#f43f5e' : (conn.color || '#818cf8')}
+                        strokeWidth={isSelected ? 3 : 2}
+                        strokeDasharray={conn.style === 'dashed' ? '5,5' : 'none'}
+                        markerEnd={isSelected ? 'url(#arrow-selected)' : 'url(#arrow-solid)'}
+                      />
+                      {conn.label && (
+                        <g transform={`translate(${midX}, ${midY})`}>
+                          <rect
+                            x={-conn.label.length * 3.5 - 6}
+                            y={-10}
+                            width={conn.label.length * 7 + 12}
+                            height={18}
+                            rx={6}
+                            fill="#020617"
+                            stroke={isSelected ? '#f43f5e' : '#334155'}
+                            strokeWidth={1}
+                          />
+                          <text
+                            x={0}
+                            y={3}
+                            textAnchor="middle"
+                            fill={isSelected ? '#f43f5e' : '#cbd5e1'}
+                            fontSize={9}
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                          >
+                            {conn.label}
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
+
+                {/* Render In-Progress Connection Line */}
+                {connectingStart && (() => {
+                  const fromNode = nodes.find(n => n.id === connectingStart.nodeId);
+                  if (!fromNode) return null;
+                  const p1 = getPortPos(fromNode, connectingStart.port);
+                  return (
+                    <line
+                      x1={p1.x}
+                      y1={p1.y}
+                      x2={mouseCanvasPos.x}
+                      y2={mouseCanvasPos.y}
+                      stroke="#fbbf24"
+                      strokeWidth={2}
+                      strokeDasharray="4,4"
+                    />
+                  );
+                })()}
+              </svg>
+
+              {/* Render Architectural Nodes */}
+              {nodes.map((node) => {
+                const IconCmp = ICON_MAP[node.iconKey] || Box;
+                const isSelected = selectedNodeId === node.id;
 
                 return (
-                  <g key={conn.id} className="pointer-events-auto cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedConnId(conn.id); setSelectedNodeId(null); }}>
-                    <path
-                      d={pathStr}
-                      fill="none"
-                      stroke="transparent"
-                      strokeWidth="16"
-                    />
+                  <div
+                    key={node.id}
+                    onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                    style={{
+                      left: `${node.x}px`,
+                      top: `${node.y}px`,
+                      width: `${node.width}px`,
+                      height: `${node.height}px`,
+                      boxShadow: isSelected ? `0 0 25px ${node.glowColor}, 0 0 0 2px #6366f1` : `0 4px 15px rgba(0,0,0,0.5)`,
+                    }}
+                    className={`absolute rounded-2xl p-2.5 transition-shadow select-none pointer-events-auto cursor-move flex flex-col justify-between border ${
+                      isSelected ? 'border-indigo-400 bg-slate-900/95' : `${node.borderColor} ${node.bgColor} hover:border-indigo-400/80`
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 ${node.color} flex-shrink-0`}>
+                          <IconCmp className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-slate-100 truncate">{node.label}</p>
+                          {node.sublabel && (
+                            <p className="text-[9px] text-slate-400 truncate font-mono">{node.sublabel}</p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingNode(node); }}
+                        className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
+                        title="Edit Node Properties"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    </div>
 
-                    <path
-                      d={pathStr}
-                      fill="none"
-                      stroke={isSelected ? '#fbbf24' : (conn.color || '#818cf8')}
-                      strokeWidth={isSelected ? '3' : '2'}
-                      strokeDasharray={conn.style === 'dashed' ? '6 4' : undefined}
-                      markerEnd={`url(#${isSelected ? 'hld-arrow-selected' : 'hld-arrow'})`}
-                      className="transition-all"
-                    />
+                    {/* Node Ports (Top, Right, Bottom, Left) */}
+                    {(['top', 'right', 'bottom', 'left'] as const).map((port) => {
+                      const posClass =
+                        port === 'top' ? 'top-[-5px] left-1/2 -translate-x-1/2' :
+                        port === 'bottom' ? 'bottom-[-5px] left-1/2 -translate-x-1/2' :
+                        port === 'left' ? 'left-[-5px] top-1/2 -translate-y-1/2' :
+                        'right-[-5px] top-1/2 -translate-y-1/2';
 
-                    {conn.label && (
-                      <g transform={`translate(${midX}, ${midY})`}>
-                        <rect
-                          x={- (conn.label.length * 3.8 + 12)}
-                          y="-11"
-                          width={conn.label.length * 7.6 + 24}
-                          height="22"
-                          rx="8"
-                          className={`${isSelected ? 'fill-amber-950 stroke-amber-500' : 'fill-slate-900 stroke-slate-800'}`}
-                          strokeWidth="1"
+                      return (
+                        <div
+                          key={port}
+                          onMouseDown={(e) => handlePortMouseDown(e, node.id, port)}
+                          title={`Connect from ${port}`}
+                          className={`absolute w-3 h-3 rounded-full bg-slate-950 border-2 border-indigo-400 hover:bg-indigo-400 hover:scale-125 transition-all cursor-crosshair ${posClass}`}
                         />
-                        <text
-                          x="0"
-                          y="3"
-                          textAnchor="middle"
-                          className={`text-[10px] font-mono font-bold ${isSelected ? 'fill-amber-300' : 'fill-indigo-300'}`}
-                        >
-                          {conn.label}
-                        </text>
-                      </g>
-                    )}
-                  </g>
+                      );
+                    })}
+                  </div>
                 );
               })}
-
-              {/* Connecting Arrow Preview */}
-              {connectingStart && (
-                <path
-                  d={(() => {
-                    const fromNode = nodes.find(n => n.id === connectingStart.nodeId);
-                    if (!fromNode) return '';
-                    const p1 = getPortPos(fromNode, connectingStart.port);
-                    return `M ${p1.x} ${p1.y} L ${mouseCanvasPos.x} ${mouseCanvasPos.y}`;
-                  })()}
-                  fill="none"
-                  stroke="#a855f7"
-                  strokeWidth="2.5"
-                  strokeDasharray="4 4"
-                />
-              )}
-            </svg>
-
-            {/* ── Node Components Layer ── */}
-            {nodes.map((node) => {
-              const IconCmp = ICON_MAP[node.iconKey] || Box;
-              const isSelected = selectedNodeId === node.id;
-
-              return (
-                <div
-                  key={node.id}
-                  onMouseDown={(e) => handleNodeMouseDown(e, node)}
-                  style={{
-                    transform: `translate(${node.x}px, ${node.y}px)`,
-                    width: `${node.width}px`,
-                    height: `${node.height}px`,
-                  }}
-                  className={`absolute rounded-2xl border ${node.bgColor} ${
-                    isSelected 
-                      ? 'ring-2 ring-amber-400 border-amber-400 shadow-2xl scale-[1.02]' 
-                      : `${node.borderColor} hover:border-indigo-400/80 hover:shadow-xl`
-                  } backdrop-blur-md p-3 flex items-center gap-3 transition-shadow cursor-move group select-none`}
-                >
-                  
-                  {/* Left Node Icon */}
-                  <div className={`p-2 rounded-xl bg-slate-950/80 border border-slate-800 ${node.color} flex-shrink-0 shadow-inner`}>
-                    <IconCmp className="w-5 h-5" />
-                  </div>
-
-                  {/* Node Label & Sublabel */}
-                  <div className="flex-1 min-w-0 pr-1">
-                    <p className="text-xs font-bold text-slate-100 truncate">
-                      {node.label}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate font-mono mt-0.5">
-                      {node.sublabel || node.type}
-                    </p>
-                  </div>
-
-                  {/* Node Quick Action Controls on Hover */}
-                  <div className="absolute -top-3 right-2 hidden group-hover:flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-0.5 shadow-lg z-30">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setEditingNode(node); }}
-                      className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
-                      title="Edit Node Label & Role"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setNodes(prev => prev.filter(n => n.id !== node.id));
-                        setConnections(prev => prev.filter(c => c.fromNodeId !== node.id && c.toNodeId !== node.id));
-                      }}
-                      className="p-1 hover:bg-rose-950 rounded-lg text-slate-400 hover:text-rose-400 cursor-pointer"
-                      title="Delete Node"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  {/* ── 4 Interactive Port Dots for Drawing Connections (Top, Right, Bottom, Left) ── */}
-                  
-                  {/* Top Port */}
-                  <div
-                    onMouseDown={(e) => handlePortMouseDown(e, node.id, 'top')}
-                    onMouseUp={(e) => handlePortMouseUp(e, node.id, 'top')}
-                    className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-400 hover:bg-indigo-400 hover:scale-125 transition-all cursor-crosshair z-20 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    title="Connect from Top Port"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-white" />
-                  </div>
-
-                  {/* Right Port */}
-                  <div
-                    onMouseDown={(e) => handlePortMouseDown(e, node.id, 'right')}
-                    onMouseUp={(e) => handlePortMouseUp(e, node.id, 'right')}
-                    className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-400 hover:bg-indigo-400 hover:scale-125 transition-all cursor-crosshair z-20 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    title="Connect from Right Port"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-white" />
-                  </div>
-
-                  {/* Bottom Port */}
-                  <div
-                    onMouseDown={(e) => handlePortMouseDown(e, node.id, 'bottom')}
-                    onMouseUp={(e) => handlePortMouseUp(e, node.id, 'bottom')}
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-400 hover:bg-indigo-400 hover:scale-125 transition-all cursor-crosshair z-20 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    title="Connect from Bottom Port"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-white" />
-                  </div>
-
-                  {/* Left Port */}
-                  <div
-                    onMouseDown={(e) => handlePortMouseDown(e, node.id, 'left')}
-                    onMouseUp={(e) => handlePortMouseUp(e, node.id, 'left')}
-                    className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-900 border-2 border-indigo-400 hover:bg-indigo-400 hover:scale-125 transition-all cursor-crosshair z-20 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    title="Connect from Left Port"
-                  >
-                    <div className="w-1 h-1 rounded-full bg-white" />
-                  </div>
-
-                </div>
-              );
-            })}
+            </div>
 
           </div>
 
         </div>
+      )}
 
-      </div>
+      {/* ── Reveal Solution Confirmation Modal ── */}
+      {isConfirmRevealOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4 animate-scaleUp">
+            <div className="w-12 h-12 rounded-2xl bg-amber-950/80 border border-amber-800 flex items-center justify-center text-amber-300 mx-auto">
+              <Eye className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-100">Reveal Official Architecture Solution?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Loading the reference solution will replace the current canvas with the official high-availability topology. Try designing it first!
+              </p>
+            </div>
+            <div className="flex items-center justify-end space-x-2 pt-3">
+              <button
+                onClick={() => setIsConfirmRevealOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Keep Designing
+              </button>
+              <button
+                onClick={handleRevealReferenceSolution}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold cursor-pointer shadow-md"
+              >
+                Reveal Solution Topology
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Edit Node Properties Modal ── */}
       {editingNode && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="w-full max-w-md bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-indigo-400" />
                 <span>Edit Component Properties</span>
               </h4>
-              <button onClick={() => setEditingNode(null)} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
+              <button onClick={() => setEditingNode(null)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Component Title</label>
+                <label className="text-[11px] font-bold text-slate-400">Component Title</label>
                 <input
                   type="text"
                   value={editingNode.label}
                   onChange={(e) => setEditingNode({ ...editingNode, label: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Sublabel / Operational Spec</label>
+                <label className="text-[11px] font-bold text-slate-400">Subtitle / Specification</label>
                 <input
                   type="text"
                   value={editingNode.sublabel || ''}
                   onChange={(e) => setEditingNode({ ...editingNode, sublabel: e.target.value })}
-                  placeholder="e.g. Master-Replica, 4k QPS, Sharded"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
               <button
                 onClick={() => setEditingNode(null)}
-                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
               >
                 Cancel
               </button>
