@@ -308,8 +308,9 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   problem,
   onBack
 }) => {
-  // Mode selection: Interactive Node Studio vs Excalidraw vs Diagrams.net (draw.io)
-  const [studioMode, setStudioMode] = useState<'studio' | 'excalidraw' | 'diagrams_net'>('studio');
+  // Mode selection: Interactive Node Studio vs Excalidraw Whiteboard
+  const [studioMode, setStudioMode] = useState<'studio' | 'excalidraw'>('studio');
+  const [excalidrawNotes, setExcalidrawNotes] = useState<string>('');
 
   // Initial starter state (starts with clean single entrypoint or empty canvas for practice)
   const initialStarterNodes: HLDNode[] = useMemo(() => [
@@ -589,8 +590,17 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     setIsAiDrawerOpen(true);
     setAiReport(null);
 
-    const topologySummary = {
-      problem: problem?.title || 'Interactive Distributed System Design Studio',
+    const isExcalidraw = studioMode === 'excalidraw';
+    const topologySummary = isExcalidraw ? {
+      designMode: 'Excalidraw Visual Whiteboard',
+      problem: problem?.title || 'Distributed System Design Studio',
+      difficulty: problem?.difficulty || 'Hard',
+      requirements: problem?.requirements || [],
+      expectedScale: problem?.expectedScale || '10M DAU, 100k QPS',
+      candidateArchitectureNotes: excalidrawNotes.trim() || 'Candidate designed architecture on Excalidraw whiteboard.'
+    } : {
+      designMode: 'Interactive Node Canvas',
+      problem: problem?.title || 'Distributed System Design Studio',
       difficulty: problem?.difficulty || 'Hard',
       requirements: problem?.requirements || [],
       expectedScale: problem?.expectedScale || '10M DAU, 100k QPS',
@@ -668,11 +678,11 @@ Provide an authoritative, highly structured Principal Review with:
           </div>
         </div>
 
-        {/* Studio Mode Switcher: Interactive Studio vs Excalidraw vs Diagrams.net */}
+        {/* Studio Mode Switcher: Interactive Studio vs Excalidraw */}
         <div className="flex items-center p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
           <button
             onClick={() => setStudioMode('studio')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
               studioMode === 'studio' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -681,21 +691,12 @@ Provide an authoritative, highly structured Principal Review with:
           </button>
           <button
             onClick={() => setStudioMode('excalidraw')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
               studioMode === 'excalidraw' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <PenTool className="w-3.5 h-3.5 text-pink-400" />
-            <span>Excalidraw</span>
-          </button>
-          <button
-            onClick={() => setStudioMode('diagrams_net')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
-              studioMode === 'diagrams_net' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Workflow className="w-3.5 h-3.5 text-amber-300" />
-            <span>Diagrams.net (Draw.io)</span>
+            <span>Excalidraw Whiteboard</span>
           </button>
         </div>
 
@@ -759,26 +760,42 @@ Provide an authoritative, highly structured Principal Review with:
         </div>
       </div>
 
-      {/* ── IFRAME MODES: Excalidraw or Diagrams.net ── */}
+      {/* ── EXCALIDRAW WHITEBOARD MODE ── */}
       {studioMode === 'excalidraw' && (
-        <div className="w-full h-[780px] rounded-3xl overflow-hidden border border-purple-500/30 shadow-2xl bg-slate-950">
-          <iframe 
-            src="https://excalidraw.com" 
-            title="Excalidraw Whiteboard"
-            className="w-full h-full border-0"
-            allow="clipboard-read; clipboard-write"
-          />
-        </div>
-      )}
+        <div className="space-y-3">
+          <div className="w-full h-[740px] rounded-3xl overflow-hidden border border-purple-500/30 shadow-2xl bg-slate-950">
+            <iframe 
+              src="https://excalidraw.com" 
+              title="Excalidraw Whiteboard"
+              className="w-full h-full border-0"
+              allow="clipboard-read; clipboard-write"
+            />
+          </div>
 
-      {studioMode === 'diagrams_net' && (
-        <div className="w-full h-[780px] rounded-3xl overflow-hidden border border-amber-500/30 shadow-2xl bg-slate-950">
-          <iframe 
-            src="https://app.diagrams.net/?embed=1&ui=dark&spin=1&proto=json" 
-            title="Diagrams.net (Draw.io)"
-            className="w-full h-full border-0"
-            allow="clipboard-read; clipboard-write"
-          />
+          {/* Excalidraw AI Review Companion Bar */}
+          <div className="p-4 rounded-3xl bg-slate-950 border border-slate-800 shadow-xl flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex-1 w-full">
+              <label className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Architecture Notes & Rationale for AI Evaluation:</span>
+              </label>
+              <input
+                type="text"
+                value={excalidrawNotes}
+                onChange={(e) => setExcalidrawNotes(e.target.value)}
+                placeholder="e.g. Cloudflare CDN -> ALB -> Go microservices -> Redis cluster -> PostgreSQL (master-replica) + Kafka for async jobs..."
+                className="w-full px-3.5 py-2 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              />
+            </div>
+            <button
+              onClick={handleRunAiEvaluation}
+              disabled={isEvaluating}
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 flex items-center gap-2 cursor-pointer disabled:opacity-50 flex-shrink-0"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>Evaluate Excalidraw Design</span>
+            </button>
+          </div>
         </div>
       )}
 
