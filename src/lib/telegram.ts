@@ -21,7 +21,7 @@ const CHANNEL_CHAT_ID_MAP: Record<string, number> = {
   'ch-sd-02':   -1004329144420,
   'ch-dbms-03': -1004332462419,
   'ch-cn-04':   -1004308430774,
-  'ch-hld-05':  -1002204032417,
+  'ch-hld-05':  -5501631117,
 };
 
 /**

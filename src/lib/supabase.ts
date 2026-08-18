@@ -72,12 +72,12 @@ export const MOCK_CHANNELS: Channel[] = [
   },
   {
     id: 'ch-hld-05',
-    telegram_channel_id: -1002204032417,
+    telegram_channel_id: -5501631117,
     category_name: 'High Level Design',
-    description: 'High Level Design (HLD): Scalable Distributed Architecture, CDN, Load Balancers, Caching, Sharding & Microservices',
+    description: 'Neetcode System Design HLD: Scalable Architecture, CDN, Load Balancers, Caching, Sharding, Message Queues (20 HD Lectures)',
     icon: 'layers',
     created_at: new Date().toISOString(),
-    post_count: 15
+    post_count: 20
   }
 ];
 
