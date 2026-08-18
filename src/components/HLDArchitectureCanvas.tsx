@@ -522,17 +522,6 @@ Evaluate this high-level architecture thoroughly and provide a structured review
             </button>
           )}
 
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer ${
-              isSidebarOpen ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
-            }`}
-            title={isSidebarOpen ? 'Hide Component Library' : 'Show Component Library'}
-          >
-            {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-            <span className="hidden sm:inline">{isSidebarOpen ? 'Hide Library' : 'Show Library'}</span>
-          </button>
-
           <div>
             <div className="flex items-center space-x-2">
               <span className="font-extrabold text-[10px] text-amber-400 font-mono tracking-wider px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-800/60">
@@ -597,17 +586,29 @@ Evaluate this high-level architecture thoroughly and provide a structured review
       </div>
 
       {/* ── Main Two-Column Studio: Component Catalog + Drag-and-Drop Canvas ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start min-h-[720px]">
+      <div className="flex flex-col lg:flex-row gap-4 items-start min-h-[720px] relative">
         
-        {/* ── LEFT: Extensible Component Library ── */}
+        {/* ── LEFT: Extensible Component Library Box ── */}
         {isSidebarOpen && (
-          <div className="w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/90 flex flex-col space-y-4 overflow-y-auto max-h-[780px] custom-scrollbar flex-shrink-0 animate-fadeIn">
-            <div>
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Component Library</span>
-              </h4>
-              <p className="text-[11px] text-slate-500">Click any component to drop it on the canvas.</p>
+          <div className="w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/95 flex flex-col space-y-4 overflow-y-auto max-h-[780px] custom-scrollbar flex-shrink-0 animate-fadeIn">
+            
+            {/* Header with "Hide Library" button directly inside the library box */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Component Library</span>
+                </h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">Click to drop on canvas</p>
+              </div>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                title="Hide Component Library"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+                <span>Hide</span>
+              </button>
             </div>
 
             <div className="space-y-4 flex-1">
@@ -693,6 +694,18 @@ Evaluate this high-level architecture thoroughly and provide a structured review
               backgroundPosition: `${pan.x}px ${pan.y}px`
             }}
           />
+
+          {/* ── Floating "Show Library" Button when Sidebar is Hidden ── */}
+          {!isSidebarOpen && (
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="absolute top-4 left-4 z-20 px-3.5 py-2 rounded-2xl bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-bold shadow-2xl border border-indigo-400/60 backdrop-blur-md flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
+              title="Open Component Library"
+            >
+              <PanelLeft className="w-4 h-4" />
+              <span>+ Component Library</span>
+            </button>
+          )}
 
           {/* ── Floating Left / Right / Up / Down Navigation Controls ── */}
           <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl backdrop-blur-md shadow-2xl">

@@ -18,7 +18,8 @@ import {
   PanelLeft,
   Sun,
   Moon,
-  AlignLeft
+  AlignLeft,
+  Menu
 } from 'lucide-react';
 import { CuratedLLDTopic } from '../lib/githubLld';
 
@@ -46,6 +47,47 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
   const [tocSearch, setTocSearch] = useState('');
   const contentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Native Fullscreen API Integration for 100% full monitor viewport usage
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (containerRef.current?.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(() => {
+          setIsFullscreen(true);
+        });
+      } else {
+        document.documentElement.requestFullscreen().catch(() => {
+          setIsFullscreen(true);
+        });
+      }
+      setIsFullscreen(true);
+      // Auto-minimize chapters in full screen for maximum focus
+      setIsSidebarOpen(false);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+      setIsSidebarOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isNowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isNowFullscreen);
+      if (isNowFullscreen) {
+        setIsSidebarOpen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Calculate Reading Time & Word Count
   const readingStats = useMemo(() => {
@@ -278,7 +320,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           codeLines.push(rawLines[lineIdx]);
           lineIdx++;
         }
-        if (lineIdx < rawLines.length) lineIdx++; // Skip closing ```
+        if (lineIdx < rawLines.length) lineIdx++;
 
         const fullCode = codeLines.join('\n');
         const currentIdx = codeBlockCount++;
@@ -397,30 +439,20 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
   }, [markdown, topic.repo]);
 
   return (
-    <div className={`w-full transition-all duration-300 ${
-      isFullscreen 
-        ? 'fixed inset-0 z-50 bg-slate-950 flex flex-col p-4 sm:p-6 animate-fadeIn overflow-hidden' 
-        : 'space-y-4'
-    }`}>
+    <div 
+      ref={containerRef}
+      className={`w-full transition-all duration-300 ${
+        isFullscreen 
+          ? 'fixed inset-0 z-[99999] bg-slate-950 w-screen h-screen flex flex-col p-3 sm:p-5 m-0 border-0 rounded-none overflow-hidden select-text' 
+          : 'space-y-4'
+      }`}
+    >
       
       {/* Top Header & Reading Controls Bar */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-950 border border-purple-500/30 shadow-2xl flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
         
         {/* Left: Topic Title & Reading Statistics */}
         <div className="flex items-center space-x-3">
-          {isFullscreen && (
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-2.5 rounded-2xl border transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer ${
-                isSidebarOpen ? 'bg-purple-600 text-white border-purple-500 shadow-md' : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
-              }`}
-              title={isSidebarOpen ? 'Minimize Chapters Sidebar' : 'Show Chapters Sidebar'}
-            >
-              {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isSidebarOpen ? 'Hide Index' : 'Show Index'}</span>
-            </button>
-          )}
-
           <div className="p-2.5 rounded-2xl bg-purple-950/80 text-purple-300 border border-purple-800/60 hidden sm:block">
             <BookOpen className="w-5 h-5" />
           </div>
@@ -467,14 +499,14 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
             </button>
           </div>
 
-          {/* Fullscreen Reading Mode */}
+          {/* Fullscreen Reading Mode with Native Monitor Full Viewport */}
           <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
+            onClick={toggleFullscreen}
             className="px-3.5 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader Mode'}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter 100% Fullscreen'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-purple-400" />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Reader'}</span>
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Full Screen'}</span>
           </button>
 
           {/* Open on GitHub */}
@@ -492,18 +524,40 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
       </div>
 
       {/* Main Two-Column Reader Canvas: Chapter Navigator (TOC) + Markdown Stream */}
-      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-6 ${isFullscreen ? 'flex-1 overflow-hidden min-h-0' : ''}`}>
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative ${isFullscreen ? 'flex-1 overflow-hidden min-h-0' : ''}`}>
         
-        {/* Left: Chapter / Table of Contents Navigator */}
+        {/* Floating "Show Index" Button when Chapter Index is minimized */}
+        {!isSidebarOpen && chapters.length > 0 && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute top-3 left-3 z-30 px-3 py-1.5 rounded-2xl bg-purple-600/90 hover:bg-purple-600 text-white text-xs font-bold shadow-2xl border border-purple-400/60 backdrop-blur-md flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105"
+            title="Open Chapter Index"
+          >
+            <PanelLeft className="w-4 h-4" />
+            <span>Show Index ({chapters.length})</span>
+          </button>
+        )}
+
+        {/* Left: Chapter / Table of Contents Navigator Box */}
         {chapters.length > 0 && isSidebarOpen && (
-          <div className={`lg:col-span-3 glass-panel p-5 rounded-3xl border border-slate-800 bg-slate-950/90 flex flex-col ${
+          <div className={`lg:col-span-3 glass-panel p-4 sm:p-5 rounded-3xl border border-slate-800 bg-slate-950/95 flex flex-col ${
             isFullscreen ? 'h-full overflow-hidden' : 'max-h-[680px]'
-          } animate-fadeIn`}>
+          } animate-fadeIn flex-shrink-0`}>
+            
+            {/* Header with "Hide Index" button inside the index box */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 flex-shrink-0">
               <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
                 <ListOrdered className="w-4 h-4" />
                 <span>Chapter Index ({chapters.length})</span>
               </div>
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="px-2 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-slate-200 border border-slate-800 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                title="Hide Chapter Index"
+              >
+                <PanelLeftClose className="w-3.5 h-3.5" />
+                <span>Hide Index</span>
+              </button>
             </div>
 
             {/* Chapter Search Filter */}
@@ -542,7 +596,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
         )}
 
-        {/* Right: Rich Structured Article Reader */}
+        {/* Right: Rich Structured Article Reader (Full Viewport Usage) */}
         <div 
           ref={contentRef}
           className={`${(chapters.length > 0 && isSidebarOpen) ? 'lg:col-span-9' : 'lg:col-span-12'} glass-panel p-6 sm:p-12 rounded-3xl border border-slate-800 bg-slate-900/60 shadow-2xl overflow-y-auto custom-scrollbar ${
@@ -556,7 +610,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           ) : (
             <div 
               style={{ fontSize: `${baseFontSize}px`, lineHeight: 1.8 }}
-              className="max-w-4xl mx-auto space-y-4 font-sans tracking-normal select-text"
+              className="max-w-5xl mx-auto space-y-5 font-sans tracking-normal select-text"
             >
               {renderedBlocks}
             </div>
