@@ -48,6 +48,7 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
+import { KrokiDiagramModal } from './KrokiDiagramModal';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -268,6 +269,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   // Slide-out Ask AI popup on the RIGHT
   const [isRightAskAiOpen, setIsRightAskAiOpen] = useState<boolean>(false);
+
+  // Kroki LLD Diagram Popup Modal state & Credit deduction (20 paise)
+  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState<boolean>(false);
+
+  const handleOpenDiagramModal = () => {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.LLD_DIAGRAM_VIEW, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.LLD_DIAGRAM_VIEW,
+        action: `Kroki Visual LLD Architecture Diagram (20 paise): ${cleanTitle}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+    deductCredits(
+      PRICING_CONFIG.LLD_DIAGRAM_VIEW,
+      'LLD_DIAGRAM',
+      `📐 LLD Architecture Diagram (20p): ${cleanTitle}`,
+      user?.email
+    );
+    setIsDiagramModalOpen(true);
+  };
 
   // AI Review state
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
@@ -756,6 +779,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </span>
           </button>
 
+          {/* Small LLD Diagram Button on the Right (20 paise) */}
+          <button
+            onClick={handleOpenDiagramModal}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+            title="Open Kroki LLD Visual Architecture Popup (20 paise)"
+          >
+            <Layers className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">LLD Diagram</span>
+          </button>
+
           {/* AI Review Button */}
           <button
             onClick={handleAIReview}
@@ -856,16 +889,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
 
             <button
-              onClick={() => setLeftTab('diagram')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                leftTab === 'diagram'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title="Kroki Unified UML & LLD Visual Architecture"
+              onClick={handleOpenDiagramModal}
+              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-800/40"
+              title="Open Kroki LLD Visual Architecture Popup (20 paise)"
             >
               <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Diagram</span>
+              <span>Diagram (Popup)</span>
             </button>
 
             <button
@@ -960,9 +989,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     </span>
 
                     <button
-                      onClick={() => setLeftTab('diagram')}
+                      onClick={handleOpenDiagramModal}
                       className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all shadow-sm cursor-pointer ml-auto"
-                      title="Open Kroki Unified UML & Visual Architecture"
+                      title="Open Kroki Unified UML & Visual Architecture Popup (20 paise)"
                     >
                       <Layers className="w-3.5 h-3.5 text-cyan-400" />
                       <span>Architecture Diagram</span>
@@ -1567,6 +1596,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {/* Quick Actions overlay on top-right of Editor */}
             <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
               <button
+                onClick={handleOpenDiagramModal}
+                className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-cyan-400 hover:text-cyan-200 border border-cyan-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
+                title="Open LLD Architecture Diagram Popup (20 paise)"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">LLD Diagram</span>
+              </button>
+
+              <button
                 onClick={handleCopyCode}
                 className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
                 title="Copy editor code"
@@ -1961,6 +1999,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         onClose={() => setIsWalletTopupOpen(false)}
         initialAmount={50}
       />
+
+      {/* Kroki LLD Architecture Popup Modal (Charged at 20 paise) */}
+      {isDiagramModalOpen && (
+        <KrokiDiagramModal
+          slugOrTitle={codingProblem?.slug || codingProblem?.name || cleanTitle}
+          category={codingProblem?.category || problemTemplate.category || 'System Design & LLD'}
+          onClose={() => setIsDiagramModalOpen(false)}
+        />
+      )}
 
     </div>
   );

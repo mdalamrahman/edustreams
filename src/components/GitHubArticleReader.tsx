@@ -23,7 +23,11 @@ import {
   Layers
 } from 'lucide-react';
 import { CuratedLLDTopic } from '../lib/githubLld';
-import { KrokiDiagramViewer } from './KrokiDiagramViewer';
+import { KrokiDiagramModal } from './KrokiDiagramModal';
+import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { WalletTopupModal } from './WalletTopupModal';
 
 interface GitHubArticleReaderProps {
   topic: CuratedLLDTopic;
@@ -43,7 +47,30 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
   isLoading
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [readerViewMode, setReaderViewMode] = useState<'article' | 'diagram'>('article');
+  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState(false);
+  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
+  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
+  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.20, action: '' });
+
+  const handleOpenDiagramModal = () => {
+    const user = getCurrentStudent();
+    if (!canAffordAction(PRICING_CONFIG.LLD_DIAGRAM_VIEW, user?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.LLD_DIAGRAM_VIEW,
+        action: `Kroki Visual LLD Architecture Diagram (20 paise): ${topic.title}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+    deductCredits(
+      PRICING_CONFIG.LLD_DIAGRAM_VIEW,
+      'LLD_DIAGRAM',
+      `📐 LLD Architecture Diagram (20p): ${topic.title}`,
+      user?.email
+    );
+    setIsDiagramModalOpen(true);
+  };
+
   const [baseFontSize, setBaseFontSize] = useState<number>(16); // Dynamic px size (14 - 24)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeChapterId, setActiveChapterId] = useState<string>('');
@@ -480,55 +507,37 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
         </div>
 
-        {/* Right Toolbar Controls: View Switcher, Font Scaling & Fullscreen */}
+        {/* Right Toolbar Controls: Font Scaling, LLD Diagram & Fullscreen */}
         <div className="flex items-center gap-2">
           
-          {/* View Mode Switcher: Article vs Kroki UML */}
+          {/* Dynamic Font Size Stepper (A-, A, A+) */}
           <div className="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
             <button
-              onClick={() => setReaderViewMode('article')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
-                readerViewMode === 'article'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={() => setBaseFontSize(s => Math.max(13, s - 2))}
+              className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif"
+              title="Decrease Font Size (A-)"
             >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Article</span>
+              A-
             </button>
+            <span className="px-2 font-mono text-[11px] text-purple-400 font-bold">{baseFontSize}px</span>
             <button
-              onClick={() => setReaderViewMode('diagram')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 cursor-pointer ${
-                readerViewMode === 'diagram'
-                  ? 'bg-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
+              onClick={() => setBaseFontSize(s => Math.min(24, s + 2))}
+              className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif text-sm font-bold"
+              title="Increase Font Size (A+)"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Kroki UML</span>
+              A+
             </button>
           </div>
 
-          {/* Dynamic Font Size Stepper (A-, A, A+) */}
-          {readerViewMode === 'article' && (
-            <div className="flex items-center bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs font-bold">
-              <button
-                onClick={() => setBaseFontSize(s => Math.max(13, s - 2))}
-                className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif"
-                title="Decrease Font Size (A-)"
-              >
-                A-
-              </button>
-              <span className="px-2 font-mono text-[11px] text-purple-400 font-bold">{baseFontSize}px</span>
-              <button
-                onClick={() => setBaseFontSize(s => Math.min(24, s + 2))}
-                className="px-2.5 py-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer font-serif text-sm font-bold"
-                title="Increase Font Size (A+)"
-              >
-                A+
-              </button>
-            </div>
-          )}
+          {/* Small LLD Diagram Button on the Right (20 paise) */}
+          <button
+            onClick={handleOpenDiagramModal}
+            className="px-3.5 py-2 rounded-2xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            title="Open Kroki Visual LLD Architecture Popup (20 paise)"
+          >
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span>LLD Diagram</span>
+          </button>
 
           {/* Fullscreen Reading Mode with Native Monitor Full Viewport */}
           <button
@@ -554,15 +563,8 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
         </div>
       </div>
 
-      {/* Main Canvas: Either Kroki Visual UML Diagram or Two-Column Markdown Article */}
-      {readerViewMode === 'diagram' ? (
-        <div className={`rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden shadow-2xl flex flex-col ${
-          isFullscreen ? 'flex-1 min-h-0' : 'h-[680px]'
-        }`}>
-          <KrokiDiagramViewer slugOrTitle={topic.title} category={topic.category} />
-        </div>
-      ) : (
-        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative ${isFullscreen ? 'flex-1 overflow-hidden min-h-0' : ''}`}>
+      {/* Main Two-Column Reader Canvas: Chapter Navigator (TOC) + Markdown Stream */}
+      <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 relative ${isFullscreen ? 'flex-1 overflow-hidden min-h-0' : ''}`}>
           
           {/* Floating "Show Index" Button when Chapter Index is minimized */}
           {!isSidebarOpen && chapters.length > 0 && (
@@ -656,7 +658,34 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
 
         </div>
+
+      {/* Kroki Visual LLD Architecture Popup Modal (Charged at 20 paise) */}
+      {isDiagramModalOpen && (
+        <KrokiDiagramModal
+          slugOrTitle={topic.title}
+          category={topic.category}
+          onClose={() => setIsDiagramModalOpen(false)}
+        />
       )}
+
+      {/* Insufficient Credits Gatekeeper Modal */}
+      <InsufficientCreditsModal
+        isOpen={isInsufficientCreditsOpen}
+        onClose={() => setIsInsufficientCreditsOpen(false)}
+        onOpenRecharge={() => {
+          setIsInsufficientCreditsOpen(false);
+          setIsWalletTopupOpen(true);
+        }}
+        requiredCost={insufficientMeta.cost}
+        actionName={insufficientMeta.action}
+      />
+
+      {/* Wallet Top-up Modal */}
+      <WalletTopupModal
+        isOpen={isWalletTopupOpen}
+        onClose={() => setIsWalletTopupOpen(false)}
+        initialAmount={50}
+      />
 
     </div>
   );

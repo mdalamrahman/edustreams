@@ -221,8 +221,12 @@ export const KrokiDiagramViewer: React.FC<KrokiDiagramViewerProps> = ({
               </div>
             ) : svgContent ? (
               <div 
-                style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'center center', transition: 'transform 0.15s ease-out' }}
-                className="max-w-full flex items-center justify-center svg-container rounded-2xl p-4 bg-slate-900/40 border border-slate-800/50 shadow-2xl"
+                style={{ 
+                  transform: `scale(${zoomLevel / 100})`, 
+                  transformOrigin: 'top center', 
+                  transition: 'transform 0.15s ease-out' 
+                }}
+                className="w-auto max-w-full flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 rounded-2xl border border-slate-800/60 shadow-2xl [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:block"
                 dangerouslySetInnerHTML={{ __html: svgContent }}
               />
             ) : null}

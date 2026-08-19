@@ -11,6 +11,72 @@ export interface KrokiRenderResult {
 }
 
 /**
+ * Common Ultra-Clean PlantUML Theme for Crystal-Clear Readability
+ */
+const BASE_PLANTUML_THEME = `
+skinparam backgroundColor #0b0f19
+skinparam defaultFontName "Inter", "Segoe UI", -apple-system, sans-serif
+skinparam defaultFontSize 13
+skinparam defaultFontColor #f8fafc
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam padding 4
+skinparam nodesep 50
+skinparam ranksep 45
+skinparam linetype ortho
+
+skinparam class {
+  BackgroundColor #1e293b
+  BorderColor #38bdf8
+  BorderThickness 1.5
+  HeaderBackgroundColor #0f172a
+  FontColor #f1f5f9
+  FontSize 13
+  FontStyle bold
+  AttributeFontColor #cbd5e1
+  AttributeFontSize 12
+  AttributeIconSize 0
+}
+
+skinparam interface {
+  BackgroundColor #1e293b
+  BorderColor #a855f7
+  BorderThickness 1.5
+  HeaderBackgroundColor #3b0764
+  FontColor #f3e8ff
+  FontSize 13
+  FontStyle bold
+}
+
+skinparam package {
+  BackgroundColor #0f172a
+  BorderColor #475569
+  BorderThickness 1.2
+  FontColor #94a3b8
+  FontSize 12
+  FontStyle bold
+}
+
+skinparam arrow {
+  Color #38bdf8
+  Thickness 1.5
+  FontColor #94a3b8
+  FontSize 11
+}
+
+skinparam sequence {
+  ArrowColor #38bdf8
+  LifeLineBorderColor #6366f1
+  LifeLineBackgroundColor #1e293b
+  ParticipantBackgroundColor #1e293b
+  ParticipantBorderColor #818cf8
+  ParticipantFontColor #f8fafc
+  ActorBackgroundColor #1e293b
+  ActorBorderColor #38bdf8
+}
+`;
+
+/**
  * Renders diagram markup (PlantUML, Mermaid, etc.) into SVG using Kroki API.
  */
 export async function renderKrokiDiagram(source: string, diagramType: DiagramType = 'plantuml'): Promise<KrokiRenderResult> {
@@ -54,25 +120,16 @@ export const LLD_DIAGRAM_TEMPLATES: Record<string, { type: DiagramType; title: s
   // 1. SOLID: Single Responsibility Principle (SRP)
   'srp': {
     type: 'plantuml',
-    title: 'Single Responsibility Principle (SRP) — Refactored Architecture',
+    title: 'Single Responsibility Principle (SRP) — Decoupled Architecture',
     code: `@startuml
-skinparam style strictuml
-skinparam classAttributeIconSize 0
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #6366f1
-skinparam classHeaderBackgroundColor #312e81
-skinparam arrowColor #38bdf8
+${BASE_PLANTUML_THEME}
+title Single Responsibility Principle (SRP) Architecture
 
-title Single Responsibility Principle (SRP) — Decoupled Architecture
-
-package "1. Core Domain Entity (Business Logic)" {
+package "1. Core Domain Entity (Business Calculation)" {
   class Invoice {
     - id: int
     - amount: double
     - taxRate: double
-    + Invoice(id: int, amount: double)
     + calculateTotal(): double
     + getId(): int
     + getAmount(): double
@@ -91,15 +148,17 @@ package "2. Persistence Layer (Storage Responsibility)" {
   }
 }
 
-package "3. Notification / Output Layer (Communication Responsibility)" {
+package "3. Notification Layer (Communication Responsibility)" {
   interface InvoiceNotifier {
-    + sendInvoiceNotification(invoice: Invoice, recipient: String): void
+    + sendInvoice(invoice: Invoice, to: String): void
   }
 
   class EmailInvoiceNotifier implements InvoiceNotifier {
-    + sendInvoiceNotification(invoice: Invoice, recipient: String): void
+    + sendInvoice(invoice: Invoice, to: String): void
   }
+}
 
+package "4. Presentation Layer (Formatting Responsibility)" {
   class InvoicePrinter {
     + printReceipt(invoice: Invoice): void
   }
@@ -116,14 +175,7 @@ InvoicePrinter ..> Invoice : formats
     type: 'plantuml',
     title: 'Open-Closed Principle (OCP) — Strategy & Extension Architecture',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #10b981
-skinparam classHeaderBackgroundColor #064e3b
-skinparam arrowColor #34d399
-
+${BASE_PLANTUML_THEME}
 title Open-Closed Principle (OCP) — Extensible Storage Strategy
 
 class Invoice {
@@ -150,7 +202,6 @@ class CloudS3Persistence implements InvoicePersistence {
 
 class InvoiceService {
   - persistenceStrategy: InvoicePersistence
-  + InvoiceService(strategy: InvoicePersistence)
   + executeSave(invoice: Invoice): void
 }
 
@@ -162,17 +213,10 @@ InvoicePersistence ..> Invoice : saves
   // 3. SOLID: Liskov Substitution Principle (LSP)
   'lsp': {
     type: 'plantuml',
-    title: 'Liskov Substitution Principle (LSP) — Proper Inheritance Hierarchy',
+    title: 'Liskov Substitution Principle (LSP) — Behavioral Subtyping',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #f59e0b
-skinparam classHeaderBackgroundColor #78350f
-skinparam arrowColor #fbbf24
-
-title Liskov Substitution Principle (LSP) — Behavioral Subtyping
+${BASE_PLANTUML_THEME}
+title Liskov Substitution Principle (LSP) — Proper Hierarchy
 
 abstract class GenericFile {
   - filename: String
@@ -208,14 +252,7 @@ FileManager ..> Writable
     type: 'plantuml',
     title: 'Interface Segregation Principle (ISP) — Role-Based Interfaces',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #ec4899
-skinparam classHeaderBackgroundColor #831843
-skinparam arrowColor #f472b6
-
+${BASE_PLANTUML_THEME}
 title Interface Segregation Principle (ISP) — Lean Interfaces
 
 interface Printable {
@@ -247,19 +284,11 @@ class MultiFunctionOfficeMachine implements Printable, Scannable, Faxable {
     type: 'plantuml',
     title: 'Dependency Inversion Principle (DIP) — Inverted Abstraction Flow',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #8b5cf6
-skinparam classHeaderBackgroundColor #4c1d95
-skinparam arrowColor #a78bfa
-
-title Dependency Inversion Principle (DIP) — High Level depends on Abstraction
+${BASE_PLANTUML_THEME}
+title Dependency Inversion Principle (DIP) — Abstraction Flow
 
 class CheckoutService {
   - paymentProcessor: PaymentProcessor
-  + CheckoutService(processor: PaymentProcessor)
   + processOrder(orderId: String, amount: double): boolean
 }
 
@@ -278,11 +307,6 @@ class PayPalPaymentGateway implements PaymentProcessor {
   + refund(txId: String): boolean
 }
 
-class RazorpayPaymentGateway implements PaymentProcessor {
-  + charge(amount: double): boolean
-  + refund(txId: String): boolean
-}
-
 CheckoutService o--> PaymentProcessor : depends on abstraction
 @enduml`
   },
@@ -292,14 +316,7 @@ CheckoutService o--> PaymentProcessor : depends on abstraction
     type: 'plantuml',
     title: 'Parking Lot — Class Diagram (SOLID & Factory Pattern)',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #6366f1
-skinparam classHeaderBackgroundColor #312e81
-skinparam arrowColor #38bdf8
-
+${BASE_PLANTUML_THEME}
 title Parking Lot System — Low Level Design
 
 enum VehicleType {
@@ -318,7 +335,6 @@ abstract class Vehicle {
   - licenseNumber: String
   - vehicleType: VehicleType
   + getLicenseNumber(): String
-  + getType(): VehicleType
 }
 
 class Car extends Vehicle
@@ -339,7 +355,6 @@ class ParkingFloor {
   - floorId: int
   - spots: List<ParkingSpot>
   + findAvailableSpot(type: VehicleType): ParkingSpot
-  + getVacantSpotCount(): int
 }
 
 class ParkingTicket {
@@ -377,13 +392,7 @@ ParkingSpot --> Vehicle
     type: 'plantuml',
     title: 'Rate Limiter — Sliding Window Sequence Diagram',
     code: `@startuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam sequenceArrowColor #38bdf8
-skinparam sequenceLifeLineBorderColor #6366f1
-skinparam sequenceParticipantBackgroundColor #1e293b
-skinparam sequenceParticipantBorderColor #818cf8
-
+${BASE_PLANTUML_THEME}
 autonumber
 title Sliding Window Log Rate Limiter — Sequence Diagram
 
@@ -419,14 +428,7 @@ end
     type: 'plantuml',
     title: 'Elevator Dispatcher — State Pattern & Controller',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #10b981
-skinparam classHeaderBackgroundColor #064e3b
-skinparam arrowColor #34d399
-
+${BASE_PLANTUML_THEME}
 title Elevator System — State Pattern & Dispatcher
 
 enum Direction {
@@ -447,26 +449,22 @@ class ElevatorCar {
   - currentFloor: int
   - direction: Direction
   - state: ElevatorState
-  - requestedFloors: Set<int>
   + moveNext(): void
   + addFloorRequest(floor: int): void
-  + openDoors(): void
-  + closeDoors(): void
 }
 
 interface DispatchStrategy {
-  + selectElevator(elevators: List<ElevatorCar>, requestFloor: int, dir: Direction): ElevatorCar
+  + selectElevator(elevators: List<ElevatorCar>, floor: int, dir: Direction): ElevatorCar
 }
 
 class ScanAlgorithmStrategy implements DispatchStrategy {
-  + selectElevator(elevators: List<ElevatorCar>, requestFloor: int, dir: Direction): ElevatorCar
+  + selectElevator(elevators: List<ElevatorCar>, floor: int, dir: Direction): ElevatorCar
 }
 
 class ElevatorController {
   - elevators: List<ElevatorCar>
   - strategy: DispatchStrategy
   + requestElevator(floor: int, dir: Direction): void
-  + stepSimulation(): void
 }
 
 ElevatorController o-- ElevatorCar
@@ -479,14 +477,7 @@ ElevatorController --> DispatchStrategy
     type: 'plantuml',
     title: 'Splitwise — Expense Settlement & Strategy Pattern',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #f59e0b
-skinparam classHeaderBackgroundColor #78350f
-skinparam arrowColor #fbbf24
-
+${BASE_PLANTUML_THEME}
 title Splitwise System — Low Level Design
 
 enum SplitType {
@@ -523,7 +514,6 @@ class PercentExpense extends Expense
 class BalanceSheetController {
   - userBalances: Map<String, Map<String, Double>>
   + addExpense(expense: Expense): void
-  + showUserBalance(userId: String): void
   + simplifyDebts(): void
 }
 
@@ -538,14 +528,7 @@ Split --> User
     type: 'plantuml',
     title: 'LRU Cache — Doubly Linked List & Hash Map Architecture',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #6366f1
-skinparam classHeaderBackgroundColor #312e81
-skinparam arrowColor #38bdf8
-
+${BASE_PLANTUML_THEME}
 title LRU Cache (Least Recently Used) — O(1) Get and Put Design
 
 class Node {
@@ -553,7 +536,6 @@ class Node {
   + value: int
   + prev: Node
   + next: Node
-  + Node(key: int, value: int)
 }
 
 class DoublyLinkedList {
@@ -566,14 +548,10 @@ class DoublyLinkedList {
 
 class LRUCache {
   - capacity: int
-  - size: int
   - map: Map<int, Node>
   - dll: DoublyLinkedList
-  + LRUCache(capacity: int)
   + get(key: int): int
   + put(key: int, value: int): void
-  - moveToHead(node: Node): void
-  - evictLeastRecent(): void
 }
 
 LRUCache o-- DoublyLinkedList
@@ -587,14 +565,7 @@ DoublyLinkedList o-- Node
     type: 'plantuml',
     title: 'Tic-Tac-Toe — Game Engine & Board Model',
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #ec4899
-skinparam classHeaderBackgroundColor #831843
-skinparam arrowColor #f472b6
-
+${BASE_PLANTUML_THEME}
 title Tic-Tac-Toe Game — Object Oriented Design
 
 enum PieceType {
@@ -607,14 +578,10 @@ class PlayingPiece {
   + getType(): PieceType
 }
 
-class PlayingPieceX extends PlayingPiece
-class PlayingPieceO extends PlayingPiece
-
 class Player {
   - name: String
   - playingPiece: PlayingPiece
   + getName(): String
-  + getPiece(): PlayingPiece
 }
 
 class Board {
@@ -622,14 +589,12 @@ class Board {
   - board: PlayingPiece[][]
   + addPiece(row: int, col: int, piece: PlayingPiece): boolean
   + getFreeCells(): List<Pair>
-  + printBoard(): void
 }
 
 class TicTacToeGame {
   - board: Board
   - players: Deque<Player>
   + startGame(): String
-  - checkWinner(row: int, col: int, piece: PlayingPiece): boolean
 }
 
 TicTacToeGame o-- Board
@@ -646,12 +611,10 @@ Board o-- PlayingPiece
 export function getLldDiagramForProblem(slugOrTitle: string, category?: string): { type: DiagramType; title: string; code: string } {
   const norm = (slugOrTitle || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
   
-  // Direct Key Match
   if (LLD_DIAGRAM_TEMPLATES[slugOrTitle]) {
     return LLD_DIAGRAM_TEMPLATES[slugOrTitle];
   }
 
-  // 1. Check SOLID keywords
   if (norm.includes('single responsibility') || norm.includes('srp')) {
     return LLD_DIAGRAM_TEMPLATES['srp'];
   }
@@ -667,8 +630,6 @@ export function getLldDiagramForProblem(slugOrTitle: string, category?: string):
   if (norm.includes('dependency inversion') || norm.includes('dip')) {
     return LLD_DIAGRAM_TEMPLATES['dip'];
   }
-
-  // 2. Check Classic LLD Systems
   if (norm.includes('parking')) {
     return LLD_DIAGRAM_TEMPLATES['parking-lot'];
   }
@@ -688,44 +649,32 @@ export function getLldDiagramForProblem(slugOrTitle: string, category?: string):
     return LLD_DIAGRAM_TEMPLATES['tic-tac-toe'];
   }
 
-  // 3. Dynamic High-Quality PlantUML Architecture for any problem
   const cleanPascal = (slugOrTitle || 'Problem').replace(/[^a-zA-Z0-9]/g, ' ').split(' ')
     .filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 
   return {
     type: 'plantuml',
-    title: `${slugOrTitle || 'Algorithmic'} — Visual Architecture & Invariant Flow`,
+    title: `${slugOrTitle || 'System'} — Architecture & Class Structure`,
     code: `@startuml
-skinparam style strictuml
-skinparam backgroundColor #0f172a
-skinparam defaultFontColor #e2e8f0
-skinparam classBackgroundColor #1e293b
-skinparam classBorderColor #6366f1
-skinparam classHeaderBackgroundColor #312e81
-skinparam arrowColor #38bdf8
+${BASE_PLANTUML_THEME}
+title ${slugOrTitle || 'Problem Engine'} — Component & Class Diagram
 
-title ${slugOrTitle || 'Problem Engine'} — High-Performance Component Diagram
-
-package "1. Core State & Data Invariants" {
+package "1. Core State Invariants" {
   class ${cleanPascal || 'SolutionEngine'} {
     - stateVector: List<int>
     - memoryWindow: Map<String, Object>
-    + executePipeline(inputData: Object): Object
+    + executePipeline(input: Object): Object
     + validateInvariants(): boolean
   }
 }
 
-package "2. Strategy & Transformation Layer" {
+package "2. Optimization & Transformation" {
   interface OptimizationStrategy {
-    + computeOptimal(data: Object): Object
+    + computeOptimal(input: Object): Object
   }
 
-  class FastTwoPointerStrategy implements OptimizationStrategy {
-    + computeOptimal(data: Object): Object
-  }
-
-  class MemoizedStateStrategy implements OptimizationStrategy {
-    + computeOptimal(data: Object): Object
+  class OptimalStrategy implements OptimizationStrategy {
+    + computeOptimal(input: Object): Object
   }
 }
 

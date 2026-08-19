@@ -729,7 +729,7 @@ Provide:
                           transition: 'transform 0.15s ease-out' 
                         }}
                         dangerouslySetInnerHTML={{ __html: diagramSvg }} 
-                        className="filter drop-shadow-2xl select-none"
+                        className="filter drop-shadow-2xl select-none [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:block"
                       />
                     </div>
                   ) : (
