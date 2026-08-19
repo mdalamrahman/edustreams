@@ -148,7 +148,26 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL'); // 'ALL' | 'REVISION' | 'MUST_DO' | 'SOLVED' | 'UNSOLVED'
+  const [selectedCompany, setSelectedCompany] = useState<string>('ALL');
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
+
+  // Compute all unique companies with question counts for the active sheet
+  const companyCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    currentSheetProblems.forEach((p) => {
+      p.companies.forEach((c) => {
+        const clean = c.trim();
+        if (clean) {
+          counts[clean] = (counts[clean] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [currentSheetProblems]);
+
+  const sortedCompanies = useMemo(() => {
+    return Object.keys(companyCounts).sort((a, b) => companyCounts[b] - companyCounts[a]);
+  }, [companyCounts]);
 
   // SINGLE UNIVERSAL POTD: Strictly from SDETube's SDE Sheet (191 Questions)
   const potdProblem = useMemo<DSAProblem>(() => {
@@ -209,6 +228,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const handleSwitchSheet = (newSheet: DSASheetType) => {
     setActiveSheet(newSheet);
     setSelectedCategory('ALL');
+    setSelectedCompany('ALL');
     setActiveTopicPill('ALL');
     setSearchQuery('');
   };
@@ -261,6 +281,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           ? (activeTopicPill === 'ALL' || p.category === activeTopicPill)
           : (p.category === selectedCategory);
 
+      const matchesCompany = 
+        selectedCompany === 'ALL' || 
+        p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
+
       const matchesDifficulty = 
         selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
 
@@ -273,9 +297,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
       if (selectedStatus === 'REVISION') matchesStatus = isStarred;
 
-      return matchesSearch && matchesCat && matchesDifficulty && matchesStatus;
+      return matchesSearch && matchesCat && matchesCompany && matchesDifficulty && matchesStatus;
     });
-  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds, revisionIds]);
+  }, [currentSheetProblems, searchQuery, selectedCategory, selectedCompany, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds, revisionIds]);
 
   // Group filtered problems hierarchically by Step -> Subcategory (takeuforward structure)
   const groupedData = useMemo(() => {
@@ -346,6 +370,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const resetAllFilters = () => {
     setSearchQuery('');
     setSelectedCategory('ALL');
+    setSelectedCompany('ALL');
     setSelectedDifficulty('ALL');
     setSelectedStatus('ALL');
     setActiveTopicPill('ALL');
@@ -354,53 +379,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const hasActiveFilters = 
     searchQuery !== '' || 
     selectedCategory !== 'ALL' || 
+    selectedCompany !== 'ALL' || 
     selectedDifficulty !== 'ALL' || 
     selectedStatus !== 'ALL' || 
     activeTopicPill !== 'ALL';
-
-  // Export current active sheet to CSV
-  const handleExportCSV = () => {
-    try {
-      const headers = ["ID", "Category / Step", "Subcategory", "Problem Name", "LeetCode URL", "GFG URL", "Companies", "Difficulty", "Rating"];
-      const rows = currentSheetProblems.map((p) => [
-        p.id,
-        `"${(p.category || '').replace(/"/g, '""')}"`,
-        `"${(p.subcategory || '').replace(/"/g, '""')}"`,
-        `"${(p.name || '').replace(/"/g, '""')}"`,
-        `"${p.leetcode || ''}"`,
-        `"${p.gfg || ''}"`,
-        `"${(p.companies || []).join(', ')}"`,
-        `"${p.difficulty || ''}"`,
-        `"${p.rating || ''}"`
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const fileName = activeSheet === 'sde' 
-        ? 'sdetube_sde_sheet_191_problems.csv' 
-        : activeSheet === 'a2z' 
-          ? 'sdetube_a2z_dsa_sheet_474_problems.csv' 
-          : 'sdetube_79_sheet_79_problems.csv';
-
-      link.setAttribute('href', url);
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (err) {
-      console.warn('CSV export notice:', err);
-    }
-  };
 
   return (
     <div className="space-y-6 animate-fadeIn font-sans">
 
       {/* TOP 3-WAY SHEET SWITCHER TABS */}
       <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
           
           {/* TAB 1: SDE Sheet */}
           <button
@@ -451,16 +440,6 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </button>
 
         </div>
-
-        {/* CSV Exporter Action */}
-        <button
-          onClick={handleExportCSV}
-          className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all shadow-md cursor-pointer hover:border-emerald-500/50"
-          title="Export Active Sheet to CSV"
-        >
-          <Download className="w-4 h-4 text-emerald-400" />
-          <span>Export CSV ({activeSheetConfig.totalQuestions} Qs)</span>
-        </button>
       </div>
 
       {/* SINGLE UNIVERSAL POTD (ALWAYS FROM SDE SHEET 191) */}
@@ -727,7 +706,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
       {/* ADVANCED FILTER & SEARCH CONTROLS + VIEW MODE SWITCHER */}
       <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
           
           {/* Search Box */}
           <div className="lg:col-span-2 relative">
@@ -752,6 +731,26 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Company-Wise Filter Dropdown */}
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-indigo-400" />
+              <span>Company Filter</span>
+            </label>
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="ALL">All Companies ({sortedCompanies.length})</option>
+              {sortedCompanies.map((comp) => (
+                <option key={comp} value={comp}>
+                  {comp} ({companyCounts[comp]})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Category / Topic Dropdown */}
@@ -811,6 +810,45 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </select>
           </div>
 
+        </div>
+
+        {/* Company Quick-Filter Chips Bar */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar pt-1 pb-1 text-xs">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap flex items-center gap-1 mr-1">
+            <Building2 className="w-3 h-3 text-slate-500" />
+            <span>Top Companies:</span>
+          </span>
+          <button
+            onClick={() => setSelectedCompany('ALL')}
+            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              selectedCompany === 'ALL'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+            }`}
+          >
+            All Companies
+          </button>
+          {sortedCompanies.slice(0, 12).map((comp) => {
+            const isSelected = selectedCompany.toLowerCase() === comp.toLowerCase();
+            return (
+              <button
+                key={comp}
+                onClick={() => setSelectedCompany(isSelected ? 'ALL' : comp)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center space-x-1.5 border ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30'
+                    : 'bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+                }`}
+              >
+                <span>{comp}</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-900 text-slate-500'
+                }`}>
+                  {companyCounts[comp]}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* View Mode Switcher + Expand/Collapse Buttons */}
