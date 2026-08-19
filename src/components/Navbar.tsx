@@ -144,8 +144,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'sde_sheet' as const,
-      label: 'SDE Sheet',
-      subtitle: '191 Curated Coding Problems',
+      label: 'DSA Sheets',
+      subtitle: 'SDE, A2Z & 79 Curricula (743 Qs)',
       icon: Code2,
       color: 'text-purple-400',
       activeColor: 'bg-purple-600 text-white'

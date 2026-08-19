@@ -313,10 +313,10 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               <Code2 className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-slate-100 group-hover:text-purple-300 transition-colors">
-              SDE Sheet Explorer
+              DSA Sheets Hub
             </h3>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              191 Curated DSA problems, Monaco in-browser IDE, test runners, and topic filters.
+              SDE (191 Qs), A2Z (473 Qs) & 79 Sheets (743 Qs total), Monaco IDE, and test runners.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-purple-400">
               <span>{dsaSolved}/{dsaTotal} Solved</span>

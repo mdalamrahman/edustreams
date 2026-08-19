@@ -37,7 +37,7 @@ import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SystemDesignHub } from './components/SystemDesignHub';
 import { POTDModal } from './components/POTDModal';
 import { DashboardLandingPage } from './components/DashboardLandingPage';
-import { SDEProblem, SDE_SHEET_DATA } from './lib/sdeSheetData';
+import { SDEProblem, SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA } from './lib/sdeSheetData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
@@ -109,7 +109,7 @@ export function App() {
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
   const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'sde-sheet' : tab === 'system_design' ? 'system-design' : tab}`;
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'system_design' ? 'system-design' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -135,7 +135,12 @@ export function App() {
       const hash = window.location.hash || '#/dashboard';
       if (hash.startsWith('#/problem/')) {
         const pIdStr = hash.replace('#/problem/', '');
-        const found = SDE_SHEET_DATA.find((p) => p.id.toString() === pIdStr || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === pIdStr.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const allProbs = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
+        const found = allProbs.find((p) => 
+          p.id.toString() === pIdStr || 
+          p.slug === pIdStr ||
+          p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === pIdStr.toLowerCase().replace(/[^a-z0-9]/g, '')
+        );
         if (found) {
           setSdeFullscreenProblem(found);
           const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
@@ -163,7 +168,7 @@ export function App() {
           const found = list.find((v) => v.id === vidId || v.title === vidId);
           if (found) setSelectedVideo(found);
           setActiveTab('lesson');
-        } else if (hash.startsWith('#/sde-sheet')) {
+        } else if (hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet')) {
           setActiveTab('sde_sheet');
         } else if (hash.startsWith('#/system-design')) {
           setActiveTab('system_design');
@@ -1224,6 +1229,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                         cleanName.toLowerCase().includes(p.name.toLowerCase())
                       ) || {
                         id: 999,
+                        sheetType: 'sde' as const,
                         category: activeChannelObj?.name || 'System Design & LLD',
                         name: cleanName,
                         leetcode: 'https://leetcode.com',

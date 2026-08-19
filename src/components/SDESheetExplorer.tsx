@@ -17,16 +17,28 @@ import {
   Flame,
   Zap,
   Trophy,
-  ArrowRight
+  ArrowRight,
+  Download,
+  BookOpen,
+  Layers,
+  Rocket
 } from 'lucide-react';
-import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
+import { 
+  DSAProblem, 
+  DSASheetType, 
+  DSA_SHEETS_CONFIG, 
+  ALL_SHEETS_MAP, 
+  getSheetData,
+  SDEProblem 
+} from '../lib/dsaSheetsData';
 
 interface SDESheetExplorerProps {
   onSelectVideoByTopic?: (query: string) => void;
-  onOpenCodingFullscreen?: (problem: SDEProblem) => void;
+  onOpenCodingFullscreen?: (problem: DSAProblem) => void;
 }
 
-const STORAGE_SOLVED_KEY = 'sdetube_sde_sheet_solved_ids';
+const STORAGE_ACTIVE_SHEET_KEY = 'sdetube_active_dsa_sheet';
+const STORAGE_SOLVED_PREFIX = 'sdetube_dsa_sheet_solved_';
 const STORAGE_POTD_DATE_KEY = 'sdetube_potd_date';
 const STORAGE_POTD_ID_KEY = 'sdetube_potd_problem_id';
 
@@ -34,14 +46,52 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
   onOpenCodingFullscreen
 }) => {
+  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (473 Qs) | '79' (79 Qs)
+  const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_ACTIVE_SHEET_KEY) as DSASheetType;
+      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79')) return saved;
+    } catch {}
+    return 'sde';
+  });
+
+  const activeSheetConfig = DSA_SHEETS_CONFIG[activeSheet];
+  const currentSheetProblems = useMemo(() => getSheetData(activeSheet), [activeSheet]);
+
+  // Solved State per Sheet
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_SOLVED_KEY);
+      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
+      const saved = localStorage.getItem(savedKey) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
   });
+
+  // Re-sync solved state when switching sheets
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_SHEET_KEY, activeSheet);
+      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
+      const legacyKey = activeSheet === 'sde' ? 'sdetube_sde_sheet_solved_ids' : '';
+      const saved = localStorage.getItem(savedKey) || (legacyKey ? localStorage.getItem(legacyKey) : null);
+      setSolvedIds(saved ? JSON.parse(saved) : []);
+    } catch {}
+  }, [activeSheet]);
+
+  // Save solved state on change
+  useEffect(() => {
+    try {
+      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
+      localStorage.setItem(savedKey, JSON.stringify(solvedIds));
+      if (activeSheet === 'sde') {
+        localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(solvedIds));
+      }
+    } catch (e) {
+      console.warn('[SDETube Sheets Storage Notice]:', e);
+    }
+  }, [solvedIds, activeSheet]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -50,124 +100,115 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
 
-  // POTD (Problem of the Day) Generator
-  const potdProblem = useMemo<SDEProblem>(() => {
+  // Reset category/topic filters when switching sheets
+  const handleSwitchSheet = (newSheet: DSASheetType) => {
+    setActiveSheet(newSheet);
+    setSelectedCategory('ALL');
+    setActiveTopicPill('ALL');
+    setSearchQuery('');
+  };
+
+  // POTD (Problem of the Day) Generator for active sheet
+  const potdProblem = useMemo<DSAProblem>(() => {
     const today = new Date().toISOString().slice(0, 10);
     const savedDate = localStorage.getItem(STORAGE_POTD_DATE_KEY);
     const savedId = localStorage.getItem(STORAGE_POTD_ID_KEY);
 
     if (savedDate === today && savedId) {
-      const p = SDE_SHEET_DATA.find((item) => item.id === Number(savedId));
+      const p = currentSheetProblems.find((item) => item.id === Number(savedId));
       if (p) return p;
     }
 
-    // Deterministic pseudo-random generation based on today's date
     let hash = 0;
     for (let i = 0; i < today.length; i++) {
-      hash = (hash * 31 + today.charCodeAt(i)) % SDE_SHEET_DATA.length;
+      hash = (hash * 31 + today.charCodeAt(i)) % currentSheetProblems.length;
     }
-    const selected = SDE_SHEET_DATA[Math.abs(hash) % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    const selected = currentSheetProblems[Math.abs(hash) % currentSheetProblems.length] || currentSheetProblems[0];
 
-    localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
-    localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
+    try {
+      localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
+      localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
+    } catch {}
     return selected;
-  }, []);
+  }, [currentSheetProblems]);
 
   const isPotdSolved = solvedIds.includes(potdProblem.id);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_SOLVED_KEY, JSON.stringify(solvedIds));
-    } catch (e) {
-      console.warn('[SDETube SDE Sheet Storage]:', e);
-    }
-  }, [solvedIds]);
-
-  const toggleSolved = (id: number) => {
+  const toggleSolved = (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setSolvedIds((prev) => 
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const allCategories = useMemo(() => {
-    return Array.from(new Set(SDE_SHEET_DATA.map((p) => p.category)));
-  }, []);
+    return Array.from(new Set(currentSheetProblems.map((p) => p.category)));
+  }, [currentSheetProblems]);
 
   const allCompanies = useMemo(() => {
     const companies = new Set<string>();
-    SDE_SHEET_DATA.forEach((p) => p.companies.forEach((c) => companies.add(c.trim())));
+    currentSheetProblems.forEach((p) => p.companies.forEach((c) => companies.add(c.trim())));
     return Array.from(companies).sort();
-  }, []);
+  }, [currentSheetProblems]);
 
-  const topicPills = [
-    { label: 'All Topics', value: 'ALL' },
-    { label: 'Arrays', value: 'Arrays' },
-    { label: 'Linked List', value: 'Linked List' },
-    { label: 'Binary Search', value: 'Binary Search' },
-    { label: 'String', value: 'String' },
-    { label: 'Binary Tree & BST', value: 'Tree' },
-    { label: 'Graph', value: 'Graph' },
-    { label: 'Dynamic Programming', value: 'Dynamic Programming' },
-    { label: 'Trie', value: 'Trie' }
-  ];
+  // Topic category chips for quick navigation
+  const topTopics = useMemo(() => {
+    const counts: Record<string, number> = {};
+    currentSheetProblems.forEach((p) => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [currentSheetProblems]);
 
-  const handlePillClick = (val: string) => {
-    setActiveTopicPill(val);
-    if (val === 'ALL') {
-      setSelectedCategory('ALL');
-    } else if (val === 'Tree') {
-      setSelectedCategory('ALL');
-    } else {
-      setSelectedCategory('ALL');
-    }
-  };
-
+  // Multi-Criteria Filtering
   const filteredProblems = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return SDE_SHEET_DATA.filter((p) => {
-      // Search match
-      const matchesSearch = !q || 
-        p.name.toLowerCase().includes(q) || 
+    return currentSheetProblems.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q || (
+        p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
-        p.companies.some((c) => c.toLowerCase().includes(q));
+        p.companies.some((c) => c.toLowerCase().includes(q))
+      );
 
-      // Category dropdown match
-      const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
+      const matchesCat = 
+        selectedCategory === 'ALL' 
+          ? (activeTopicPill === 'ALL' || p.category === activeTopicPill)
+          : (p.category === selectedCategory);
 
-      // Company dropdown match
-      const matchesCompany = selectedCompany === 'ALL' || p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
+      const matchesCompany = 
+        selectedCompany === 'ALL' || 
+        p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
 
-      // Topic pill match
-      let matchesTopicPill = true;
-      if (activeTopicPill !== 'ALL') {
-        if (activeTopicPill === 'Tree') {
-          matchesTopicPill = p.category.includes('Tree');
-        } else {
-          matchesTopicPill = p.category.includes(activeTopicPill);
-        }
-      }
+      const matchesDifficulty = 
+        selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
 
-      // Difficulty match
-      const matchesDifficulty = selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
-
-      // Status match
       const isSolved = solvedIds.includes(p.id);
       let matchesStatus = true;
       if (selectedStatus === 'SOLVED') matchesStatus = isSolved;
       if (selectedStatus === 'UNSOLVED') matchesStatus = !isSolved;
       if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
 
-      return matchesSearch && matchesCategory && matchesCompany && matchesTopicPill && matchesDifficulty && matchesStatus;
+      return matchesSearch && matchesCat && matchesCompany && matchesDifficulty && matchesStatus;
     });
-  }, [searchQuery, selectedCategory, selectedCompany, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds]);
+  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedCompany, selectedDifficulty, selectedStatus, solvedIds]);
 
-  // Statistics calculation
-  const totalCount = SDE_SHEET_DATA.length;
-  const solvedCount = solvedIds.length;
-  const mustDoCount = SDE_SHEET_DATA.filter((p) => p.rating.includes('Must Do')).length;
-  const progressPercent = Math.round((solvedCount / totalCount) * 100) || 0;
+  // Statistics calculation for the active sheet
+  const totalCount = currentSheetProblems.length;
+  const solvedCount = solvedIds.filter(id => currentSheetProblems.some(p => p.id === id)).length;
+  const solvedPercent = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
+  const mustDoCount = currentSheetProblems.filter((p) => p.rating.includes('Must Do')).length;
+  const mustDoSolved = currentSheetProblems.filter((p) => p.rating.includes('Must Do') && solvedIds.includes(p.id)).length;
 
-  const handleResetFilters = () => {
+  const easyTotal = currentSheetProblems.filter((p) => p.difficulty === 'Easy').length;
+  const easySolved = currentSheetProblems.filter((p) => p.difficulty === 'Easy' && solvedIds.includes(p.id)).length;
+
+  const mediumTotal = currentSheetProblems.filter((p) => p.difficulty === 'Medium').length;
+  const mediumSolved = currentSheetProblems.filter((p) => p.difficulty === 'Medium' && solvedIds.includes(p.id)).length;
+
+  const hardTotal = currentSheetProblems.filter((p) => p.difficulty === 'Hard').length;
+  const hardSolved = currentSheetProblems.filter((p) => p.difficulty === 'Hard' && solvedIds.includes(p.id)).length;
+
+  const resetAllFilters = () => {
     setSearchQuery('');
     setSelectedCategory('ALL');
     setSelectedCompany('ALL');
@@ -176,475 +217,633 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     setActiveTopicPill('ALL');
   };
 
+  const hasActiveFilters = 
+    searchQuery !== '' || 
+    selectedCategory !== 'ALL' || 
+    selectedCompany !== 'ALL' || 
+    selectedDifficulty !== 'ALL' || 
+    selectedStatus !== 'ALL' || 
+    activeTopicPill !== 'ALL';
+
+  // Export current active sheet to CSV
+  const handleExportCSV = () => {
+    try {
+      const headers = ["ID", "Category / Topic", "Problem Name", "LeetCode URL", "GFG URL", "Companies", "Difficulty", "Rating"];
+      const rows = currentSheetProblems.map((p) => [
+        p.id,
+        `"${(p.category || '').replace(/"/g, '""')}"`,
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        `"${p.leetcode || ''}"`,
+        `"${p.gfg || ''}"`,
+        `"${(p.companies || []).join(', ')}"`,
+        `"${p.difficulty || ''}"`,
+        `"${p.rating || ''}"`
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileName = activeSheet === 'sde' 
+        ? 'sdetube_sde_sheet_191_problems.csv' 
+        : activeSheet === 'a2z' 
+          ? 'sdetube_a2z_dsa_sheet_473_problems.csv' 
+          : 'sdetube_79_sheet_79_problems.csv';
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.warn('CSV export notice:', err);
+    }
+  };
+
   return (
-    <div className="w-full space-y-6 animate-fadeIn pb-12">
-      
-      {/* ========================================================================= */}
-      {/* 1. EXPANSIVE FULL-WIDTH TOP HEADER WITH LEETCODE POTD ON TOP-RIGHT         */}
-      {/* ========================================================================= */}
-      <div className="w-full glass-panel rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-r from-slate-900 via-slate-900/95 to-purple-950/50">
-        
-        {/* Left: Title & Subtitle */}
-        <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 flex items-center justify-center text-white font-bold text-2xl shadow-xl shadow-purple-600/30 border border-purple-400/40 flex-shrink-0">
-            <Code className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-100 flex flex-wrap items-center gap-2.5">
-              <span>SDETube SDE Mastery Sheet</span>
-              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-inner">
-                191 Top FAANG Problems
-              </span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
-              Complete Coding Interview Preparation with In-Workspace Video Lectures & Fullscreen LeetCode IDE
-            </p>
-          </div>
+    <div className="space-y-6 animate-fadeIn font-sans">
+
+      {/* TOP 3-WAY SHEET SWITCHER TABS */}
+      <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto flex-1">
+          
+          {/* TAB 1: SDE Sheet */}
+          <button
+            onClick={() => handleSwitchSheet('sde')}
+            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+              activeSheet === 'sde'
+                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.02] border border-emerald-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <Rocket className={`w-4 h-4 ${activeSheet === 'sde' ? 'text-white animate-bounce' : 'text-emerald-400'}`} />
+            <span>SDETube's SDE Sheet</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'sde' ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-400/30' : 'bg-slate-800 text-slate-400'}`}>
+              191 Qs
+            </span>
+          </button>
+
+          {/* TAB 2: A2Z DSA Roadmap */}
+          <button
+            onClick={() => handleSwitchSheet('a2z')}
+            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+              activeSheet === 'a2z'
+                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02] border border-indigo-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <BookOpen className={`w-4 h-4 ${activeSheet === 'a2z' ? 'text-white animate-pulse' : 'text-indigo-400'}`} />
+            <span>SDETube's A2Z Roadmap</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'a2z' ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-400/30' : 'bg-slate-800 text-slate-400'}`}>
+              473 Qs
+            </span>
+          </button>
+
+          {/* TAB 3: 79 Sheet */}
+          <button
+            onClick={() => handleSwitchSheet('79')}
+            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+              activeSheet === '79'
+                ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <Zap className={`w-4 h-4 ${activeSheet === '79' ? 'text-white animate-pulse' : 'text-amber-400'}`} />
+            <span>SDETube's 79 Sheet</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === '79' ? 'bg-amber-950/80 text-amber-200 border border-amber-400/30' : 'bg-slate-800 text-slate-400'}`}>
+              79 Qs
+            </span>
+          </button>
+
         </div>
 
-        {/* Right: LEETCODE-STYLE PROBLEM OF THE DAY (POTD) CARD */}
-        <div className="flex-shrink-0 w-full lg:w-auto">
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-950 via-purple-950/40 to-slate-950 border border-purple-500/30 shadow-xl relative overflow-hidden group hover:border-purple-500/60 transition-all">
-            
-            <div className="flex items-center justify-between gap-4 pb-2 border-b border-purple-900/40">
-              <div className="flex items-center space-x-2">
-                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Flame className="w-4 h-4 fill-amber-400 animate-pulse" />
-                </div>
-                <span className="text-xs font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200">
-                  Problem of the Day (POTD)
-                </span>
-              </div>
+        {/* CSV Exporter Action */}
+        <button
+          onClick={handleExportCSV}
+          className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all shadow-md cursor-pointer hover:border-emerald-500/50"
+          title="Export Active Sheet to CSV"
+        >
+          <Download className="w-4 h-4 text-emerald-400" />
+          <span>Export CSV ({activeSheetConfig.totalQuestions} Qs)</span>
+        </button>
+      </div>
+      
+      {/* HERO SHOWCASE & PROGRESS BANNER */}
+      <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border shadow-2xl relative overflow-hidden ${
+        activeSheet === 'sde' ? 'border-emerald-500/30' : activeSheet === 'a2z' ? 'border-indigo-500/30' : 'border-amber-500/30'
+      }`}>
+        <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
+          <Code className="w-80 h-80 text-white" />
+        </div>
 
-              {isPotdSolved ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Solved Today!
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 font-mono text-[10px] font-bold">
-                  Daily Challenge
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          
+          {/* Left Title & Description */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2.5">
+              <span className={`px-3 py-1 rounded-full text-xs font-mono font-extrabold flex items-center space-x-1.5 shadow-sm ${
+                activeSheet === 'sde' 
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
+                  : activeSheet === 'a2z'
+                    ? 'bg-indigo-950 text-indigo-300 border border-indigo-700/60'
+                    : 'bg-amber-950 text-amber-300 border border-amber-700/60'
+              }`}>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>OFFICIAL CURRICULUM &bull; {activeSheetConfig.totalQuestions} PROBLEMS</span>
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                {allCategories.length} Topics
+              </span>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
+              {activeSheetConfig.name}
+            </h2>
+
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+              {activeSheetConfig.description}. Seamlessly practice directly in the built-in Monaco Code Arena with live testcases, automated judging, and AI optimization.
+            </p>
+          </div>
+
+          {/* Right Live Overall Progress Ring */}
+          <div className="flex items-center gap-4 sm:gap-6 bg-slate-950/70 p-4 sm:p-5 rounded-3xl border border-slate-800/80 backdrop-blur-md">
+            
+            {/* Circular Progress Gauge */}
+            <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path
+                  className="text-slate-800"
+                  strokeWidth="3.5"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                <path
+                  className={activeSheet === 'sde' ? 'text-emerald-400' : activeSheet === 'a2z' ? 'text-indigo-400' : 'text-amber-400'}
+                  strokeDasharray={`${solvedPercent}, 100`}
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-base font-black font-mono text-slate-100">{solvedPercent}%</span>
+                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Done</span>
+              </div>
+            </div>
+
+            {/* Metrics Breakdown */}
+            <div className="space-y-1">
+              <div className="text-xs text-slate-400 font-medium">Sheet Solved Status</div>
+              <div className="text-2xl font-black font-mono text-slate-100">
+                {solvedCount} <span className="text-xs text-slate-500 font-normal">/ {totalCount} Solved</span>
+              </div>
+              <div className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                <Star className="w-3 h-3 fill-current" />
+                <span>{mustDoSolved} / {mustDoCount} Must Do Problems</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Difficulty Breakdown Progress Bars */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-slate-800/80">
+          
+          {/* Easy Bar */}
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-emerald-400">Easy</span>
+                <span className="font-mono text-[11px] text-slate-400">{easySolved}/{easyTotal}</span>
+              </div>
+              <div className="w-32 sm:w-28 md:w-36 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-500 transition-all duration-500" 
+                  style={{ width: `${easyTotal > 0 ? (easySolved / easyTotal) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Medium Bar */}
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-amber-400">Medium</span>
+                <span className="font-mono text-[11px] text-slate-400">{mediumSolved}/{mediumTotal}</span>
+              </div>
+              <div className="w-32 sm:w-28 md:w-36 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div 
+                  className="h-full bg-amber-500 transition-all duration-500" 
+                  style={{ width: `${mediumTotal > 0 ? (mediumSolved / mediumTotal) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Hard Bar */}
+          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-rose-400">Hard</span>
+                <span className="font-mono text-[11px] text-slate-400">{hardSolved}/{hardTotal}</span>
+              </div>
+              <div className="w-32 sm:w-28 md:w-36 h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div 
+                  className="h-full bg-rose-500 transition-all duration-500" 
+                  style={{ width: `${hardTotal > 0 ? (hardSolved / hardTotal) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* PROBLEM OF THE DAY (POTD) CARD */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start space-x-4">
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0">
+            <Flame className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/60 text-[10px] font-black uppercase tracking-wider">
+                Daily Problem of the Day
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                {potdProblem.category}
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-100 hover:text-amber-300 transition-colors">
+              {potdProblem.name}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
+              <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+                potdProblem.difficulty === 'Easy' 
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' 
+                  : potdProblem.difficulty === 'Medium' 
+                    ? 'bg-amber-950 text-amber-400 border border-amber-800/60' 
+                    : 'bg-rose-950 text-rose-400 border border-rose-800/60'
+              }`}>
+                {potdProblem.difficulty}
+              </span>
+              <span>&bull;</span>
+              <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
+              {isPotdSolved && (
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold ml-2">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Solved Today
                 </span>
               )}
             </div>
-
-            <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div 
-                onClick={() => onOpenCodingFullscreen && onOpenCodingFullscreen(potdProblem)}
-                className="space-y-0.5 cursor-pointer group/title"
-                title="Click to directly solve POTD in coding workspace"
-              >
-                <div className="text-sm font-bold text-slate-100 group-hover/title:text-purple-300 transition-colors flex items-center gap-2">
-                  <span className="line-clamp-1">{potdProblem.name}</span>
-                  <span className={`text-[10px] px-2 py-0.2 rounded-full font-bold border ${
-                    potdProblem.difficulty === 'Easy'
-                      ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                      : potdProblem.difficulty === 'Hard'
-                      ? 'bg-rose-950 text-rose-300 border-rose-800'
-                      : 'bg-amber-950 text-amber-300 border-amber-800'
-                  }`}>
-                    {potdProblem.difficulty}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 font-mono">
-                  {potdProblem.category} • {potdProblem.companies.slice(0, 2).join(', ')}
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                {onOpenCodingFullscreen && (
-                  <button
-                    onClick={() => onOpenCodingFullscreen(potdProblem)}
-                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 flex items-center space-x-1.5 active:scale-95 border border-purple-400/40 cursor-pointer"
-                  >
-                    <Terminal className="w-3.5 h-3.5 text-cyan-300" />
-                    <span>{isPotdSolved ? 'Review POTD' : 'Solve POTD'}</span>
-                  </button>
-                )}
-
-                {onSelectVideoByTopic && (
-                  <button
-                    onClick={() => onSelectVideoByTopic(potdProblem.name)}
-                    className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-purple-300 hover:text-white border border-slate-800 transition-colors"
-                    title="Watch Video Solution for POTD"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                )}
-              </div>
-            </div>
-
           </div>
         </div>
 
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onOpenCodingFullscreen?.(potdProblem)}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+          >
+            <Terminal className="w-4 h-4" />
+            <span>Solve POTD</span>
+          </button>
+        </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 2. EXPANDED FULL-WIDTH STATS BAR                                          */}
-      {/* ========================================================================= */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Total Problems */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-purple-500/40 transition-colors">
-          <div className="absolute -right-2 -bottom-2 text-slate-800/40 text-6xl font-black group-hover:text-purple-900/20 transition-colors pointer-events-none">
-            <ListChecks className="w-20 h-20" />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total SDE Problems</span>
-          <div className="text-3xl font-black text-white mt-1">{totalCount}</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">Curated FAANG Coding Interview Questions</div>
-        </div>
+      {/* TOPIC PILLS QUICK FILTER BAR */}
+      <div className="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 pt-1">
+        <button
+          onClick={() => {
+            setActiveTopicPill('ALL');
+            setSelectedCategory('ALL');
+          }}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center space-x-1.5 ${
+            activeTopicPill === 'ALL' && selectedCategory === 'ALL'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <span>All Topics</span>
+          <span className="text-[10px] font-mono opacity-80">({totalCount})</span>
+        </button>
 
-        {/* Solved Status */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
-          <div className="absolute -right-2 -bottom-2 text-emerald-950/40 text-6xl font-black pointer-events-none">
-            <CheckCircle2 className="w-20 h-20 text-emerald-900/30" />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Solved Status</span>
-          <div className="flex items-baseline space-x-2 mt-1">
-            <div className="text-3xl font-black text-emerald-400">{solvedCount}</div>
-            <span className="text-xs text-slate-400 font-mono">/ {totalCount} ({progressPercent}%)</span>
-          </div>
-          <div className="w-full bg-slate-950 h-2 rounded-full mt-3 overflow-hidden border border-slate-800">
-            <div 
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Must Do Questions */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-amber-500/40 transition-colors">
-          <div className="absolute -right-2 -bottom-2 text-amber-950/40 text-6xl font-black pointer-events-none">
-            <Star className="w-20 h-20 text-amber-900/30" />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Must Do Questions</span>
-          <div className="text-3xl font-black text-amber-400 mt-1">{mustDoCount}</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">5.0 ★ High Priority for Interviews</div>
-        </div>
-
-        {/* Companies Covered */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl relative overflow-hidden group hover:border-blue-500/40 transition-colors">
-          <div className="absolute -right-2 -bottom-2 text-blue-950/40 text-6xl font-black pointer-events-none">
-            <Building2 className="w-20 h-20 text-blue-900/30" />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Companies Covered</span>
-          <div className="text-3xl font-black text-blue-400 mt-1">{allCompanies.length}+</div>
-          <div className="text-[11px] text-slate-400 mt-2 font-mono">Google, Meta, Amazon, Microsoft, Apple & more</div>
-        </div>
-
+        {topTopics.map(([topicName, count]) => {
+          const isSelected = activeTopicPill === topicName || selectedCategory === topicName;
+          return (
+            <button
+              key={topicName}
+              onClick={() => {
+                setActiveTopicPill(topicName);
+                setSelectedCategory(topicName);
+              }}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center space-x-1.5 ${
+                isSelected
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+              }`}
+            >
+              <span>{topicName}</span>
+              <span className="text-[10px] font-mono opacity-80">({count})</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ========================================================================= */}
-      {/* 3. FULL-WIDTH FILTER CONTROLS & TOPIC PILLS                               */}
-      {/* ========================================================================= */}
-      <div className="w-full glass-panel rounded-3xl p-6 sm:p-7 border border-slate-800 shadow-xl space-y-5 bg-slate-900/90">
-        
-        {/* Quick Topic Filter Pills */}
-        <div>
-          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-            1-Click Topic Filter
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            {topicPills.map((pill) => (
-              <button
-                key={pill.value}
-                onClick={() => handlePillClick(pill.value)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTopicPill === pill.value
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400'
-                    : 'bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800'
-                }`}
-              >
-                {pill.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Dropdowns & Search Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-3 border-t border-slate-800">
+      {/* ADVANCED FILTER & SEARCH CONTROLS */}
+      <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           
-          {/* Search Input */}
-          <div className="relative">
-            <label className="block text-xs font-bold text-slate-400 mb-1">Search Problem</label>
+          {/* Search Box */}
+          <div className="lg:col-span-2 relative">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Search Problems & Companies
+            </label>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search problem or company..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all font-sans"
+                placeholder="Search problem title or company (e.g. Two Sum, Google)..."
+                className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-xs text-slate-500 hover:text-slate-300"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Company Filter Dropdown */}
+          {/* Category / Topic Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Filter by Company</label>
-            <select
-              value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
-            >
-              <option value="ALL">All Companies ({allCompanies.length})</option>
-              {allCompanies.map((comp) => (
-                <option key={comp} value={comp}>{comp}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Category Dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Detailed Category</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Topic / Category
+            </label>
             <select
               value={selectedCategory}
               onChange={(e) => {
                 setSelectedCategory(e.target.value);
-                setActiveTopicPill('ALL');
+                setActiveTopicPill(e.target.value);
               }}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
+              className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
-              <option value="ALL">All Categories ({allCategories.length})</option>
+              <option value="ALL">All {allCategories.length} Topics</option>
               {allCategories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
 
           {/* Difficulty Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Difficulty</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Difficulty
+            </label>
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
+              className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="ALL">All Difficulties</option>
-              <option value="Easy">Easy</option>
-              <option value="Medium">Medium</option>
-              <option value="Hard">Hard</option>
+              <option value="Easy">Easy ({easyTotal})</option>
+              <option value="Medium">Medium ({mediumTotal})</option>
+              <option value="Hard">Hard ({hardTotal})</option>
             </select>
           </div>
 
           {/* Status Dropdown */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1">Status / Rating</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+              Status & Rating
+            </label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-sans"
+              className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
-              <option value="ALL">All Problems</option>
-              <option value="MUST_DO">Must Do Only (5.0 ★)</option>
-              <option value="SOLVED">Solved Only</option>
-              <option value="UNSOLVED">Unsolved Only</option>
+              <option value="ALL">All Problems ({totalCount})</option>
+              <option value="MUST_DO">⭐ Must Do Only ({mustDoCount})</option>
+              <option value="SOLVED">✅ Solved Only ({solvedCount})</option>
+              <option value="UNSOLVED">⭕ Unsolved Only ({totalCount - solvedCount})</option>
             </select>
           </div>
 
         </div>
 
-        {/* Filter Summary & Reset */}
-        <div className="flex flex-wrap items-center justify-between pt-2.5 border-t border-slate-800 text-xs text-slate-400">
-          <div className="font-mono">
-            Showing <span className="font-bold text-purple-400">{filteredProblems.length}</span> of {totalCount} problems
+        {/* Filter Summary & Reset Action */}
+        <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
+          <div>
+            Showing <strong className="text-slate-100 font-mono">{filteredProblems.length}</strong> of{' '}
+            <strong className="text-slate-100 font-mono">{totalCount}</strong> problems in{' '}
+            <span className="text-indigo-400 font-bold">{activeSheetConfig.name}</span>
           </div>
-          <button
-            onClick={handleResetFilters}
-            className="text-purple-400 hover:text-purple-300 font-bold transition-colors flex items-center space-x-1"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset All Filters</span>
-          </button>
-        </div>
 
+          {hasActiveFilters && (
+            <button
+              onClick={resetAllFilters}
+              className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Active Filters</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 4. EXPANSIVE FULL-WIDTH PROBLEMS TABLE                                    */}
-      {/* ========================================================================= */}
-      <div className="w-full glass-panel rounded-3xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-900/90">
+      {/* PROBLEMS TABLE LIST */}
+      <div className="p-2 sm:p-4 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse font-sans text-xs">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-950/90 border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
-                <th className="py-4 px-4 w-12 text-center">Done</th>
-                <th className="py-4 px-4 font-bold">Category</th>
-                <th className="py-4 px-4 font-bold">Problem Title</th>
-                <th className="py-4 px-4 font-bold">Difficulty</th>
-                <th className="py-4 px-4 font-bold">Companies</th>
+              <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-mono">
+                <th className="py-4 px-4 w-12 text-center">Status</th>
+                <th className="py-4 px-4 font-bold">Topic / Category</th>
+                <th className="py-4 px-4 font-bold min-w-[240px]">Problem Title</th>
+                <th className="py-4 px-4 font-bold text-center">Difficulty</th>
+                <th className="py-4 px-4 font-bold">Top Companies</th>
                 <th className="py-4 px-4 font-bold">Importance</th>
-                <th className="py-4 px-4 font-bold text-center">Interactive Workspace & Practice</th>
+                <th className="py-4 px-4 font-bold text-center">Practice Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredProblems.map((item) => {
-                const isSolved = solvedIds.includes(item.id);
-                const isPotd = item.id === potdProblem.id;
 
-                return (
-                  <tr
-                    key={item.id}
-                    className={`hover:bg-slate-800/50 transition-colors ${
-                      isPotd ? 'bg-purple-950/20 ring-1 ring-inset ring-purple-500/30' : isSolved ? 'bg-slate-950/40' : ''
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <td className="py-3.5 px-4 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isSolved}
-                        onChange={() => toggleSolved(item.id)}
-                        className="w-4 h-4 rounded text-purple-600 bg-slate-950 border-slate-700 focus:ring-purple-500 focus:ring-offset-slate-900 cursor-pointer accent-purple-600"
-                      />
-                    </td>
-
-                    {/* Category */}
-                    <td className="py-3.5 px-4 font-medium text-slate-400 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono">
-                        {item.category}
-                      </span>
-                    </td>
-
-                    {/* Problem Name & POTD Badge - Click opens compiler immediately */}
-                    <td 
-                      onClick={() => onOpenCodingFullscreen && onOpenCodingFullscreen(item)}
-                      className="py-3.5 px-4 cursor-pointer group/title"
-                      title="Click to open coding compiler immediately"
+            <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
+              {filteredProblems.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-slate-500 space-y-3">
+                    <FolderOpen className="w-12 h-12 mx-auto text-slate-600 mb-2" />
+                    <p className="text-base font-bold text-slate-300">No problems found matching your criteria</p>
+                    <p className="text-xs text-slate-500">Try adjusting your search terms, topic, or difficulty filters.</p>
+                    <button
+                      onClick={resetAllFilters}
+                      className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer transition-all shadow-md"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold text-sm transition-colors group-hover/title:text-purple-300 group-hover/title:underline ${isSolved ? 'line-through text-slate-500' : 'text-slate-100'}`}>
-                          {item.name}
+                      Clear All Filters
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredProblems.map((p) => {
+                  const isSolved = solvedIds.includes(p.id);
+                  const isMustDo = p.rating.includes('Must Do');
+
+                  return (
+                    <tr
+                      key={`${p.sheetType}-${p.id}`}
+                      className={`hover:bg-slate-800/40 transition-colors group cursor-pointer ${
+                        isSolved ? 'bg-slate-950/40' : ''
+                      }`}
+                      onClick={() => onOpenCodingFullscreen?.(p)}
+                    >
+                      {/* Checkbox Status */}
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleSolved(p.id, e)}
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
+                            isSolved
+                              ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                              : 'bg-slate-950 border-slate-700 text-transparent hover:border-slate-500 hover:text-slate-600'
+                          }`}
+                          title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved'}
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        </button>
+                      </td>
+
+                      {/* Category */}
+                      <td className="py-3.5 px-4 font-medium text-slate-400 text-xs font-mono">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800/80 text-slate-300">
+                          {p.category}
                         </span>
-                        {isPotd && (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1">
-                            <Flame className="w-3 h-3 fill-amber-400" /> POTD
+                      </td>
+
+                      {/* Title */}
+                      <td className="py-3.5 px-4 font-medium">
+                        <div className="flex items-center space-x-2">
+                          <span className={`font-bold transition-colors ${
+                            isSolved 
+                              ? 'line-through text-slate-500' 
+                              : 'text-slate-100 group-hover:text-indigo-300'
+                          }`}>
+                            {p.name}
                           </span>
-                        )}
-                      </div>
-                    </td>
+                          {isMustDo && (
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-current flex-shrink-0" />
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Difficulty */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
-                        item.difficulty === 'Easy'
-                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60'
-                          : item.difficulty === 'Medium'
-                          ? 'bg-amber-950/80 text-amber-300 border-amber-800/60'
-                          : 'bg-rose-950/80 text-rose-300 border-rose-800/60'
-                      }`}>
-                        {item.difficulty}
-                      </span>
-                    </td>
+                      {/* Difficulty */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
+                          p.difficulty === 'Easy'
+                            ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60'
+                            : p.difficulty === 'Medium'
+                              ? 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
+                              : 'bg-rose-950/80 text-rose-400 border border-rose-800/60'
+                        }`}>
+                          {p.difficulty}
+                        </span>
+                      </td>
 
-                    {/* Companies */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-wrap gap-1 items-center max-w-sm">
-                        {item.companies.slice(0, 4).map((comp) => (
-                          <span
-                            key={comp}
-                            className="bg-slate-950 border border-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-md font-mono"
-                          >
-                            {comp}
-                          </span>
-                        ))}
-                        {item.companies.length > 4 && (
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            +{item.companies.length - 4}
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                      {/* Target Companies */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {p.companies.slice(0, 3).map((comp) => (
+                            <span
+                              key={comp}
+                              className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 text-[11px] border border-slate-700/60"
+                            >
+                              {comp}
+                            </span>
+                          ))}
+                          {p.companies.length > 3 && (
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              +{p.companies.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Importance Rating */}
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className={`font-mono text-[11px] font-bold ${
-                        item.rating.includes('Must Do')
-                          ? 'text-amber-400 font-extrabold flex items-center gap-1'
-                          : 'text-slate-400'
-                      }`}>
-                        {item.rating.includes('Must Do') && <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />}
-                        {item.rating}
-                      </span>
-                    </td>
+                      {/* Rating */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                        <span className={isMustDo ? 'text-amber-400 font-bold' : 'text-slate-400 font-mono'}>
+                          {p.rating}
+                        </span>
+                      </td>
 
-                    {/* Actions & Links */}
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center space-x-2">
-                        
-                        {/* 1. MATCHING VIDEO IN SDETUBE CATALOG */}
-                        {onSelectVideoByTopic && (
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center space-x-2">
+                          
+                          {/* Code Arena Button */}
                           <button
-                            onClick={() => onSelectVideoByTopic(item.name)}
-                            className="inline-flex items-center space-x-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm group"
-                            title="Play matching video lecture in SDETube"
+                            onClick={() => onOpenCodingFullscreen?.(p)}
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+                            title="Open in Monaco Coding Arena with Testcases & Compiler"
                           >
-                            <Play className="w-3 h-3 fill-current group-hover:scale-110 transition-transform" />
-                            <span>Video</span>
+                            <Terminal className="w-3.5 h-3.5" />
+                            <span>Code Arena</span>
                           </button>
-                        )}
 
-                        {/* 2. SOLVE IN FULLSCREEN LEETCODE IDE */}
-                        {onOpenCodingFullscreen && (
-                          <button
-                            onClick={() => onOpenCodingFullscreen(item)}
-                            className="inline-flex items-center space-x-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm group"
-                            title="Solve in SDETube Fullscreen IDE / LeetCode Arena"
-                          >
-                            <Terminal className="w-3 h-3 text-cyan-300" />
-                            <span>Solve (IDE)</span>
-                          </button>
-                        )}
+                          {/* Video Lecture Button */}
+                          {onSelectVideoByTopic && (
+                            <button
+                              onClick={() => onSelectVideoByTopic(p.name)}
+                              className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
+                              title="Watch Video Lecture for this Problem"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                            </button>
+                          )}
 
-                        {/* 3. External LeetCode */}
-                        <a
-                          href={item.leetcode}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition-colors"
-                          title="Solve on LeetCode"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>LeetCode</span>
-                        </a>
+                          {/* LeetCode External Link */}
+                          {p.leetcode && (
+                            <a
+                              href={p.leetcode}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all"
+                              title="Open on LeetCode"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
 
-                        {/* 4. External GFG */}
-                        <a
-                          href={item.gfg}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition-colors"
-                          title="Solve on GeeksforGeeks"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>GFG</span>
-                        </a>
+                          {/* GFG External Link */}
+                          {p.gfg && (
+                            <a
+                              href={p.gfg}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all"
+                              title="Open on GeeksforGeeks"
+                            >
+                              <Code className="w-3.5 h-3.5" />
+                            </a>
+                          )}
 
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-
-        {/* Empty State */}
-        {filteredProblems.length === 0 && (
-          <div className="py-16 text-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto text-slate-500">
-              <FolderOpen className="w-7 h-7" />
-            </div>
-            <div className="text-slate-200 font-bold text-sm">No problems match your filter criteria</div>
-            <p className="text-xs text-slate-500">Try adjusting your search query or reset the filters.</p>
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-colors"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
-
       </div>
 
     </div>
