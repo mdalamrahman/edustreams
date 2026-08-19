@@ -21,14 +21,20 @@ import {
   Download,
   BookOpen,
   Layers,
-  Rocket
+  Rocket,
+  ChevronDown,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  FileText,
+  Youtube
 } from 'lucide-react';
 import { 
   DSAProblem, 
   DSASheetType, 
   DSA_SHEETS_CONFIG, 
-  ALL_SHEETS_MAP, 
-  getSheetData,
+  getSheetData, 
+  SDE_SHEET_191_DATA,
   SDEProblem 
 } from '../lib/dsaSheetsData';
 
@@ -46,7 +52,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
   onOpenCodingFullscreen
 }) => {
-  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (473 Qs) | '79' (79 Qs)
+  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs)
   const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_ACTIVE_SHEET_KEY) as DSASheetType;
@@ -58,11 +64,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const activeSheetConfig = DSA_SHEETS_CONFIG[activeSheet];
   const currentSheetProblems = useMemo(() => getSheetData(activeSheet), [activeSheet]);
 
+  // View Mode: 'accordion' (takeuforward Step-by-Step Categorization) vs 'table' (Flat Filterable Table)
+  const [viewMode, setViewMode] = useState<'accordion' | 'table'>('accordion');
+
+  // Expanded Step Accordions Map
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
+
   // Solved State per Sheet
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
       const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
-      const saved = localStorage.getItem(savedKey) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
+      const saved = localStorage.getItem(savedKey) || (activeSheet === 'sde' ? localStorage.getItem('sdetube_sde_sheet_solved_ids') : null);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -95,10 +107,51 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [selectedCompany, setSelectedCompany] = useState('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
+
+  // SINGLE UNIVERSAL POTD: Strictly from SDETube's SDE Sheet (191 Questions)
+  const potdProblem = useMemo<DSAProblem>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const savedDate = localStorage.getItem(STORAGE_POTD_DATE_KEY);
+    const savedId = localStorage.getItem(STORAGE_POTD_ID_KEY);
+
+    if (savedDate === today && savedId) {
+      const p = SDE_SHEET_191_DATA.find((item) => item.id === Number(savedId));
+      if (p) return p;
+    }
+
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+      hash = (hash * 31 + today.charCodeAt(i)) % SDE_SHEET_191_DATA.length;
+    }
+    const selected = SDE_SHEET_191_DATA[Math.abs(hash) % SDE_SHEET_191_DATA.length] || SDE_SHEET_191_DATA[0];
+
+    try {
+      localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
+      localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
+    } catch {}
+    return selected;
+  }, []);
+
+  // Solved status for SDE POTD (checks SDE solved list)
+  const isPotdSolved = useMemo(() => {
+    try {
+      const sdeSaved = localStorage.getItem(`${STORAGE_SOLVED_PREFIX}sde`) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
+      const sdeSolvedList: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
+      return sdeSolvedList.includes(potdProblem.id);
+    } catch {
+      return false;
+    }
+  }, [potdProblem, solvedIds]);
+
+  const toggleSolved = (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSolvedIds((prev) => 
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
 
   // Reset category/topic filters when switching sheets
   const handleSwitchSheet = (newSheet: DSASheetType) => {
@@ -108,57 +161,37 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     setSearchQuery('');
   };
 
-  // POTD (Problem of the Day) Generator for active sheet
-  const potdProblem = useMemo<DSAProblem>(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const savedDate = localStorage.getItem(STORAGE_POTD_DATE_KEY);
-    const savedId = localStorage.getItem(STORAGE_POTD_ID_KEY);
-
-    if (savedDate === today && savedId) {
-      const p = currentSheetProblems.find((item) => item.id === Number(savedId));
-      if (p) return p;
-    }
-
-    let hash = 0;
-    for (let i = 0; i < today.length; i++) {
-      hash = (hash * 31 + today.charCodeAt(i)) % currentSheetProblems.length;
-    }
-    const selected = currentSheetProblems[Math.abs(hash) % currentSheetProblems.length] || currentSheetProblems[0];
-
-    try {
-      localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
-      localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
-    } catch {}
-    return selected;
-  }, [currentSheetProblems]);
-
-  const isPotdSolved = solvedIds.includes(potdProblem.id);
-
-  const toggleSolved = (id: number, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setSolvedIds((prev) => 
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
   const allCategories = useMemo(() => {
     return Array.from(new Set(currentSheetProblems.map((p) => p.category)));
   }, [currentSheetProblems]);
 
-  const allCompanies = useMemo(() => {
-    const companies = new Set<string>();
-    currentSheetProblems.forEach((p) => p.companies.forEach((c) => companies.add(c.trim())));
-    return Array.from(companies).sort();
-  }, [currentSheetProblems]);
+  // Expand / Collapse Step Accordions
+  const toggleStep = (stepName: string) => {
+    setExpandedSteps((prev) => ({
+      ...prev,
+      [stepName]: !prev[stepName]
+    }));
+  };
 
-  // Topic category chips for quick navigation
-  const topTopics = useMemo(() => {
-    const counts: Record<string, number> = {};
-    currentSheetProblems.forEach((p) => {
-      counts[p.category] = (counts[p.category] || 0) + 1;
-    });
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [currentSheetProblems]);
+  const expandAllSteps = () => {
+    const full: Record<string, boolean> = {};
+    allCategories.forEach((c) => { full[c] = true; });
+    setExpandedSteps(full);
+  };
+
+  const collapseAllSteps = () => {
+    setExpandedSteps({});
+  };
+
+  // Initialize first 2 steps open by default on sheet load
+  useEffect(() => {
+    if (allCategories.length > 0) {
+      setExpandedSteps({
+        [allCategories[0]]: true,
+        ...(allCategories[1] ? { [allCategories[1]]: true } : {})
+      });
+    }
+  }, [activeSheet]);
 
   // Multi-Criteria Filtering
   const filteredProblems = useMemo(() => {
@@ -167,6 +200,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       const matchesSearch = !q || (
         p.name.toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q) ||
+        (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
         p.companies.some((c) => c.toLowerCase().includes(q))
       );
 
@@ -174,10 +208,6 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         selectedCategory === 'ALL' 
           ? (activeTopicPill === 'ALL' || p.category === activeTopicPill)
           : (p.category === selectedCategory);
-
-      const matchesCompany = 
-        selectedCompany === 'ALL' || 
-        p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
 
       const matchesDifficulty = 
         selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
@@ -188,13 +218,63 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       if (selectedStatus === 'UNSOLVED') matchesStatus = !isSolved;
       if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
 
-      return matchesSearch && matchesCat && matchesCompany && matchesDifficulty && matchesStatus;
+      return matchesSearch && matchesCat && matchesDifficulty && matchesStatus;
     });
-  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedCompany, selectedDifficulty, selectedStatus, solvedIds]);
+  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds]);
+
+  // Group filtered problems hierarchically by Step -> Subcategory (takeuforward structure)
+  const groupedData = useMemo(() => {
+    const map = new Map<string, Map<string, DSAProblem[]>>();
+    
+    // Maintain natural category order
+    allCategories.forEach((cat) => {
+      map.set(cat, new Map<string, DSAProblem[]>());
+    });
+
+    filteredProblems.forEach((p) => {
+      const cat = p.category;
+      const sub = p.subcategory || 'Problems';
+      if (!map.has(cat)) {
+        map.set(cat, new Map());
+      }
+      const subMap = map.get(cat)!;
+      if (!subMap.has(sub)) {
+        subMap.set(sub, []);
+      }
+      subMap.get(sub)!.push(p);
+    });
+
+    // Remove categories that have 0 matching problems under current search/filters
+    const result: { category: string; subcategories: { subcategory: string; problems: DSAProblem[] }[]; total: number; solved: number }[] = [];
+    map.forEach((subMap, cat) => {
+      const subList: { subcategory: string; problems: DSAProblem[] }[] = [];
+      let catTotal = 0;
+      let catSolved = 0;
+
+      subMap.forEach((probs, sub) => {
+        if (probs.length > 0) {
+          subList.push({ subcategory: sub, problems: probs });
+          catTotal += probs.length;
+          catSolved += probs.filter((item) => solvedIds.includes(item.id)).length;
+        }
+      });
+
+      if (subList.length > 0) {
+        result.push({
+          category: cat,
+          subcategories: subList,
+          total: catTotal,
+          solved: catSolved
+        });
+      }
+    });
+
+    return result;
+  }, [filteredProblems, allCategories, solvedIds]);
 
   // Statistics calculation for the active sheet
   const totalCount = currentSheetProblems.length;
-  const solvedCount = solvedIds.filter(id => currentSheetProblems.some(p => p.id === id)).length;
+  const solvedCount = solvedIds.filter((id) => currentSheetProblems.some((p) => p.id === id)).length;
   const solvedPercent = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
   const mustDoCount = currentSheetProblems.filter((p) => p.rating.includes('Must Do')).length;
   const mustDoSolved = currentSheetProblems.filter((p) => p.rating.includes('Must Do') && solvedIds.includes(p.id)).length;
@@ -211,7 +291,6 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const resetAllFilters = () => {
     setSearchQuery('');
     setSelectedCategory('ALL');
-    setSelectedCompany('ALL');
     setSelectedDifficulty('ALL');
     setSelectedStatus('ALL');
     setActiveTopicPill('ALL');
@@ -220,7 +299,6 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const hasActiveFilters = 
     searchQuery !== '' || 
     selectedCategory !== 'ALL' || 
-    selectedCompany !== 'ALL' || 
     selectedDifficulty !== 'ALL' || 
     selectedStatus !== 'ALL' || 
     activeTopicPill !== 'ALL';
@@ -228,10 +306,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   // Export current active sheet to CSV
   const handleExportCSV = () => {
     try {
-      const headers = ["ID", "Category / Topic", "Problem Name", "LeetCode URL", "GFG URL", "Companies", "Difficulty", "Rating"];
+      const headers = ["ID", "Category / Step", "Subcategory", "Problem Name", "LeetCode URL", "GFG URL", "Companies", "Difficulty", "Rating"];
       const rows = currentSheetProblems.map((p) => [
         p.id,
         `"${(p.category || '').replace(/"/g, '""')}"`,
+        `"${(p.subcategory || '').replace(/"/g, '""')}"`,
         `"${(p.name || '').replace(/"/g, '""')}"`,
         `"${p.leetcode || ''}"`,
         `"${p.gfg || ''}"`,
@@ -247,7 +326,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       const fileName = activeSheet === 'sde' 
         ? 'sdetube_sde_sheet_191_problems.csv' 
         : activeSheet === 'a2z' 
-          ? 'sdetube_a2z_dsa_sheet_473_problems.csv' 
+          ? 'sdetube_a2z_dsa_sheet_474_problems.csv' 
           : 'sdetube_79_sheet_79_problems.csv';
 
       link.setAttribute('href', url);
@@ -296,7 +375,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             <BookOpen className={`w-4 h-4 ${activeSheet === 'a2z' ? 'text-white animate-pulse' : 'text-indigo-400'}`} />
             <span>SDETube's A2Z Roadmap</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'a2z' ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-400/30' : 'bg-slate-800 text-slate-400'}`}>
-              473 Qs
+              474 Qs
             </span>
           </button>
 
@@ -328,6 +407,57 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           <span>Export CSV ({activeSheetConfig.totalQuestions} Qs)</span>
         </button>
       </div>
+
+      {/* SINGLE UNIVERSAL POTD (ALWAYS FROM SDE SHEET 191) */}
+      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start space-x-4">
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0">
+            <Flame className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/60 text-[10px] font-black uppercase tracking-wider">
+                SDETube Problem of the Day (SDE Sheet)
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                {potdProblem.category}
+              </span>
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-100 hover:text-amber-300 transition-colors">
+              {potdProblem.name}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
+              <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+                potdProblem.difficulty === 'Easy' 
+                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' 
+                  : potdProblem.difficulty === 'Medium' 
+                    ? 'bg-amber-950 text-amber-400 border border-amber-800/60' 
+                    : 'bg-rose-950 text-rose-400 border border-rose-800/60'
+              }`}>
+                {potdProblem.difficulty}
+              </span>
+              <span>&bull;</span>
+              <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
+              {isPotdSolved && (
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold ml-2">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Solved Today
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onOpenCodingFullscreen?.(potdProblem)}
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+          >
+            <Terminal className="w-4 h-4" />
+            <span>Solve SDE POTD</span>
+          </button>
+        </div>
+      </div>
       
       {/* HERO SHOWCASE & PROGRESS BANNER */}
       <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border shadow-2xl relative overflow-hidden ${
@@ -353,7 +483,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 <span>OFFICIAL CURRICULUM &bull; {activeSheetConfig.totalQuestions} PROBLEMS</span>
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                {allCategories.length} Topics
+                {allCategories.length} Steps / Topics
               </span>
             </div>
 
@@ -362,7 +492,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-              {activeSheetConfig.description}. Seamlessly practice directly in the built-in Monaco Code Arena with live testcases, automated judging, and AI optimization.
+              {activeSheetConfig.description}. Categorized by step-by-step topics & subcategories, equipped with video lectures, articles, and built-in Monaco Code Arena.
             </p>
           </div>
 
@@ -465,104 +595,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         </div>
       </div>
 
-      {/* PROBLEM OF THE DAY (POTD) CARD */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start space-x-4">
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0">
-            <Flame className="w-6 h-6 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/60 text-[10px] font-black uppercase tracking-wider">
-                Daily Problem of the Day
-              </span>
-              <span className="text-xs text-slate-400 font-mono">
-                {potdProblem.category}
-              </span>
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-100 hover:text-amber-300 transition-colors">
-              {potdProblem.name}
-            </h3>
-            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
-              <span className={`px-2 py-0.5 rounded font-mono font-bold ${
-                potdProblem.difficulty === 'Easy' 
-                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' 
-                  : potdProblem.difficulty === 'Medium' 
-                    ? 'bg-amber-950 text-amber-400 border border-amber-800/60' 
-                    : 'bg-rose-950 text-rose-400 border border-rose-800/60'
-              }`}>
-                {potdProblem.difficulty}
-              </span>
-              <span>&bull;</span>
-              <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
-              {isPotdSolved && (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold ml-2">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Solved Today
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => onOpenCodingFullscreen?.(potdProblem)}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-          >
-            <Terminal className="w-4 h-4" />
-            <span>Solve POTD</span>
-          </button>
-        </div>
-      </div>
-
-      {/* TOPIC PILLS QUICK FILTER BAR */}
-      <div className="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 pt-1">
-        <button
-          onClick={() => {
-            setActiveTopicPill('ALL');
-            setSelectedCategory('ALL');
-          }}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center space-x-1.5 ${
-            activeTopicPill === 'ALL' && selectedCategory === 'ALL'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
-          }`}
-        >
-          <span>All Topics</span>
-          <span className="text-[10px] font-mono opacity-80">({totalCount})</span>
-        </button>
-
-        {topTopics.map(([topicName, count]) => {
-          const isSelected = activeTopicPill === topicName || selectedCategory === topicName;
-          return (
-            <button
-              key={topicName}
-              onClick={() => {
-                setActiveTopicPill(topicName);
-                setSelectedCategory(topicName);
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center space-x-1.5 ${
-                isSelected
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
-              }`}
-            >
-              <span>{topicName}</span>
-              <span className="text-[10px] font-mono opacity-80">({count})</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ADVANCED FILTER & SEARCH CONTROLS */}
+      {/* ADVANCED FILTER & SEARCH CONTROLS + VIEW MODE SWITCHER */}
       <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           
           {/* Search Box */}
           <div className="lg:col-span-2 relative">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Search Problems & Companies
+              Search Problems & Subcategories
             </label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
@@ -570,7 +610,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search problem title or company (e.g. Two Sum, Google)..."
+                placeholder="Search problem name or pattern (e.g. Two Sum, Subsequences)..."
                 className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
               />
               {searchQuery && (
@@ -587,7 +627,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* Category / Topic Dropdown */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Topic / Category
+              Step / Topic
             </label>
             <select
               value={selectedCategory}
@@ -597,7 +637,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
               }}
               className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
-              <option value="ALL">All {allCategories.length} Topics</option>
+              <option value="ALL">All {allCategories.length} Steps</option>
               {allCategories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
@@ -642,209 +682,535 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
         </div>
 
-        {/* Filter Summary & Reset Action */}
-        <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400">
-          <div>
-            Showing <strong className="text-slate-100 font-mono">{filteredProblems.length}</strong> of{' '}
-            <strong className="text-slate-100 font-mono">{totalCount}</strong> problems in{' '}
-            <span className="text-indigo-400 font-bold">{activeSheetConfig.name}</span>
+        {/* View Mode Switcher + Expand/Collapse Buttons */}
+        <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-800 text-xs text-slate-400 gap-3">
+          <div className="flex items-center space-x-3">
+            <span>
+              Showing <strong className="text-slate-100 font-mono">{filteredProblems.length}</strong> of{' '}
+              <strong className="text-slate-100 font-mono">{totalCount}</strong> problems in{' '}
+              <span className="text-indigo-400 font-bold">{activeSheetConfig.name}</span>
+            </span>
+
+            {hasActiveFilters && (
+              <button
+                onClick={resetAllFilters}
+                className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1 cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
 
-          {hasActiveFilters && (
-            <button
-              onClick={resetAllFilters}
-              className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1.5 cursor-pointer transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Active Filters</span>
-            </button>
+          {/* View Mode and Expand/Collapse Controls */}
+          <div className="flex items-center space-x-2">
+            
+            {/* View Mode Toggle */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <button
+                onClick={() => setViewMode('accordion')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                  viewMode === 'accordion' 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Step Categorization</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                  viewMode === 'table' 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ListChecks className="w-3.5 h-3.5" />
+                <span>Flat Table</span>
+              </button>
+            </div>
+
+            {/* Expand / Collapse All (only visible in accordion mode) */}
+            {viewMode === 'accordion' && (
+              <div className="hidden sm:flex items-center space-x-1.5">
+                <button
+                  onClick={expandAllSteps}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center space-x-1 cursor-pointer border border-slate-700"
+                  title="Expand All Steps"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>Expand All</span>
+                </button>
+
+                <button
+                  onClick={collapseAllSteps}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-bold transition-all flex items-center space-x-1 cursor-pointer border border-slate-700"
+                  title="Collapse All Steps"
+                >
+                  <Minimize2 className="w-3 h-3" />
+                  <span>Collapse All</span>
+                </button>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+
+      {/* RENDER MODE 1: STEP CATEGORIZATION ACCORDION (TAKEUFORWARD STYLE) */}
+      {viewMode === 'accordion' && (
+        <div className="space-y-4">
+          {groupedData.length === 0 ? (
+            <div className="p-16 text-center text-slate-500 bg-slate-900/90 rounded-3xl border border-slate-800 space-y-3">
+              <FolderOpen className="w-12 h-12 mx-auto text-slate-600 mb-2" />
+              <p className="text-base font-bold text-slate-300">No problems found matching your criteria</p>
+              <button
+                onClick={resetAllFilters}
+                className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer transition-all shadow-md"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          ) : (
+            groupedData.map((stepGroup, stepIdx) => {
+              const isExpanded = expandedSteps[stepGroup.category] ?? false;
+              const stepPercent = stepGroup.total > 0 ? Math.round((stepGroup.solved / stepGroup.total) * 100) : 0;
+              const isStepCompleted = stepGroup.total > 0 && stepGroup.solved === stepGroup.total;
+
+              return (
+                <div
+                  key={stepGroup.category}
+                  className={`rounded-3xl border transition-all duration-300 overflow-hidden shadow-xl ${
+                    isExpanded 
+                      ? 'bg-slate-900/95 border-indigo-500/40' 
+                      : 'bg-slate-900/70 hover:bg-slate-900 border-slate-800/80'
+                  }`}
+                >
+                  {/* STEP ACCORDION HEADER */}
+                  <div
+                    onClick={() => toggleStep(stepGroup.category)}
+                    className="p-4 sm:p-5 flex items-center justify-between cursor-pointer group select-none gap-4"
+                  >
+                    <div className="flex items-center space-x-3.5 min-w-0">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-xs flex-shrink-0 transition-all ${
+                        isStepCompleted
+                          ? 'bg-emerald-500 text-slate-950 font-black shadow-md shadow-emerald-500/30'
+                          : isExpanded
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : 'bg-slate-800 text-slate-300 group-hover:bg-slate-700'
+                      }`}>
+                        {isStepCompleted ? <Check className="w-4 h-4 stroke-[3]" /> : stepIdx + 1}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className={`text-sm sm:text-base font-bold transition-colors truncate ${
+                          isExpanded ? 'text-indigo-200' : 'text-slate-200 group-hover:text-white'
+                        }`}>
+                          {stepGroup.category}
+                        </h3>
+                        <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">
+                          <span>{stepGroup.subcategories.length} Sub-topics</span>
+                          <span>&bull;</span>
+                          <span>{stepGroup.total} Problems</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step Progress Pill & Chevron */}
+                    <div className="flex items-center space-x-3 flex-shrink-0">
+                      <div className="flex items-center space-x-2">
+                        <div className="hidden sm:block w-24 h-2 rounded-full bg-slate-800 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-500 ${
+                              isStepCompleted ? 'bg-emerald-400' : 'bg-indigo-500'
+                            }`}
+                            style={{ width: `${stepPercent}%` }}
+                          />
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold border ${
+                          isStepCompleted
+                            ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
+                            : 'bg-slate-950 text-slate-300 border-slate-800'
+                        }`}>
+                          {stepGroup.solved} / {stepGroup.total}
+                        </span>
+                      </div>
+
+                      <div className={`p-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 transition-transform duration-300 ${
+                        isExpanded ? 'transform rotate-180 text-indigo-300 border-indigo-500/40' : 'group-hover:text-white'
+                      }`}>
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* STEP ACCORDION BODY (SUBCATEGORIES & PROBLEM TABLES) */}
+                  {isExpanded && (
+                    <div className="p-4 sm:p-6 border-t border-slate-800/80 space-y-6 bg-slate-950/40">
+                      {stepGroup.subcategories.map((sub) => {
+                        const subSolvedCount = sub.problems.filter((p) => solvedIds.includes(p.id)).length;
+                        return (
+                          <div key={sub.subcategory} className="space-y-3">
+                            
+                            {/* Subcategory Section Title Pill */}
+                            <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
+                              <div className="flex items-center space-x-2">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                <h4 className="text-xs sm:text-sm font-bold text-slate-300">
+                                  {sub.subcategory}
+                                </h4>
+                              </div>
+                              <span className="text-[11px] font-mono text-slate-500 font-bold">
+                                {subSolvedCount} / {sub.problems.length} Solved
+                              </span>
+                            </div>
+
+                            {/* Subcategory Problem Rows */}
+                            <div className="overflow-x-auto rounded-2xl border border-slate-800/60 bg-slate-950/60">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-500 text-[11px] uppercase tracking-wider font-mono">
+                                    <th className="py-2.5 px-3 w-10 text-center">Status</th>
+                                    <th className="py-2.5 px-3 font-bold min-w-[220px]">Problem</th>
+                                    <th className="py-2.5 px-3 font-bold text-center">Difficulty</th>
+                                    <th className="py-2.5 px-3 font-bold">Resources</th>
+                                    <th className="py-2.5 px-3 font-bold text-center">Practice</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/40 text-xs">
+                                  {sub.problems.map((p) => {
+                                    const isSolved = solvedIds.includes(p.id);
+                                    const isMustDo = p.rating.includes('Must Do');
+
+                                    return (
+                                      <tr
+                                        key={`${p.sheetType}-${p.id}`}
+                                        className={`hover:bg-slate-800/40 transition-colors group cursor-pointer ${
+                                          isSolved ? 'bg-slate-950/40' : ''
+                                        }`}
+                                        onClick={() => onOpenCodingFullscreen?.(p)}
+                                      >
+                                        {/* Checkbox Status */}
+                                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => toggleSolved(p.id, e)}
+                                            className={`w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer border ${
+                                              isSolved
+                                                ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                                                : 'bg-slate-950 border-slate-700 text-transparent hover:border-slate-500'
+                                            }`}
+                                          >
+                                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                          </button>
+                                        </td>
+
+                                        {/* Problem Name */}
+                                        <td className="py-2.5 px-3 font-medium">
+                                          <div className="flex items-center space-x-2">
+                                            <span className={`font-bold transition-colors ${
+                                              isSolved 
+                                                ? 'line-through text-slate-500' 
+                                                : 'text-slate-100 group-hover:text-indigo-300'
+                                            }`}>
+                                              {p.name}
+                                            </span>
+                                            {isMustDo && (
+                                              <Star className="w-3.5 h-3.5 text-amber-400 fill-current flex-shrink-0" />
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* Difficulty */}
+                                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                                            p.difficulty === 'Easy'
+                                              ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60'
+                                              : p.difficulty === 'Medium'
+                                                ? 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
+                                                : 'bg-rose-950/80 text-rose-400 border border-rose-800/60'
+                                          }`}>
+                                            {p.difficulty}
+                                          </span>
+                                        </td>
+
+                                        {/* Resources (Video / Article) */}
+                                        <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex items-center space-x-1.5">
+                                            {/* Video Lecture */}
+                                            {p.youtube ? (
+                                              <a
+                                                href={p.youtube}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-700/60 text-red-300 hover:text-white transition-all"
+                                                title="Watch YouTube Lecture"
+                                              >
+                                                <Youtube className="w-3.5 h-3.5" />
+                                              </a>
+                                            ) : onSelectVideoByTopic ? (
+                                              <button
+                                                onClick={() => onSelectVideoByTopic(p.name)}
+                                                className="p-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
+                                                title="Watch Video Lecture in SDETube"
+                                              >
+                                                <Play className="w-3.5 h-3.5 fill-current" />
+                                              </button>
+                                            ) : null}
+
+                                            {/* Article Link */}
+                                            {p.article && (
+                                              <a
+                                                href={p.article}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all"
+                                                title="Read Editorial Article"
+                                              >
+                                                <FileText className="w-3.5 h-3.5" />
+                                              </a>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* Practice Actions */}
+                                        <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex items-center justify-center space-x-1.5">
+                                            
+                                            {/* Code Arena Button */}
+                                            <button
+                                              onClick={() => onOpenCodingFullscreen?.(p)}
+                                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition-all shadow-sm cursor-pointer"
+                                              title="Solve in Monaco IDE with Testcases & Automated Judge"
+                                            >
+                                              <Terminal className="w-3 h-3" />
+                                              <span>Code Arena</span>
+                                            </button>
+
+                                            {/* LeetCode External Link */}
+                                            {p.leetcode && (
+                                              <a
+                                                href={p.leetcode}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all"
+                                                title="Open on LeetCode"
+                                              >
+                                                <ExternalLink className="w-3 h-3" />
+                                              </a>
+                                            )}
+
+                                            {/* GFG External Link */}
+                                            {p.gfg && (
+                                              <a
+                                                href={p.gfg}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all"
+                                                title="Open on GeeksforGeeks"
+                                              >
+                                                <Code className="w-3 h-3" />
+                                              </a>
+                                            )}
+
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })
           )}
         </div>
-      </div>
+      )}
 
-      {/* PROBLEMS TABLE LIST */}
-      <div className="p-2 sm:p-4 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-mono">
-                <th className="py-4 px-4 w-12 text-center">Status</th>
-                <th className="py-4 px-4 font-bold">Topic / Category</th>
-                <th className="py-4 px-4 font-bold min-w-[240px]">Problem Title</th>
-                <th className="py-4 px-4 font-bold text-center">Difficulty</th>
-                <th className="py-4 px-4 font-bold">Top Companies</th>
-                <th className="py-4 px-4 font-bold">Importance</th>
-                <th className="py-4 px-4 font-bold text-center">Practice Actions</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
-              {filteredProblems.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-500 space-y-3">
-                    <FolderOpen className="w-12 h-12 mx-auto text-slate-600 mb-2" />
-                    <p className="text-base font-bold text-slate-300">No problems found matching your criteria</p>
-                    <p className="text-xs text-slate-500">Try adjusting your search terms, topic, or difficulty filters.</p>
-                    <button
-                      onClick={resetAllFilters}
-                      className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer transition-all shadow-md"
-                    >
-                      Clear All Filters
-                    </button>
-                  </td>
+      {/* RENDER MODE 2: FLAT TABLE VIEW */}
+      {viewMode === 'table' && (
+        <div className="p-2 sm:p-4 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-mono">
+                  <th className="py-4 px-4 w-12 text-center">Status</th>
+                  <th className="py-4 px-4 font-bold">Step / Category</th>
+                  <th className="py-4 px-4 font-bold min-w-[240px]">Problem Title</th>
+                  <th className="py-4 px-4 font-bold text-center">Difficulty</th>
+                  <th className="py-4 px-4 font-bold">Importance</th>
+                  <th className="py-4 px-4 font-bold text-center">Practice Actions</th>
                 </tr>
-              ) : (
-                filteredProblems.map((p) => {
-                  const isSolved = solvedIds.includes(p.id);
-                  const isMustDo = p.rating.includes('Must Do');
+              </thead>
 
-                  return (
-                    <tr
-                      key={`${p.sheetType}-${p.id}`}
-                      className={`hover:bg-slate-800/40 transition-colors group cursor-pointer ${
-                        isSolved ? 'bg-slate-950/40' : ''
-                      }`}
-                      onClick={() => onOpenCodingFullscreen?.(p)}
-                    >
-                      {/* Checkbox Status */}
-                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={(e) => toggleSolved(p.id, e)}
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
-                            isSolved
-                              ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
-                              : 'bg-slate-950 border-slate-700 text-transparent hover:border-slate-500 hover:text-slate-600'
-                          }`}
-                          title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved'}
-                        >
-                          <Check className="w-4 h-4 stroke-[3]" />
-                        </button>
-                      </td>
+              <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
+                {filteredProblems.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-16 text-center text-slate-500 space-y-3">
+                      <FolderOpen className="w-12 h-12 mx-auto text-slate-600 mb-2" />
+                      <p className="text-base font-bold text-slate-300">No problems found matching your criteria</p>
+                      <button
+                        onClick={resetAllFilters}
+                        className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer transition-all shadow-md"
+                      >
+                        Clear All Filters
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProblems.map((p) => {
+                    const isSolved = solvedIds.includes(p.id);
+                    const isMustDo = p.rating.includes('Must Do');
 
-                      {/* Category */}
-                      <td className="py-3.5 px-4 font-medium text-slate-400 text-xs font-mono">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800/80 text-slate-300">
-                          {p.category}
-                        </span>
-                      </td>
-
-                      {/* Title */}
-                      <td className="py-3.5 px-4 font-medium">
-                        <div className="flex items-center space-x-2">
-                          <span className={`font-bold transition-colors ${
-                            isSolved 
-                              ? 'line-through text-slate-500' 
-                              : 'text-slate-100 group-hover:text-indigo-300'
-                          }`}>
-                            {p.name}
-                          </span>
-                          {isMustDo && (
-                            <Star className="w-3.5 h-3.5 text-amber-400 fill-current flex-shrink-0" />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Difficulty */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
-                          p.difficulty === 'Easy'
-                            ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60'
-                            : p.difficulty === 'Medium'
-                              ? 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
-                              : 'bg-rose-950/80 text-rose-400 border border-rose-800/60'
-                        }`}>
-                          {p.difficulty}
-                        </span>
-                      </td>
-
-                      {/* Target Companies */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {p.companies.slice(0, 3).map((comp) => (
-                            <span
-                              key={comp}
-                              className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 text-[11px] border border-slate-700/60"
-                            >
-                              {comp}
-                            </span>
-                          ))}
-                          {p.companies.length > 3 && (
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              +{p.companies.length - 3}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Rating */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-xs">
-                        <span className={isMustDo ? 'text-amber-400 font-bold' : 'text-slate-400 font-mono'}>
-                          {p.rating}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center space-x-2">
-                          
-                          {/* Code Arena Button */}
+                    return (
+                      <tr
+                        key={`${p.sheetType}-${p.id}`}
+                        className={`hover:bg-slate-800/40 transition-colors group cursor-pointer ${
+                          isSolved ? 'bg-slate-950/40' : ''
+                        }`}
+                        onClick={() => onOpenCodingFullscreen?.(p)}
+                      >
+                        {/* Checkbox Status */}
+                        <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
-                            onClick={() => onOpenCodingFullscreen?.(p)}
-                            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
-                            title="Open in Monaco Coding Arena with Testcases & Compiler"
+                            type="button"
+                            onClick={(e) => toggleSolved(p.id, e)}
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
+                              isSolved
+                                ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
+                                : 'bg-slate-950 border-slate-700 text-transparent hover:border-slate-500 hover:text-slate-600'
+                            }`}
+                            title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved'}
                           >
-                            <Terminal className="w-3.5 h-3.5" />
-                            <span>Code Arena</span>
+                            <Check className="w-4 h-4 stroke-[3]" />
                           </button>
+                        </td>
 
-                          {/* Video Lecture Button */}
-                          {onSelectVideoByTopic && (
+                        {/* Category */}
+                        <td className="py-3.5 px-4 font-medium text-slate-400 text-xs font-mono">
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800/80 text-slate-300">
+                            {p.category}
+                          </span>
+                        </td>
+
+                        {/* Title */}
+                        <td className="py-3.5 px-4 font-medium">
+                          <div className="flex items-center space-x-2">
+                            <span className={`font-bold transition-colors ${
+                              isSolved 
+                                ? 'line-through text-slate-500' 
+                                : 'text-slate-100 group-hover:text-indigo-300'
+                            }`}>
+                              {p.name}
+                            </span>
+                            {isMustDo && (
+                              <Star className="w-3.5 h-3.5 text-amber-400 fill-current flex-shrink-0" />
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Difficulty */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
+                            p.difficulty === 'Easy'
+                              ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60'
+                              : p.difficulty === 'Medium'
+                                ? 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
+                                : 'bg-rose-950/80 text-rose-400 border border-rose-800/60'
+                          }`}>
+                            {p.difficulty}
+                          </span>
+                        </td>
+
+                        {/* Rating */}
+                        <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                          <span className={isMustDo ? 'text-amber-400 font-bold' : 'text-slate-400 font-mono'}>
+                            {p.rating}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center space-x-2">
+                            
+                            {/* Code Arena Button */}
                             <button
-                              onClick={() => onSelectVideoByTopic(p.name)}
-                              className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
-                              title="Watch Video Lecture for this Problem"
+                              onClick={() => onOpenCodingFullscreen?.(p)}
+                              className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+                              title="Open in Monaco Coding Arena with Testcases & Compiler"
                             >
-                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <Terminal className="w-3.5 h-3.5" />
+                              <span>Code Arena</span>
                             </button>
-                          )}
 
-                          {/* LeetCode External Link */}
-                          {p.leetcode && (
-                            <a
-                              href={p.leetcode}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all"
-                              title="Open on LeetCode"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          )}
+                            {/* Video Lecture Button */}
+                            {p.youtube ? (
+                              <a
+                                href={p.youtube}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-xl bg-red-950/60 hover:bg-red-900 border border-red-700/60 text-red-300 hover:text-white transition-all"
+                                title="Watch YouTube Lecture"
+                              >
+                                <Youtube className="w-3.5 h-3.5" />
+                              </a>
+                            ) : onSelectVideoByTopic ? (
+                              <button
+                                onClick={() => onSelectVideoByTopic(p.name)}
+                                className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
+                                title="Watch Video Lecture for this Problem"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                              </button>
+                            ) : null}
 
-                          {/* GFG External Link */}
-                          {p.gfg && (
-                            <a
-                              href={p.gfg}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all"
-                              title="Open on GeeksforGeeks"
-                            >
-                              <Code className="w-3.5 h-3.5" />
-                            </a>
-                          )}
+                            {/* LeetCode External Link */}
+                            {p.leetcode && (
+                              <a
+                                href={p.leetcode}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all"
+                                title="Open on LeetCode"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
 
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                            {/* GFG External Link */}
+                            {p.gfg && (
+                              <a
+                                href={p.gfg}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all"
+                                title="Open on GeeksforGeeks"
+                              >
+                                <Code className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   );
