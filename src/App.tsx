@@ -1316,8 +1316,10 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         {activeTab === 'sde_sheet' && (
           <SDESheetExplorer
             onSelectVideoByTopic={handleSelectVideoByTopic}
+            onOpenVideo={(v) => handleOpenVideoWithBilling(v, 'sde_sheet')}
             onOpenCodingFullscreen={handleOpenCodingFullscreen}
             userEmail={user?.email}
+            dsaVideos={dynamicVideos.length > 0 ? dynamicVideos.filter(v => v.channel_id === 'ch-dsa-01') : MOCK_VIDEOS.filter(v => v.channel_id === 'ch-dsa-01')}
           />
         )}
 

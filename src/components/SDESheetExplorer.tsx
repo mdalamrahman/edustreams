@@ -42,11 +42,54 @@ import {
 } from '../lib/dsaSheetsData';
 import { ProblemNotesModal } from './ProblemNotesModal';
 import { getLocalProblemNote } from '../lib/notesService';
+import { Video } from '../lib/types';
 
 interface SDESheetExplorerProps {
   onSelectVideoByTopic?: (query: string) => void;
+  onOpenVideo?: (video: Video) => void;
   onOpenCodingFullscreen?: (problem: DSAProblem) => void;
   userEmail?: string;
+  dsaVideos?: Video[];
+}
+
+/**
+ * Searches exclusively within the DSA channel video list to find an exact or high-confidence matching lecture.
+ * Returns null if no real matching video exists (never falls back to generic or wrong videos).
+ */
+export function findMatchingDsaVideo(problemName: string, dsaVideos?: Video[]): Video | null {
+  if (!dsaVideos || dsaVideos.length === 0 || !problemName) return null;
+  const pName = problemName.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
+  const stopwords = new Set(['the', 'and', 'for', 'with', 'part', 'using', 'algorithm', 'problem', 'in', 'of', 'a', 'an', 'to', 'by', 'array', 'part-i', 'part-ii', 'find', 'given', 'solve']);
+  const pWords = pName.split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
+  if (pWords.length === 0) return null;
+
+  // 1. Direct whole-phrase or contains match
+  const exact = dsaVideos.find(v => {
+    const vTitle = v.title.toLowerCase();
+    return vTitle.includes(pName) || pName.includes(vTitle);
+  });
+  if (exact) return exact;
+
+  // 2. All key words present in video title
+  if (pWords.length >= 2) {
+    const allWordsMatch = dsaVideos.find(v => {
+      const vTitle = v.title.toLowerCase();
+      return pWords.every(w => vTitle.includes(w));
+    });
+    if (allWordsMatch) return allWordsMatch;
+  }
+
+  // 3. High keyword overlap (at least 2 matching words for multi-word queries)
+  if (pWords.length >= 3) {
+    const multiMatch = dsaVideos.find(v => {
+      const vTitle = v.title.toLowerCase();
+      const count = pWords.filter(w => vTitle.includes(w)).length;
+      return count >= Math.min(3, pWords.length - 1);
+    });
+    if (multiMatch) return multiMatch;
+  }
+
+  return null;
 }
 
 const STORAGE_ACTIVE_SHEET_KEY = 'sdetube_active_dsa_sheet';
@@ -57,8 +100,10 @@ const STORAGE_POTD_ID_KEY = 'sdetube_potd_problem_id';
 
 export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
+  onOpenVideo,
   onOpenCodingFullscreen,
-  userEmail
+  userEmail,
+  dsaVideos = []
 }) => {
   // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs)
   const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
@@ -1064,6 +1109,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                       p.youtube.startsWith('http') && 
                                       p.youtube !== '$undefined'
                                     );
+                                    const matchingDsaVideo = findMatchingDsaVideo(p.name, dsaVideos);
+                                    const hasAnyVideo = hasValidYoutube || Boolean(matchingDsaVideo);
 
                                     return (
                                       <tr
@@ -1182,7 +1229,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                         {/* Resources (Video / Article) */}
                                         <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                           <div className="flex items-center space-x-1.5">
-                                            {/* YouTube Lecture Link */}
+                                            {/* YouTube Lecture Link (ONLY IF VALID) */}
                                             {hasValidYoutube && (
                                               <a
                                                 href={p.youtube}
@@ -1195,12 +1242,18 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                               </a>
                                             )}
 
-                                            {/* In-app SDETube DSA Channel Lecture */}
-                                            {onSelectVideoByTopic && (
+                                            {/* In-app SDETube DSA Channel Lecture (ONLY IF REAL MATCHING VIDEO EXISTS) */}
+                                            {matchingDsaVideo && (
                                               <button
-                                                onClick={() => onSelectVideoByTopic(p.name)}
+                                                onClick={() => {
+                                                  if (onOpenVideo) {
+                                                    onOpenVideo(matchingDsaVideo);
+                                                  } else if (onSelectVideoByTopic) {
+                                                    onSelectVideoByTopic(p.name);
+                                                  }
+                                                }}
                                                 className="p-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
-                                                title="Watch Video Lecture in SDETube DSA Channel"
+                                                title={`Watch SDETube DSA Lecture: ${matchingDsaVideo.title}`}
                                               >
                                                 <Play className="w-3.5 h-3.5 fill-current" />
                                               </button>
@@ -1217,6 +1270,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                               >
                                                 <FileText className="w-3.5 h-3.5" />
                                               </a>
+                                            )}
+
+                                            {/* Dash if no resources */}
+                                            {!hasAnyVideo && !p.article && (
+                                              <span className="text-slate-600 font-mono text-[11px] px-1">—</span>
                                             )}
                                           </div>
                                         </td>
@@ -1328,6 +1386,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                       p.youtube.startsWith('http') && 
                       p.youtube !== '$undefined'
                     );
+                    const matchingDsaVideo = findMatchingDsaVideo(p.name, dsaVideos);
 
                     return (
                       <tr
@@ -1464,7 +1523,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               <span>Code Arena</span>
                             </button>
 
-                            {/* YouTube Video Link */}
+                            {/* YouTube Video Link (ONLY IF VALID) */}
                             {hasValidYoutube && (
                               <a
                                 href={p.youtube}
@@ -1477,12 +1536,18 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               </a>
                             )}
 
-                            {/* In-app SDETube DSA Channel Lecture */}
-                            {onSelectVideoByTopic && (
+                            {/* In-app SDETube DSA Channel Lecture (ONLY IF REAL MATCHING VIDEO EXISTS) */}
+                            {matchingDsaVideo && (
                               <button
-                                onClick={() => onSelectVideoByTopic(p.name)}
+                                onClick={() => {
+                                  if (onOpenVideo) {
+                                    onOpenVideo(matchingDsaVideo);
+                                  } else if (onSelectVideoByTopic) {
+                                    onSelectVideoByTopic(p.name);
+                                  }
+                                }}
                                 className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
-                                title="Watch Video Lecture in SDETube DSA Channel"
+                                title={`Watch SDETube DSA Lecture: ${matchingDsaVideo.title}`}
                               >
                                 <Play className="w-3.5 h-3.5 fill-current" />
                               </button>
