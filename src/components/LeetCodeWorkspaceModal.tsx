@@ -47,6 +47,7 @@ import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
+import { KrokiDiagramViewer } from './KrokiDiagramViewer';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -215,7 +216,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });
 
-  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'notes' | 'video' | 'solutions' | 'submissions' | 'aireview'>('description');
+  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'notes' | 'video' | 'solutions' | 'submissions' | 'aireview' | 'diagram'>('description');
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
@@ -855,6 +856,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
 
             <button
+              onClick={() => setLeftTab('diagram')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                leftTab === 'diagram'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Kroki Unified UML & LLD Visual Architecture"
+            >
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Diagram</span>
+            </button>
+
+            <button
               onClick={() => setLeftTab('notes')}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 leftTab === 'notes'
@@ -944,6 +958,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-xs font-mono font-semibold">
                       {problemTemplate.category}
                     </span>
+
+                    <button
+                      onClick={() => setLeftTab('diagram')}
+                      className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all shadow-sm cursor-pointer ml-auto"
+                      title="Open Kroki Unified UML & Visual Architecture"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Architecture Diagram</span>
+                    </button>
                   </div>
 
                   {/* Company Pills */}
@@ -1486,6 +1509,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     ))}
                   </ul>
                 </div>
+              </div>
+            )}
+
+            {/* TAB 8: KROKI UNIFIED UML & LLD ARCHITECTURE DIAGRAM */}
+            {leftTab === 'diagram' && (
+              <div className="flex-1 flex flex-col h-full overflow-hidden -m-5">
+                <KrokiDiagramViewer
+                  slugOrTitle={codingProblem?.slug || codingProblem?.name || cleanTitle}
+                  category={codingProblem?.category || problemTemplate.category || 'System Design & LLD'}
+                />
               </div>
             )}
 
