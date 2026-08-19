@@ -27,7 +27,10 @@ import {
   Maximize2,
   Minimize2,
   FileText,
-  Youtube
+  Youtube,
+  Bookmark,
+  BookmarkCheck,
+  Edit3
 } from 'lucide-react';
 import { 
   DSAProblem, 
@@ -37,20 +40,25 @@ import {
   SDE_SHEET_191_DATA,
   SDEProblem 
 } from '../lib/dsaSheetsData';
+import { ProblemNotesModal } from './ProblemNotesModal';
+import { getLocalProblemNote } from '../lib/notesService';
 
 interface SDESheetExplorerProps {
   onSelectVideoByTopic?: (query: string) => void;
   onOpenCodingFullscreen?: (problem: DSAProblem) => void;
+  userEmail?: string;
 }
 
 const STORAGE_ACTIVE_SHEET_KEY = 'sdetube_active_dsa_sheet';
 const STORAGE_SOLVED_PREFIX = 'sdetube_dsa_sheet_solved_';
+const STORAGE_REVISION_KEY = 'sdetube_dsa_revision_ids';
 const STORAGE_POTD_DATE_KEY = 'sdetube_potd_date';
 const STORAGE_POTD_ID_KEY = 'sdetube_potd_problem_id';
 
 export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   onSelectVideoByTopic,
-  onOpenCodingFullscreen
+  onOpenCodingFullscreen,
+  userEmail
 }) => {
   // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs)
   const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
@@ -70,11 +78,33 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   // Expanded Step Accordions Map
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
 
+  // Active Problem for Notes Modal
+  const [activeNotesProblem, setActiveNotesProblem] = useState<DSAProblem | null>(null);
+
+  // Notes update listener key to refresh UI indicators
+  const [notesUpdateTrigger, setNotesUpdateTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleNotesUpdated = () => setNotesUpdateTrigger((prev) => prev + 1);
+    window.addEventListener('sdetube_notes_updated', handleNotesUpdated);
+    return () => window.removeEventListener('sdetube_notes_updated', handleNotesUpdated);
+  }, []);
+
   // Solved State per Sheet
   const [solvedIds, setSolvedIds] = useState<number[]>(() => {
     try {
       const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
       const saved = localStorage.getItem(savedKey) || (activeSheet === 'sde' ? localStorage.getItem('sdetube_sde_sheet_solved_ids') : null);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Revision / Bookmarked Problems State (Composite Key: sheetType-id or id)
+  const [revisionIds, setRevisionIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_REVISION_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -105,10 +135,19 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     }
   }, [solvedIds, activeSheet]);
 
+  // Save revision state on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_REVISION_KEY, JSON.stringify(revisionIds));
+    } catch (e) {
+      console.warn('[SDETube Revision Storage Notice]:', e);
+    }
+  }, [revisionIds]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState('ALL');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('ALL'); // 'ALL' | 'REVISION' | 'MUST_DO' | 'SOLVED' | 'UNSOLVED'
   const [activeTopicPill, setActiveTopicPill] = useState('ALL');
 
   // SINGLE UNIVERSAL POTD: Strictly from SDETube's SDE Sheet (191 Questions)
@@ -151,6 +190,19 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     setSolvedIds((prev) => 
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const toggleRevision = (problem: DSAProblem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const key = `${problem.sheetType}-${problem.id}`;
+    setRevisionIds((prev) => 
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const isProblemStarred = (problem: DSAProblem) => {
+    const key = `${problem.sheetType}-${problem.id}`;
+    return revisionIds.includes(key);
   };
 
   // Reset category/topic filters when switching sheets
@@ -213,20 +265,22 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
 
       const isSolved = solvedIds.includes(p.id);
+      const isStarred = isProblemStarred(p);
+
       let matchesStatus = true;
       if (selectedStatus === 'SOLVED') matchesStatus = isSolved;
       if (selectedStatus === 'UNSOLVED') matchesStatus = !isSolved;
       if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
+      if (selectedStatus === 'REVISION') matchesStatus = isStarred;
 
       return matchesSearch && matchesCat && matchesDifficulty && matchesStatus;
     });
-  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds]);
+  }, [currentSheetProblems, searchQuery, selectedCategory, activeTopicPill, selectedDifficulty, selectedStatus, solvedIds, revisionIds]);
 
   // Group filtered problems hierarchically by Step -> Subcategory (takeuforward structure)
   const groupedData = useMemo(() => {
     const map = new Map<string, Map<string, DSAProblem[]>>();
     
-    // Maintain natural category order
     allCategories.forEach((cat) => {
       map.set(cat, new Map<string, DSAProblem[]>());
     });
@@ -244,7 +298,6 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       subMap.get(sub)!.push(p);
     });
 
-    // Remove categories that have 0 matching problems under current search/filters
     const result: { category: string; subcategories: { subcategory: string; problems: DSAProblem[] }[]; total: number; solved: number }[] = [];
     map.forEach((subMap, cat) => {
       const subList: { subcategory: string; problems: DSAProblem[] }[] = [];
@@ -278,6 +331,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   const solvedPercent = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
   const mustDoCount = currentSheetProblems.filter((p) => p.rating.includes('Must Do')).length;
   const mustDoSolved = currentSheetProblems.filter((p) => p.rating.includes('Must Do') && solvedIds.includes(p.id)).length;
+
+  const currentSheetRevisionCount = currentSheetProblems.filter((p) => isProblemStarred(p)).length;
 
   const easyTotal = currentSheetProblems.filter((p) => p.difficulty === 'Easy').length;
   const easySolved = currentSheetProblems.filter((p) => p.difficulty === 'Easy' && solvedIds.includes(p.id)).length;
@@ -492,7 +547,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-              {activeSheetConfig.description}. Categorized by step-by-step topics & subcategories, equipped with video lectures, articles, and built-in Monaco Code Arena.
+              {activeSheetConfig.description}. Categorized by step-by-step topics & subcategories, equipped with video lectures, articles, personal cloud notes (.txt), and Monaco Code Arena.
             </p>
           </div>
 
@@ -595,6 +650,81 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         </div>
       </div>
 
+      {/* QUICK STATUS PILLS (ALL, REVISION HUB, MUST DO, SOLVED, UNSOLVED) */}
+      <div className="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1">
+        
+        {/* All Tab */}
+        <button
+          onClick={() => setSelectedStatus('ALL')}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 whitespace-nowrap ${
+            selectedStatus === 'ALL'
+              ? 'bg-slate-100 text-slate-950 shadow-md scale-[1.02]'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <span>All Questions</span>
+          <span className="text-[10px] font-mono opacity-80">({totalCount})</span>
+        </button>
+
+        {/* REVISION HUB TAB */}
+        <button
+          onClick={() => setSelectedStatus('REVISION')}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 whitespace-nowrap ${
+            selectedStatus === 'REVISION'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-lg shadow-amber-500/20 scale-[1.02]'
+              : 'bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-amber-500/30'
+          }`}
+        >
+          <Bookmark className={`w-3.5 h-3.5 ${selectedStatus === 'REVISION' ? 'fill-current' : ''}`} />
+          <span>⭐ Revision Hub</span>
+          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full ${selectedStatus === 'REVISION' ? 'bg-amber-950/80 text-amber-200' : 'bg-slate-800 text-slate-400'}`}>
+            {currentSheetRevisionCount}
+          </span>
+        </button>
+
+        {/* Must Do Tab */}
+        <button
+          onClick={() => setSelectedStatus('MUST_DO')}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 whitespace-nowrap ${
+            selectedStatus === 'MUST_DO'
+              ? 'bg-amber-400 text-slate-950 shadow-md font-bold scale-[1.02]'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <Star className="w-3.5 h-3.5 fill-current text-amber-400" />
+          <span>Must Do (5.0 ★)</span>
+          <span className="text-[10px] font-mono opacity-80">({mustDoCount})</span>
+        </button>
+
+        {/* Solved Only */}
+        <button
+          onClick={() => setSelectedStatus('SOLVED')}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 whitespace-nowrap ${
+            selectedStatus === 'SOLVED'
+              ? 'bg-emerald-500 text-slate-950 shadow-md font-bold scale-[1.02]'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>Solved</span>
+          <span className="text-[10px] font-mono opacity-80">({solvedCount})</span>
+        </button>
+
+        {/* Unsolved Only */}
+        <button
+          onClick={() => setSelectedStatus('UNSOLVED')}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 whitespace-nowrap ${
+            selectedStatus === 'UNSOLVED'
+              ? 'bg-indigo-600 text-white shadow-md font-bold scale-[1.02]'
+              : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <span>Unsolved</span>
+          <span className="text-[10px] font-mono opacity-80">({totalCount - solvedCount})</span>
+        </button>
+
+      </div>
+
       {/* ADVANCED FILTER & SEARCH CONTROLS + VIEW MODE SWITCHER */}
       <div className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
@@ -602,7 +732,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* Search Box */}
           <div className="lg:col-span-2 relative">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Search Problems & Subcategories
+              Search Problems & Companies
             </label>
             <div className="relative">
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
@@ -610,7 +740,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search problem name or pattern (e.g. Two Sum, Subsequences)..."
+                placeholder="Search problem name or company (e.g. Two Sum, Google, Meta)..."
                 className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
               />
               {searchQuery && (
@@ -666,7 +796,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* Status Dropdown */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Status & Rating
+              Status & Revision
             </label>
             <select
               value={selectedStatus}
@@ -674,7 +804,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
               className="w-full px-3 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
             >
               <option value="ALL">All Problems ({totalCount})</option>
-              <option value="MUST_DO">⭐ Must Do Only ({mustDoCount})</option>
+              <option value="REVISION">⭐ Bookmarked for Revision ({currentSheetRevisionCount})</option>
+              <option value="MUST_DO">🔥 Must Do Only ({mustDoCount})</option>
               <option value="SOLVED">✅ Solved Only ({solvedCount})</option>
               <option value="UNSOLVED">⭕ Unsolved Only ({totalCount - solvedCount})</option>
             </select>
@@ -873,8 +1004,12 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                 <thead>
                                   <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-500 text-[11px] uppercase tracking-wider font-mono">
                                     <th className="py-2.5 px-3 w-10 text-center">Status</th>
+                                    <th className="py-2.5 px-3 w-10 text-center">Star</th>
+                                    <th className="py-2.5 px-3 w-10 text-center">Note</th>
                                     <th className="py-2.5 px-3 font-bold min-w-[220px]">Problem</th>
                                     <th className="py-2.5 px-3 font-bold text-center">Difficulty</th>
+                                    <th className="py-2.5 px-3 font-bold">Companies</th>
+                                    <th className="py-2.5 px-3 font-bold">Rating</th>
                                     <th className="py-2.5 px-3 font-bold">Resources</th>
                                     <th className="py-2.5 px-3 font-bold text-center">Practice</th>
                                   </tr>
@@ -883,6 +1018,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                   {sub.problems.map((p) => {
                                     const isSolved = solvedIds.includes(p.id);
                                     const isMustDo = p.rating.includes('Must Do');
+                                    const isStarred = isProblemStarred(p);
+                                    const existingNote = getLocalProblemNote(p.slug || p.name);
+
+                                    const hasValidYoutube = Boolean(
+                                      p.youtube && 
+                                      p.youtube.startsWith('http') && 
+                                      p.youtube !== '$undefined'
+                                    );
 
                                     return (
                                       <tr
@@ -902,8 +1045,44 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                                 ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
                                                 : 'bg-slate-950 border-slate-700 text-transparent hover:border-slate-500'
                                             }`}
+                                            title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved'}
                                           >
                                             <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                          </button>
+                                        </td>
+
+                                        {/* Revision Bookmark Star */}
+                                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => toggleRevision(p, e)}
+                                            className={`p-1 rounded-lg transition-all cursor-pointer ${
+                                              isStarred 
+                                                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30' 
+                                                : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
+                                            }`}
+                                            title={isStarred ? 'Remove from Revision List' : 'Bookmark for Revision'}
+                                          >
+                                            <Star className={`w-3.5 h-3.5 ${isStarred ? 'fill-amber-400' : ''}`} />
+                                          </button>
+                                        </td>
+
+                                        {/* Personal Study Notes Button */}
+                                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveNotesProblem(p)}
+                                            className={`p-1 rounded-lg transition-all cursor-pointer relative ${
+                                              existingNote 
+                                                ? 'text-indigo-300 bg-indigo-500/20 border border-indigo-500/40' 
+                                                : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
+                                            }`}
+                                            title={existingNote ? 'View / Edit Personal Cloud Notes' : 'Create Personal Note'}
+                                          >
+                                            <FileText className="w-3.5 h-3.5" />
+                                            {existingNote && (
+                                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 absolute top-0.5 right-0.5" />
+                                            )}
                                           </button>
                                         </td>
 
@@ -936,11 +1115,37 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                           </span>
                                         </td>
 
+                                        {/* Companies */}
+                                        <td className="py-2.5 px-3">
+                                          <div className="flex flex-wrap gap-1 items-center">
+                                            {p.companies.slice(0, 2).map((comp) => (
+                                              <span
+                                                key={comp}
+                                                className="px-1.5 py-0.2 rounded bg-slate-900 text-slate-300 text-[10px] border border-slate-800"
+                                              >
+                                                {comp}
+                                              </span>
+                                            ))}
+                                            {p.companies.length > 2 && (
+                                              <span className="text-[9px] text-slate-500 font-mono">
+                                                +{p.companies.length - 2}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* Rating */}
+                                        <td className="py-2.5 px-3 whitespace-nowrap text-[11px]">
+                                          <span className={isMustDo ? 'text-amber-400 font-bold' : 'text-slate-400 font-mono'}>
+                                            {p.rating}
+                                          </span>
+                                        </td>
+
                                         {/* Resources (Video / Article) */}
                                         <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                           <div className="flex items-center space-x-1.5">
-                                            {/* Video Lecture */}
-                                            {p.youtube ? (
+                                            {/* YouTube Lecture Link */}
+                                            {hasValidYoutube && (
                                               <a
                                                 href={p.youtube}
                                                 target="_blank"
@@ -950,15 +1155,18 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                               >
                                                 <Youtube className="w-3.5 h-3.5" />
                                               </a>
-                                            ) : onSelectVideoByTopic ? (
+                                            )}
+
+                                            {/* In-app SDETube DSA Channel Lecture */}
+                                            {onSelectVideoByTopic && (
                                               <button
                                                 onClick={() => onSelectVideoByTopic(p.name)}
                                                 className="p-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
-                                                title="Watch Video Lecture in SDETube"
+                                                title="Watch Video Lecture in SDETube DSA Channel"
                                               >
                                                 <Play className="w-3.5 h-3.5 fill-current" />
                                               </button>
-                                            ) : null}
+                                            )}
 
                                             {/* Article Link */}
                                             {p.article && (
@@ -1044,11 +1252,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-mono">
-                  <th className="py-4 px-4 w-12 text-center">Status</th>
+                  <th className="py-4 px-3 w-10 text-center">Status</th>
+                  <th className="py-4 px-3 w-10 text-center">Star</th>
+                  <th className="py-4 px-3 w-10 text-center">Note</th>
                   <th className="py-4 px-4 font-bold">Step / Category</th>
-                  <th className="py-4 px-4 font-bold min-w-[240px]">Problem Title</th>
+                  <th className="py-4 px-4 font-bold min-w-[220px]">Problem Title</th>
                   <th className="py-4 px-4 font-bold text-center">Difficulty</th>
-                  <th className="py-4 px-4 font-bold">Importance</th>
+                  <th className="py-4 px-4 font-bold">Companies</th>
+                  <th className="py-4 px-4 font-bold">Rating</th>
                   <th className="py-4 px-4 font-bold text-center">Practice Actions</th>
                 </tr>
               </thead>
@@ -1056,7 +1267,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
               <tbody className="divide-y divide-slate-800/60 text-xs sm:text-sm">
                 {filteredProblems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-500 space-y-3">
+                    <td colSpan={9} className="py-16 text-center text-slate-500 space-y-3">
                       <FolderOpen className="w-12 h-12 mx-auto text-slate-600 mb-2" />
                       <p className="text-base font-bold text-slate-300">No problems found matching your criteria</p>
                       <button
@@ -1071,6 +1282,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                   filteredProblems.map((p) => {
                     const isSolved = solvedIds.includes(p.id);
                     const isMustDo = p.rating.includes('Must Do');
+                    const isStarred = isProblemStarred(p);
+                    const existingNote = getLocalProblemNote(p.slug || p.name);
+
+                    const hasValidYoutube = Boolean(
+                      p.youtube && 
+                      p.youtube.startsWith('http') && 
+                      p.youtube !== '$undefined'
+                    );
 
                     return (
                       <tr
@@ -1081,7 +1300,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                         onClick={() => onOpenCodingFullscreen?.(p)}
                       >
                         {/* Checkbox Status */}
-                        <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={(e) => toggleSolved(p.id, e)}
@@ -1093,6 +1312,41 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                             title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved'}
                           >
                             <Check className="w-4 h-4 stroke-[3]" />
+                          </button>
+                        </td>
+
+                        {/* Star / Revision */}
+                        <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => toggleRevision(p, e)}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              isStarred 
+                                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30' 
+                                : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
+                            }`}
+                            title={isStarred ? 'Remove from Revision List' : 'Bookmark for Revision'}
+                          >
+                            <Star className={`w-4 h-4 ${isStarred ? 'fill-amber-400' : ''}`} />
+                          </button>
+                        </td>
+
+                        {/* Notes */}
+                        <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setActiveNotesProblem(p)}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer relative ${
+                              existingNote 
+                                ? 'text-indigo-300 bg-indigo-500/20 border border-indigo-500/40' 
+                                : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
+                            }`}
+                            title={existingNote ? 'View / Edit Personal Cloud Notes' : 'Create Personal Note'}
+                          >
+                            <FileText className="w-4 h-4" />
+                            {existingNote && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 absolute top-0.5 right-0.5" />
+                            )}
                           </button>
                         </td>
 
@@ -1132,6 +1386,25 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                           </span>
                         </td>
 
+                        {/* Companies */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {p.companies.slice(0, 3).map((comp) => (
+                              <span
+                                key={comp}
+                                className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 text-[11px] border border-slate-700/60"
+                              >
+                                {comp}
+                              </span>
+                            ))}
+                            {p.companies.length > 3 && (
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                +{p.companies.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
                         {/* Rating */}
                         <td className="py-3.5 px-4 whitespace-nowrap text-xs">
                           <span className={isMustDo ? 'text-amber-400 font-bold' : 'text-slate-400 font-mono'}>
@@ -1153,8 +1426,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               <span>Code Arena</span>
                             </button>
 
-                            {/* Video Lecture Button */}
-                            {p.youtube ? (
+                            {/* YouTube Video Link */}
+                            {hasValidYoutube && (
                               <a
                                 href={p.youtube}
                                 target="_blank"
@@ -1164,15 +1437,18 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               >
                                 <Youtube className="w-3.5 h-3.5" />
                               </a>
-                            ) : onSelectVideoByTopic ? (
+                            )}
+
+                            {/* In-app SDETube DSA Channel Lecture */}
+                            {onSelectVideoByTopic && (
                               <button
                                 onClick={() => onSelectVideoByTopic(p.name)}
                                 className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white transition-all cursor-pointer"
-                                title="Watch Video Lecture for this Problem"
+                                title="Watch Video Lecture in SDETube DSA Channel"
                               >
                                 <Play className="w-3.5 h-3.5 fill-current" />
                               </button>
-                            ) : null}
+                            )}
 
                             {/* LeetCode External Link */}
                             {p.leetcode && (
@@ -1210,6 +1486,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* PERSONAL STUDY NOTES MODAL (.txt & CLOUDFLARE SYNC) */}
+      {activeNotesProblem && (
+        <ProblemNotesModal
+          problem={activeNotesProblem}
+          userEmail={userEmail}
+          onClose={() => setActiveNotesProblem(null)}
+        />
       )}
 
     </div>

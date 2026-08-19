@@ -687,19 +687,26 @@ export function App() {
   };
 
   const handleSelectVideoByTopic = (topicName: string) => {
-    const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    const allVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    // Strictly search ONLY within the DSA channel ('ch-dsa-01')
+    const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
     const cleanTopic = topicName.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
-    const topicWords = cleanTopic.split(/\s+/).filter(w => w.length > 2);
+    const stopwords = new Set(['the', 'and', 'for', 'with', 'part', 'using', 'algorithm', 'problem', 'in', 'of', 'a', 'an', 'to', 'by', 'array', 'part-i', 'part-ii']);
+    const topicWords = cleanTopic.split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
 
-    let match = list.find(v => {
+    let match = dsaVideos.find(v => {
       const vTitle = v.title.toLowerCase();
-      return topicWords.some(w => vTitle.includes(w));
+      return vTitle.includes(cleanTopic) || (topicWords.length > 0 && topicWords.every(w => vTitle.includes(w)));
     });
 
-    if (!match) {
-      match = list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+    if (!match && topicWords.length > 0) {
+      match = dsaVideos.find(v => {
+        const vTitle = v.title.toLowerCase();
+        return topicWords.filter(w => vTitle.includes(w)).length >= Math.min(2, topicWords.length);
+      });
     }
 
+    // Only open if a real, valid DSA video match exists
     if (match) {
       handleOpenVideoWithBilling(match, 'sde_sheet');
     }
@@ -711,17 +718,24 @@ export function App() {
       return;
     }
 
-    const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    const allVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+    // Strictly match ONLY against the DSA channel ('ch-dsa-01')
+    const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
     const pName = problem.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
-    const pWords = pName.split(/\s+/).filter(w => w.length > 2);
+    const stopwords = new Set(['the', 'and', 'for', 'with', 'part', 'using', 'algorithm', 'problem', 'in', 'of', 'a', 'an', 'to', 'by', 'array', 'part-i', 'part-ii']);
+    const pWords = pName.split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
 
-    let matched = list.find((v) => {
+    let matched = dsaVideos.find((v) => {
       const vTitle = v.title.toLowerCase();
-      return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName) || pName.includes(vTitle);
-    }) || list.find((v) => {
-      const vTitle = v.title.toLowerCase();
-      return pWords.some(w => vTitle.includes(w));
-    }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+      return vTitle.includes(pName) || (pWords.length > 0 && pWords.every(w => vTitle.includes(w)));
+    });
+
+    if (!matched && pWords.length > 0) {
+      matched = dsaVideos.find(v => {
+        const vTitle = v.title.toLowerCase();
+        return pWords.filter(w => vTitle.includes(w)).length >= Math.min(2, pWords.length);
+      });
+    }
 
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);
@@ -1298,11 +1312,12 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           </div>
         )}
 
-        {/* VIEW 2.5: SDE SHEET EXPLORER WITH 191 PROBLEMS */}
+        {/* VIEW 2.5: DSA SHEETS HUB WITH 744 PROBLEMS ACROSS 3 CURRICULA */}
         {activeTab === 'sde_sheet' && (
           <SDESheetExplorer
             onSelectVideoByTopic={handleSelectVideoByTopic}
             onOpenCodingFullscreen={handleOpenCodingFullscreen}
+            userEmail={user?.email}
           />
         )}
 

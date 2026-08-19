@@ -30,9 +30,11 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  GripHorizontal,
   Lock,
-  Eye
+  Eye,
+  FileText,
+  Save,
+  Download
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -43,6 +45,7 @@ import confetti from 'canvas-confetti';
 import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
@@ -212,10 +215,32 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });
 
-  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'video' | 'solutions' | 'submissions' | 'aireview'>('description');
+  const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'notes' | 'video' | 'solutions' | 'submissions' | 'aireview'>('description');
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
+  
+  // Problem Notes Studio state (.txt & Cloudflare sync)
+  const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
+    return getLocalProblemNote(codingProblem?.slug || codingProblem?.name || cleanTitle);
+  });
+  const [isSavingModalNotes, setIsSavingModalNotes] = useState(false);
+  const [modalNotesSavedStatus, setModalNotesSavedStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
+
+  const handleSaveModalNotes = async () => {
+    setIsSavingModalNotes(true);
+    const slug = codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const student = getCurrentStudent();
+    const res = await saveProblemNote(slug, codingProblem?.name || cleanTitle, modalNotesContent, student?.email);
+    setIsSavingModalNotes(false);
+    setModalNotesSavedStatus(res.syncedToCloudflare ? 'synced' : 'saved');
+    setTimeout(() => setModalNotesSavedStatus('idle'), 4000);
+  };
+
+  const handleDownloadModalNotes = () => {
+    const slug = codingProblem?.slug || codingProblem?.name || cleanTitle;
+    downloadProblemNotesAsTxt(slug, codingProblem?.name || cleanTitle, modalNotesContent);
+  };
   
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
@@ -830,6 +855,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
 
             <button
+              onClick={() => setLeftTab('notes')}
+              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                leftTab === 'notes'
+                  ? 'bg-slate-800 text-white shadow-inner'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Notes (.txt)</span>
+            </button>
+
+            <button
               onClick={() => setLeftTab('video')}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
                 leftTab === 'video'
@@ -1094,6 +1131,52 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <p className="text-xs">No direct video stream attached to this specific problem item.</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB: PERSONAL STUDY NOTES */}
+            {leftTab === 'notes' && (
+              <div className="space-y-4 font-sans animate-fadeIn">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-indigo-400" />
+                      <span>Personal Study Notes (.txt / Markdown)</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Auto-saved locally and synchronized as a .txt file to Cloudflare R2
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleDownloadModalNotes}
+                      className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold cursor-pointer transition-all"
+                      title="Download notes as .txt"
+                    >
+                      <Download className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>.txt</span>
+                    </button>
+
+                    <button
+                      onClick={handleSaveModalNotes}
+                      disabled={isSavingModalNotes}
+                      className="flex items-center space-x-1 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer transition-all shadow-sm disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSavingModalNotes ? 'Saving...' : modalNotesSavedStatus === 'synced' ? 'Synced!' : 'Save'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col h-[420px]">
+                  <textarea
+                    value={modalNotesContent}
+                    onChange={(e) => setModalNotesContent(e.target.value)}
+                    placeholder="Write key observations, edge cases, formula, or custom intuition here... (Supports Markdown & Plaintext)"
+                    className="w-full flex-1 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono leading-relaxed placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none custom-scrollbar"
+                  />
+                </div>
               </div>
             )}
 
