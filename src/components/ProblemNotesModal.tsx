@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, 
   Save, 
@@ -10,10 +10,13 @@ import {
   X, 
   Code,
   Layers,
-  Clock
+  Clock,
+  Eye,
+  Edit2
 } from 'lucide-react';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
+import { FormattedChatText } from './FormattedChatText';
 
 interface ProblemNotesModalProps {
   problem: DSAProblem;
@@ -32,6 +35,7 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
   const [hasCopied, setHasCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
   const wordCount = useMemoWords(noteContent);
   const charCount = noteContent.length;
@@ -60,19 +64,30 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
     setTimeout(() => setHasCopied(false), 2000);
   };
 
+  // Clean, professional plain-text template inserts (no messy markdown hashes or stars)
   const insertTemplate = (templateType: 'intuition' | 'edgecases' | 'complexity' | 'full') => {
     let snippet = '';
     if (templateType === 'intuition') {
-      snippet = `\n### 💡 Key Intuition / Approach:\n- Main observation:\n- Pointer / State transitions:\n- Why this works:\n`;
+      snippet = `\n[ CORE INTUITION / KEY APPROACH ]\n• Main observation:\n• State & Pointer transitions:\n• Why this works:\n`;
     } else if (templateType === 'edgecases') {
-      snippet = `\n### ⚠️ Edge Cases to Consider:\n- Empty array / single element\n- Negative numbers / zero\n- Duplicates / all elements identical\n- Overflow bounds\n`;
+      snippet = `\n[ EDGE CASES TO CONSIDER ]\n• Empty array / single element\n• Negative numbers / zero boundaries\n• Duplicates / all elements identical\n• Integer overflow limits\n`;
     } else if (templateType === 'complexity') {
-      snippet = `\n### ⏱️ Complexity Analysis:\n- **Time Complexity:** O()\n- **Space Complexity:** O()\n`;
+      snippet = `\n[ COMPLEXITY ANALYSIS ]\n• Time Complexity:  O(N)\n• Space Complexity: O(1)\n`;
     } else if (templateType === 'full') {
-      snippet = `## 📝 Problem Notes: ${problem.name}\n\n### 💡 Core Intuition:\n- \n\n### ⚙️ Algorithm Steps:\n1. \n2. \n3. \n\n### ⚠️ Edge Cases:\n- \n\n### ⏱️ Complexity:\n- **Time:** O()\n- **Space:** O()\n`;
+      snippet = `=======================================================\n` +
+        `PROBLEM NOTES: ${problem.name}\n` +
+        `Category: ${problem.category}\n` +
+        `Difficulty: ${problem.difficulty}\n` +
+        `=======================================================\n\n` +
+        `[ CORE INTUITION ]\n• \n\n` +
+        `[ ALGORITHM STEPS ]\n1. \n2. \n3. \n\n` +
+        `[ EDGE CASES TO CONSIDER ]\n• Empty / single element input\n• Negative numbers or zero\n• Duplicates or overflow boundaries\n\n` +
+        `[ COMPLEXITY ANALYSIS ]\n• Time Complexity:  O()\n• Space Complexity: O()\n\n` +
+        `[ KEY TAKEAWAYS & PITFALLS ]\n• \n`;
     }
 
     setNoteContent((prev) => (prev ? prev + '\n' + snippet : snippet.trim()));
+    setActiveTab('edit');
   };
 
   return (
@@ -88,13 +103,13 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
             <div>
               <div className="flex items-center space-x-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60 text-[10px] font-black uppercase tracking-wider font-mono">
-                  Personal Study Notes (.txt / Markdown)
+                  Personal Study Notes (.txt / Cloudflare)
                 </span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                   problem.difficulty === 'Easy' 
                     ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
-                    : problem.difficulty === 'Medium'
-                      ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                    : problem.difficulty === 'Medium' 
+                      ? 'bg-amber-950 text-amber-400 border border-amber-800' 
                       : 'bg-rose-950 text-rose-400 border border-rose-800'
                 }`}>
                   {problem.difficulty}
@@ -109,30 +124,58 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {/* Edit / Preview Toggle */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <button
+                onClick={() => setActiveTab('edit')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                  activeTab === 'edit'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('preview')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                  activeTab === 'preview'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Quick Insert Templates Bar */}
         <div className="flex items-center space-x-2 py-3 overflow-x-auto custom-scrollbar flex-shrink-0 border-b border-slate-800/60 text-xs">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">
-            Quick Insert:
+            Insert Section:
           </span>
           <button
             onClick={() => insertTemplate('full')}
             className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all whitespace-nowrap cursor-pointer border border-slate-700"
           >
-            + Full SDE Template
+            + Full Clean Template
           </button>
           <button
             onClick={() => insertTemplate('intuition')}
             className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-bold transition-all whitespace-nowrap cursor-pointer border border-slate-700"
           >
-            + Intuition
+            + Core Intuition
           </button>
           <button
             onClick={() => insertTemplate('edgecases')}
@@ -144,18 +187,33 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
             onClick={() => insertTemplate('complexity')}
             className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 text-xs font-bold transition-all whitespace-nowrap cursor-pointer border border-slate-700"
           >
-            + Complexity
+            + Complexity Analysis
           </button>
         </div>
 
         {/* Editor Body */}
-        <div className="flex-1 my-3 flex flex-col min-h-[260px]">
-          <textarea
-            value={noteContent}
-            onChange={(e) => setNoteContent(e.target.value)}
-            placeholder="Write your custom notes, intuition, edge cases, formulas, or tricky pitfalls here... (Supports Markdown & Plaintext)"
-            className="w-full flex-1 p-4 rounded-2xl bg-slate-950/90 border border-slate-800 text-slate-100 text-xs sm:text-sm font-mono leading-relaxed placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none custom-scrollbar"
-          />
+        <div className="flex-1 my-3 flex flex-col min-h-[260px] overflow-hidden">
+          {activeTab === 'edit' ? (
+            <textarea
+              value={noteContent}
+              onChange={(e) => setNoteContent(e.target.value)}
+              placeholder="Write your custom notes, intuition, edge cases, formulas, or tricky pitfalls here... (Saved automatically as .txt)"
+              className="w-full flex-1 p-4 rounded-2xl bg-slate-950/90 border border-slate-800 text-slate-100 text-xs sm:text-sm font-mono leading-relaxed placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none custom-scrollbar"
+            />
+          ) : (
+            <div className="w-full flex-1 p-5 rounded-2xl bg-slate-950/90 border border-slate-800 text-slate-200 text-xs sm:text-sm font-sans leading-relaxed overflow-y-auto custom-scrollbar">
+              {noteContent.trim() ? (
+                <div className="whitespace-pre-wrap font-mono text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {noteContent}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500 space-y-2">
+                  <FileText className="w-8 h-8 mx-auto text-slate-600" />
+                  <p>No notes written yet. Switch to "Edit" to write your notes.</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Controls */}
@@ -220,7 +278,7 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
 };
 
 function useMemoWords(text: string): number {
-  return React.useMemo(() => {
+  return useMemo(() => {
     const trimmed = text.trim();
     if (!trimmed) return 0;
     return trimmed.split(/\s+/).length;

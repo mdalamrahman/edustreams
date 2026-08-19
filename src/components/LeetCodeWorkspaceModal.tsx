@@ -1136,15 +1136,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
             {/* TAB: PERSONAL STUDY NOTES */}
             {leftTab === 'notes' && (
-              <div className="space-y-4 font-sans animate-fadeIn">
+              <div className="space-y-3 font-sans animate-fadeIn">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
                       <FileText className="w-4 h-4 text-indigo-400" />
-                      <span>Personal Study Notes (.txt / Markdown)</span>
+                      <span>Personal Study Notes (.txt / Cloudflare R2)</span>
                     </h3>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      Auto-saved locally and synchronized as a .txt file to Cloudflare R2
+                      Auto-saved locally and synchronized as a .txt file
                     </p>
                   </div>
 
@@ -1169,11 +1169,43 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col h-[420px]">
+                {/* Quick Insert Snippet Buttons */}
+                <div className="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar pb-1 text-[11px]">
+                  <span className="font-bold text-slate-500 uppercase">Insert:</span>
+                  <button
+                    onClick={() => {
+                      const snippet = `\n[ CORE INTUITION / KEY APPROACH ]\n• Main observation:\n• State & Pointer transitions:\n• Why this works:\n`;
+                      setModalNotesContent(prev => prev ? prev + snippet : snippet.trim());
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold border border-slate-700 cursor-pointer whitespace-nowrap"
+                  >
+                    + Intuition
+                  </button>
+                  <button
+                    onClick={() => {
+                      const snippet = `\n[ EDGE CASES TO CONSIDER ]\n• Empty array / single element\n• Negative numbers / zero boundaries\n• Duplicates / all elements identical\n• Integer overflow limits\n`;
+                      setModalNotesContent(prev => prev ? prev + snippet : snippet.trim());
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold border border-slate-700 cursor-pointer whitespace-nowrap"
+                  >
+                    + Edge Cases
+                  </button>
+                  <button
+                    onClick={() => {
+                      const snippet = `\n[ COMPLEXITY ANALYSIS ]\n• Time Complexity:  O()\n• Space Complexity: O()\n`;
+                      setModalNotesContent(prev => prev ? prev + snippet : snippet.trim());
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold border border-slate-700 cursor-pointer whitespace-nowrap"
+                  >
+                    + Complexity
+                  </button>
+                </div>
+
+                <div className="flex flex-col h-[380px]">
                   <textarea
                     value={modalNotesContent}
                     onChange={(e) => setModalNotesContent(e.target.value)}
-                    placeholder="Write key observations, edge cases, formula, or custom intuition here... (Supports Markdown & Plaintext)"
+                    placeholder="Write key observations, edge cases, formula, or custom intuition here... (Saved automatically as .txt)"
                     className="w-full flex-1 p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono leading-relaxed placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none custom-scrollbar"
                   />
                 </div>
