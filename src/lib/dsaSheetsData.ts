@@ -79,9 +79,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/set-matrix-zeroes/",
     "gfg": "https://www.geeksforgeeks.org/problems/set-matrix-zeroes/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -99,9 +99,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/pascals-triangle/",
     "gfg": "https://www.geeksforgeeks.org/problems/pascal-triangle0652/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -119,12 +119,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/next-permutation/",
     "gfg": "https://www.geeksforgeeks.org/problems/next-permutation5226/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "next-permutation"
   },
@@ -139,9 +139,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-subarray/",
     "gfg": "https://www.geeksforgeeks.org/problems/kadanes-algorithm-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -159,9 +159,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sort-colors/",
     "gfg": "https://www.geeksforgeeks.org/problems/sort-an-array-of-0s-1s-and-2s4231/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -179,9 +179,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
     "gfg": "https://www.geeksforgeeks.org/problems/stock-buy-and-sell2615/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -199,9 +199,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-image/",
     "gfg": "https://www.geeksforgeeks.org/problems/rotate-by-90-degree-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -219,12 +219,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-intervals/",
     "gfg": "https://www.geeksforgeeks.org/problems/overlapping-intervals--170643/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "merge-intervals"
   },
@@ -239,9 +239,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/merge-two-sorted-arrays-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -259,9 +259,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-duplicate-number/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-duplicates-in-an-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -279,9 +279,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/set-mismatch/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-missing-and-repeating2512/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -313,9 +313,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-a-2d-matrix/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-in-a-matrix-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -333,12 +333,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/powx-n/",
     "gfg": "https://www.geeksforgeeks.org/problems/power-of-numbers-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "powx-n"
   },
@@ -353,12 +353,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/majority-element/",
     "gfg": "https://www.geeksforgeeks.org/problems/majority-element-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "majority-element"
   },
@@ -373,9 +373,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/majority-element-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/majority-vote/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -393,9 +393,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/unique-paths/",
     "gfg": "https://www.geeksforgeeks.org/problems/number-of-paths0925/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -413,9 +413,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-pairs/",
     "gfg": "https://www.geeksforgeeks.org/problems/count-reverse-pairs/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -433,9 +433,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/two-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/key-pair5610/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -453,9 +453,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/4sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-all-four-sum-numbers1732/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -473,9 +473,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-consecutive-sequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-consecutive-subsequence2421/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -493,12 +493,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/contiguous-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/largest-subarray-with-0-sum/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "contiguous-array"
   },
@@ -513,9 +513,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subarray-sum-equals-k/",
     "gfg": "https://www.geeksforgeeks.org/problems/count-subarray-with-given-xor/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -533,12 +533,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
     "gfg": "https://www.geeksforgeeks.org/problems/length-of-the-longest-substring3036/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "longest-substring-without-repeating-characters"
   },
@@ -553,9 +553,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/reverse-a-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -573,9 +573,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/middle-of-the-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/finding-middle-element-in-a-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -593,9 +593,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-two-sorted-lists/",
     "gfg": "https://www.geeksforgeeks.org/problems/merge-two-sorted-linked-lists/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -613,9 +613,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/nth-node-from-end-of-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -633,9 +633,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/add-two-numbers/",
     "gfg": "https://www.geeksforgeeks.org/problems/add-two-numbers-represented-by-linked-lists/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -653,12 +653,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/delete-node-in-a-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/delete-without-head-pointer/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "delete-node-in-a-linked-list"
   },
@@ -673,9 +673,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/intersection-of-two-linked-lists/",
     "gfg": "https://www.geeksforgeeks.org/problems/intersection-point-in-y-shapped-linked-lists/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -693,9 +693,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/linked-list-cycle/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -713,9 +713,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-nodes-in-k-group/",
     "gfg": "https://www.geeksforgeeks.org/problems/reverse-a-linked-list-in-groups-of-given-size/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -733,12 +733,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-if-linked-list-is-pallindrome/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "Nvidia"
     ],
     "slug": "palindrome-linked-list"
   },
@@ -753,9 +753,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/linked-list-cycle-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-first-node-of-loop-in-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "ByteDance"
@@ -773,9 +773,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/flatten-a-multilevel-doubly-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/flattening-a-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "LinkedIn"
@@ -793,12 +793,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/rotate-a-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "Nvidia"
     ],
     "slug": "rotate-list"
   },
@@ -813,9 +813,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/copy-list-with-random-pointer/",
     "gfg": "https://www.geeksforgeeks.org/problems/clone-a-linked-list-with-next-and-random-pointer/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -833,12 +833,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/3sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-triplets-with-zero-sum/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "3sum"
   },
@@ -853,9 +853,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/trapping-rain-water/",
     "gfg": "https://www.geeksforgeeks.org/problems/trapping-rain-water-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -873,9 +873,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-duplicates-from-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/remove-duplicate-elements-from-sorted-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -893,9 +893,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/max-consecutive-ones/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-consecutive-ones/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -913,9 +913,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/meeting-rooms/",
     "gfg": "https://www.geeksforgeeks.org/problems/n-meetings-in-one-room-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -933,12 +933,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/meeting-rooms-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-platforms-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "meeting-rooms-ii"
   },
@@ -953,9 +953,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-profit-in-job-scheduling/",
     "gfg": "https://www.geeksforgeeks.org/problems/job-sequencing-problem-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -973,9 +973,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-units-on-a-truck/",
     "gfg": "https://www.geeksforgeeks.org/problems/fractional-knapsack-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Salesforce"
@@ -993,9 +993,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/coin-change/",
     "gfg": "https://www.geeksforgeeks.org/problems/number-of-coins1824/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1013,9 +1013,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/assign-cookies/",
     "gfg": "https://www.geeksforgeeks.org/problems/assign-cookies/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -1033,9 +1033,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets/",
     "gfg": "https://www.geeksforgeeks.org/problems/subset-sums1516/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -1053,9 +1053,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/subset-sum-ii/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -1073,9 +1073,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/combination-sum-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1093,12 +1093,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/combination-sum-ii-1664263832/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "combination-sum-ii"
   },
@@ -1113,9 +1113,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-partitioning/",
     "gfg": "https://www.geeksforgeeks.org/problems/palindrome-partitioning3622/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Infosys"
@@ -1133,9 +1133,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/permutation-sequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-th-permutation-sequence/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Twitter (X)"
@@ -1153,9 +1153,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/permutations/",
     "gfg": "https://www.geeksforgeeks.org/problems/permutations-of-a-given-string2041/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1173,12 +1173,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/n-queens/",
     "gfg": "https://www.geeksforgeeks.org/problems/n-queen-problem0315/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "n-queens"
   },
@@ -1193,9 +1193,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sudoku-solver/",
     "gfg": "https://www.geeksforgeeks.org/problems/solve-the-sudoku-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1228,9 +1228,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/unique-paths-iii/",
     "gfg": "https://www.geeksforgeeks.org/problems/rat-in-a-maze-problem--1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -1248,9 +1248,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-break-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/word-break-part-23201/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -1268,12 +1268,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/powx-n/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-nth-root-of-m5843/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "powx-n"
   },
@@ -1288,9 +1288,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-smallest-element-in-a-sorted-matrix/",
     "gfg": "https://www.geeksforgeeks.org/problems/matrix-median0732/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -1308,12 +1308,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/single-element-in-a-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-the-element-that-appears-once-in-sorted-array0624/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "single-element-in-a-sorted-array"
   },
@@ -1328,9 +1328,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-in-a-rotated-array4618/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1348,9 +1348,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/median-of-two-sorted-arrays/",
     "gfg": "https://www.geeksforgeeks.org/problems/median-of-2-sorted-arrays-of-different-sizes/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1368,8 +1368,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-smallest-product-of-two-sorted-arrays/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-th-element-of-two-sorted-array1317/1",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "LinkedIn"
@@ -1387,9 +1387,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/",
     "gfg": "https://www.geeksforgeeks.org/problems/allocate-minimum-number-of-pages0937/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1407,9 +1407,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/magnetic-force-between-two-balls/",
     "gfg": "https://www.geeksforgeeks.org/problems/aggressive-cows/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -1430,8 +1430,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "max-heap-min-heap-implementation"
   },
@@ -1446,9 +1446,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-largest-elements4206/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1466,9 +1466,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-k-pairs-with-smallest-sums/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-sum-combination/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -1486,9 +1486,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-median-from-data-stream/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-median-in-a-stream-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1506,9 +1506,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-k-sorted-lists/",
     "gfg": "https://www.geeksforgeeks.org/problems/merge-k-sorted-arrays/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1526,12 +1526,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/top-k-frequent-elements/",
     "gfg": "https://www.geeksforgeeks.org/problems/top-k-frequent-elements-in-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "top-k-frequent-elements"
   },
@@ -1549,8 +1549,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-stack-using-array"
   },
@@ -1568,8 +1568,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-queue-using-array"
   },
@@ -1584,9 +1584,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-stack-using-queues/",
     "gfg": "https://www.geeksforgeeks.org/problems/stack-using-two-queues/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -1604,9 +1604,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-queue-using-stacks/",
     "gfg": "https://www.geeksforgeeks.org/problems/queue-using-two-stacks/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -1624,9 +1624,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-parentheses/",
     "gfg": "https://www.geeksforgeeks.org/problems/parenthesis-checker2744/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1644,9 +1644,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/next-greater-element-i/",
     "gfg": "https://www.geeksforgeeks.org/problems/next-larger-element-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1667,8 +1667,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "sort-a-stack"
   },
@@ -1683,9 +1683,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/final-prices-with-a-special-discount-in-a-shop/",
     "gfg": "https://www.geeksforgeeks.org/problems/help-classmates--141631/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -1703,12 +1703,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lru-cache/",
     "gfg": "https://www.geeksforgeeks.org/problems/lru-cache/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "lru-cache"
   },
@@ -1723,12 +1723,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lfu-cache/",
     "gfg": "https://www.geeksforgeeks.org/problems/lfu-cache/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "lfu-cache"
   },
@@ -1743,9 +1743,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-rectangular-area-in-a-histogram-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1763,9 +1763,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sliding-window-maximum/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-of-all-subarrays-of-size-k5901/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1783,9 +1783,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/min-stack/",
     "gfg": "https://www.geeksforgeeks.org/problems/get-minimum-element-from-stack/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1803,9 +1803,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotting-oranges/",
     "gfg": "https://www.geeksforgeeks.org/problems/rotting-oranges2536/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1823,12 +1823,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/online-stock-span/",
     "gfg": "https://www.geeksforgeeks.org/problems/stock-span-problem-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "online-stock-span"
   },
@@ -1843,9 +1843,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-celebrity/",
     "gfg": "https://www.geeksforgeeks.org/problems/the-celebrity-problem/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1863,11 +1863,11 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-of-minimum-for-every-window-size3453/1",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "maximum-of-minimum-for-every-window-size"
   },
@@ -1882,9 +1882,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-words-in-a-string/",
     "gfg": "https://www.geeksforgeeks.org/problems/reverse-words-in-a-given-string3547/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -1902,9 +1902,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-palindromic-substring/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-palindromic-substring0857/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1922,9 +1922,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/roman-to-integer/",
     "gfg": "https://www.geeksforgeeks.org/problems/roman-number-to-integer3201/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1942,12 +1942,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/string-to-integer-atoi/",
     "gfg": "https://www.geeksforgeeks.org/problems/implement-atoi/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "string-to-integer-atoi"
   },
@@ -1962,9 +1962,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-common-prefix/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-common-prefix-in-an-array5129/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -1982,9 +1982,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/repeated-string-match/",
     "gfg": "https://www.geeksforgeeks.org/problems/rabin-karp-algorithm/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -2002,9 +2002,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-pattern-z-algorithm--141631/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2022,9 +2022,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-index-of-the-first-occurrence-in-a-string/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-pattern-kmp-algorithm--141631/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2042,9 +2042,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/shortest-palindrome/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-characters-to-be-added-at-front-to-make-string-palindrome/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -2062,12 +2062,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-anagram/",
     "gfg": "https://www.geeksforgeeks.org/problems/anagram-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "valid-anagram"
   },
@@ -2082,9 +2082,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-and-say/",
     "gfg": "https://www.geeksforgeeks.org/problems/decode-the-pattern1138/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -2102,8 +2102,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/compare-version-numbers/",
     "gfg": "https://www.geeksforgeeks.org/problems/compare-two-version-numbers/1",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Nvidia",
@@ -2122,9 +2122,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/inorder-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -2142,9 +2142,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-preorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/preorder-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2161,9 +2161,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-postorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/postorder-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2180,9 +2180,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/inorder-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -2200,9 +2200,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-preorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/preorder-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2222,8 +2222,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "left-view-of-binary-tree"
   },
@@ -2241,8 +2241,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "bottom-view-of-binary-tree"
   },
@@ -2260,8 +2260,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "top-view-of-binary-tree"
   },
@@ -2279,8 +2279,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "preorder-inorder-postorder-in-single-traversal"
   },
@@ -2295,9 +2295,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/vertical-order-traversal-of-a-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/print-a-binary-tree-in-vertical-order/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -2315,9 +2315,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-paths/",
     "gfg": "https://www.geeksforgeeks.org/problems/root-to-leaf-paths/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2335,9 +2335,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-width-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-width-of-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Flipkart"
@@ -2355,12 +2355,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/level-order-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "binary-tree-level-order-traversal"
   },
@@ -2375,9 +2375,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/height-of-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -2395,9 +2395,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/diameter-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/diameter-of-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2415,9 +2415,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/balanced-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-for-balanced-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2435,12 +2435,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/lowest-common-ancestor-in-a-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "lowest-common-ancestor-of-a-binary-tree"
   },
@@ -2455,9 +2455,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/same-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/determine-if-two-trees-are-identical/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2475,12 +2475,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/zigzag-tree-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "binary-tree-zigzag-level-order-traversal"
   },
@@ -2495,9 +2495,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/boundary-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/boundary-traversal-of-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Adobe"
@@ -2515,9 +2515,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-path-sum-from-any-node/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -2535,12 +2535,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/construct-tree-1/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "construct-binary-tree-from-preorder-and-inorder-traversal"
   },
@@ -2555,9 +2555,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/construct-binary-tree-from-inorder-and-postorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/build-a-tree-concept/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Walmart"
@@ -2575,9 +2575,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/symmetric-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/symmetric-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -2595,9 +2595,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/flatten-binary-tree-to-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/flatten-binary-tree-to-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -2618,8 +2618,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "check-for-children-sum-property"
   },
@@ -2634,12 +2634,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/invert-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/mirror-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "LinkedIn"
     ],
     "slug": "invert-binary-tree"
   },
@@ -2654,9 +2654,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/populating-next-right-pointers-in-each-node/",
     "gfg": "https://www.geeksforgeeks.org/problems/connect-nodes-at-same-level/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -2674,9 +2674,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-a-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-a-node-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2693,9 +2693,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/convert-sorted-array-to-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/array-to-bst4443/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2713,9 +2713,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/construct-binary-search-tree-from-preorder-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/construct-bst-from-postorder/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2732,9 +2732,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/validate-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-for-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -2752,9 +2752,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/lowest-common-ancestor-in-a-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -2772,9 +2772,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/inorder-successor-in-bst/",
     "gfg": "https://www.geeksforgeeks.org/problems/predecessor-and-successor/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft"
     ],
     "slug": "inorder-successor-in-bst"
@@ -2810,8 +2810,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/closest-binary-search-tree-value-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/ceil-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "LinkedIn"
     ],
     "slug": "closest-binary-search-tree-value-ii"
@@ -2827,9 +2827,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-th-smallest-element-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -2847,9 +2847,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/kth-largest-element-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -2867,9 +2867,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/two-sum-iv-input-is-a-bst/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-a-pair-with-given-target-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -2887,12 +2887,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-search-tree-iterator/",
     "gfg": "https://www.geeksforgeeks.org/problems/binary-search-tree-iterator/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "binary-search-tree-iterator"
   },
@@ -2907,9 +2907,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-sum-bst-in-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/largest-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -2926,9 +2926,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/serialize-and-deserialize-a-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -2946,11 +2946,11 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "https://www.geeksforgeeks.org/problems/binary-tree-to-dll/1",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "binary-tree-to-double-linkedlist"
   },
@@ -2965,9 +2965,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-median-from-data-stream/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-median-in-a-stream-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -2985,12 +2985,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-a-stream/",
     "gfg": "https://www.geeksforgeeks.org/problems/kth-largest-element-in-a-stream2220/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "kth-largest-element-in-a-stream"
   },
@@ -3005,9 +3005,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-largest-elements4206/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3028,8 +3028,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "distinct-numbers-in-window"
   },
@@ -3044,12 +3044,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/top-k-frequent-elements/",
     "gfg": "https://www.geeksforgeeks.org/problems/top-k-frequent-elements-in-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "top-k-frequent-elements"
   },
@@ -3064,9 +3064,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/clone-graph/",
     "gfg": "https://www.geeksforgeeks.org/problems/clone-a-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3084,12 +3084,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-provinces/",
     "gfg": "https://www.geeksforgeeks.org/problems/depth-first-traversal-for-a-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "number-of-provinces"
   },
@@ -3104,9 +3104,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/graph-valid-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/bfs-traversal-of-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "LinkedIn"
@@ -3124,12 +3124,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-provinces/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-cycle-in-an-undirected-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "number-of-provinces"
   },
@@ -3144,12 +3144,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-provinces/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-cycle-in-an-undirected-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "number-of-provinces"
   },
@@ -3164,9 +3164,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-cycle-in-a-directed-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3184,12 +3184,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-cycle-in-a-directed-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -3204,12 +3204,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/topological-sort/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -3224,12 +3224,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/topological-sort/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -3244,9 +3244,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-islands/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-the-number-of-islands/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3264,9 +3264,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/is-graph-bipartite/",
     "gfg": "https://www.geeksforgeeks.org/problems/bipartite-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3284,9 +3284,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/is-graph-bipartite/",
     "gfg": "https://www.geeksforgeeks.org/problems/bipartite-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3304,8 +3304,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/critical-connections-in-a-network/",
     "gfg": "https://www.geeksforgeeks.org/problems/strongly-connected-components-kosarajus-algo/1",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Flipkart"
@@ -3323,12 +3323,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/network-delay-time/",
     "gfg": "https://www.geeksforgeeks.org/problems/implementing-dijkstra-set-1-adjacency-matrix/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "Salesforce"
+      "Netflix",
+      "Bloomberg"
     ],
     "slug": "network-delay-time"
   },
@@ -3343,9 +3343,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
     "gfg": "https://www.geeksforgeeks.org/problems/distance-from-the-source-bellman-ford-algorithm/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3363,9 +3363,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/",
     "gfg": "https://www.geeksforgeeks.org/problems/floyd-warshall4005/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber"
     ],
@@ -3382,9 +3382,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/min-cost-to-connect-all-points/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-spanning-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Flipkart"
@@ -3402,9 +3402,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/min-cost-to-connect-all-points/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-spanning-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Flipkart"
@@ -3422,12 +3422,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-product-subarray/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-product-subarray3608/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "maximum-product-subarray"
   },
@@ -3442,9 +3442,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-increasing-subsequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-increasing-subsequence-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -3462,9 +3462,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-common-subsequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-common-subsequence-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -3482,9 +3482,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-equal-subset-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/0-1-knapsack-problem0917/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -3502,9 +3502,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/edit-distance/",
     "gfg": "https://www.geeksforgeeks.org/problems/edit-distance3702/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -3522,9 +3522,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-ascending-subarray-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-sum-increasing-subsequence4749/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -3542,9 +3542,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/burst-balloons/",
     "gfg": "https://www.geeksforgeeks.org/problems/matrix-chain-multiplication0303/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -3562,9 +3562,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-path-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-cost-path3805/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -3582,9 +3582,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/coin-change/",
     "gfg": "https://www.geeksforgeeks.org/problems/number-of-coins1824/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3602,9 +3602,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-equal-subset-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/subset-sum-problem2014/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -3622,9 +3622,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/integer-break/",
     "gfg": "https://www.geeksforgeeks.org/problems/rod-cutting0840/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -3641,8 +3641,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/super-egg-drop/",
     "gfg": "https://www.geeksforgeeks.org/problems/egg-dropping-puzzle-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -3659,12 +3659,12 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-break/",
     "gfg": "https://www.geeksforgeeks.org/problems/word-break1352/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "word-break"
   },
@@ -3679,9 +3679,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-partitioning-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/palindromic-patitioning4845/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -3698,9 +3698,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-profit-in-job-scheduling/",
     "gfg": "https://www.geeksforgeeks.org/problems/job-sequencing-problem-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -3718,9 +3718,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-trie-prefix-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/trie-insert-and-search0651/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3754,8 +3754,8 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-word-in-dictionary/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-string-with-all-prefixes/1",
     "companies": [
-      "Amazon",
-      "Google"
+      "Google",
+      "Amazon"
     ],
     "slug": "longest-word-in-dictionary"
   },
@@ -3787,9 +3787,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets/",
     "gfg": "https://www.geeksforgeeks.org/problems/power-set4302/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -3807,9 +3807,9 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-xor-of-two-numbers-in-an-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -3844,9 +3844,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/two-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/key-pair5610/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3864,12 +3864,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-anagram/",
     "gfg": "https://www.geeksforgeeks.org/problems/anagram-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "valid-anagram"
   },
@@ -3884,9 +3884,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/group-anagrams/",
     "gfg": "https://www.geeksforgeeks.org/problems/print-anagrams-together/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3904,12 +3904,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/top-k-frequent-elements/",
     "gfg": "https://www.geeksforgeeks.org/problems/top-k-frequent-elements-in-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "top-k-frequent-elements"
   },
@@ -3924,9 +3924,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/product-of-array-except-self/",
     "gfg": "https://www.geeksforgeeks.org/problems/a-difference-of-values-and-indexes0539/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3944,9 +3944,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-consecutive-sequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-consecutive-subsequence2421/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3964,9 +3964,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sort-colors/",
     "gfg": "https://www.geeksforgeeks.org/problems/sort-an-array-of-0s-1s-and-2s4231/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -3984,9 +3984,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
     "gfg": "https://www.geeksforgeeks.org/problems/stock-buy-and-sell2615/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4004,9 +4004,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-search/",
     "gfg": "https://www.geeksforgeeks.org/problems/binary-search-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -4024,9 +4024,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-in-a-rotated-array4618/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4044,9 +4044,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/minimum-element-in-a-sorted-and-rotated-array3626/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4064,12 +4064,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/koko-eating-bananas/",
     "gfg": "https://www.geeksforgeeks.org/problems/koko-eating-bananas/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "koko-eating-bananas"
   },
@@ -4084,9 +4084,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-a-2d-matrix/",
     "gfg": "https://www.geeksforgeeks.org/problems/search-in-a-matrix-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4104,9 +4104,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/median-of-two-sorted-arrays/",
     "gfg": "https://www.geeksforgeeks.org/problems/median-of-2-sorted-arrays-of-different-sizes/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4124,9 +4124,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/",
     "gfg": "https://www.geeksforgeeks.org/problems/capacity-to-ship-packages-within-d-days/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4144,9 +4144,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/magnetic-force-between-two-balls/",
     "gfg": "https://www.geeksforgeeks.org/problems/aggressive-cows/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -4164,9 +4164,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-linked-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/reverse-a-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4184,9 +4184,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-two-sorted-lists/",
     "gfg": "https://www.geeksforgeeks.org/problems/merge-two-sorted-linked-lists/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -4204,9 +4204,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reorder-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/reorder-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -4224,9 +4224,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
     "gfg": "https://www.geeksforgeeks.org/problems/nth-node-from-end-of-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -4244,9 +4244,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/linked-list-cycle/",
     "gfg": "https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -4264,12 +4264,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lru-cache/",
     "gfg": "https://www.geeksforgeeks.org/problems/lru-cache/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "lru-cache"
   },
@@ -4284,9 +4284,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets/",
     "gfg": "https://www.geeksforgeeks.org/problems/power-set4302/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -4304,9 +4304,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/combination-sum-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4324,9 +4324,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/permutations/",
     "gfg": "https://www.geeksforgeeks.org/problems/permutations-of-a-given-string2041/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4344,12 +4344,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/n-queens/",
     "gfg": "https://www.geeksforgeeks.org/problems/n-queen-problem0315/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "n-queens"
   },
@@ -4364,12 +4364,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-search/",
     "gfg": "https://www.geeksforgeeks.org/problems/word-search/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "word-search"
   },
@@ -4384,9 +4384,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-partitioning/",
     "gfg": "https://www.geeksforgeeks.org/problems/palindrome-partitioning3622/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Infosys"
@@ -4404,9 +4404,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-parentheses/",
     "gfg": "https://www.geeksforgeeks.org/problems/parenthesis-checker2744/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4424,9 +4424,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/min-stack/",
     "gfg": "https://www.geeksforgeeks.org/problems/get-minimum-element-from-stack/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4444,9 +4444,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/evaluate-reverse-polish-notation/",
     "gfg": "https://www.geeksforgeeks.org/problems/evaluation-of-postfix-expression1735/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -4464,9 +4464,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/daily-temperatures/",
     "gfg": "https://www.geeksforgeeks.org/problems/next-larger-element-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -4484,9 +4484,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/car-fleet/",
     "gfg": "https://www.geeksforgeeks.org/problems/car-fleet/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -4504,9 +4504,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-rectangular-area-in-a-histogram-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4524,9 +4524,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-largest-elements4206/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4544,9 +4544,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/task-scheduler/",
     "gfg": "https://www.geeksforgeeks.org/problems/task-scheduler/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4564,9 +4564,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-median-from-data-stream/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-median-in-a-stream-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4584,12 +4584,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/invert-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/mirror-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "LinkedIn"
     ],
     "slug": "invert-binary-tree"
   },
@@ -4604,9 +4604,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/height-of-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4624,9 +4624,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/diameter-of-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/diameter-of-binary-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -4644,9 +4644,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/balanced-binary-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-for-balanced-tree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -4664,9 +4664,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/same-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/determine-if-two-trees-are-identical/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -4684,9 +4684,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subtree-of-another-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-if-subtree/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "eBay"
@@ -4704,9 +4704,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/lowest-common-ancestor-in-a-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -4724,12 +4724,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
     "gfg": "https://www.geeksforgeeks.org/problems/level-order-traversal/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "binary-tree-level-order-traversal"
   },
@@ -4744,9 +4744,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/validate-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/check-for-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -4764,9 +4764,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",
     "gfg": "https://www.geeksforgeeks.org/problems/k-th-smallest-element-in-bst/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -4784,9 +4784,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-path-sum-from-any-node/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4804,9 +4804,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-islands/",
     "gfg": "https://www.geeksforgeeks.org/problems/find-the-number-of-islands/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4824,9 +4824,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/clone-graph/",
     "gfg": "https://www.geeksforgeeks.org/problems/clone-a-graph/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4844,12 +4844,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/max-area-of-island/",
     "gfg": "https://www.geeksforgeeks.org/problems/max-area-of-island/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "max-area-of-island"
   },
@@ -4864,12 +4864,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/pacific-atlantic-water-flow/",
     "gfg": "https://www.geeksforgeeks.org/problems/pacific-atlantic-water-flow/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "pacific-atlantic-water-flow"
   },
@@ -4884,12 +4884,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/surrounded-regions/",
     "gfg": "https://www.geeksforgeeks.org/problems/replace-o-with-x4256/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "surrounded-regions"
   },
@@ -4904,9 +4904,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotting-oranges/",
     "gfg": "https://www.geeksforgeeks.org/problems/rotting-oranges2536/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4924,9 +4924,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule/",
     "gfg": "https://www.geeksforgeeks.org/problems/prerequisite-tasks/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -4944,12 +4944,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/course-schedule/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -4964,9 +4964,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/redundant-connection/",
     "gfg": "https://www.geeksforgeeks.org/problems/redundant-connection/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -4984,9 +4984,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-ladder/",
     "gfg": "https://www.geeksforgeeks.org/problems/word-ladder/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5004,12 +5004,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/network-delay-time/",
     "gfg": "https://www.geeksforgeeks.org/problems/implementing-dijkstra-set-1-adjacency-matrix/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "Salesforce"
+      "Netflix",
+      "Bloomberg"
     ],
     "slug": "network-delay-time"
   },
@@ -5024,9 +5024,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/alien-dictionary/",
     "gfg": "https://www.geeksforgeeks.org/problems/alien-dictionary/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5044,9 +5044,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/climbing-stairs/",
     "gfg": "https://www.geeksforgeeks.org/problems/count-ways-to-reach-the-nth-stair-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5064,9 +5064,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/house-robber/",
     "gfg": "https://www.geeksforgeeks.org/problems/max-sum-without-adjacents2430/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5084,9 +5084,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/house-robber-ii/",
     "gfg": "https://www.geeksforgeeks.org/problems/house-robber-ii/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5104,9 +5104,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-palindromic-substring/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-palindromic-substring0857/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5124,9 +5124,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindromic-substrings/",
     "gfg": "https://www.geeksforgeeks.org/problems/count-palindromic-subsequences/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -5144,9 +5144,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/coin-change/",
     "gfg": "https://www.geeksforgeeks.org/problems/number-of-coins1824/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5164,12 +5164,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-product-subarray/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-product-subarray3608/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "maximum-product-subarray"
   },
@@ -5184,12 +5184,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-break/",
     "gfg": "https://www.geeksforgeeks.org/problems/word-break1352/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "word-break"
   },
@@ -5204,9 +5204,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-increasing-subsequence/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-increasing-subsequence-1587115620/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -5224,9 +5224,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-equal-subset-sum/",
     "gfg": "https://www.geeksforgeeks.org/problems/subset-sum-problem2014/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -5244,9 +5244,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/edit-distance/",
     "gfg": "https://www.geeksforgeeks.org/problems/edit-distance3702/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -5264,9 +5264,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/burst-balloons/",
     "gfg": "https://www.geeksforgeeks.org/problems/burst-balloons/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -5284,9 +5284,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-trie-prefix-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/trie-insert-and-search0651/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5304,9 +5304,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/design-add-and-search-words-data-structure/",
     "gfg": "https://www.geeksforgeeks.org/problems/trie-insert-and-search0651/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -5324,9 +5324,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/",
     "gfg": "https://www.geeksforgeeks.org/problems/maximum-xor-of-two-numbers-in-an-array/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -5343,12 +5343,12 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
     "gfg": "https://www.geeksforgeeks.org/problems/length-of-the-longest-substring3036/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "longest-substring-without-repeating-characters"
   },
@@ -5363,9 +5363,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-repeating-character-replacement/",
     "gfg": "https://www.geeksforgeeks.org/problems/longest-repeating-character-replacement/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5383,9 +5383,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-window-substring/",
     "gfg": "https://www.geeksforgeeks.org/problems/smallest-window-in-a-string-containing-all-the-characters-of-another-string-1587115621/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5403,9 +5403,9 @@ export const STRIVER_79_SHEET_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-palindrome/",
     "gfg": "https://www.geeksforgeeks.org/problems/string-palindrome4521/1",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -5427,13 +5427,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=250",
-    "article": "https://takeuforward.org/c/c-basic-input-output/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "input-output"
   },
@@ -5448,13 +5447,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=2415",
-    "article": "https://takeuforward.org/data-structure/what-are-arrays-strings",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "cpp-basics"
   },
@@ -5469,13 +5467,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=1259",
-    "article": "https://takeuforward.org/if-else/if-else-statements/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "if-elseif"
   },
@@ -5490,13 +5487,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4",
-    "article": "https://takeuforward.org/switch-case/switch-case-statements/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "switch-case"
   },
@@ -5511,13 +5507,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=2415",
-    "article": "https://takeuforward.org/data-structure/what-are-arrays-strings",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "what-are-arrays-strings"
   },
@@ -5532,13 +5527,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=3096",
-    "article": "https://takeuforward.org/for-loop/understanding-for-loop/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "for-loops"
   },
@@ -5553,13 +5547,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=3459",
-    "article": "https://takeuforward.org/while-loop/while-loops-in-programming/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "while-loops"
   },
@@ -5574,13 +5567,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/EAR7De6Goz4?t=3677",
-    "article": "https://takeuforward.org/data-structure/functions-pass-by-reference-and-value",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "functions-pass-by-reference-and-value"
   },
@@ -5595,13 +5587,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/FPu9Uld7W-E",
-    "article": "https://takeuforward.org/time-complexity/time-and-space-complexity-strivers-a2z-dsa-course/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "theory-with-examples"
   },
@@ -5616,13 +5607,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "easy-and-medium"
   },
@@ -5637,13 +5627,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "hard"
   },
@@ -5658,13 +5647,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-1"
   },
@@ -5679,13 +5667,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-2"
   },
@@ -5700,13 +5687,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-3"
   },
@@ -5721,13 +5707,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-4"
   },
@@ -5742,13 +5727,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-5"
   },
@@ -5763,13 +5747,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-6"
   },
@@ -5784,13 +5767,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-7"
   },
@@ -5805,13 +5787,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-8"
   },
@@ -5826,13 +5807,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-9"
   },
@@ -5847,13 +5827,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-10"
   },
@@ -5868,13 +5847,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-11"
   },
@@ -5889,13 +5867,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-12"
   },
@@ -5910,13 +5887,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-13"
   },
@@ -5931,13 +5907,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-14"
   },
@@ -5952,13 +5927,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-15"
   },
@@ -5973,13 +5947,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-16"
   },
@@ -5994,13 +5967,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-17"
   },
@@ -6015,13 +5987,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-18"
   },
@@ -6036,13 +6007,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pattern-19"
   },
@@ -6057,13 +6027,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "pattern-20"
   },
@@ -6078,13 +6047,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "pattern-21"
   },
@@ -6099,13 +6067,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=tNm_NNSB3_w&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=3",
-    "article": "https://takeuforward.org/strivers-a2z-dsa-course/must-do-pattern-problems-before-starting-dsa/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "pattern-22"
   },
@@ -6120,13 +6087,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=RRVYpIET_RU",
-    "article": "https://takeuforward.org/c/c-stl-tutorial-most-frequent-used-stl-containers/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "stl"
   },
@@ -6141,13 +6107,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/java-collections",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "java-collections"
   },
@@ -6162,13 +6127,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug",
-    "article": "https://takeuforward.org/data-structure/count-digits-in-a-number/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "count-all-digits-of-a-number"
   },
@@ -6183,11 +6147,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-integer/",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=930",
-    "article": "https://takeuforward.org/maths/reverse-digits-of-a-number",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -6205,11 +6168,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-number/",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=1230",
-    "article": "https://takeuforward.org/data-structure/check-if-a-number-is-palindrome-or-not/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -6227,13 +6189,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=2684",
-    "article": "https://takeuforward.org/data-structure/find-gcd-of-two-numbers/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "gcd-of-two-numbers"
   },
@@ -6248,7 +6209,6 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/armstrong-number/",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=1418",
-    "article": "https://takeuforward.org/maths/check-if-a-number-is-armstrong-number-or-not/",
     "companies": [
       "Amazon"
     ],
@@ -6265,13 +6225,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=1580",
-    "article": "https://takeuforward.org/data-structure/print-all-divisors-of-a-given-number/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "print-all-divisors"
   },
@@ -6286,13 +6245,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=2381",
-    "article": "https://takeuforward.org/data-structure/check-if-a-number-is-prime-or-not/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "check-for-prime-number"
   },
@@ -6307,13 +6265,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=yVdKa8dnKiE&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9",
-    "article": "https://takeuforward.org/recursion/introduction-to-recursion-understand-recursion-by-printing-something-n-times/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "understand-recursion-by-print-something-n-times"
   },
@@ -6328,13 +6285,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=un6PLygfXrA&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=2",
-    "article": "https://takeuforward.org/recursion/print-name-n-times-using-recursion/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "print-name-n-times-using-recursion"
   },
@@ -6349,13 +6305,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=un6PLygfXrA&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=2",
-    "article": "https://takeuforward.org/recursion/print-1-to-n-using-recursion/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "print-1-to-n-using-recursion"
   },
@@ -6370,13 +6325,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=un6PLygfXrA&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=2",
-    "article": "https://takeuforward.org/recursion/print-n-to-1-using-recursion/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "print-n-to-1-using-recursion"
   },
@@ -6391,13 +6345,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=69ZCDFy-OUo&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=3",
-    "article": "https://takeuforward.org/data-structure/sum-of-first-n-natural-numbers/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "sum-of-first-n-numbers"
   },
@@ -6412,13 +6365,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=69ZCDFy-OUo&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=3",
-    "article": "https://takeuforward.org/data-structure/factorial-of-a-number-iterative-and-recursive",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "factorial-of-a-given-number"
   },
@@ -6433,13 +6385,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=twuC1F6gLI8&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=4",
-    "article": "https://takeuforward.org/data-structure/reverse-a-given-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "reverse-an-array"
   },
@@ -6454,11 +6405,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-palindrome/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=twuC1F6gLI8&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=4",
-    "article": "https://takeuforward.org/data-structure/check-if-the-given-string-is-palindrome-or-not/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -6476,11 +6426,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/fibonacci-number/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=kvRjNm4rVBE&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=5",
-    "article": "https://takeuforward.org/arrays/print-fibonacci-series-up-to-nth-term/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -6498,13 +6447,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=KEs5UyBJ39g",
-    "article": "https://takeuforward.org/hashing/hashing-maps-time-complexity-collisions-division-rule-of-hashing-strivers-a2z-dsa-course/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "basic-hashing"
   },
@@ -6519,13 +6467,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/count-frequency-of-each-element-in-the-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "counting-frequencies-of-array-elements"
   },
@@ -6540,11 +6487,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/frequency-of-the-most-frequent-element/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/arrays/find-the-highest-lowest-frequency-element/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -6562,13 +6508,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/HGk_ypEuS24?t=167",
-    "article": "https://takeuforward.org/sorting/selection-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "selection-sort"
   },
@@ -6583,13 +6528,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/HGk_ypEuS24?t=1061",
-    "article": "https://takeuforward.org/data-structure/bubble-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "bubble-sort"
   },
@@ -6604,13 +6548,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/HGk_ypEuS24?t=1900",
-    "article": "https://takeuforward.org/data-structure/insertion-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "insertion-sorting"
   },
@@ -6625,13 +6568,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/ogjf7ORKfd8",
-    "article": "https://takeuforward.org/data-structure/merge-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "merge-sorting"
   },
@@ -6646,13 +6588,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/arrays/recursive-bubble-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "recursive-bubble-sort"
   },
@@ -6667,13 +6608,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/arrays/recursive-insertion-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "recursive-insertion-sort"
   },
@@ -6688,13 +6628,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/WIrA4YexLRQ",
-    "article": "https://takeuforward.org/data-structure/quick-sort-algorithm/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "quick-sorting"
   },
@@ -6709,13 +6648,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/37E9ckMDdTk?t=526",
-    "article": "https://takeuforward.org/data-structure/find-the-largest-element-in-an-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "largest-element"
   },
@@ -6730,13 +6668,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/37E9ckMDdTk?t=810",
-    "article": "https://takeuforward.org/data-structure/find-second-smallest-and-second-largest-element-in-an-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "second-largest-element"
   },
@@ -6751,11 +6688,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/check-if-array-is-sorted-and-rotated/#:~:text=Input%3A%20nums%20%3D%20%5B2%2C,no%20rotation)%20to%20make%20nums.",
     "gfg": "",
     "youtube": "https://youtu.be/37E9ckMDdTk?t=17224",
-    "article": "https://takeuforward.org/data-structure/check-if-an-array-is-sorted/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Infosys"
@@ -6773,11 +6709,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-duplicates-from-sorted-array/#:~:text=Input%3A%20nums%20%3D%20%5B0%2C,%2C%203%2C%20and%204%20respectively.",
     "gfg": "",
     "youtube": "https://youtu.be/37E9ckMDdTk?t=1887",
-    "article": "https://takeuforward.org/data-structure/remove-duplicates-in-place-from-sorted-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -6795,11 +6730,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-array/",
     "gfg": "",
     "youtube": "https://youtu.be/wvcQg43_V8U?t=61",
-    "article": "https://takeuforward.org/data-structure/left-rotate-the-array-by-one/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -6817,11 +6751,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-array/",
     "gfg": "",
     "youtube": "https://youtu.be/wvcQg43_V8U?t=485",
-    "article": "https://takeuforward.org/data-structure/rotate-array-by-k-elements/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -6839,11 +6772,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/move-zeroes/",
     "gfg": "",
     "youtube": "https://youtu.be/wvcQg43_V8U?t=1633",
-    "article": "https://takeuforward.org/data-structure/move-all-zeros-to-the-end-of-the-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -6861,13 +6793,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/wvcQg43_V8U?t=2465",
-    "article": "https://takeuforward.org/data-structure/linear-search-in-c/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "linear-search"
   },
@@ -6882,13 +6813,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/wvcQg43_V8U?t=2584",
-    "article": "https://takeuforward.org/data-structure/union-of-two-sorted-arrays/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "union-of-two-sorted-arrays"
   },
@@ -6903,13 +6833,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://www.geeksforgeeks.org/find-the-missing-number/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "find-missing-number"
   },
@@ -6924,11 +6853,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/max-consecutive-ones/",
     "gfg": "",
     "youtube": "https://youtu.be/bYWLJb3vCWY?t=1124",
-    "article": "https://takeuforward.org/data-structure/count-maximum-consecutive-ones-in-the-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -6946,14 +6874,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/single-number/",
     "gfg": "",
     "youtube": "https://youtu.be/bYWLJb3vCWY?t=1369",
-    "article": "https://takeuforward.org/arrays/find-the-number-that-appears-once-and-the-other-numbers-twice/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "single-number"
   },
@@ -6968,13 +6895,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=frf7qxiN2qU&feature=youtu.be",
-    "article": "https://takeuforward.org/data-structure/longest-subarray-with-given-sum-k/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "longest-subarray-with-given-sum-k-positives"
   },
@@ -6989,13 +6915,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/frf7qxiN2qU",
-    "article": "https://takeuforward.org/data-structure/length-of-the-longest-subarray-with-zero-sum/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "longest-subarray-with-sum-k"
   },
@@ -7010,11 +6935,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/two-sum/",
     "gfg": "",
     "youtube": "https://youtu.be/UXDSeD9mN-k",
-    "article": "https://takeuforward.org/data-structure/two-sum-check-if-a-pair-with-given-sum-exists-in-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7032,11 +6956,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sort-colors/",
     "gfg": "",
     "youtube": "https://youtu.be/tp8JIuCXBaU",
-    "article": "https://takeuforward.org/data-structure/sort-an-array-of-0s-1s-and-2s/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7054,14 +6977,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/majority-element/",
     "gfg": "",
     "youtube": "https://youtu.be/nP_ns3uSh80",
-    "article": "https://takeuforward.org/data-structure/find-the-majority-element-that-occurs-more-than-n-2-times/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "majority-element"
   },
@@ -7076,11 +6998,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-subarray/",
     "gfg": "",
     "youtube": "https://youtu.be/AHZpyENo7k4?si=QJpof4R1hHokm1hw",
-    "article": "https://takeuforward.org/data-structure/kadanes-algorithm-maximum-subarray-sum-in-an-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7098,13 +7019,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/AHZpyENo7k4",
-    "article": "https://takeuforward.org/data-structure/kadanes-algorithm-maximum-subarray-sum-in-an-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "print-subarray-with-maximum-subarray-sum-extended-version-of-above-problem"
   },
@@ -7119,11 +7039,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
     "gfg": "",
     "youtube": "https://youtu.be/excAOvwF_Wk",
-    "article": "https://takeuforward.org/data-structure/stock-buy-and-sell/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7141,11 +7060,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rearrange-array-elements-by-sign/",
     "gfg": "",
     "youtube": "https://youtu.be/h4aBagy4Uok",
-    "article": "https://takeuforward.org/arrays/rearrange-array-elements-by-sign/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Infosys"
@@ -7163,14 +7081,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/next-permutation/",
     "gfg": "",
     "youtube": "https://youtu.be/JDOXKqF60RQ",
-    "article": "https://takeuforward.org/data-structure/next_permutation-find-next-lexicographically-greater-permutation/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "next-permutation"
   },
@@ -7185,13 +7102,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/cHrH9CQ8pmY",
-    "article": "https://takeuforward.org/data-structure/leaders-in-an-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "leaders-in-an-array"
   },
@@ -7206,11 +7122,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-consecutive-sequence/solution/",
     "gfg": "",
     "youtube": "https://youtu.be/oO5uLE7EUlM",
-    "article": "https://takeuforward.org/data-structure/longest-consecutive-sequence-in-an-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7228,11 +7143,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/set-matrix-zeroes/",
     "gfg": "",
     "youtube": "https://youtu.be/N0MgLvceX7M",
-    "article": "https://takeuforward.org/data-structure/set-matrix-zero/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7250,11 +7164,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-image/",
     "gfg": "",
     "youtube": "https://youtu.be/Z0R2u6gd3GU",
-    "article": "https://takeuforward.org/data-structure/rotate-image-by-90-degree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7272,11 +7185,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/spiral-matrix/",
     "gfg": "",
     "youtube": "https://youtu.be/3Zv-s9UUrFM",
-    "article": "https://takeuforward.org/data-structure/spiral-traversal-of-matrix/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7294,11 +7206,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subarray-sum-equals-k/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=xvNwoz-ufXA&list=PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz&index=32",
-    "article": "https://takeuforward.org/arrays/count-subarray-sum-equals-k/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7316,11 +7227,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/pascals-triangle/",
     "gfg": "",
     "youtube": "https://youtu.be/bR7mQgwQ_o8",
-    "article": "https://takeuforward.org/data-structure/program-to-generate-pascals-triangle",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -7338,14 +7248,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/majority-element-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/vwZj1K0e9U8",
-    "article": "https://takeuforward.org/data-structure/majority-elementsn-3-times-find-the-elements-that-appears-more-than-n-3-times-in-the-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "TCS"
+      "Bloomberg"
     ],
     "slug": "majority-element-ii"
   },
@@ -7360,14 +7268,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/3sum/",
     "gfg": "",
     "youtube": "https://youtu.be/DhFh8Kw7ymk",
-    "article": "https://takeuforward.org/data-structure/3-sum-find-triplets-that-add-up-to-a-zero/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "3sum"
   },
@@ -7382,11 +7289,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/4sum/",
     "gfg": "",
     "youtube": "https://youtu.be/eD95WRfh81c",
-    "article": "https://takeuforward.org/data-structure/4-sum-find-quads-that-add-up-to-a-target-value/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -7404,13 +7310,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=xmguZ6GbatA&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=23",
-    "article": "https://takeuforward.org/data-structure/length-of-the-longest-subarray-with-zero-sum/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "largest-subarray-with-sum-0"
   },
@@ -7425,13 +7330,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/eZr-6p0B7ME",
-    "article": "https://takeuforward.org/data-structure/count-the-number-of-subarrays-with-given-xor-k/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "count-subarrays-with-given-xor-k"
   },
@@ -7446,14 +7350,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-intervals/",
     "gfg": "",
     "youtube": "https://youtu.be/IexN60k62jo",
-    "article": "https://takeuforward.org/data-structure/merge-overlapping-sub-intervals/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "merge-intervals"
   },
@@ -7468,11 +7371,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-sorted-array/",
     "gfg": "",
     "youtube": "https://youtu.be/n7uwj04E0I4",
-    "article": "https://takeuforward.org/data-structure/merge-two-sorted-arrays-without-extra-space/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -7490,13 +7392,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/2D0D8HE6uak",
-    "article": "https://takeuforward.org/data-structure/find-the-repeating-and-missing-numbers/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "find-the-repeating-and-missing-number"
   },
@@ -7511,13 +7412,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/AseUmwVNaoY",
-    "article": "https://takeuforward.org/data-structure/count-inversions-in-an-array",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "count-inversions"
   },
@@ -7532,11 +7432,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-pairs/",
     "gfg": "",
     "youtube": "https://youtu.be/0e4bZaP3MDI",
-    "article": "https://takeuforward.org/data-structure/count-reverse-pairs/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -7554,14 +7453,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-product-subarray/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/maximum-product-subarray-in-an-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "maximum-product-subarray"
   },
@@ -7576,11 +7474,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-search/",
     "gfg": "",
     "youtube": "https://youtu.be/MHf6awe89xw",
-    "article": "https://takeuforward.org/data-structure/binary-search-explained/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -7598,13 +7495,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/6zhGS79oQ4k",
-    "article": "https://takeuforward.org/arrays/implement-lower-bound-bs-2/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "lower-bound"
   },
@@ -7619,13 +7515,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/6zhGS79oQ4k",
-    "article": "https://takeuforward.org/arrays/implement-upper-bound/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "upper-bound"
   },
@@ -7640,11 +7535,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-insert-position/#:~:text=Search%20Insert%20Position%20%2D%20LeetCode&text=Given%20a%20sorted%20array%20of,(log%20n)%20runtime%20complexity.",
     "gfg": "",
     "youtube": "https://youtu.be/6zhGS79oQ4k",
-    "article": "https://takeuforward.org/arrays/search-insert-position/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Zoho"
@@ -7662,13 +7556,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=6zhGS79oQ4k&list=PLgUwDviBIf0pMFMWuuvDNMAkoQFi-h0ZF&index=3",
-    "article": "https://takeuforward.org/arrays/floor-and-ceil-in-sorted-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "floor-and-ceil-in-sorted-array"
   },
@@ -7683,11 +7576,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/",
     "gfg": "",
     "youtube": "https://youtu.be/hjR1IYVx9lY",
-    "article": "https://takeuforward.org/data-structure/last-occurrence-in-a-sorted-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7705,13 +7597,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/hjR1IYVx9lY",
-    "article": "https://takeuforward.org/data-structure/count-occurrences-in-sorted-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "count-occurrences-in-a-sorted-array"
   },
@@ -7726,11 +7617,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=r3pMQ8-Ad5s&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=64",
-    "article": "https://takeuforward.org/data-structure/search-element-in-a-rotated-sorted-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7748,14 +7638,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-rotated-sorted-array-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/w2G2W8l__pc",
-    "article": "https://takeuforward.org/arrays/search-element-in-rotated-sorted-array-ii",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Cisco"
+      "LinkedIn"
     ],
     "slug": "search-in-rotated-sorted-array-ii"
   },
@@ -7770,11 +7659,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",
     "gfg": "",
     "youtube": "https://youtu.be/nhEMDKMB44g",
-    "article": "https://takeuforward.org/data-structure/minimum-in-rotated-sorted-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7792,13 +7680,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/jtSiWTPLwd0",
-    "article": "https://takeuforward.org/arrays/find-out-how-many-times-the-array-has-been-rotated/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "find-out-how-many-times-the-array-is-rotated"
   },
@@ -7813,14 +7700,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/single-element-in-a-sorted-array/",
     "gfg": "",
     "youtube": "https://youtu.be/AZOmHuHadxQ",
-    "article": "https://takeuforward.org/data-structure/search-single-element-in-a-sorted-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "single-element-in-a-sorted-array"
   },
@@ -7835,14 +7721,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-peak-element/#:~:text=Find%20Peak%20Element%20%2D%20LeetCode&text=A%20peak%20element%20is%20an,to%20any%20of%20the%20peaks.",
     "gfg": "",
     "youtube": "https://youtu.be/cXxmbemS6XM",
-    "article": "https://takeuforward.org/data-structure/peak-element-in-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "find-peak-element"
   },
@@ -7857,13 +7742,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Bsv3FPUX_BA",
-    "article": "https://takeuforward.org/binary-search/finding-sqrt-of-a-number-using-binary-search/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "find-square-root-of-a-number"
   },
@@ -7878,13 +7762,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=WjpswYrS2nY&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=62",
-    "article": "https://takeuforward.org/data-structure/nth-root-of-a-number-using-binary-search/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "find-nth-root-of-a-number"
   },
@@ -7899,14 +7782,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/koko-eating-bananas/",
     "gfg": "",
     "youtube": "https://youtu.be/qyfekrNni90",
-    "article": "https://takeuforward.org/binary-search/koko-eating-bananas/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "koko-eating-bananas"
   },
@@ -7921,14 +7803,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-number-of-days-to-make-m-bouquets/",
     "gfg": "",
     "youtube": "https://youtu.be/TXAuxeYBTdg",
-    "article": "https://takeuforward.org/arrays/minimum-days-to-make-m-bouquets/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "minimum-number-of-days-to-make-m-bouquets"
   },
@@ -7943,14 +7824,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-smallest-divisor-given-a-threshold/",
     "gfg": "",
     "youtube": "https://youtu.be/UvBKTVaG6U8",
-    "article": "https://takeuforward.org/arrays/find-the-smallest-divisor-given-a-threshold/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "DE Shaw"
     ],
     "slug": "find-the-smallest-divisor-given-a-threshold"
   },
@@ -7965,11 +7845,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/",
     "gfg": "",
     "youtube": "https://youtu.be/MG-Ac4TAvTY",
-    "article": "https://takeuforward.org/arrays/capacity-to-ship-packages-within-d-days/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -7987,11 +7866,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-missing-positive-number/#:~:text=Given%20an%20array%20arr%20of,13%2C...%5D.",
     "gfg": "",
     "youtube": "https://youtu.be/uZ0N_hZpyps",
-    "article": "https://takeuforward.org/arrays/kth-missing-positive-number/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -8009,13 +7887,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/R_Mfw4ew-Vo",
-    "article": "https://takeuforward.org/data-structure/aggressive-cows-detailed-solution/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "aggressive-cows"
   },
@@ -8030,13 +7907,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=gYmWHvRHu-s&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=69",
-    "article": "https://takeuforward.org/data-structure/allocate-minimum-number-of-pages/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "book-allocation-problem"
   },
@@ -8051,11 +7927,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/split-array-largest-sum/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=thUd_WJn6wk&list=PLgUwDviBIf0pMFMWuuvDNMAkoQFi-h0ZF&index=20",
-    "article": "https://takeuforward.org/arrays/split-array-largest-sum/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -8073,13 +7948,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=thUd_WJn6wk&list=PLgUwDviBIf0pMFMWuuvDNMAkoQFi-h0ZF&index=20",
-    "article": "https://takeuforward.org/arrays/painters-partition-problem/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "painter-s-partition"
   },
@@ -8094,10 +7968,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimize-max-distance-to-gas-station/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=kMSBvlZ-_HA&list=PLgUwDviBIf0pMFMWuuvDNMAkoQFi-h0ZF&index=21",
-    "article": "https://takeuforward.org/arrays/minimise-maximum-distance-between-gas-stations/",
     "companies": [
-      "Amazon",
-      "Google"
+      "Google",
+      "Amazon"
     ],
     "slug": "minimize-max-distance-to-gas-station"
   },
@@ -8114,9 +7987,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://www.youtube.com/watch?v=NTop3VTjmxk&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=65",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8134,13 +8007,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/D1oDwWCq50g",
-    "article": "https://takeuforward.org/data-structure/k-th-element-of-two-sorted-arrays/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "kth-element-of-2-sorted-arrays"
   },
@@ -8155,13 +8027,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/SCz-1TtYxDI",
-    "article": "https://takeuforward.org/arrays/find-the-row-with-maximum-number-of-1s/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "find-row-with-maximum-1-s"
   },
@@ -8176,11 +8047,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-a-2d-matrix/",
     "gfg": "",
     "youtube": "https://youtu.be/ZYpYur0znng",
-    "article": "https://takeuforward.org/data-structure/search-in-a-sorted-2d-matrix/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8198,11 +8068,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-a-2d-matrix-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/9ZbB397jU4k",
-    "article": "https://takeuforward.org/arrays/search-in-a-row-and-column-wise-sorted-matrix/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8220,11 +8089,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-a-peak-element-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/nGGp5XBzC4g?si=WCop5C6Azj5gAELH",
-    "article": "https://takeuforward.org/data-structure/find-peak-element-2d-matrix",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -8242,13 +8110,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Q9wXgdxJq48?si=ScI_0uzJh7yg8nrX",
-    "article": "https://takeuforward.org/data-structure/median-of-row-wise-sorted-matrix/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "matrix-median"
   },
@@ -8263,11 +8130,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-outermost-parentheses/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/remove-outermost-parentheses",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -8285,11 +8151,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-words-in-a-string/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/reverse-words-in-a-string/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -8307,11 +8172,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/largest-odd-number-in-string/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/largest-odd-number-in-a-string",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -8328,11 +8192,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-common-prefix/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/longest-common-prefix",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8350,11 +8213,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/isomorphic-strings/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/isomorphic-string",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -8372,11 +8234,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-string/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/check-if-one-string-is-rotation-of-another",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -8394,14 +8255,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-anagram/#:~:text=Given%20two%20strings%20s%20and,the%20original%20letters%20exactly%20once.&text=Constraints%3A,.length%20%3C%3D%205%20*%2010",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/check-if-two-strings-are-anagrams-of-each-other/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "valid-anagram"
   },
@@ -8416,11 +8276,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sort-characters-by-frequency/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/sort-characters-by-frequency",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Flipkart"
@@ -8438,11 +8297,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-nesting-depth-of-the-parentheses/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/maximum-nesting-depth-of-parenthesis",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -8460,11 +8318,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/roman-to-integer/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/roman-numerals-to-integer",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8482,14 +8339,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/string-to-integer-atoi/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/recursive-implementation-of-atoi",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "string-to-integer-atoi"
   },
@@ -8504,13 +8360,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/count-number-of-substrings",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "count-number-of-substrings"
   },
@@ -8527,9 +8382,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8547,11 +8402,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sum-of-beauty-of-all-substrings/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/sum-of-beauty-of-all-substring",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Zoho"
@@ -8569,11 +8423,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-words-in-a-string/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/reverse-words-in-a-string/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -8591,13 +8444,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Nq7ok-OyEpg?si=9PR1o8OPRWil7fRA",
-    "article": "https://takeuforward.org/linked-list/linked-list-introduction",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-singly-linkedlist"
   },
@@ -8612,13 +8464,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/VaECK03Dz-g?si=vHSwdf9jhE05adKM&t=1934",
-    "article": "https://takeuforward.org/linked-list/insert-at-the-head-of-a-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "insertion-at-the-head-of-linked-list"
   },
@@ -8633,14 +8484,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/delete-node-in-a-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/VaECK03Dz-g?si=CRaBHbOo2bHFbOT5",
-    "article": "https://takeuforward.org/data-structure/delete-last-node-of-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "delete-node-in-a-linked-list"
   },
@@ -8655,13 +8505,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Nq7ok-OyEpg?si=xqQbukLfo2oZ6C6s&t=2240",
-    "article": "https://takeuforward.org/linked-list/find-the-length-of-a-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "find-the-length-of-the-linked-list"
   },
@@ -8676,13 +8525,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Nq7ok-OyEpg?si=WNXcIaXZ_B6cNq0s&t=2524",
-    "article": "https://takeuforward.org/linked-list/search-an-element-in-a-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "search-in-linked-list"
   },
@@ -8697,13 +8545,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/0eKMU10uEDI?si=uDnoj_C5ghEpNLvP",
-    "article": "https://takeuforward.org/linked-list/introduction-to-doubly-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-doubly-ll"
   },
@@ -8718,13 +8565,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/0eKMU10uEDI?si=J5a0pQTosimcO_aA&t=2684",
-    "article": "https://takeuforward.org/data-structure/insert-at-end-of-doubly-linked-list/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "insert-node-before-head-in-doubly-linked-list"
   },
@@ -8739,13 +8585,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/0eKMU10uEDI?si=sE7jqrW46lfRHVLd&t=853",
-    "article": "https://takeuforward.org/data-structure/delete-last-node-of-a-doubly-linked-list/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "delete-head-of-doubly-linked-list"
   },
@@ -8760,13 +8605,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/u3WUW2qe6ww?si=96Wwlju72IvmzkxE",
-    "article": "https://takeuforward.org/data-structure/reverse-a-doubly-linked-list/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "reverse-a-doubly-linked-list"
   },
@@ -8781,11 +8625,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/middle-of-the-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/7LjQ57RqgEc?si=ir_rRDio38rhamU_",
-    "article": "https://takeuforward.org/data-structure/find-middle-element-in-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -8803,11 +8646,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/D2vI2DNJGd8?si=RCaLSx01qR21IBdh",
-    "article": "https://takeuforward.org/data-structure/reverse-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8825,11 +8667,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/D2vI2DNJGd8?si=RCaLSx01qR21IBdh",
-    "article": "https://takeuforward.org/data-structure/reverse-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -8847,11 +8688,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/linked-list-cycle/",
     "gfg": "",
     "youtube": "https://youtu.be/wiOo4DC5GGA?si=zagt6O6tFXc4_3cx",
-    "article": "https://takeuforward.org/data-structure/detect-a-cycle-in-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -8869,11 +8709,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/linked-list-cycle-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/2Kd0KKmmHFc?si=7UreDPRjRvapeVB0",
-    "article": "https://takeuforward.org/data-structure/starting-point-of-loop-in-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "ByteDance"
@@ -8891,13 +8730,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/I4g1qbkTPus?si=ONktpqewvx57T8pF",
-    "article": "https://takeuforward.org/linked-list/length-of-loop-in-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "length-of-loop-in-ll"
   },
@@ -8912,14 +8750,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/lRY_G-u_8jk?si=BpM8hRYvXSYyjl-G",
-    "article": "https://takeuforward.org/data-structure/check-if-given-linked-list-is-plaindrome/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "Nvidia"
     ],
     "slug": "palindrome-linked-list"
   },
@@ -8934,11 +8771,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/odd-even-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/qf6qp7GzD5Q?si=JozAyXUdT8EJMSCQ",
-    "article": "https://takeuforward.org/data-structure/segregate-even-and-odd-nodes-in-linkedlist",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -8956,11 +8792,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
     "gfg": "",
     "youtube": "https://youtu.be/3kMKYQ2wNIU?si=DtFDnPU7z9HMz_GM",
-    "article": "https://takeuforward.org/data-structure/remove-n-th-node-from-the-end-of-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -8978,11 +8813,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/delete-the-middle-node-of-a-linked-list/#:~:text=You%20are%20given%20the%20head,than%20or%20equal%20to%20x%20.",
     "gfg": "",
     "youtube": "https://youtu.be/ePpV-_pfOeI?si=Au9GsZkVO57j6SiN",
-    "article": "https://takeuforward.org/linked-list/delete-the-middle-node-of-the-linked-list",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -9000,11 +8834,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sort-list/",
     "gfg": "",
     "youtube": "https://youtu.be/8ocB7a_c-Cc?si=Gv-Y8q8-WyARoV35",
-    "article": "https://takeuforward.org/linked-list/sort-a-linked-list",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "ByteDance"
@@ -9022,13 +8855,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/gRII7LhdJWc?si=l3qRC7w3NhY7OAqw",
-    "article": "https://takeuforward.org/data-structure/sort-a-linked-list-of-0s-1s-and-2s-by-changing-links",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "sort-a-linked-list-of-0-s-1-s-and-2-s"
   },
@@ -9043,11 +8875,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/intersection-of-two-linked-lists/",
     "gfg": "",
     "youtube": "https://youtu.be/0DYoPz2Tpt4?si=L-uJs5yXUxj4VJM2",
-    "article": "https://takeuforward.org/data-structure/find-intersection-of-two-linked-lists/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -9065,13 +8896,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/aXQWhbvT3w0?si=uRgU9S4r5cVmnUy7",
-    "article": "https://takeuforward.org/data-structure/add-1-to-a-number-represented-by-ll",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "add-one-to-a-number-represented-by-ll"
   },
@@ -9086,11 +8916,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/add-two-numbers/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=LBVsXSMOIk4&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=32",
-    "article": "https://takeuforward.org/data-structure/add-two-numbers-represented-as-linked-lists/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9108,13 +8937,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Mh0NH_SD92k?si=tCYshBRi1upMqSVz",
-    "article": "https://takeuforward.org/data-structure/delete-all-occurrences-of-a-key-in-dll",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "delete-all-occurrences-of-a-key-in-dll"
   },
@@ -9129,13 +8957,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/YitR4dQsddE?si=iZAC259hdngV_OxC",
-    "article": "https://takeuforward.org/data-structure/find-pairs-with-given-sum-in-doubly-linked-list",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "find-pairs-with-given-sum-in-doubly-linked-list"
   },
@@ -9150,13 +8977,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/YJKVTnOJXSY?si=AsZoNUoewetsBjr0",
-    "article": "https://takeuforward.org/data-structure/remove-duplicates-from-sorted-dll",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "remove-duplicates-from-sorted-dll"
   },
@@ -9171,11 +8997,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/reverse-nodes-in-k-group/",
     "gfg": "",
     "youtube": "https://youtu.be/lIar1skcQYI?si=_jFghHKX4eaK36a1",
-    "article": "https://takeuforward.org/data-structure/reverse-linked-list-in-groups-of-size-k/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9193,14 +9018,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotate-list/description/",
     "gfg": "",
     "youtube": "https://youtu.be/uT7YI7XbTY8?si=ZaChW3a68c_v54Is",
-    "article": "https://takeuforward.org/data-structure/rotate-a-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "Nvidia"
     ],
     "slug": "rotate-list"
   },
@@ -9215,13 +9039,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/ykelywHJWLg?si=InMg9MmTHzY22NSR",
-    "article": "https://takeuforward.org/data-structure/flattening-a-linked-list/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "flattening-of-ll"
   },
@@ -9236,11 +9059,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/copy-list-with-random-pointer/",
     "gfg": "",
     "youtube": "https://youtu.be/q570bKdrnlw?si=epZtpWvtNwuTf23o",
-    "article": "https://takeuforward.org/data-structure/clone-linked-list-with-random-and-next-pointer/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9258,14 +9080,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/string-to-integer-atoi/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/recursive-implementation-of-atoi",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "string-to-integer-atoi"
   },
@@ -9280,14 +9101,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/powx-n/",
     "gfg": "",
     "youtube": "https://youtu.be/l0YC3876qxg",
-    "article": "https://takeuforward.org/data-structure/implement-powxn-x-raised-to-the-power-n/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "powx-n"
   },
@@ -9302,11 +9122,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-good-numbers/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/count-good-numbers",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Infosys"
@@ -9324,13 +9143,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/sort-a-stack",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "sort-a-stack-using-recursion"
   },
@@ -9345,13 +9163,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/reverse-a-stack-using-recursion",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "reverse-a-stack"
   },
@@ -9366,13 +9183,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/generate-all-binary-strings",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "generate-binary-strings-without-consecutive-1s"
   },
@@ -9387,11 +9203,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/generate-parentheses/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/generate-parenthesis",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9409,13 +9224,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=b7AYbpM5YrE&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=67",
-    "article": "https://takeuforward.org/data-structure/power-set-print-all-the-possible-subsequences-of-the-string/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "power-set"
   },
@@ -9430,13 +9244,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=eQCS_v3bw0Q&list=PLgUwDviBIf0rGlzIn_7rsaR2FQ5e6ZOL9&index=7",
-    "article": "https://takeuforward.org/data-structure/learn-all-patterns-of-subsequences-theory",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "learn-all-patterns-of-subsequences-theory"
   },
@@ -9451,13 +9264,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/count-all-subsequences-with-sum-k",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "count-all-subsequences-with-sum-k"
   },
@@ -9472,13 +9284,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/check-if-there-exists-a-subsequence-with-sum-k",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "check-if-there-exists-a-subsequence-with-sum-k"
   },
@@ -9493,11 +9304,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=OyZFFqQtu98&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=49",
-    "article": "https://takeuforward.org/data-structure/combination-sum-1/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9515,14 +9325,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum-ii/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=G1fRTGRxXU8&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=50",
-    "article": "https://takeuforward.org/data-structure/combination-sum-ii-find-all-unique-combinations/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "combination-sum-ii"
   },
@@ -9537,13 +9346,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=rYkfBRtMJr8&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=52",
-    "article": "https://takeuforward.org/data-structure/subset-sum-sum-of-all-subsets/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "subsets-i"
   },
@@ -9558,11 +9366,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets-ii/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=RIn3gOkbhQE&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=53",
-    "article": "https://takeuforward.org/data-structure/subset-ii-print-all-the-unique-subsets/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -9580,10 +9387,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/combination-sum-iii/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/combination-sum-iii",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -9600,11 +9406,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/letter-combinations-of-a-phone-number/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/letter-combinations-of-a-phone-number",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9624,12 +9429,11 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/_H8V5hJUGd0",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "Infosys"
+      "Bloomberg"
     ],
     "slug": "palindrome-partitioning"
   },
@@ -9644,14 +9448,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-search/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/word-search-leetcode/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "word-search"
   },
@@ -9666,14 +9469,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/n-queens/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=i05Ju7AftcM&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=57",
-    "article": "https://takeuforward.org/data-structure/n-queen-problem-return-all-distinct-solutions-to-the-n-queens-puzzle/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "n-queens"
   },
@@ -9688,13 +9490,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=bLGZhJlt4y0&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=60",
-    "article": "https://takeuforward.org/data-structure/rat-in-a-maze/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "rat-in-a-maze"
   },
@@ -9711,12 +9512,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "word-break"
   },
@@ -9731,13 +9532,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=wuVwUK25Rfc&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=59",
-    "article": "https://takeuforward.org/data-structure/m-coloring-problem/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "m-coloring-problem"
   },
@@ -9752,11 +9552,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sudoku-solver/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=FWAIf_EVUKE&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=58",
-    "article": "https://takeuforward.org/data-structure/sudoku-solver/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -9774,11 +9573,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/expression-add-operators/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/expression-add-operators",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Bloomberg",
       "LinkedIn"
     ],
@@ -9795,13 +9593,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/qQd-ViW7bfk?si=QtdNaRhHmZb08Mr8",
-    "article": "https://takeuforward.org/data-structure/introduction-to-bit-manipulation-theory",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-bits-and-tricks"
   },
@@ -9816,13 +9613,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/check-if-the-i-th-bit-is-set-or-not",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "check-if-the-i-th-bit-is-set-or-not"
   },
@@ -9837,13 +9633,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/check-if-a-number-is-odd-or-not",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "check-if-a-number-is-odd-or-not"
   },
@@ -9858,11 +9653,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/power-of-two/",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/check-if-a-number-is-power-of-2-or-not",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -9880,13 +9674,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/count-the-number-of-set-bits",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "count-the-number-of-set-bits"
   },
@@ -9901,13 +9694,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/set-the-rightmost-bit",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "set-unset-the-rightmost-unset-bit"
   },
@@ -9922,13 +9714,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/nttpF8kwgd4?si=x9o8PsYaA2XVZ9rV",
-    "article": "https://takeuforward.org/data-structure/swap-two-numbers",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "swap-two-numbers"
   },
@@ -9943,11 +9734,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/divide-two-integers/",
     "gfg": "",
     "youtube": "https://youtu.be/pBD4B1tzgVc?si=G9c5pEE-RrzeU6sz",
-    "article": "https://takeuforward.org/data-structure/divide-two-integers-without-using-multiplication-division-and-mod-operator",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -9965,11 +9755,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-bit-flips-to-convert-number/",
     "gfg": "",
     "youtube": "https://youtu.be/OOdrmcfZXd8?si=rnkRVz1UiVBKWC69",
-    "article": "https://takeuforward.org/data-structure/count-number-of-bits-to-be-flipped-to-convert-a-to-b",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -9986,14 +9775,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/single-number/",
     "gfg": "",
     "youtube": "https://youtu.be/bYWLJb3vCWY?t=1369",
-    "article": "https://takeuforward.org/arrays/find-the-number-that-appears-once-and-the-other-numbers-twice/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "single-number"
   },
@@ -10008,11 +9796,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subsets/",
     "gfg": "",
     "youtube": "https://youtu.be/LqKaUv1G3_I?si=UXU_T5OsHiokPRvP",
-    "article": "https://takeuforward.org/bit-manipulation/power-set-bit-manipulation",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -10030,13 +9817,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/WqGb7159h7Q?si=uGUEbNUUaIN_6Vvr",
-    "article": "https://takeuforward.org/data-structure/find-xor-of-numbers-from-l-to-r",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "xor-of-numbers-in-a-given-range"
   },
@@ -10051,10 +9837,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/UA5JnV1J2sI?si=VFBRJyb3boZvx_r1",
-    "article": "https://takeuforward.org/data-structure/find-the-two-numbers-appearing-odd-number-of-times",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle",
@@ -10073,13 +9858,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/LT7XhVdeRyg?si=6HkjQokJRPTFai21",
-    "article": "https://takeuforward.org/data-structure/find-the-two-numbers-appearing-odd-number-of-times",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "print-prime-factors-of-a-number"
   },
@@ -10094,13 +9878,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1xNbjMdbjug?t=1580",
-    "article": "https://takeuforward.org/data-structure/print-all-divisors-of-a-given-number/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "divisors-of-a-number"
   },
@@ -10115,11 +9898,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-primes/",
     "gfg": "",
     "youtube": "https://youtu.be/g5Fuxn_AvSk?si=fv6Q-Po7wrMW0a5n",
-    "article": "https://takeuforward.org/data-structure/sieve-of-eratosthenes",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10137,13 +9919,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/LT7XhVdeRyg?si=6HkjQokJRPTFai21",
-    "article": "https://takeuforward.org/data-structure/find-the-two-numbers-appearing-odd-number-of-times",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "prime-factorisation-of-a-number"
   },
@@ -10158,14 +9939,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/powx-n/",
     "gfg": "",
     "youtube": "https://youtu.be/l0YC3876qxg",
-    "article": "https://takeuforward.org/data-structure/implement-powxn-x-raised-to-the-power-n/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "powx-n"
   },
@@ -10180,13 +9960,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-stack-using-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-stack-using-arrays"
   },
@@ -10201,13 +9980,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-queue-using-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-queue-using-arrays"
   },
@@ -10222,11 +10000,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-stack-using-queues/",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-stack-using-single-queue",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -10244,11 +10021,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-queue-using-stacks/",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-queue-using-stack/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -10266,13 +10042,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-stack-using-linked-list/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-stack-using-linkedlist"
   },
@@ -10287,13 +10062,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/tqQ5fTamIN4?si=ofLt8Zt1ZvhikZ6w",
-    "article": "https://takeuforward.org/data-structure/implement-queue-using-linked-list/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "implement-queue-using-linkedlist"
   },
@@ -10308,11 +10082,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-parentheses/",
     "gfg": "",
     "youtube": "https://youtu.be/xwjS0iZhw4I?si=UoyKpFn4Q3nf5h2R",
-    "article": "https://takeuforward.org/data-structure/check-for-balanced-parentheses/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10330,11 +10103,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/min-stack/",
     "gfg": "",
     "youtube": "https://youtu.be/NdDIaH91P0g?si=4_Jbsq5trFvfSdUY",
-    "article": "https://takeuforward.org/data-structure/implement-min-stack-o2n-and-on-space-complexity/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10352,13 +10124,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=ryeVvQWpCgwbTQrh",
-    "article": "https://takeuforward.org/data-structure/infix-to-postfix/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "infix-to-postfix-conversion"
   },
@@ -10373,13 +10144,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=ryeVvQWpCgwbTQrh",
-    "article": "https://takeuforward.org/data-structure/prefix-to-infix-conversion",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "prefix-to-infix-conversion"
   },
@@ -10394,13 +10164,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=0pWtyDC1GhbiYP3P",
-    "article": "https://takeuforward.org/data-structure/prefix-to-postfix-conversion",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "prefix-to-postfix-conversion"
   },
@@ -10415,13 +10184,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=0pWtyDC1GhbiYP3P",
-    "article": "https://takeuforward.org/data-structure/postfix-to-prefix-conversion",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "postfix-to-prefix-conversion"
   },
@@ -10436,13 +10204,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=0pWtyDC1GhbiYP3P",
-    "article": "https://takeuforward.org/data-structure/postfix-to-infix",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "postfix-to-infix-conversion"
   },
@@ -10457,13 +10224,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/4pIc9UBHJtk?si=0pWtyDC1GhbiYP3P",
-    "article": "https://takeuforward.org/data-structure/infix-to-prefix/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "infix-to-prefix-conversion"
   },
@@ -10478,11 +10244,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/next-greater-element-i/",
     "gfg": "",
     "youtube": "https://youtu.be/e7XQLtOQM3I?si=QdcHpTtx6gAHsext",
-    "article": "https://takeuforward.org/data-structure/next-greater-element-using-stack/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10500,11 +10265,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/next-greater-element-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/7PrncD7v9YQ?si=UkBc7eVy9HGlBpeW",
-    "article": "https://takeuforward.org/data-structure/next-greater-element-2",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -10522,13 +10286,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/next-smaller-element",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "next-smaller-element"
   },
@@ -10543,13 +10306,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/number-of-nges-to-the-right",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "number-of-greater-elements-to-the-right"
   },
@@ -10564,11 +10326,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/trapping-rain-water/",
     "gfg": "",
     "youtube": "https://youtu.be/1_5VuquLbXg?si=NFG6df318_6OtGvg",
-    "article": "https://takeuforward.org/data-structure/trapping-rainwater/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10586,11 +10347,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sum-of-subarray-minimums/",
     "gfg": "",
     "youtube": "https://youtu.be/v0e8p9JCgRc?si=XAU7ekECgS5nboRw",
-    "article": "https://takeuforward.org/data-structure/sum-of-subarray-minimums",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -10608,11 +10368,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/asteroid-collision/",
     "gfg": "",
     "youtube": "https://youtu.be/_eYGqw_VDR4?si=YyxibcHq800RqgIQ",
-    "article": "https://takeuforward.org/data-structure/asteroid-collision",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -10630,11 +10389,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sum-of-subarray-ranges/",
     "gfg": "",
     "youtube": "https://youtu.be/gIrMptNPf5M?si=Q_GHuBvzZVs27X_U",
-    "article": "https://takeuforward.org/data-structure/sum-of-subarray-ranges",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -10652,14 +10410,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/remove-k-digits/",
     "gfg": "",
     "youtube": "https://youtu.be/jmbuRzYPGrg?si=WN387gwQ7aXWkUao",
-    "article": "https://takeuforward.org/data-structure/remove-k-digits",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "remove-k-digits"
   },
@@ -10674,11 +10431,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/largest-rectangle-in-histogram/",
     "gfg": "",
     "youtube": "https://youtu.be/Bzat9vgD0fs?si=DiBlLejXcr6EJoyB",
-    "article": "https://takeuforward.org/data-structure/area-of-largest-rectangle-in-histogram/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10696,11 +10452,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximal-rectangle/",
     "gfg": "",
     "youtube": "https://youtu.be/tOylVCugy9k",
-    "article": "https://takeuforward.org/data-structure/maximum-rectangle-area-with-all-1s-dp-on-rectangles-dp-55/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -10718,11 +10473,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/sliding-window-maximum/",
     "gfg": "",
     "youtube": "https://youtu.be/NwBvene4Imo?si=eU1PY-bcQfk5wdog",
-    "article": "https://takeuforward.org/data-structure/sliding-window-maximum/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10740,14 +10494,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/online-stock-span/",
     "gfg": "",
     "youtube": "https://youtu.be/eay-zoSRkVc?si=deNNe5i38BOAntha",
-    "article": "https://takeuforward.org/data-structure/stock-span-problem",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "online-stock-span"
   },
@@ -10762,11 +10515,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/accounts/login/?next=/problems/find-the-celebrity/",
     "gfg": "",
     "youtube": "https://youtu.be/cEadsbTeze4?si=olXYfOs7l-SEn2zl",
-    "article": "https://takeuforward.org/data-structure/celebrity-problem",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10784,14 +10536,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/program-for-least-recently-used-lru-page-replacement-algorithm",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "lru-cache"
   },
@@ -10806,14 +10557,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lfu-cache/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=0PSB9y8ehbk&list=PLgUwDviBIf0p4ozDR_kJJkONnb1wdx2Ma&index=79",
-    "article": "https://takeuforward.org/data-structure/lfu-cache",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "lfu-cache"
   },
@@ -10828,14 +10578,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
     "gfg": "",
     "youtube": "https://youtu.be/-zSxTJkcdAo?si=I2zfR-vlDMg0zU9z",
-    "article": "https://takeuforward.org/data-structure/length-of-longest-substring-without-any-repeating-character/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "longest-substring-without-repeating-characters"
   },
@@ -10850,14 +10599,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/max-consecutive-ones-iii/",
     "gfg": "",
     "youtube": "https://youtu.be/3E4JBHSLpYk?si=SoOW64pP6otEKxBw",
-    "article": "https://takeuforward.org/data-structure/max-consecutive-ones-iii",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "max-consecutive-ones-iii"
   },
@@ -10872,13 +10620,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/fruit-into-baskets/description/",
     "gfg": "",
     "youtube": "https://youtu.be/e3bs0uA1NhQ?si=gR8pO62u-nJeFAXk",
-    "article": "https://takeuforward.org/data-structure/fruit-into-baskets",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
+      "Netflix",
       "Bloomberg"
     ],
     "slug": "fruit-into-baskets"
@@ -10894,11 +10641,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-repeating-character-replacement/",
     "gfg": "",
     "youtube": "https://youtu.be/_eNhaDCr6P0?si=pBWcEjozF5poom0p",
-    "article": "https://takeuforward.org/data-structure/longest-repeating-character-replacement",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -10916,11 +10662,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-subarrays-with-sum/",
     "gfg": "",
     "youtube": "https://youtu.be/XnMdNUkX6VM?si=Nyt8EveeLUg8lmty",
-    "article": "https://takeuforward.org/data-structure/binary-subarray-with-sum",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Nvidia"
@@ -10938,11 +10683,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-number-of-nice-subarrays/",
     "gfg": "",
     "youtube": "https://youtu.be/j_QOv9OT9Og?si=Oq5-5hyFkzVSOZpP",
-    "article": "https://takeuforward.org/data-structure/count-number-of-nice-subarrays",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -10960,11 +10704,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-substrings-containing-all-three-characters/",
     "gfg": "",
     "youtube": "https://youtu.be/xtqN4qlgr8s?si=kuaLHVOLXhh5Z2tW",
-    "article": "https://takeuforward.org/data-structure/number-of-substring-containing-all-three-characters",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "DE Shaw"
@@ -10982,11 +10725,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-points-you-can-obtain-from-cards/",
     "gfg": "",
     "youtube": "https://youtu.be/pBWCOCS636U?si=-X64rY67noxvOwrG",
-    "article": "https://takeuforward.org/data-structure/maximum-point-you-can-obtain-from-cards",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -11004,11 +10746,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-substring-with-at-most-k-distinct-characters/",
     "gfg": "",
     "youtube": "https://youtu.be/teM9ZsVRQyc?si=Kh0_u6aCkkBU3Q33",
-    "article": "https://takeuforward.org/data-structure/longest-substring-with-at-most-k-distinct-characters",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -11026,11 +10767,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/subarrays-with-k-different-integers/",
     "gfg": "",
     "youtube": "https://youtu.be/7wYGbV_LsX4?si=KWa48RgLDCvdNqRb",
-    "article": "https://takeuforward.org/data-structure/subarray-with-k-different-integers",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -11050,9 +10790,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/WJaij9ffOIY?si=-xnsWIH84zWU0ICd",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11091,13 +10831,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/introduction-to-priority-queues-using-binary-heaps",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "heaps-theory-video"
   },
@@ -11117,8 +10856,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "implement-min-heap"
   },
@@ -11133,13 +10872,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/check-if-an-array-represents-a-min-heap",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "check-if-an-array-represents-a-min-heap"
   },
@@ -11159,8 +10897,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "convert-min-heap-to-max-heap"
   },
@@ -11175,11 +10913,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/kth-largest-smallest-element-in-an-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11197,13 +10934,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/kth-largest-smallest-element-in-an-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "kth-smallest-element-in-an-array-use-priority-queue"
   },
@@ -11218,13 +10954,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/sort-k-sorted-array",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "sort-k-sorted-array"
   },
@@ -11239,11 +10974,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-k-sorted-lists/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/merge-m-sorted-lists",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11261,13 +10995,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/replace-elements-by-its-rank-in-the-array/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "replace-elements-by-their-rank"
   },
@@ -11282,11 +11015,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/task-scheduler/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/task-scheduler",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11304,11 +11036,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/hand-of-straights/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/hands-of-straights",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -11325,14 +11056,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/design-twitter/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/design-twitter",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "design-twitter"
   },
@@ -11347,10 +11077,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/minimum-cost-to-connect-sticks",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Twitter (X)"
     ],
     "slug": "minimum-cost-to-connect-sticks"
@@ -11366,14 +11095,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-largest-element-in-a-stream/#:~:text=Implement%20KthLargest%20class%3A,largest%20element%20in%20the%20stream.",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/kth-largest-element-in-a-stream-of-running-integers",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Goldman Sachs"
+      "Goldman Sachs",
+      "Bloomberg"
     ],
     "slug": "kth-largest-element-in-a-stream"
   },
@@ -11388,13 +11116,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/maximum-sum-combination",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "maximum-sum-combination"
   },
@@ -11409,11 +11136,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-median-from-data-stream/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/find-median-from-data-stream",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11431,14 +11157,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/top-k-frequent-elements/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/top-k-frequent-elements",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "top-k-frequent-elements"
   },
@@ -11453,11 +11178,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/assign-cookies/",
     "gfg": "",
     "youtube": "https://youtu.be/DIX2p7vb9co?si=GofAIDimue-Av0Fi",
-    "article": "https://takeuforward.org/data-structure/assign-cookies",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -11475,13 +11199,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/1ibsQrnuEEg?si=8R2By3wpHo0zZVHE",
-    "article": "https://takeuforward.org/data-structure/fractional-knapsack-problem-greedy-approach/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "fractional-knapsack"
   },
@@ -11496,11 +11219,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lemonade-change/",
     "gfg": "",
     "youtube": "https://youtu.be/n_tmibEhO6Q?si=q1NW8MfPy0QU6fIl",
-    "article": "https://takeuforward.org/Greedy/lemonade-change",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Zoho"
@@ -11518,11 +11240,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/valid-parenthesis-string/",
     "gfg": "",
     "youtube": "https://youtu.be/cHT6sG_hUZI?si=XRHeyh7jOaLaTy3g",
-    "article": "https://takeuforward.org/data-structure/valid-paranthesis-checker",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -11540,13 +11261,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/mKfhTotEguk?si=2RELeq18mpmIIN3Q",
-    "article": "https://takeuforward.org/data-structure/n-meetings-in-one-room/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "n-meetings-in-one-room"
   },
@@ -11561,14 +11281,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/jump-game/",
     "gfg": "",
     "youtube": "https://youtu.be/tZAa_jJ3SwQ?si=voKd7n9VTLDRRNzJ",
-    "article": "https://takeuforward.org/Greedy/jump-game-i",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "jump-game"
   },
@@ -11583,14 +11302,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/jump-game-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/7SBVnw7GSTk?si=9uUouBELh9K3m2jZ",
-    "article": "https://takeuforward.org/data-structure/jump-game-2",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "jump-game-ii"
   },
@@ -11605,13 +11323,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/AsGzwR_FWok?si=165acXU_dtqOHuo9",
-    "article": "https://takeuforward.org/data-structure/minimum-number-of-platforms-required-for-a-railway/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "minimum-number-of-platforms-required-for-a-railway"
   },
@@ -11626,13 +11343,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/QbwltemZbRg?si=wvcemJ5BLPlTRmkG",
-    "article": "https://takeuforward.org/data-structure/job-sequencing-problem/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "job-sequencing-problem"
   },
@@ -11647,11 +11363,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/candy/",
     "gfg": "",
     "youtube": "https://youtu.be/IIqVFvKE6RY?si=EjmuXZJNLQLUkEd7",
-    "article": "https://takeuforward.org/data-structure/candy",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -11669,13 +11384,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/3-QbX1iDbXs?si=IH8QZUblr01F7UoQ",
-    "article": "https://takeuforward.org/Greedy/shortest-job-first-or-sjf-cpu-scheduling",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "shortest-job-first"
   },
@@ -11690,13 +11404,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/program-for-least-recently-used-lru-page-replacement-algorithm",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "program-for-least-recently-used-lru-page-replacement-algorithm"
   },
@@ -11711,11 +11424,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/insert-interval/",
     "gfg": "",
     "youtube": "https://youtu.be/xxRE-46OCC8?si=a7aPuIw16zDx2lAa",
-    "article": "https://takeuforward.org/?s=Insert+Interval",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -11733,14 +11445,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/merge-intervals/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=2JzRBPFYbKE&list=PLgUwDviBIf0rPG3Ictpu74YWBQ1CaBkm2&index=6",
-    "article": "https://takeuforward.org/data-structure/merge-overlapping-sub-intervals/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "merge-intervals"
   },
@@ -11755,11 +11466,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/non-overlapping-intervals/",
     "gfg": "",
     "youtube": "https://youtu.be/HDHQ8lAWakY?si=JVtLqboGdpUTOVjf",
-    "article": "https://takeuforward.org/data-structure/non-overlapping-intervals",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -11777,13 +11487,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/_ANrF3FJm7I",
-    "article": "https://takeuforward.org/binary-tree/introduction-to-trees/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-trees"
   },
@@ -11798,13 +11507,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/hyLyW7rP24I",
-    "article": "https://takeuforward.org/binary-tree/binary-tree-representation-in-java/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "binary-tree-representation-in-java"
   },
@@ -11819,13 +11527,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/ySp2epYvgTE",
-    "article": "https://takeuforward.org/data-structure/preorder-inorder-postorder-traversals-in-one-traversal/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "pre-post-inorder-in-one-traversal"
   },
@@ -11840,11 +11547,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-preorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/RlUu72JrOCQ",
-    "article": "https://takeuforward.org/data-structure/preorder-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -11861,11 +11567,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/Z_NEgBgbRVI",
-    "article": "https://takeuforward.org/data-structure/inorder-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -11883,11 +11588,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-postorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/2YBhNLodD8Q",
-    "article": "https://takeuforward.org/data-structure/iterative-postorder-traversal-of-binary-tree-using-2-stack",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -11904,14 +11608,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-level-order-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/EoAsWbO7sqg",
-    "article": "https://takeuforward.org/data-structure/level-order-traversal-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "binary-tree-level-order-traversal"
   },
@@ -11926,11 +11629,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-preorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/Bfqd8BsPVuw",
-    "article": "https://takeuforward.org/data-structure/iterative-preorder-traversal-of-binary-tree",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -11947,11 +11649,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/lxTGsVXjwvM",
-    "article": "https://takeuforward.org/data-structure/inorder-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "TCS"
@@ -11969,11 +11670,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-postorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/2YBhNLodD8Q",
-    "article": "https://takeuforward.org/data-structure/iterative-postorder-traversal-of-binary-tree-using-2-stack",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -11990,11 +11690,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-postorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/NzIGLLwZBS8",
-    "article": "https://takeuforward.org/data-structure/post-order-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -12011,13 +11710,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/ySp2epYvgTE",
-    "article": "https://takeuforward.org/data-structure/preorder-inorder-postorder-traversals-in-one-traversal/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "preorder-inorder-and-postorder-traversal-in-one-traversal"
   },
@@ -12032,11 +11730,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/eD3tmO66aBA",
-    "article": "https://takeuforward.org/data-structure/maximum-depth-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -12054,11 +11751,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/balanced-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/Yt50Jfbd8Po",
-    "article": "https://takeuforward.org/data-structure/check-if-the-binary-tree-is-balanced-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -12076,11 +11772,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/diameter-of-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/Rezetez59Nk",
-    "article": "https://takeuforward.org/data-structure/calculate-the-diameter-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -12098,11 +11793,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
     "gfg": "",
     "youtube": "https://youtu.be/WszrfSwMz58",
-    "article": "https://takeuforward.org/data-structure/maximum-sum-path-in-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -12120,11 +11814,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/same-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/BhuvF_-PWS0",
-    "article": "https://takeuforward.org/data-structure/check-if-two-trees-are-identical/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -12142,14 +11835,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-zigzag-level-order-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/3OXWEdlIGl4",
-    "article": "https://takeuforward.org/data-structure/zig-zag-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "binary-tree-zigzag-level-order-traversal"
   },
@@ -12164,11 +11856,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/boundary-of-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/0ca1nvR0be4",
-    "article": "https://takeuforward.org/data-structure/boundary-traversal-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Adobe"
@@ -12186,11 +11877,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/vertical-order-traversal-of-a-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/q_a6lpbKJdw",
-    "article": "https://takeuforward.org/data-structure/vertical-order-traversal-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -12208,13 +11898,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Et9OCDNvJ78",
-    "article": "https://takeuforward.org/data-structure/top-view-of-a-binary-tree/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "top-view-of-bt"
   },
@@ -12229,13 +11918,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/0FtVY6I4pB8",
-    "article": "https://takeuforward.org/data-structure/bottom-view-of-a-binary-tree/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "bottom-view-of-bt"
   },
@@ -12250,11 +11938,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-right-side-view/",
     "gfg": "",
     "youtube": "https://youtu.be/KV4mRzTjlAk",
-    "article": "https://takeuforward.org/data-structure/right-left-view-of-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -12272,11 +11959,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/symmetric-tree/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=nKggNAiEpBE",
-    "article": "https://takeuforward.org/data-structure/check-for-symmetrical-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -12294,13 +11980,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/fmflMqVOC7k",
-    "article": "https://takeuforward.org/data-structure/print-root-to-node-path-in-a-binary-tree/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "print-root-to-leaf-path-in-bt"
   },
@@ -12315,14 +12000,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/_-QHfMDde90",
-    "article": "https://takeuforward.org/data-structure/lowest-common-ancestor-for-two-given-nodes/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Goldman Sachs"
     ],
     "slug": "lowest-common-ancestor-of-a-binary-tree"
   },
@@ -12337,11 +12021,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-width-of-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/ZbybYvcVLks",
-    "article": "https://takeuforward.org/data-structure/maximum-width-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Flipkart"
@@ -12359,13 +12042,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/fnmisPM6cVo",
-    "article": "https://takeuforward.org/data-structure/check-for-children-sum-property-in-a-binary-tree/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "children-sum-property-in-binary-tree"
   },
@@ -12380,11 +12062,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/all-nodes-distance-k-in-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/i9ORlEy6EsI",
-    "article": "https://takeuforward.org/data-structure/print-all-the-nodes-at-a-distance-of-k-in-a-binary-tree",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -12402,13 +12083,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/2r5wLmQfD6g",
-    "article": "https://takeuforward.org/data-structure/minimum-time-taken-to-burn-the-binary-tree-from-a-node",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "minimum-time-taken-to-burn-the-bt-from-a-given-node"
   },
@@ -12423,14 +12103,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-complete-tree-nodes/",
     "gfg": "",
     "youtube": "https://youtu.be/u-yWemKGWO0",
-    "article": "https://takeuforward.org/binary-tree/count-number-of-nodes-in-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "count-complete-tree-nodes"
   },
@@ -12450,8 +12129,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "requirements-needed-to-construct-a-unique-bt"
   },
@@ -12466,14 +12145,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/aZNaLrVebKQ",
-    "article": "https://takeuforward.org/data-structure/construct-a-binary-tree-from-inorder-and-preorder-traversal/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Adobe",
-      "Bloomberg"
+      "Bloomberg",
+      "Adobe"
     ],
     "slug": "construct-binary-tree-from-preorder-and-inorder-traversal"
   },
@@ -12488,11 +12166,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/construct-binary-tree-from-inorder-and-postorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/LgLRTaEMRVc",
-    "article": "https://takeuforward.org/data-structure/construct-binary-tree-from-inorder-and-postorder-traversal/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Walmart"
@@ -12510,11 +12187,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/-YbXySKJsX8",
-    "article": "https://takeuforward.org/data-structure/serialize-and-deserialize-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -12532,14 +12208,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/80Zug6D1_r4",
-    "article": "https://takeuforward.org/data-structure/morris-preorder-traversal-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "TCS"
+      "Bloomberg"
     ],
     "slug": "binary-tree-inorder-traversal"
   },
@@ -12554,14 +12228,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-tree-inorder-traversal/",
     "gfg": "",
     "youtube": "https://youtu.be/80Zug6D1_r4",
-    "article": "https://takeuforward.org/data-structure/morris-inorder-traversal-of-a-binary-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "TCS"
+      "Bloomberg"
     ],
     "slug": "binary-tree-inorder-traversal"
   },
@@ -12576,11 +12248,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/flatten-binary-tree-to-linked-list/",
     "gfg": "",
     "youtube": "https://youtu.be/sWf7k1x9XR4",
-    "article": "https://takeuforward.org/data-structure/flatten-binary-tree-to-linked-list/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -12598,13 +12269,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/p7-9UvDQZ3w",
-    "article": "https://takeuforward.org/binary-search-tree/introduction-to-binary-search-trees/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-bst"
   },
@@ -12619,11 +12289,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/search-in-a-binary-search-tree/",
     "gfg": "",
     "youtube": "https://youtu.be/KcNt6v_56cc",
-    "article": "https://takeuforward.org/data-structure/search-in-a-binary-search-tree-2/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -12640,13 +12309,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/find-minmax-in-a-bst",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "find-min-max-in-bst"
   },
@@ -12666,8 +12334,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "floor-and-ceil-in-a-bst"
   },
@@ -12682,13 +12350,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/xm_W1ub-K-w",
-    "article": "https://takeuforward.org/binary-search-tree/floor-in-a-binary-search-tree/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "floor-in-a-binary-search-tree"
   },
@@ -12705,9 +12372,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/FiFiNvM29ps",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "LinkedIn"
@@ -12727,9 +12394,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/kouxiP_H5WE",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -12747,11 +12414,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",
     "gfg": "",
     "youtube": "https://youtu.be/9TJYWh0adfk",
-    "article": "https://takeuforward.org/data-structure/kth-largest-smallest-element-in-binary-search-tree/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -12771,9 +12437,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/f-sj7I5oXEI",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -12793,9 +12459,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/cX_kPV_foZc",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -12815,9 +12481,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/UmJT3j26t1I",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -12834,11 +12500,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/inorder-successor-in-bst/",
     "gfg": "",
     "youtube": "https://youtu.be/SXKAD2svfmI",
-    "article": "https://takeuforward.org/data-structure/inorder-successorpredecessor-in-bst",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft"
     ],
     "slug": "inorder-successor-in-bst"
@@ -12854,14 +12519,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/binary-search-tree-iterator/",
     "gfg": "",
     "youtube": "https://youtu.be/D2jMcmxU4bs",
-    "article": "https://takeuforward.org/data-structure/bst-iterator",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "binary-search-tree-iterator"
   },
@@ -12876,11 +12540,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/two-sum-iv-input-is-a-bst/",
     "gfg": "",
     "youtube": "https://youtu.be/ssL3sHwPeb4",
-    "article": "https://takeuforward.org/data-structure/two-sum-in-bst-check-if-there-exists-a-pair-with-sum-k",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -12900,9 +12563,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/ZWGW7FminDM",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "DE Shaw"
@@ -12922,9 +12585,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "https://youtu.be/X0oXMdtUDwo",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -12941,13 +12604,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/3oI-34aPMWM",
-    "article": "https://takeuforward.org/data-structure/graph-representation-in-java",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-graph"
   },
@@ -12962,13 +12624,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/3oI-34aPMWM",
-    "article": "https://takeuforward.org/graph/graph-representation-in-c/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "graph-representation-c"
   },
@@ -12983,13 +12644,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/3oI-34aPMWM",
-    "article": "https://takeuforward.org/data-structure/graph-representation-in-java",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "graph-representation-java"
   },
@@ -13004,13 +12664,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/connected-components",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "connected-components"
   },
@@ -13025,13 +12684,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Qzf1a--rhp8",
-    "article": "https://takeuforward.org/data-structure/depth-first-search-dfs/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "traversal-techniques"
   },
@@ -13046,13 +12704,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/Qzf1a--rhp8",
-    "article": "https://takeuforward.org/data-structure/depth-first-search-dfs/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "dfs"
   },
@@ -13067,14 +12724,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-provinces/#:~:text=A%20province%20is%20a%20group,the%20total%20number%20of%20provinces.",
     "gfg": "",
     "youtube": "https://youtu.be/ACzkVtewUYA",
-    "article": "https://takeuforward.org/data-structure/number-of-provinces/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "number-of-provinces"
   },
@@ -13089,13 +12745,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/connected-components",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "connected-components-problem-in-matrix"
   },
@@ -13110,11 +12765,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/rotting-oranges/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=yf3oUhkvqA0",
-    "article": "https://takeuforward.org/data-structure/rotten-oranges-min-time-to-rot-all-oranges-bfs/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13134,9 +12788,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13154,13 +12808,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/BPlrALf1LDU",
-    "article": "https://takeuforward.org/data-structure/detect-cycle-in-an-undirected-graph-using-bfs/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "cycle-detection-in-undirected-graph-bfs"
   },
@@ -13175,11 +12828,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule/",
     "gfg": "",
     "youtube": "https://youtu.be/zQ3zgFypzX4",
-    "article": "https://takeuforward.org/data-structure/detect-cycle-in-an-undirected-graph-using-dfs/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13197,11 +12849,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/01-matrix/",
     "gfg": "",
     "youtube": "https://youtu.be/edXdVwkYHF8",
-    "article": "https://takeuforward.org/graph/distance-of-nearest-cell-having-1/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13219,14 +12870,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/surrounded-regions/",
     "gfg": "",
     "youtube": "https://youtu.be/BtdgAys4yMk",
-    "article": "https://takeuforward.org/graph/surrounded-regions-replace-os-with-xs/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
-      "Adobe"
+      "Bloomberg"
     ],
     "slug": "surrounded-regions"
   },
@@ -13241,11 +12891,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-enclaves/",
     "gfg": "",
     "youtube": "https://youtu.be/rxKcepXQgU4",
-    "article": "https://takeuforward.org/graph/number-of-enclaves/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -13262,11 +12911,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-ladder/",
     "gfg": "",
     "youtube": "https://youtu.be/tRPda0rcf8E",
-    "article": "https://takeuforward.org/graph/word-ladder-i-g-29/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13284,11 +12932,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/word-ladder-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/AD4SFl7tu7I?si=EpcJQTWm2YeURvEG",
-    "article": "https://takeuforward.org/graph/g-30-word-ladder-ii/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13306,11 +12953,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-islands/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=muncqlKJrH0&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=8",
-    "article": "https://takeuforward.org/data-structure/number-of-distinct-islands/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13328,11 +12974,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/is-graph-bipartite/",
     "gfg": "",
     "youtube": "https://youtu.be/KG5YFfR0j8A",
-    "article": "https://takeuforward.org/graph/bipartite-graph-dfs-implementation/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13350,14 +12995,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/discuss/293048/detecting-cycle-in-directed-graph-problem",
     "gfg": "",
     "youtube": "https://youtu.be/9twcmtQj4DU",
-    "article": "https://takeuforward.org/data-structure/detect-cycle-in-a-directed-graph-using-dfs-g-19/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -13372,13 +13016,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/5lZ0iJMrUMk",
-    "article": "https://takeuforward.org/data-structure/topological-sort-algorithm-dfs-g-21/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "topo-sort"
   },
@@ -13393,13 +13036,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/5lZ0iJMrUMk",
-    "article": "https://takeuforward.org/data-structure/topological-sort-algorithm-dfs-g-21/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "topological-sort-or-kahn-s-algorithm"
   },
@@ -13414,11 +13056,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=uzVUw90ZFIg&list=PLgUwDviBIf0rGEWe64KWas0Nryn7SCRWw&index=12",
-    "article": "https://takeuforward.org/data-structure/detect-a-cycle-in-directed-graph-topological-sort-kahns-algorithm-g-23/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13436,11 +13077,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule/",
     "gfg": "",
     "youtube": "https://youtu.be/WAOfKpxYHR8",
-    "article": "https://takeuforward.org/data-structure/course-schedule-i-and-ii-pre-requisite-tasks-topological-sort-g-24/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13458,14 +13098,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/course-schedule-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/WAOfKpxYHR8",
-    "article": "https://takeuforward.org/data-structure/course-schedule-i-and-ii-pre-requisite-tasks-topological-sort-g-24/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
-      "Uber"
+      "Netflix"
     ],
     "slug": "course-schedule-ii"
   },
@@ -13480,11 +13119,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-eventual-safe-states/",
     "gfg": "",
     "youtube": "https://youtu.be/2gtg3VsDGyc",
-    "article": "https://takeuforward.org/data-structure/find-eventual-safe-states-bfs-topological-sort-g-25/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -13502,11 +13140,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/alien-dictionary/solution/",
     "gfg": "",
     "youtube": "https://youtu.be/U3N_je7tWAs",
-    "article": "https://takeuforward.org/data-structure/alien-dictionary-topological-sort-g-26/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13524,13 +13161,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=C4gxoTaI71U&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=28",
-    "article": "https://takeuforward.org/data-structure/shortest-path-in-undirected-graph-with-unit-distance-g-28/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "shortest-path-in-undirected-graph-with-unit-weights"
   },
@@ -13545,13 +13181,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=ZUFQfFaU-8U&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=27",
-    "article": "https://takeuforward.org/data-structure/shortest-path-in-directed-acyclic-graph-topological-sort-g-27/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "shortest-path-in-dag"
   },
@@ -13566,13 +13201,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=rp1SMw7HSO8&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=35",
-    "article": "https://takeuforward.org/data-structure/dijkstras-algorithm-using-set-g-33/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "djisktra-s-algorithm"
   },
@@ -13587,13 +13221,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=rp1SMw7HSO8&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=35",
-    "article": "https://takeuforward.org/data-structure/dijkstras-algorithm-using-priority-queue-g-32/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "why-priority-queue-is-used-in-djisktra-s-algorithm"
   },
@@ -13608,11 +13241,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/shortest-path-in-binary-matrix/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=U5Mw4eyUmw4&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=36",
-    "article": "https://takeuforward.org/data-structure/g-36-shortest-distance-in-a-binary-maze/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13630,11 +13262,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/path-with-minimum-effort/",
     "gfg": "",
     "youtube": "https://youtu.be/0ytpZyiZFhA",
-    "article": "https://takeuforward.org/data-structure/g-37-path-with-minimum-effort/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -13651,11 +13282,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
     "gfg": "",
     "youtube": "https://youtu.be/9XybHVqTHcQ",
-    "article": "https://takeuforward.org/data-structure/g-38-cheapest-flights-within-k-stops/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -13673,14 +13303,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/network-delay-time/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/network-delay-time",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
-      "Bloomberg",
-      "Salesforce"
+      "Netflix",
+      "Bloomberg"
     ],
     "slug": "network-delay-time"
   },
@@ -13695,11 +13324,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-ways-to-arrive-at-destination/",
     "gfg": "",
     "youtube": "https://youtu.be/_-0mx0SmYxA",
-    "article": "https://takeuforward.org/data-structure/g-40-number-of-ways-to-arrive-at-destination/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -13716,13 +13344,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=_BvEJ3VIDWw&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=39",
-    "article": "https://takeuforward.org/graph/g-39-minimum-multiplications-to-reach-end/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "minimum-multiplications-to-reach-end"
   },
@@ -13737,13 +13364,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/0vVofAhAYjc",
-    "article": "https://takeuforward.org/data-structure/bellman-ford-algorithm-g-41/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "bellman-ford-algorithm"
   },
@@ -13758,13 +13384,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=YbY8cVwWAvw&list=PLgUwDviBIf0oE3gA41TKO2H5bHpPd7fzn&index=42",
-    "article": "https://takeuforward.org/data-structure/floyd-warshall-algorithm-g-42/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "floyd-warshall-algorithm"
   },
@@ -13779,11 +13404,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/",
     "gfg": "",
     "youtube": "https://youtu.be/9XybHVqTHcQ",
-    "article": "https://takeuforward.org/data-structure/find-the-city-with-the-smallest-number-of-neighbours-at-a-threshold-distance-g-43/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber"
     ],
@@ -13800,13 +13424,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/ZSPjZuZWCME",
-    "article": "https://takeuforward.org/data-structure/minimum-spanning-tree-theory-g-44/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "mst-theory"
   },
@@ -13821,13 +13444,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/mJcZjjKzeqk",
-    "article": "https://takeuforward.org/data-structure/prims-algorithm-minimum-spanning-tree-c-and-java-g-45/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "prim-s-algorithm"
   },
@@ -13842,13 +13464,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/aBxjDBC4M1U",
-    "article": "https://takeuforward.org/data-structure/disjoint-set-union-by-rank-union-by-size-path-compression-g-46/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "disjoint-set"
   },
@@ -13863,13 +13484,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/mJcZjjKzeqk",
-    "article": "https://takeuforward.org/data-structure/prims-algorithm-minimum-spanning-tree-c-and-java-g-45/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "find-the-mst-weight"
   },
@@ -13884,11 +13504,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-operations-to-make-network-connected/",
     "gfg": "",
     "youtube": "https://youtu.be/FYrl7iz9_ZU",
-    "article": "https://takeuforward.org/data-structure/number-of-operations-to-make-network-connected-dsu-g-49/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Salesforce"
@@ -13906,11 +13525,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/most-stones-removed-with-same-row-or-column/",
     "gfg": "",
     "youtube": "https://youtu.be/OwMNX8SPavM",
-    "article": "https://takeuforward.org/data-structure/most-stones-removed-with-same-row-or-column-dsu-g-53/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Snapchat"
@@ -13928,11 +13546,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/accounts-merge/",
     "gfg": "",
     "youtube": "https://youtu.be/FMwpt_aQOGw",
-    "article": "https://takeuforward.org/data-structure/accounts-merge-dsu-g-50/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -13950,11 +13567,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-islands-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/Rn6B-Q4SNyA",
-    "article": "https://takeuforward.org/graph/number-of-islands-ii-online-queries-dsu-g-51/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Uber",
       "Walmart",
       "PhonePe"
@@ -13972,11 +13588,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/making-a-large-island/",
     "gfg": "",
     "youtube": "https://youtu.be/lgiz0Oup6gM",
-    "article": "https://takeuforward.org/data-structure/making-a-large-island-dsu-g-52/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -13994,11 +13609,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/swim-in-rising-water/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/swim-in-rising-water",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Salesforce"
@@ -14016,10 +13630,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/critical-connections-in-a-network/discuss/382385/find-bridges-in-a-graph",
     "gfg": "",
     "youtube": "https://youtu.be/qrAub5z8FeA",
-    "article": "https://takeuforward.org/graph/bridges-in-graph-using-tarjans-algorithm-of-time-in-and-low-time-g-55/",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Flipkart"
@@ -14037,13 +13650,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/j1QDfU21iZk",
-    "article": "https://takeuforward.org/data-structure/articulation-point-in-graph-g-56/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "articulation-point-in-graph"
   },
@@ -14058,7 +13670,6 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-number-of-non-overlapping-substrings/discuss/766485/kosaraju-algorithm-on",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=V8qIqJxCioo&list=PLgUwDviBIf0rGEWe64KWas0Nryn7SCRWw&index=27",
-    "article": "https://takeuforward.org/graph/strongly-connected-components-kosarajus-algorithm-g-54/",
     "companies": [
       "Amazon"
     ],
@@ -14075,13 +13686,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/tyB0ztf0DNY",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-introduction/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "introduction-to-dp"
   },
@@ -14096,11 +13706,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/climbing-stairs/",
     "gfg": "",
     "youtube": "https://youtu.be/mLfjzJsN8us",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-climbing-stairs/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -14118,10 +13727,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=EgG3jsGoPvQ",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-frog-jump-dp-3/",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle",
@@ -14140,13 +13748,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=Kmh3rhyEtB8",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-frog-jump-with-k-distances-dp-4/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "frog-jump-with-k-distances"
   },
@@ -14161,11 +13768,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/house-robber/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=GrMBfJNk_NY",
-    "article": "https://takeuforward.org/data-structure/maximum-sum-of-non-adjacent-elements-dp-5/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -14183,11 +13789,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/house-robber-ii/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=3WaxQMELSkw",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-house-robber-dp-6/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -14205,13 +13810,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=AE39gJYuRog",
-    "article": "https://takeuforward.org/data-structure/dynamic-programming-ninjas-training-dp-7/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "ninja-s-training"
   },
@@ -14226,11 +13830,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/unique-paths/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=sdE0A2Oxofw",
-    "article": "https://takeuforward.org/data-structure/grid-unique-paths-dp-on-grids-dp8/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -14248,11 +13851,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/unique-paths-ii/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=TmhpgXScLyY",
-    "article": "https://takeuforward.org/data-structure/grid-unique-paths-2-dp-9/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Nvidia"
@@ -14270,11 +13872,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-path-sum/",
     "gfg": "",
     "youtube": "https://youtu.be/_rgTlyky1uQ",
-    "article": "https://takeuforward.org/data-structure/minimum-path-sum-in-a-grid-dp-10/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -14292,11 +13893,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/triangle/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=SrP-PiLSYC0",
-    "article": "https://takeuforward.org/data-structure/minimum-path-sum-in-triangular-grid-dp-11/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -14314,13 +13914,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=QGfn7JeXK54",
-    "article": "https://takeuforward.org/data-structure/3-d-dp-ninja-and-his-friends-dp-13/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "ninja-and-his-friends"
   },
@@ -14335,13 +13934,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=fWX9xDmIzRI",
-    "article": "https://takeuforward.org/data-structure/subset-sum-equal-to-target-dp-14/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "subset-sum-equal-to-target-dp-14"
   },
@@ -14356,11 +13954,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-equal-subset-sum/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=7win3dcgo3k",
-    "article": "https://takeuforward.org/data-structure/partition-equal-subset-sum-dp-15/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -14378,11 +13975,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-array-into-two-arrays-to-minimize-sum-difference/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=GS_OqZb2CWc",
-    "article": "https://takeuforward.org/data-structure/partition-set-into-2-subsets-with-min-absolute-sum-diff-dp-16/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Salesforce"
@@ -14400,13 +13996,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=ZHyb-A2Mte4",
-    "article": "https://takeuforward.org/data-structure/count-subsets-with-sum-k-dp-17/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "count-subsets-with-sum-k"
   },
@@ -14421,13 +14016,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=zoilQD1kYSg",
-    "article": "https://takeuforward.org/data-structure/count-partitions-with-given-difference-dp-18/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "count-partitions-with-given-difference"
   },
@@ -14442,11 +14036,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/assign-cookies/",
     "gfg": "",
     "youtube": "https://youtu.be/DIX2p7vb9co?si=GofAIDimue-Av0Fi",
-    "article": "https://takeuforward.org/data-structure/assign-cookies",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -14464,11 +14057,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/coin-change/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=myPeWb3Y68A",
-    "article": "https://takeuforward.org/data-structure/minimum-coins-dp-20/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -14486,11 +14078,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/target-sum/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=b3GD8263-PQ",
-    "article": "https://takeuforward.org/data-structure/target-sum-dp-21/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Zoho"
@@ -14508,13 +14099,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/coin-change-2/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=HgyouUi11zk",
-    "article": "https://takeuforward.org/data-structure/coin-change-2-dp-22/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "coin-change-2"
   },
@@ -14529,13 +14119,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/OgvOZ6OrJoY",
-    "article": "https://takeuforward.org/data-structure/unbounded-knapsack-dp-23/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "unbounded-knapsack"
   },
@@ -14550,13 +14139,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/mO8XpGoJwuo",
-    "article": "https://takeuforward.org/data-structure/rod-cutting-problem-dp-24/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "rod-cutting-problem-dp-24"
   },
@@ -14571,11 +14159,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/-zI4mrF2Pb4",
-    "article": "https://takeuforward.org/data-structure/print-longest-common-subsequence-dp-26/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -14593,13 +14180,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/-zI4mrF2Pb4",
-    "article": "https://takeuforward.org/data-structure/print-longest-common-subsequence-dp-26/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "print-longest-common-subsequence-dp-26"
   },
@@ -14614,13 +14200,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/_wP9mWNPL5w",
-    "article": "https://takeuforward.org/data-structure/longest-common-substring-dp-27/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "longest-common-substring"
   },
@@ -14635,11 +14220,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-palindromic-subsequence/",
     "gfg": "",
     "youtube": "https://youtu.be/6i_T5kkfv4A",
-    "article": "https://takeuforward.org/data-structure/longest-palindromic-subsequence-dp-28/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -14657,10 +14241,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-insertion-steps-to-make-a-string-palindrome/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=xPBLEj41rFU",
-    "article": "https://takeuforward.org/data-structure/minimum-insertions-to-make-string-palindrome-dp-29/",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Oracle"
@@ -14678,12 +14261,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/delete-operation-for-two-strings/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=yMnH0jrir0Q",
-    "article": "https://takeuforward.org/data-structure/minimum-insertions-deletions-to-convert-string-dp-30/",
     "companies": [
-      "Amazon",
       "Google",
-      "Microsoft",
-      "Infosys"
+      "Amazon",
+      "Microsoft"
     ],
     "slug": "delete-operation-for-two-strings"
   },
@@ -14698,11 +14279,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/shortest-common-supersequence/",
     "gfg": "",
     "youtube": "https://youtu.be/xElxAuBcvsU",
-    "article": "https://takeuforward.org/data-structure/shortest-common-supersequence-dp-31/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -14719,11 +14299,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/distinct-subsequences/",
     "gfg": "",
     "youtube": "https://youtu.be/nVG7eTiD2bY",
-    "article": "https://takeuforward.org/data-structure/distinct-subsequences-dp-32/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Salesforce"
@@ -14741,11 +14320,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/edit-distance/",
     "gfg": "",
     "youtube": "https://youtu.be/fJaKO8FbDdo",
-    "article": "https://takeuforward.org/data-structure/edit-distance-dp-33/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -14763,14 +14341,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/wildcard-matching/",
     "gfg": "",
     "youtube": "https://youtu.be/ZmlQ3vgAOMo",
-    "article": "https://takeuforward.org/data-structure/wildcard-matching-dp-34/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "Oracle"
+      "DE Shaw"
     ],
     "slug": "wildcard-matching"
   },
@@ -14785,11 +14362,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
     "gfg": "",
     "youtube": "https://youtu.be/excAOvwF_Wk",
-    "article": "https://takeuforward.org/data-structure/stock-buy-and-sell/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -14807,11 +14383,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/nGJmxkUJQGs",
-    "article": "https://takeuforward.org/data-structure/buy-and-sell-stock-ii-dp-36/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -14829,11 +14404,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iii/description/",
     "gfg": "",
     "youtube": "https://youtu.be/-uQGzhYj8BQ",
-    "article": "https://takeuforward.org/data-structure/buy-and-sell-stock-iii-dp-37/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -14851,11 +14425,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-iv/",
     "gfg": "",
     "youtube": "https://youtu.be/IV1dHbk5CDc",
-    "article": "https://takeuforward.org/data-structure/buy-and-sell-stock-iv-dp-38/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Goldman Sachs"
@@ -14873,10 +14446,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/",
     "gfg": "",
     "youtube": "https://youtu.be/IGIe46xw3YY",
-    "article": "https://takeuforward.org/data-structure/buy-and-sell-stocks-with-cooldown-dp-39/",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -14894,11 +14466,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-transaction-fee/",
     "gfg": "",
     "youtube": "https://youtu.be/k4eK-vEmnKg",
-    "article": "https://takeuforward.org/data-structure/buy-and-sell-stocks-with-transaction-fees-dp-40/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -14916,11 +14487,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/on2hvxBXJH4",
-    "article": "https://takeuforward.org/data-structure/longest-increasing-subsequence-binary-search-dp-43/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -14938,13 +14508,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/IFfYfonAFGc",
-    "article": "https://takeuforward.org/data-structure/printing-longest-increasing-subsequence-dp-42/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "print-longest-increasing-subsequence"
   },
@@ -14959,13 +14528,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/on2hvxBXJH4",
-    "article": "https://takeuforward.org/data-structure/longest-increasing-subsequence-binary-search-dp-43/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "longest-increasing-subsequence-dp-43"
   },
@@ -14980,11 +14548,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/largest-divisible-subset/",
     "gfg": "",
     "youtube": "https://youtu.be/gDuZwBW9VvM",
-    "article": "https://takeuforward.org/data-structure/longest-divisible-subset-dp-44/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -15002,14 +14569,13 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-string-chain/",
     "gfg": "",
     "youtube": "https://youtu.be/YY8iBaYcc4g",
-    "article": "https://takeuforward.org/data-structure/longest-string-chain-dp-45/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
-      "PayPal"
+      "DE Shaw"
     ],
     "slug": "longest-string-chain"
   },
@@ -15024,13 +14590,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/y4vN0WNdrlg",
-    "article": "https://takeuforward.org/data-structure/longest-bitonic-subsequence-dp-46/",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Flipkart",
+      "Adobe"
     ],
     "slug": "longest-bitonic-subsequence"
   },
@@ -15045,11 +14610,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/number-of-longest-increasing-subsequence/",
     "gfg": "",
     "youtube": "https://youtu.be/cKVl1TFdNXg",
-    "article": "https://takeuforward.org/data-structure/number-of-longest-increasing-subsequences-dp-47/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -15066,13 +14630,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/vRVfmbCFW7Y",
-    "article": "https://takeuforward.org/dynamic-programming/matrix-chain-multiplication-dp-48/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "matrix-chain-multiplication"
   },
@@ -15087,13 +14650,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://youtu.be/pDCXsbAw5Cg",
-    "article": "https://takeuforward.org/data-structure/matrix-chain-multiplication-tabulation-method-dp-49/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "matrix-chain-multiplication-bottom-up-dp-49"
   },
@@ -15108,11 +14670,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-cost-to-cut-a-stick/",
     "gfg": "",
     "youtube": "https://youtu.be/xwomavsC86c",
-    "article": "https://takeuforward.org/data-structure/minimum-cost-to-cut-the-stick-dp-50/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -15130,11 +14691,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/burst-balloons/",
     "gfg": "",
     "youtube": "https://youtu.be/Yz4LlDSlkns",
-    "article": "https://takeuforward.org/data-structure/burst-balloons-partition-dp-dp-51/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs"
@@ -15152,11 +14712,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/parsing-a-boolean-expression/",
     "gfg": "",
     "youtube": "https://youtu.be/MM7fXopgyjw",
-    "article": "https://takeuforward.org/data-structure/evaluate-boolean-expression-to-true-partition-dp-dp-52/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -15174,11 +14733,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/palindrome-partitioning-ii/",
     "gfg": "",
     "youtube": "https://youtu.be/_H8V5hJUGd0",
-    "article": "https://takeuforward.org/data-structure/palindrome-partitioning-ii-front-partition-dp-53/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -15195,11 +14753,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/partition-array-for-maximum-sum/",
     "gfg": "",
     "youtube": "https://youtu.be/PhWWJmaKfMc",
-    "article": "https://takeuforward.org/data-structure/partition-array-for-maximum-sum-front-partition-dp-54/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -15216,11 +14773,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximal-rectangle/",
     "gfg": "",
     "youtube": "https://youtu.be/tOylVCugy9k",
-    "article": "https://takeuforward.org/data-structure/maximum-rectangle-area-with-all-1s-dp-on-rectangles-dp-55/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -15238,11 +14794,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-square-submatrices-with-all-ones/",
     "gfg": "",
     "youtube": "https://youtu.be/auS1fynpnjo",
-    "article": "https://takeuforward.org/data-structure/count-square-submatrices-with-all-1s-dp-on-rectangles-dp-56/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Goldman Sachs",
       "Bloomberg"
@@ -15260,11 +14815,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-trie-prefix-tree/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=dBGUmUQhjaM&list=PLgUwDviBIf0pcIDCZnxhv0LkHf5KzG9zp",
-    "article": "https://takeuforward.org/data-structure/implement-trie-1/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Uber"
@@ -15282,13 +14836,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/implement-trie-ii/",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "trie-implementation-and-advanced-operations"
   },
@@ -15320,7 +14873,6 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=RV0QeTyHZxo&list=PLgUwDviBIf0pcIDCZnxhv0LkHf5KzG9zp&index=4",
-    "article": "https://takeuforward.org/data-structure/number-of-distinct-substrings-in-a-string-using-trie/",
     "companies": [
       "Uber",
       "Bloomberg",
@@ -15344,8 +14896,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "bit-prerequisites-for-trie-problems"
   },
@@ -15360,11 +14912,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-xor-of-two-numbers-in-an-array/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=EIhAwfHubE8&list=PLgUwDviBIf0pcIDCZnxhv0LkHf5KzG9zp&index=6",
-    "article": "https://takeuforward.org/data-structure/maximum-xor-of-two-numbers-in-an-array/",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -15381,7 +14932,6 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/maximum-xor-with-an-element-from-array/",
     "gfg": "",
     "youtube": "https://www.youtube.com/watch?v=Q8LhG9Pi5KM&list=PLgUwDviBIf0pcIDCZnxhv0LkHf5KzG9zp&index=7",
-    "article": "https://takeuforward.org/trie/maximum-xor-queries-trie/",
     "companies": [
       "Google"
     ],
@@ -15398,11 +14948,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/minimum-add-to-make-parentheses-valid/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/minimum-number-of-bracket-reversals-needed-to-make-an-expression-balanced",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg"
     ],
@@ -15419,11 +14968,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/count-and-say/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/count-and-say",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Bloomberg",
       "Oracle"
@@ -15441,13 +14989,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/hashing-in-strings",
     "companies": [
       "Amazon",
       "Microsoft",
       "Google",
-      "TCS",
-      "Infosys"
+      "Adobe",
+      "TCS"
     ],
     "slug": "hashing-in-strings-theory"
   },
@@ -15464,9 +15011,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -15486,11 +15033,11 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "z-function"
   },
@@ -15505,13 +15052,12 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/implement-strstr/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/kmp-algorithm-or-lps-array",
     "companies": [
+      "Google",
+      "Meta",
       "Amazon",
       "Microsoft",
-      "Google",
-      "TCS",
-      "Infosys"
+      "Uber"
     ],
     "slug": "implement-strstr"
   },
@@ -15528,9 +15074,9 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Bloomberg"
@@ -15548,11 +15094,10 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "leetcode": "https://leetcode.com/problems/longest-happy-prefix/",
     "gfg": "",
     "youtube": "",
-    "article": "https://takeuforward.org/data-structure/longest-happy-prefix",
     "companies": [
-      "Amazon",
       "Google",
       "Meta",
+      "Amazon",
       "Microsoft",
       "Apple",
       "Bloomberg"
@@ -15572,8 +15117,8 @@ export const A2Z_DSA_SHEET_474_DATA: DSAProblem[] = [
     "youtube": "",
     "article": "",
     "companies": [
-      "Amazon",
       "Google",
+      "Amazon",
       "Microsoft",
       "Uber",
       "Goldman Sachs",

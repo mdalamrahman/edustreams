@@ -41,6 +41,7 @@ import {
   SDEProblem 
 } from '../lib/dsaSheetsData';
 import { ProblemNotesModal } from './ProblemNotesModal';
+import { DSAEditorialModal } from './DSAEditorialModal';
 import { getLocalProblemNote } from '../lib/notesService';
 import { Video } from '../lib/types';
 
@@ -125,6 +126,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   // Active Problem for Notes Modal
   const [activeNotesProblem, setActiveNotesProblem] = useState<DSAProblem | null>(null);
+
+  // Active Problem for GitHub/SDE Editorial Modal
+  const [activeEditorialProblem, setActiveEditorialProblem] = useState<DSAProblem | null>(null);
 
   // Notes update listener key to refresh UI indicators
   const [notesUpdateTrigger, setNotesUpdateTrigger] = useState(0);
@@ -1259,23 +1263,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                               </button>
                                             )}
 
-                                            {/* Article Link */}
-                                            {p.article && (
-                                              <a
-                                                href={p.article}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all"
-                                                title="Read Editorial Article"
-                                              >
-                                                <FileText className="w-3.5 h-3.5" />
-                                              </a>
-                                            )}
-
-                                            {/* Dash if no resources */}
-                                            {!hasAnyVideo && !p.article && (
-                                              <span className="text-slate-600 font-mono text-[11px] px-1">—</span>
-                                            )}
+                                            {/* Editorial Article Button (Opens GitHub / SDE in-app Editorial & saves .txt) */}
+                                            <button
+                                              type="button"
+                                              onClick={() => setActiveEditorialProblem(p)}
+                                              className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-indigo-300 hover:text-white transition-all cursor-pointer"
+                                              title="Read Complete GitHub & SDE Editorial Analysis"
+                                            >
+                                              <FileText className="w-3.5 h-3.5" />
+                                            </button>
                                           </div>
                                         </td>
 
@@ -1579,6 +1575,16 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               </a>
                             )}
 
+                            {/* Editorial Article Button */}
+                            <button
+                              type="button"
+                              onClick={() => setActiveEditorialProblem(p)}
+                              className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-indigo-300 hover:text-white transition-all cursor-pointer"
+                              title="Read GitHub & SDE Editorial Analysis (.txt / Markdown)"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+
                           </div>
                         </td>
                       </tr>
@@ -1597,6 +1603,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           problem={activeNotesProblem}
           userEmail={userEmail}
           onClose={() => setActiveNotesProblem(null)}
+        />
+      )}
+
+      {/* GITHUB & SDE COMPLETE EDITORIAL MODAL (.txt & MARKDOWN) */}
+      {activeEditorialProblem && (
+        <DSAEditorialModal
+          problem={activeEditorialProblem}
+          onClose={() => setActiveEditorialProblem(null)}
+          onOpenCodingFullscreen={onOpenCodingFullscreen}
         />
       )}
 
