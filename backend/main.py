@@ -604,16 +604,187 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
     return job
 
 
+def parse_leetcode_html(html_str: str) -> dict:
+    if not html_str:
+        return {"description": "", "examples": [], "constraints": []}
+
+    examples = []
+    ex_blocks = re.findall(r'<pre>([\s\S]*?)</pre>', html_str, re.IGNORECASE)
+    for eb in ex_blocks:
+        text = re.sub(r'<[^>]+>', '', eb).strip()
+        in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', text, re.IGNORECASE)
+        out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', text, re.IGNORECASE)
+        exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', text, re.IGNORECASE)
+        inp = in_m.group(1).strip() if in_m else text
+        outp = out_m.group(1).strip() if out_m else ""
+        exp = exp_m.group(1).strip() if exp_m else None
+        if inp and outp:
+            examples.append({"input": inp, "output": outp, "explanation": exp})
+
+    constraints = []
+    con_m = re.search(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>([\s\S]*?)</ul>', html_str, re.IGNORECASE)
+    if con_m:
+        lis = re.findall(r'<li>([\s\S]*?)</li>', con_m.group(1), re.IGNORECASE)
+        for li in lis:
+            c = re.sub(r'<[^>]+>', '', li)
+            c = c.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&le;', '<=').replace('&ge;', '>=').replace('&quot;', '"').strip()
+            if c:
+                constraints.append(c)
+
+    # Clean description
+    desc = re.sub(r'<pre>[\s\S]*?</pre>', '', html_str, flags=re.IGNORECASE)
+    desc = re.sub(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>[\s\S]*?</ul>', '', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<p><strong[^>]*>Example \d+:[\s\S]*?</strong></p>', '', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'</p>', '\n\n', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<br\s*/?>', '\n', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<code>([\s\S]*?)</code>', r'`\1`', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<strong>([\s\S]*?)</strong>', r'**\1**', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<em>([\s\S]*?)</em>', r'*\1*', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<[^>]+>', '', desc)
+    desc = desc.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&le;', '<=').replace('&ge;', '>=').replace('&quot;', '"')
+    desc = re.sub(r'\n{3,}', '\n\n', desc).strip()
+
+    return {"description": desc, "examples": examples, "constraints": constraints}
+
+
+def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
+    query = """
+    query getQuestionDetail($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionId
+        title
+        content
+        difficulty
+        hints
+        exampleTestcases
+        topicTags {
+          name
+        }
+        codeSnippets {
+          lang
+          langSlug
+          code
+        }
+      }
+    }
+    """
+    try:
+        resp = requests.post(
+            "https://leetcode.com/graphql",
+            json={"query": query, "variables": {"titleSlug": slug}},
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": f"https://leetcode.com/problems/{slug}/"
+            },
+            timeout=10
+        )
+        if resp.status_code == 200:
+            q = resp.json().get("data", {}).get("question")
+            if q and q.get("title"):
+                parsed = parse_leetcode_html(q.get("content", ""))
+                raw_tc = q.get("exampleTestcases") or ""
+                test_cases = [line.strip() for line in raw_tc.split("\n") if line.strip()]
+                if not test_cases and parsed["examples"]:
+                    test_cases = [e["input"] for e in parsed["examples"]]
+
+                starters = {}
+                for s in (q.get("codeSnippets") or []):
+                    l = s.get("langSlug")
+                    c = s.get("code")
+                    if l == "cpp": starters["cpp"] = c
+                    elif l in ["python3", "python"]: starters["python"] = c
+                    elif l == "java": starters["java"] = c
+                    elif l == "javascript": starters["javascript"] = c
+                    elif l == "golang": starters["go"] = c
+                    elif l == "rust": starters["rust"] = c
+
+                hints = q.get("hints") or []
+                clean_hints = [re.sub(r'<[^>]+>', '', h).strip() for h in hints if h]
+
+                return {
+                    "name": q.get("title"),
+                    "category": (q.get("topicTags") or [{}])[0].get("name", "Algorithms"),
+                    "difficulty": q.get("difficulty", "Medium"),
+                    "description": parsed["description"],
+                    "examples": parsed["examples"],
+                    "constraints": parsed["constraints"],
+                    "testCases": test_cases,
+                    "expectedOutputs": [e["output"] for e in parsed["examples"]],
+                    "hints": clean_hints,
+                    "starters": starters,
+                    "solutions": {}
+                }
+    except Exception as e:
+        print(f"[LeetCode GraphQL fetch error for '{slug}']: {e}")
+    return None
+
+
 @app.get("/api/problem/{slug}")
 async def get_problem_route(slug: str):
     """
-    Fetches enriched LeetCode problem description, constraints, examples,
-    and official multi-language starter code stored in Cloudflare R2.
+    Fetches authentic LeetCode problem description, constraints, examples,
+    and official multi-language starter code from LeetCode GraphQL or Mistral AI.
     """
-    problem_data = r2_storage.fetch_problem(slug)
+    clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
+    clean_slug = re.sub(r'/.*$', '', clean_slug)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+
+    # 1. Check R2 Storage cache
+    problem_data = r2_storage.fetch_problem(clean_slug)
     if problem_data:
         return problem_data
-    return {"error": f"Problem '{slug}' not found in Cloudflare R2", "slug": slug}
+
+    # 2. Check Disk / SQLite AI Cache
+    cache_key = f"problem_enriched_{clean_slug}"
+    if cache_key in _GLOBAL_AI_CACHE:
+        return _GLOBAL_AI_CACHE[cache_key]
+
+    # 3. Query LeetCode GraphQL API directly
+    lc_data = fetch_leetcode_graphql(clean_slug)
+    if lc_data:
+        _GLOBAL_AI_CACHE[cache_key] = lc_data
+        save_ai_cache()
+        try:
+            r2_storage.upload_problem(clean_slug, json.dumps(lc_data).encode("utf-8"))
+        except Exception:
+            pass
+        return lc_data
+
+    # 4. If not found on LeetCode, generate authentic spec with Mistral AI
+    try:
+        prompt = f"""You are a Lead Algorithms and Data Structures Engineer.
+Generate complete, authentic coding problem details in JSON for: "{slug}".
+Return valid JSON with:
+- name: string
+- category: string
+- difficulty: "Easy" | "Medium" | "Hard"
+- description: detailed problem explanation
+- examples: array of objects with input, output, explanation
+- constraints: array of strings
+- testCases: array of 3+ test case inputs
+- expectedOutputs: array of strings matching testCases
+- hints: array of 2+ hints
+- approaches: array of objects with id, name, timeComplexity, spaceComplexity, description
+- starters: object with cpp, python, java, javascript, go, rust
+- solutions: object with cpp, python, java, javascript, go, rust"""
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
+            timeout=12
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            parsed = json.loads(data["choices"][0]["message"]["content"])
+            if parsed and parsed.get("name") and parsed.get("description"):
+                _GLOBAL_AI_CACHE[cache_key] = parsed
+                save_ai_cache()
+                return parsed
+    except Exception as e:
+        print(f"[Mistral Problem Gen Error for '{slug}']: {e}")
+
+    return {"error": f"Problem '{slug}' could not be resolved", "slug": slug}
 
 
 @app.get("/api/image/{image_name:path}")

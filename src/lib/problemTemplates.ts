@@ -965,64 +965,80 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
 }
 
 /**
- * Fetches real problem statement, example test cases, constraints, and hints from LeetCode public API.
+ * Fetches real problem statement, example test cases, constraints, and hints from LeetCode public API or backend proxy.
  */
 export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplate | null> {
+  // 1. Try our unified backend endpoint /api/problem/{slug} (which queries LeetCode GraphQL directly)
+  try {
+    const backendUrl = `/api/problem/${encodeURIComponent(slug)}`;
+    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.name && data.description && !data.error) {
+        return data as ProblemTemplate;
+      }
+    }
+  } catch (err) {
+    console.warn(`[Backend Problem API fetch notice for '${slug}']:`, err);
+  }
+
+  // 2. Fallback to public alfa-leetcode-api
   try {
     const url = `https://alfa-leetcode-api.onrender.com/select?titleSlug=${encodeURIComponent(slug)}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(6500) });
-    if (!resp.ok) return null;
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.questionTitle) {
+        const parsed = parseLeetCodeProblemHtml(data.question || '');
+        const title = data.questionTitle;
+        const diff = (data.difficulty === 'Hard' ? 'Hard' : data.difficulty === 'Easy' ? 'Easy' : 'Medium') as 'Easy' | 'Medium' | 'Hard';
+        const hints = Array.isArray(data.hints) ? data.hints.map((h: string) => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean) : [];
 
-    const data = await resp.json();
-    if (!data || !data.questionTitle) return null;
-
-    const parsed = parseLeetCodeProblemHtml(data.question || '');
-    const title = data.questionTitle;
-    const diff = (data.difficulty === 'Hard' ? 'Hard' : data.difficulty === 'Easy' ? 'Easy' : 'Medium') as 'Easy' | 'Medium' | 'Hard';
-    const hints = Array.isArray(data.hints) ? data.hints.map((h: string) => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean) : [];
-
-    // Parse example test cases
-    let testCases: string[] = [];
-    if (data.exampleTestcases && typeof data.exampleTestcases === 'string') {
-      const lines = data.exampleTestcases.split('\n').map((l: string) => l.trim()).filter(Boolean);
-      testCases = lines.length > 0 ? lines : [];
-    }
-    if (testCases.length === 0 && parsed.examples.length > 0) {
-      testCases = parsed.examples.map(e => e.input);
-    }
-
-    const dynamicFallback = generateDynamicTemplate(title, data.topicTags?.[0]?.name || 'Algorithms', diff);
-
-    return {
-      name: title,
-      category: data.topicTags?.[0]?.name || 'Algorithms',
-      difficulty: diff,
-      description: parsed.description || `${title} problem challenge.`,
-      examples: parsed.examples.length > 0 ? parsed.examples : dynamicFallback.examples,
-      constraints: parsed.constraints.length > 0 ? parsed.constraints : dynamicFallback.constraints,
-      testCases: testCases.length > 0 ? testCases : dynamicFallback.testCases,
-      expectedOutputs: parsed.examples.map(e => e.output),
-      hints: hints.length > 0 ? hints : [
-        `Analyze the problem constraints and identify the optimal time complexity boundary.`,
-        `Consider whether sorting, two-pointers, hash maps, or dynamic programming state transitions apply.`
-      ],
-      approaches: [
-        {
-          id: 'optimal',
-          name: `Optimal Approach for ${title}`,
-          timeComplexity: diff === 'Hard' ? 'O(N log N) / O(N)' : 'O(N)',
-          spaceComplexity: 'O(1) to O(N)',
-          description: `Identify invariant state boundaries and minimize auxiliary memory allocation for ${title}.`,
-          starters: dynamicFallback.starters,
-          solutionCode: dynamicFallback.solutions
+        let testCases: string[] = [];
+        if (data.exampleTestcases && typeof data.exampleTestcases === 'string') {
+          const lines = data.exampleTestcases.split('\n').map((l: string) => l.trim()).filter(Boolean);
+          testCases = lines.length > 0 ? lines : [];
         }
-      ],
-      starters: dynamicFallback.starters,
-      solutions: dynamicFallback.solutions,
-    };
+        if (testCases.length === 0 && parsed.examples.length > 0) {
+          testCases = parsed.examples.map(e => e.input);
+        }
+
+        const dynamicFallback = generateDynamicTemplate(title, data.topicTags?.[0]?.name || 'Algorithms', diff);
+
+        return {
+          name: title,
+          category: data.topicTags?.[0]?.name || 'Algorithms',
+          difficulty: diff,
+          description: parsed.description || `${title} problem challenge.`,
+          examples: parsed.examples.length > 0 ? parsed.examples : dynamicFallback.examples,
+          constraints: parsed.constraints.length > 0 ? parsed.constraints : dynamicFallback.constraints,
+          testCases: testCases.length > 0 ? testCases : dynamicFallback.testCases,
+          expectedOutputs: parsed.examples.map(e => e.output),
+          hints: hints.length > 0 ? hints : [
+            `Analyze the problem constraints and identify the optimal time complexity boundary.`,
+            `Consider whether sorting, two-pointers, hash maps, or dynamic programming state transitions apply.`
+          ],
+          approaches: [
+            {
+              id: 'optimal',
+              name: `Optimal Approach for ${title}`,
+              timeComplexity: diff === 'Hard' ? 'O(N log N) / O(N)' : 'O(N)',
+              spaceComplexity: 'O(1) to O(N)',
+              description: `Identify invariant state boundaries and minimize auxiliary memory allocation for ${title}.`,
+              starters: dynamicFallback.starters,
+              solutionCode: dynamicFallback.solutions
+            }
+          ],
+          starters: dynamicFallback.starters,
+          solutions: dynamicFallback.solutions,
+        };
+      }
+    }
   } catch (e) {
-    return null;
+    // Silently continue
   }
+
+  return null;
 }
 
 /**
@@ -1042,7 +1058,7 @@ Requirements:
 - Detailed, crystal-clear description with objective and input/output behavior.
 - 2 to 3 realistic examples with input, output, and explanation.
 - Realistic constraints (e.g. 1 <= N <= 10^5).
-- 3 to 5 test case inputs matching the input format.
+- 3 to 5 problem-specific test case inputs (e.g. if problem is about intervals or matrices, provide matrix/interval testcases).
 - Corresponding expectedOutputs for the test cases.
 - 2 to 3 progressive hints (intuition, edge cases, optimization).
 - Approaches array with timeComplexity, spaceComplexity, and approach explanation.
@@ -1121,7 +1137,7 @@ Output ONLY valid JSON matching this schema:
 /**
  * Fetches enriched LeetCode problem description, examples, constraints,
  * test cases, hints, and official multi-language starter code from LeetCode API,
- * GitHub repositories, or Mistral AI.
+ * backend GraphQL proxy, or Mistral AI.
  */
 export async function fetchEnrichedProblem(
   slugOrTitle: string,
@@ -1137,7 +1153,7 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_problem_enriched_v8_${cleanSlug}`;
+  const cacheKey = `edustream_problem_enriched_v9_${cleanSlug}`;
 
   // 1. Instant 0ms browser cache check (only if valid, problem-specific non-dummy template)
   try {
@@ -1166,7 +1182,7 @@ export async function fetchEnrichedProblem(
     return staticTemplate;
   }
 
-  // 3. Try LeetCode API (alfa-leetcode-api) if slug looks like a LeetCode problem
+  // 3. Try LeetCode API (backend GraphQL proxy / alfa-leetcode-api)
   if (cleanSlug && cleanSlug.length > 1) {
     const lcData = await fetchFromLeetCodeApi(cleanSlug);
     if (lcData) {

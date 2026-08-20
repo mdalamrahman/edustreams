@@ -178,9 +178,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
-    const slug = codingProblem?.slug || codingProblem?.leetcode || cleanTitle;
+    const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
     fetchEnrichedProblem(
-      slug,
+      rawTarget,
       codingProblem?.category || 'Arrays',
       codingProblem?.difficulty || 'Medium',
       effectiveTranscript,
@@ -193,6 +193,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           setCode(enriched.starters[language] || enriched.starters.cpp || '');
         }
         if (enriched.testCases && enriched.testCases.length > 0) {
+          setActiveTestCaseIdx(0);
           setTestInput(enriched.testCases[0]);
         }
       }
