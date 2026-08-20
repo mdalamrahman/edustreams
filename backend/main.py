@@ -808,20 +808,7 @@ async def get_problem_route(slug: str):
     clean_slug = re.sub(r'/.*$', '', clean_slug)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
 
-    # 1. Check in-memory problem cache
-    if clean_slug in _PROBLEM_CACHE:
-        return _PROBLEM_CACHE[clean_slug]
-
-    # 2. Check R2 Storage cache (only if valid rich data)
-    try:
-        problem_data = r2_storage.fetch_problem(clean_slug)
-        if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
-            _PROBLEM_CACHE[clean_slug] = problem_data
-            return problem_data
-    except Exception:
-        pass
-
-    # 3. Query LeetCode GraphQL API directly
+    # 1. Query LeetCode GraphQL API directly (Authentic Official Source)
     lc_data = fetch_leetcode_graphql(clean_slug)
     if lc_data:
         _PROBLEM_CACHE[clean_slug] = lc_data
@@ -830,6 +817,19 @@ async def get_problem_route(slug: str):
         except Exception:
             pass
         return lc_data
+
+    # 2. Check in-memory problem cache
+    if clean_slug in _PROBLEM_CACHE:
+        return _PROBLEM_CACHE[clean_slug]
+
+    # 3. Check R2 Storage cache (fallback)
+    try:
+        problem_data = r2_storage.fetch_problem(clean_slug)
+        if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
+            _PROBLEM_CACHE[clean_slug] = problem_data
+            return problem_data
+    except Exception:
+        pass
 
     # 4. If not found on LeetCode, generate authentic spec with Mistral AI
     try:
