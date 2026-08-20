@@ -778,12 +778,15 @@ Return valid JSON with:
             "https://api.mistral.ai/v1/chat/completions",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
             json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
-            timeout=12
+            timeout=25
         )
         if resp.status_code == 200:
             data = resp.json()
             parsed = json.loads(data["choices"][0]["message"]["content"])
             if parsed and parsed.get("name") and parsed.get("description"):
+                raw_tcs = parsed.get("testCases") or []
+                clean_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in raw_tcs]
+                parsed["testCases"] = clean_tcs
                 _PROBLEM_CACHE[clean_slug] = parsed
                 return parsed
     except Exception as e:
