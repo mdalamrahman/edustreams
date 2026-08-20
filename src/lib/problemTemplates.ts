@@ -1045,6 +1045,20 @@ export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplat
     console.warn(`[Backend Problem API fetch notice for '${slug}']:`, err);
   }
 
+  // 1b. Try direct full backend URL fallback
+  try {
+    const fullBackendUrl = `https://edustream-backend-90vm.onrender.com/api/problem/${encodeURIComponent(slug)}`;
+    const resp = await fetch(fullBackendUrl, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.name && data.description && !data.error) {
+        return data as ProblemTemplate;
+      }
+    }
+  } catch (err) {
+    // continue
+  }
+
   // 2. Fallback to public alfa-leetcode-api
   try {
     const url = `https://alfa-leetcode-api.onrender.com/select?titleSlug=${encodeURIComponent(slug)}`;
@@ -1216,7 +1230,7 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_problem_enriched_v9_${cleanSlug}`;
+  const cacheKey = `edustream_problem_enriched_v12_${cleanSlug}`;
 
   // 1. Instant 0ms browser cache check (only if valid, problem-specific non-dummy template)
   try {
