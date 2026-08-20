@@ -8,6 +8,7 @@ from datetime import datetime
 import asyncio
 import subprocess
 import json
+import html
 import base64
 import requests
 from typing import Optional, List, Any
