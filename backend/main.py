@@ -720,6 +720,9 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
     return None
 
 
+_PROBLEM_CACHE: dict = {}
+
+
 @app.get("/api/problem/{slug}")
 async def get_problem_route(slug: str):
     """
@@ -730,22 +733,23 @@ async def get_problem_route(slug: str):
     clean_slug = re.sub(r'/.*$', '', clean_slug)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
 
-    # 1. Check R2 Storage cache (only if valid rich data)
-    problem_data = r2_storage.fetch_problem(clean_slug)
-    if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
-        return problem_data
+    # 1. Check in-memory problem cache
+    if clean_slug in _PROBLEM_CACHE:
+        return _PROBLEM_CACHE[clean_slug]
 
-    # 2. Check Disk / SQLite AI Cache
-    cache_key = f"problem_enriched_{clean_slug}"
-    cached = _GLOBAL_AI_CACHE.get(cache_key)
-    if cached and cached.get("name") and cached.get("description") and cached.get("testCases"):
-        return cached
+    # 2. Check R2 Storage cache (only if valid rich data)
+    try:
+        problem_data = r2_storage.fetch_problem(clean_slug)
+        if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
+            _PROBLEM_CACHE[clean_slug] = problem_data
+            return problem_data
+    except Exception:
+        pass
 
     # 3. Query LeetCode GraphQL API directly
     lc_data = fetch_leetcode_graphql(clean_slug)
     if lc_data:
-        _GLOBAL_AI_CACHE[cache_key] = lc_data
-        save_ai_cache()
+        _PROBLEM_CACHE[clean_slug] = lc_data
         try:
             r2_storage.upload_problem(clean_slug, json.dumps(lc_data).encode("utf-8"))
         except Exception:
@@ -779,8 +783,7 @@ Return valid JSON with:
             data = resp.json()
             parsed = json.loads(data["choices"][0]["message"]["content"])
             if parsed and parsed.get("name") and parsed.get("description"):
-                _GLOBAL_AI_CACHE[cache_key] = parsed
-                save_ai_cache()
+                _PROBLEM_CACHE[clean_slug] = parsed
                 return parsed
     except Exception as e:
         print(f"[Mistral Problem Gen Error for '{slug}']: {e}")
