@@ -730,15 +730,16 @@ async def get_problem_route(slug: str):
     clean_slug = re.sub(r'/.*$', '', clean_slug)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
 
-    # 1. Check R2 Storage cache
+    # 1. Check R2 Storage cache (only if valid rich data)
     problem_data = r2_storage.fetch_problem(clean_slug)
-    if problem_data:
+    if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
         return problem_data
 
     # 2. Check Disk / SQLite AI Cache
     cache_key = f"problem_enriched_{clean_slug}"
-    if cache_key in _GLOBAL_AI_CACHE:
-        return _GLOBAL_AI_CACHE[cache_key]
+    cached = _GLOBAL_AI_CACHE.get(cache_key)
+    if cached and cached.get("name") and cached.get("description") and cached.get("testCases"):
+        return cached
 
     # 3. Query LeetCode GraphQL API directly
     lc_data = fetch_leetcode_graphql(clean_slug)
