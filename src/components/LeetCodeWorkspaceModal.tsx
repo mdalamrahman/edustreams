@@ -789,6 +789,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             <span className="hidden sm:inline">LLD Diagram</span>
           </button>
 
+          {/* Telegram DSA Channel Video Button (ONLY IF MATCHING VIDEO EXISTS) */}
+          {matchingVideo && (
+            <button
+              onClick={() => setLeftTab('video')}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title={`Watch Telegram DSA Channel Lecture: ${matchingVideo.title}`}
+            >
+              <Play className="w-3.5 h-3.5 fill-current text-purple-400" />
+              <span className="hidden sm:inline">Watch Video</span>
+            </button>
+          )}
+
           {/* AI Review Button */}
           <button
             onClick={handleAIReview}
@@ -909,17 +921,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <span>Notes (.txt)</span>
             </button>
 
-            <button
-              onClick={() => setLeftTab('video')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                leftTab === 'video'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
-              <span>Video</span>
-            </button>
+            {/* VIDEO TAB BUTTON (ONLY IF REAL MATCHING VIDEO FROM TELEGRAM CHANNEL EXISTS) */}
+            {matchingVideo && (
+              <button
+                onClick={() => setLeftTab('video')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  leftTab === 'video'
+                    ? 'bg-purple-600 text-white shadow-inner'
+                    : 'text-purple-300 hover:text-white hover:bg-purple-950/40 border border-purple-800/40'
+                }`}
+                title={`Watch Telegram DSA Channel Lecture: ${matchingVideo.title}`}
+              >
+                <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
+                <span>Video</span>
+              </button>
+            )}
 
             <button
               onClick={() => setLeftTab('solutions')}

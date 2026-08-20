@@ -8,24 +8,31 @@
       "destination": "https://edustream-backend-90vm.onrender.com/stream/$1"
     },
     {
-      "source": "/api/download/(.*)",
-      "destination": "https://edustream-backend-90vm.onrender.com/api/download/$1"
-    },
-    {
-      "source": "/api/catalog/(.*)",
-      "destination": "https://edustream-backend-90vm.onrender.com/api/catalog/$1"
-    },
-    {
-      "source": "/api/compile",
-      "destination": "https://edustream-backend-90vm.onrender.com/api/compile"
-    },
-    {
-      "source": "/api/ai/(.*)",
-      "destination": "https://edustream-backend-90vm.onrender.com/api/ai/$1"
+      "source": "/api/(.*)",
+      "destination": "https://edustream-backend-90vm.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
+      ]
+    },
+    {
+      "source": "/stream/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,HEAD,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Range, Accept, Content-Type" },
+        { "key": "Access-Control-Expose-Headers", "value": "Content-Range, Accept-Ranges, Content-Length" }
+      ]
     }
   ]
 }

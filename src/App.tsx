@@ -29,7 +29,7 @@ import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { AuthModal } from './components/AuthModal';
 import { AskAIChatModal } from './components/AskAIChatModal';
 import { LoadingScreen } from './components/LoadingScreen';
-import { SDESheetExplorer } from './components/SDESheetExplorer';
+import { SDESheetExplorer, findMatchingDsaVideo } from './components/SDESheetExplorer';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
@@ -690,23 +690,9 @@ export function App() {
     const allVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
     // Strictly search ONLY within the DSA channel ('ch-dsa-01')
     const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
-    const cleanTopic = topicName.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
-    const stopwords = new Set(['the', 'and', 'for', 'with', 'part', 'using', 'algorithm', 'problem', 'in', 'of', 'a', 'an', 'to', 'by', 'array', 'part-i', 'part-ii']);
-    const topicWords = cleanTopic.split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
+    const match = findMatchingDsaVideo(topicName, dsaVideos);
 
-    let match = dsaVideos.find(v => {
-      const vTitle = v.title.toLowerCase();
-      return vTitle.includes(cleanTopic) || (topicWords.length > 0 && topicWords.every(w => vTitle.includes(w)));
-    });
-
-    if (!match && topicWords.length > 0) {
-      match = dsaVideos.find(v => {
-        const vTitle = v.title.toLowerCase();
-        return topicWords.filter(w => vTitle.includes(w)).length >= Math.min(2, topicWords.length);
-      });
-    }
-
-    // Only open if a real, valid DSA video match exists
+    // Only open if a real, valid Telegram DSA video match exists
     if (match) {
       handleOpenVideoWithBilling(match, 'sde_sheet');
     }
@@ -721,21 +707,7 @@ export function App() {
     const allVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
     // Strictly match ONLY against the DSA channel ('ch-dsa-01')
     const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
-    const pName = problem.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
-    const stopwords = new Set(['the', 'and', 'for', 'with', 'part', 'using', 'algorithm', 'problem', 'in', 'of', 'a', 'an', 'to', 'by', 'array', 'part-i', 'part-ii']);
-    const pWords = pName.split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
-
-    let matched = dsaVideos.find((v) => {
-      const vTitle = v.title.toLowerCase();
-      return vTitle.includes(pName) || (pWords.length > 0 && pWords.every(w => vTitle.includes(w)));
-    });
-
-    if (!matched && pWords.length > 0) {
-      matched = dsaVideos.find(v => {
-        const vTitle = v.title.toLowerCase();
-        return pWords.filter(w => vTitle.includes(w)).length >= Math.min(2, pWords.length);
-      });
-    }
+    const matched = findMatchingDsaVideo(problem.name, dsaVideos);
 
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);

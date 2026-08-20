@@ -6,11 +6,11 @@
  * Uses TELEGRAM_BOT_TOKEN on the HF side for channel access.
  */
 
-// Render / Backend base URL (the Telethon FastAPI backend)
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
+// Render / Backend base URL (default to relative path in browser for zero-CORS proxying via Vercel/Vite)
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string) || '';
 
 // Remove trailing slash if present
-const BACKEND_BASE = BACKEND_URL.replace(/\/+$/, '');
+const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : '';
 
 /**
  * Mapping from internal frontend channel IDs to Telegram Bot API channel IDs.

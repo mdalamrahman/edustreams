@@ -293,7 +293,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
       localStorage.setItem('edustream_code_history', JSON.stringify([submissionEntry, ...existing].slice(0, 30)));
 
       // Sync attempt to Cloud Database
-      const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+      const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || '';
       fetch(`${backendUrl}/api/attempts/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

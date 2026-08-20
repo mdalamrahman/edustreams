@@ -172,7 +172,7 @@ export async function requestMistralQuiz(
 
   // 1. Check global shared backend AI cache first so ALL users get the exact same quiz
   try {
-    const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+    const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || '';
     const cacheResp = await fetch(`${backendUrl}/api/ai/cache/${encodeURIComponent(cleanTitle)}`);
     if (cacheResp.ok) {
       const cacheData = await cacheResp.json();
@@ -263,7 +263,7 @@ Return ONLY valid JSON.`;
       if (questions.length > 0) {
         // Save to global backend cache so all users share this exact generated quiz
         try {
-          const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
+          const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || '';
           fetch(`${backendUrl}/api/ai/cache/quiz`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

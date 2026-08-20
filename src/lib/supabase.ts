@@ -5190,7 +5190,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 00 - Computer Architecture.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7310",
+  "stream_url": "/stream/-5501631117/7310",
   "created_at": "2026-08-18T05:39:23+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5218,7 +5218,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 01 - Application Architecture.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7311",
+  "stream_url": "/stream/-5501631117/7311",
   "created_at": "2026-08-18T05:40:47+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5246,7 +5246,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 02 - Design Requirements.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7312",
+  "stream_url": "/stream/-5501631117/7312",
   "created_at": "2026-08-18T05:42:30+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5274,7 +5274,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 03 - Networking Basics.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7313",
+  "stream_url": "/stream/-5501631117/7313",
   "created_at": "2026-08-18T05:47:11+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5302,7 +5302,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 04 - TCP and UDP.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7314",
+  "stream_url": "/stream/-5501631117/7314",
   "created_at": "2026-08-18T05:47:34+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5330,7 +5330,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 05 - DNS.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7315",
+  "stream_url": "/stream/-5501631117/7315",
   "created_at": "2026-08-18T05:48:55+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5358,7 +5358,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 06 - HTTP.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7316",
+  "stream_url": "/stream/-5501631117/7316",
   "created_at": "2026-08-18T05:50:25+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5386,7 +5386,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 07 - WebSockets.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7317",
+  "stream_url": "/stream/-5501631117/7317",
   "created_at": "2026-08-18T06:11:17+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5414,7 +5414,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 08 - API Paradigms.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7318",
+  "stream_url": "/stream/-5501631117/7318",
   "created_at": "2026-08-18T06:17:06+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5442,7 +5442,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 09 - API Design.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7319",
+  "stream_url": "/stream/-5501631117/7319",
   "created_at": "2026-08-18T06:21:20+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5470,7 +5470,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 10 - Caching.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7320",
+  "stream_url": "/stream/-5501631117/7320",
   "created_at": "2026-08-18T06:37:36+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5498,7 +5498,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 11 - CDNs.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7321",
+  "stream_url": "/stream/-5501631117/7321",
   "created_at": "2026-08-18T06:57:46+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5526,7 +5526,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 12 - Proxies and Load Balancing.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7322",
+  "stream_url": "/stream/-5501631117/7322",
   "created_at": "2026-08-18T07:34:58+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5554,7 +5554,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 13 - Consistent Hashing.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7323",
+  "stream_url": "/stream/-5501631117/7323",
   "created_at": "2026-08-18T07:41:32+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5582,7 +5582,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 14 - SQL.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7324",
+  "stream_url": "/stream/-5501631117/7324",
   "created_at": "2026-08-18T07:41:57+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5610,7 +5610,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 15 - NoSQL.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7325",
+  "stream_url": "/stream/-5501631117/7325",
   "created_at": "2026-08-18T07:42:18+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5638,7 +5638,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 16 - Replication and Sharding.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7326",
+  "stream_url": "/stream/-5501631117/7326",
   "created_at": "2026-08-18T07:45:04+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5666,7 +5666,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 17 - CAP Theorem.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7327",
+  "stream_url": "/stream/-5501631117/7327",
   "created_at": "2026-08-18T07:45:29+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5694,7 +5694,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 18 - Object Storage.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7328",
+  "stream_url": "/stream/-5501631117/7328",
   "created_at": "2026-08-18T07:45:38+00:00",
   "quiz_json": [],
   "attachments": [
@@ -5722,7 +5722,7 @@ export const MOCK_VIDEOS: Video[] = [
   "duration_seconds": 300,
   "transcript": "NeetCode System Design High Level Design Lecture: 19 - Message Queues.mp4. High-definition stream.",
   "thumbnail_url": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-  "stream_url": "https://edustream-backend-90vm.onrender.com/stream/-5501631117/7329",
+  "stream_url": "/stream/-5501631117/7329",
   "created_at": "2026-08-18T07:45:51+00:00",
   "quiz_json": [],
   "attachments": [

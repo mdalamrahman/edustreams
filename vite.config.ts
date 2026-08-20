@@ -27,22 +27,8 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
         },
-        // Proxy download requests to Telethon backend
-        '/api/download': {
-          target: backendUrl,
-          changeOrigin: true,
-        },
-        // Proxy catalog requests to Telethon backend
-        '/api/catalog': {
-          target: backendUrl,
-          changeOrigin: true,
-        },
-        // Proxy compile/AI requests to backend
-        '/api/compile': {
-          target: backendUrl,
-          changeOrigin: true,
-        },
-        '/api/ai': {
+        // Proxy all API requests to backend
+        '/api': {
           target: backendUrl,
           changeOrigin: true,
         },
