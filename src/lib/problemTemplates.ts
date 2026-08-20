@@ -905,8 +905,23 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
 } {
   if (!htmlStr) return { description: '', examples: [], constraints: [] };
 
+  // 1. Convert all <img> tags to Markdown images before stripping tags
+  const workingHtml = htmlStr.replace(/<img[^>]*>/gi, (tag) => {
+    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
+    const altMatch = tag.match(/alt=["']([^"']*)["']/i);
+    if (!srcMatch) return '';
+    let src = srcMatch[1].trim();
+    const alt = altMatch ? altMatch[1].trim() : 'Diagram';
+    if (src.startsWith('/')) {
+      src = `https://assets.leetcode.com${src}`;
+    } else if (!src.startsWith('http')) {
+      src = `https://assets.leetcode.com/uploads/${src.replace(/^\//, '')}`;
+    }
+    return `\n\n![${alt}](${src})\n\n`;
+  });
+
   const examples: { input: string; output: string; explanation?: string }[] = [];
-  const exBlocks = htmlStr.match(/<pre>([\s\S]*?)<\/pre>/gi) || [];
+  const exBlocks = workingHtml.match(/<pre>([\s\S]*?)<\/pre>/gi) || [];
 
   for (const eb of exBlocks) {
     const text = eb.replace(/<[^>]+>/g, '').trim();
@@ -924,7 +939,7 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
   }
 
   const constraints: string[] = [];
-  const conMatch = htmlStr.match(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
+  const conMatch = workingHtml.match(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
   if (conMatch) {
     const lis = conMatch[1].match(/<li>([\s\S]*?)<\/li>/gi) || [];
     for (const li of lis) {
@@ -941,11 +956,10 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
     }
   }
 
-  // Clean description markdown
-  let desc = htmlStr
+  // Clean description markdown while preserving Markdown images
+  let desc = workingHtml
     .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
     .replace(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/gi, '')
-    .replace(/<p><strong[^>]*>Example \d+:[\s\S]*?<\/strong><\/p>/gi, '')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')

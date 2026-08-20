@@ -233,6 +233,39 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return (codingProblem?.gfg && codingProblem.gfg.trim().length > 0) ? codingProblem.gfg : null;
   }, [codingProblem]);
 
+  // Only LLD (Low Level Design) / System Design questions should have Architecture Diagrams
+  const isLldQuestion = useMemo(() => {
+    const cat = (codingProblem?.category || problemTemplate.category || '').toLowerCase();
+    const title = (codingProblem?.name || problemTemplate.name || cleanTitle || '').toLowerCase();
+    const step = ((codingProblem as any)?.step || '').toLowerCase();
+
+    const isLldTerm = 
+      cat.includes('lld') ||
+      cat.includes('low level design') ||
+      cat.includes('system design') ||
+      cat.includes('design pattern') ||
+      cat.includes('object oriented') ||
+      step.includes('lld') ||
+      step.includes('low level design') ||
+      title.startsWith('lld') ||
+      title.includes('low level design') ||
+      title.includes('design parking lot') ||
+      title.includes('design rate limiter') ||
+      title.includes('design bookmyshow') ||
+      title.includes('design splitwise') ||
+      title.includes('design cricinfo') ||
+      title.includes('design snake and ladder') ||
+      title.includes('design vending machine') ||
+      title.includes('design atm') ||
+      title.includes('design cache') ||
+      title.includes('design elevator') ||
+      title.includes('design file system');
+
+    const isDsaOrSql = cat.includes('dsa') || cat.includes('sql') || cat.includes('database') || cat.includes('binary tree') || cat.includes('graph') || cat.includes('array') || cat.includes('dp') || cat.includes('string');
+
+    return isLldTerm && !isDsaOrSql;
+  }, [codingProblem, problemTemplate, cleanTitle]);
+
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
     return getLocalProblemNote(codingProblem?.slug || codingProblem?.name || cleanTitle);
@@ -819,15 +852,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </a>
           )}
 
-          {/* Small LLD Diagram Button on the Right (20 paise) */}
-          <button
-            onClick={handleOpenDiagramModal}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
-            title="Open Kroki LLD Visual Architecture Popup (20 paise)"
-          >
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline">LLD Diagram</span>
-          </button>
+          {/* Small LLD Diagram Button on the Right (ONLY FOR LLD QUESTIONS) */}
+          {isLldQuestion && (
+            <button
+              onClick={handleOpenDiagramModal}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+              title="Open Kroki LLD Visual Architecture Popup"
+            >
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden sm:inline">LLD Diagram</span>
+            </button>
+          )}
 
           {/* Telegram DSA Channel Video Button (ONLY IF MATCHING VIDEO EXISTS) */}
           {matchingVideo && (
@@ -940,14 +975,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <span>Editorial</span>
             </button>
 
-            <button
-              onClick={handleOpenDiagramModal}
-              className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-800/40"
-              title="Open Kroki LLD Visual Architecture Popup (20 paise)"
-            >
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Diagram (Popup)</span>
-            </button>
+            {isLldQuestion && (
+              <button
+                onClick={handleOpenDiagramModal}
+                className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-800/40"
+                title="Open Kroki LLD Visual Architecture Popup"
+              >
+                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Diagram (Popup)</span>
+              </button>
+            )}
 
             <button
               onClick={() => setLeftTab('notes')}
@@ -1044,14 +1081,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                       {problemTemplate.category}
                     </span>
 
-                    <button
-                      onClick={handleOpenDiagramModal}
-                      className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all shadow-sm cursor-pointer ml-auto"
-                      title="Open Kroki Unified UML & Visual Architecture Popup (20 paise)"
-                    >
-                      <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Architecture Diagram</span>
-                    </button>
+                    {isLldQuestion && (
+                      <button
+                        onClick={handleOpenDiagramModal}
+                        className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all shadow-sm cursor-pointer ml-auto"
+                        title="Open Kroki Unified UML & Visual Architecture Popup"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Architecture Diagram</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Company Pills */}
@@ -1178,13 +1217,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <div className="space-y-4 font-sans">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Algorithmic Editorial & Approaches</h3>
-                  <button
-                    onClick={handleCopyEditorial}
-                    className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 font-bold cursor-pointer"
-                  >
-                    {copiedEditorial ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedEditorial ? 'Copied' : 'Copy Editorial'}</span>
-                  </button>
+                  {problemTemplate.approaches && problemTemplate.approaches.length > 0 && (
+                    <button
+                      onClick={handleCopyEditorial}
+                      className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 font-bold cursor-pointer"
+                    >
+                      {copiedEditorial ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedEditorial ? 'Copied' : 'Copy Editorial'}</span>
+                    </button>
+                  )}
                 </div>
                 
                 {(problemTemplate.approaches && problemTemplate.approaches.length > 0) ? (
@@ -1213,23 +1254,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                    <div className="font-bold text-indigo-300 text-sm">Optimal Approach Walkthrough</div>
-                    <p className="text-xs text-slate-300 leading-relaxed select-text">
-                      1. Traverse the input structure and identify invariant state boundaries.<br />
-                      2. Use hash structures or pointer sliding to record conditions in-place.<br />
-                      3. Apply the optimal algorithmic transition to achieve minimal time complexity.
-                    </p>
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Time Complexity</div>
-                        <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{problemTemplate.difficulty === 'Hard' ? 'O(N log N)' : 'O(N)'}</div>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Space Complexity</div>
-                        <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{problemTemplate.difficulty === 'Easy' ? 'O(1)' : 'O(N)'}</div>
-                      </div>
+                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
+                      <Sparkles className="w-6 h-6 text-purple-400/60" />
                     </div>
+                    <div className="text-slate-200 font-bold text-sm">Editorial Not Available</div>
+                    <p className="text-slate-400 text-xs max-w-sm mx-auto">
+                      Official editorial walkthrough is not available for this problem yet. You can use the <strong>Ask AI</strong> assistant or Solutions tab to explore optimal implementations.
+                    </p>
                   </div>
                 )}
               </div>

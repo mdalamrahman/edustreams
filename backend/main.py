@@ -609,8 +609,25 @@ def parse_leetcode_html(html_str: str) -> dict:
     if not html_str:
         return {"description": "", "examples": [], "constraints": []}
 
+    # 1. Convert all <img> tags to Markdown images before stripping tags
+    def convert_img(match):
+        m_src = re.search(r'src=["\']([^"\']+)["\']', match.group(0), re.IGNORECASE)
+        m_alt = re.search(r'alt=["\']([^"\']*)["\']', match.group(0), re.IGNORECASE)
+        if not m_src:
+            return ""
+        src = m_src.group(1).strip()
+        alt = m_alt.group(1).strip() if m_alt else "Diagram"
+        if src.startswith("/"):
+            src = f"https://assets.leetcode.com{src}"
+        elif not src.startswith("http"):
+            src = f"https://assets.leetcode.com/uploads/{src.lstrip('/')}"
+        return f"\n\n![{alt}]({src})\n\n"
+
+    working_html = re.sub(r'<img[^>]*>', convert_img, html_str, flags=re.IGNORECASE)
+
+    # 2. Extract Examples
     examples = []
-    ex_blocks = re.findall(r'<pre>([\s\S]*?)</pre>', html_str, re.IGNORECASE)
+    ex_blocks = re.findall(r'<pre>([\s\S]*?)</pre>', working_html, re.IGNORECASE)
     for eb in ex_blocks:
         text = re.sub(r'<[^>]+>', '', eb).strip()
         in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', text, re.IGNORECASE)
@@ -622,8 +639,9 @@ def parse_leetcode_html(html_str: str) -> dict:
         if inp and outp:
             examples.append({"input": inp, "output": outp, "explanation": exp})
 
+    # 3. Extract Constraints
     constraints = []
-    con_m = re.search(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>([\s\S]*?)</ul>', html_str, re.IGNORECASE)
+    con_m = re.search(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>([\s\S]*?)</ul>', working_html, re.IGNORECASE)
     if con_m:
         lis = re.findall(r'<li>([\s\S]*?)</li>', con_m.group(1), re.IGNORECASE)
         for li in lis:
@@ -632,10 +650,9 @@ def parse_leetcode_html(html_str: str) -> dict:
             if c:
                 constraints.append(c)
 
-    # Clean description
-    desc = re.sub(r'<pre>[\s\S]*?</pre>', '', html_str, flags=re.IGNORECASE)
+    # 4. Clean description while preserving Markdown images
+    desc = re.sub(r'<pre>[\s\S]*?</pre>', '', working_html, flags=re.IGNORECASE)
     desc = re.sub(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>[\s\S]*?</ul>', '', desc, flags=re.IGNORECASE)
-    desc = re.sub(r'<p><strong[^>]*>Example \d+:[\s\S]*?</strong></p>', '', desc, flags=re.IGNORECASE)
     desc = re.sub(r'</p>', '\n\n', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<br\s*/?>', '\n', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<code>([\s\S]*?)</code>', r'`\1`', desc, flags=re.IGNORECASE)
