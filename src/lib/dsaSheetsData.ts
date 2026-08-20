@@ -63,8 +63,24 @@ export const DSA_SHEETS_CONFIG: Record<DSASheetType, SheetConfig> = {
 
 export function getLeetCodeSlug(problem: DSAProblem): string {
   if (problem.slug) return problem.slug;
-  const match = problem.leetcode.match(/\/problems\/([^/]+)/);
+  const match = problem.leetcode?.match(/\/problems\/([^/]+)/);
   return match ? match[1] : problem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+export function getGfgUrl(problem: DSAProblem): string {
+  if (problem.gfg && problem.gfg.startsWith('http') && problem.gfg !== '$undefined') {
+    return problem.gfg;
+  }
+  const cleanSlug = getLeetCodeSlug(problem);
+  return `https://www.geeksforgeeks.org/problems/${cleanSlug}/1`;
+}
+
+export function getLeetCodeUrl(problem: DSAProblem): string {
+  if (problem.leetcode && problem.leetcode.startsWith('http') && problem.leetcode !== '$undefined') {
+    return problem.leetcode;
+  }
+  const cleanSlug = getLeetCodeSlug(problem);
+  return `https://leetcode.com/problems/${cleanSlug}/`;
 }
 
 export const SDE_SHEET_191_DATA: DSAProblem[] = [

@@ -39,6 +39,7 @@ import {
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
 import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
+import { getGfgUrl, getLeetCodeUrl } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
@@ -222,6 +223,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
   
+  // Direct LeetCode & GeeksforGeeks links
+  const lcUrl = useMemo(() => {
+    if (codingProblem) return getLeetCodeUrl(codingProblem);
+    const cleanSlug = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `https://leetcode.com/problems/${cleanSlug}/`;
+  }, [codingProblem, cleanTitle]);
+
+  const gfgUrl = useMemo(() => {
+    if (codingProblem) return getGfgUrl(codingProblem);
+    const cleanSlug = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `https://www.geeksforgeeks.org/problems/${cleanSlug}/1`;
+  }, [codingProblem, cleanTitle]);
+
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
     return getLocalProblemNote(codingProblem?.slug || codingProblem?.name || cleanTitle);
@@ -780,6 +794,29 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               Ask AI
             </span>
           </button>
+
+          {/* External Links: LeetCode & GeeksforGeeks */}
+          <a
+            href={lcUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 font-mono font-bold text-xs transition-all shadow-sm cursor-pointer"
+            title="Open Problem on LeetCode"
+          >
+            <span>LC</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+
+          <a
+            href={gfgUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 font-mono font-bold text-xs transition-all shadow-sm cursor-pointer"
+            title="Open Problem on GeeksforGeeks"
+          >
+            <span>GFG</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
 
           {/* Small LLD Diagram Button on the Right (20 paise) */}
           <button
