@@ -21,6 +21,7 @@ export interface ProblemTemplate {
     input: string;
     output: string;
     explanation?: string;
+    image?: string;
   }[];
   constraints: string[];
   testCases: string[];
@@ -898,80 +899,128 @@ function getDynamicStarters(name: string, category: string): Record<SupportedLan
 /**
  * Cleans raw HTML problem statements from LeetCode into readable markdown with extracted examples and constraints.
  */
-export function parseLeetCodeProblemHtml(htmlStr: string): {
-  description: string;
-  examples: { input: string; output: string; explanation?: string }[];
-  constraints: string[];
-} {
-  if (!htmlStr) return { description: '', examples: [], constraints: [] };
-
-  // 1. Convert all <img> tags to Markdown images before stripping tags
-  const workingHtml = htmlStr.replace(/<img[^>]*>/gi, (tag) => {
-    const srcMatch = tag.match(/src=["']([^"']+)["']/i);
-    const altMatch = tag.match(/alt=["']([^"']*)["']/i);
-    if (!srcMatch) return '';
-    let src = srcMatch[1].trim();
-    const alt = altMatch ? altMatch[1].trim() : 'Diagram';
-    if (src.startsWith('/')) {
-      src = `https://assets.leetcode.com${src}`;
-    } else if (!src.startsWith('http')) {
-      src = `https://assets.leetcode.com/uploads/${src.replace(/^\//, '')}`;
-    }
-    return `\n\n![${alt}](${src})\n\n`;
-  });
-
-  const examples: { input: string; output: string; explanation?: string }[] = [];
-  const exBlocks = workingHtml.match(/<pre>([\s\S]*?)<\/pre>/gi) || [];
-
-  for (const eb of exBlocks) {
-    const text = eb.replace(/<[^>]+>/g, '').trim();
-    const inputMatch = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-    const outputMatch = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-    const explMatch = text.match(/Explanation:\s*([\s\S]*?)$/i);
-
-    const inp = inputMatch ? inputMatch[1].trim() : text;
-    const outp = outputMatch ? outputMatch[1].trim() : '';
-    const expl = explMatch ? explMatch[1].trim() : undefined;
-
-    if (inp && outp) {
-      examples.push({ input: inp, output: outp, explanation: expl });
-    }
-  }
-
-  const constraints: string[] = [];
-  const conMatch = workingHtml.match(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
-  if (conMatch) {
-    const lis = conMatch[1].match(/<li>([\s\S]*?)<\/li>/gi) || [];
-    for (const li of lis) {
-      const cleanLi = li
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&le;/g, '<=')
-        .replace(/&ge;/g, '>=')
-        .replace(/&quot;/g, '"')
-        .trim();
-      if (cleanLi) constraints.push(cleanLi);
-    }
-  }
-
-  // Clean description markdown while preserving Markdown images
-  let desc = workingHtml
-    .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-    .replace(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/gi, '')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
-    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '**$1**')
-    .replace(/<em>([\s\S]*?)<\/em>/gi, '*$1*')
-    .replace(/<[^>]+>/g, '')
+export function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/<sup>([\s\S]*?)<\/sup>/gi, '^$1')
+    .replace(/<sub>([\s\S]*?)<\/sub>/gi, '_$1')
+    .replace(/&ldquo;/g, '“')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rsquo;/g, '’')
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&le;/g, '<=')
     .replace(/&ge;/g, '>=')
     .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&hellip;/g, '...')
+    .replace(/&times;/g, '×')
+    .replace(/&minus;/g, '-');
+}
+
+/**
+ * Cleans raw HTML problem statements from LeetCode into readable markdown with extracted examples, diagrams, and constraints.
+ */
+export function parseLeetCodeProblemHtml(htmlStr: string): {
+  description: string;
+  examples: { input: string; output: string; explanation?: string; image?: string }[];
+  constraints: string[];
+} {
+  if (!htmlStr) return { description: '', examples: [], constraints: [] };
+
+  // 1. Constraints
+  const constraints: string[] = [];
+  const conMatch = htmlStr.match(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i) ||
+                    htmlStr.match(/<strong>Constraints:<\/strong>\s*<ul>([\s\S]*?)<\/ul>/i);
+  if (conMatch) {
+    const lis = conMatch[1].match(/<li>([\s\S]*?)<\/li>/gi) || [];
+    for (const li of lis) {
+      const cleanLi = decodeHtmlEntities(
+        li
+          .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
+          .replace(/<[^>]+>/g, '')
+          .trim()
+      );
+      if (cleanLi) constraints.push(cleanLi);
+    }
+  }
+
+  // 2. Extract per-example blocks with associated diagrams
+  const examples: { input: string; output: string; explanation?: string; image?: string }[] = [];
+  const exRegex = /(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong>)([\s\S]*?)(?=(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<p><strong[^>]*>Constraints:|<p>&nbsp;<\/p>\s*<p><strong>Constraints:|$))/gi;
+
+  let match;
+  while ((match = exRegex.exec(htmlStr)) !== null) {
+    const body = match[3] || '';
+    const imgMatch = body.match(/<img[^>]+src=["']([^"']+)["']/i);
+    let imgUrl: string | undefined = undefined;
+    if (imgMatch) {
+      const src = imgMatch[1].trim();
+      if (src.startsWith('/')) {
+        imgUrl = `https://assets.leetcode.com${src}`;
+      } else if (!src.startsWith('http')) {
+        imgUrl = `https://assets.leetcode.com/uploads/${src.replace(/^\//, '')}`;
+      } else {
+        imgUrl = src;
+      }
+    }
+
+    const preMatch = body.match(/<pre>([\s\S]*?)<\/pre>/i);
+    const preText = preMatch ? preMatch[1] : body;
+    const preClean = decodeHtmlEntities(preText.replace(/<[^>]+>/g, '').trim());
+
+    const inMatch = preClean.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+    const outMatch = preClean.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+    const expMatch = preClean.match(/Explanation:\s*([\s\S]*?)$/i);
+
+    const inp = inMatch ? inMatch[1].trim() : preClean;
+    const outp = outMatch ? outMatch[1].trim() : '';
+    const exp = expMatch ? expMatch[1].trim() : undefined;
+
+    examples.push({
+      input: inp,
+      output: outp,
+      explanation: exp,
+      image: imgUrl
+    });
+  }
+
+  if (examples.length === 0) {
+    const exBlocks = htmlStr.match(/<pre>([\s\S]*?)<\/pre>/gi) || [];
+    for (const eb of exBlocks) {
+      const text = decodeHtmlEntities(eb.replace(/<[^>]+>/g, '').trim());
+      const inputMatch = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+      const outputMatch = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+      const explMatch = text.match(/Explanation:\s*([\s\S]*?)$/i);
+
+      const inp = inputMatch ? inputMatch[1].trim() : text;
+      const outp = outputMatch ? outputMatch[1].trim() : '';
+      const expl = explMatch ? explMatch[1].trim() : undefined;
+
+      if (inp && outp) {
+        examples.push({ input: inp, output: outp, explanation: expl });
+      }
+    }
+  }
+
+  // 3. Clean Description (Intro portion before Example 1)
+  const parts = htmlStr.split(/<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong>|<pre>/i);
+  const descRaw = parts.length > 1 ? parts[0] : htmlStr;
+
+  let desc = descRaw
+    .replace(/<p><strong[^>]*>Constraints:<\/strong><\/p>[\s\S]*$/gi, '')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '**$1**')
+    .replace(/<em>([\s\S]*?)<\/em>/gi, '*$1*')
+    .replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
+    .replace(/<[^>]+>/g, '');
+
+  desc = decodeHtmlEntities(desc)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 

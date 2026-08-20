@@ -1153,8 +1153,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Example Test Cases</h3>
                   
                   {problemTemplate.examples.map((ex, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                    <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-[11px]">
                       <div className="text-indigo-400 font-bold">Example {idx + 1}:</div>
+                      
+                      {/* LeetCode Example Illustration / Tree / Graph Diagram */}
+                      {(ex.image || (ex as any).img) && (
+                        <div className="my-2 p-2 rounded-xl bg-slate-900/90 border border-slate-800 inline-block max-w-full">
+                          <img 
+                            src={ex.image || (ex as any).img} 
+                            alt={`Example ${idx + 1} Diagram`} 
+                            className="max-h-60 rounded-lg object-contain bg-slate-950 p-1 border border-slate-800/80 mx-auto"
+                            loading="lazy"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (target.src.includes('/api/image/')) {
+                                const rel = target.src.split('/api/image/')[1];
+                                target.src = `https://assets.leetcode.com/uploads/${rel}`;
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+
                       <div className="text-slate-300"><strong>Input:</strong> {ex.input}</div>
                       <div className="text-slate-300"><strong>Output:</strong> {ex.output}</div>
                       {ex.explanation && (

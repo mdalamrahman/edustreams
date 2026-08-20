@@ -605,61 +605,118 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
     return job
 
 
+def clean_html_entities(text: str) -> str:
+    if not text:
+        return ""
+    text = re.sub(r'<sup>([\s\S]*?)</sup>', r'^\1', text, flags=re.IGNORECASE)
+    text = re.sub(r'<sub>([\s\S]*?)</sub>', r'_\1', text, flags=re.IGNORECASE)
+    text = html.unescape(text)
+    replacements = {
+        '&ldquo;': '"',
+        '&rdquo;': '"',
+        '&lsquo;': "'",
+        '&rsquo;': "'",
+        '&nbsp;': ' ',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&le;': '<=',
+        '&ge;': '>=',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&amp;': '&',
+        '&hellip;': '...',
+        '&times;': '×',
+        '&minus;': '-',
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text
+
+
 def parse_leetcode_html(html_str: str) -> dict:
     if not html_str:
         return {"description": "", "examples": [], "constraints": []}
 
-    # 1. Convert all <img> tags to Markdown images before stripping tags
-    def convert_img(match):
-        m_src = re.search(r'src=["\']([^"\']+)["\']', match.group(0), re.IGNORECASE)
-        m_alt = re.search(r'alt=["\']([^"\']*)["\']', match.group(0), re.IGNORECASE)
-        if not m_src:
-            return ""
-        src = m_src.group(1).strip()
-        alt = m_alt.group(1).strip() if m_alt else "Diagram"
-        if src.startswith("/"):
-            src = f"https://assets.leetcode.com{src}"
-        elif not src.startswith("http"):
-            src = f"https://assets.leetcode.com/uploads/{src.lstrip('/')}"
-        return f"\n\n![{alt}]({src})\n\n"
-
-    working_html = re.sub(r'<img[^>]*>', convert_img, html_str, flags=re.IGNORECASE)
-
-    # 2. Extract Examples
-    examples = []
-    ex_blocks = re.findall(r'<pre>([\s\S]*?)</pre>', working_html, re.IGNORECASE)
-    for eb in ex_blocks:
-        text = re.sub(r'<[^>]+>', '', eb).strip()
-        in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', text, re.IGNORECASE)
-        out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', text, re.IGNORECASE)
-        exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', text, re.IGNORECASE)
-        inp = in_m.group(1).strip() if in_m else text
-        outp = out_m.group(1).strip() if out_m else ""
-        exp = exp_m.group(1).strip() if exp_m else None
-        if inp and outp:
-            examples.append({"input": inp, "output": outp, "explanation": exp})
-
-    # 3. Extract Constraints
+    # 1. Parse Constraints
     constraints = []
-    con_m = re.search(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>([\s\S]*?)</ul>', working_html, re.IGNORECASE)
+    con_m = re.search(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>([\s\S]*?)</ul>', html_str, re.IGNORECASE)
+    if not con_m:
+        con_m = re.search(r'<strong>Constraints:</strong>\s*<ul>([\s\S]*?)</ul>', html_str, re.IGNORECASE)
     if con_m:
         lis = re.findall(r'<li>([\s\S]*?)</li>', con_m.group(1), re.IGNORECASE)
         for li in lis:
-            c = re.sub(r'<[^>]+>', '', li)
-            c = c.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&le;', '<=').replace('&ge;', '>=').replace('&quot;', '"').strip()
+            c = re.sub(r'<code>([\s\S]*?)</code>', r'`\1`', li, flags=re.IGNORECASE)
+            c = re.sub(r'<[^>]+>', '', c)
+            c = clean_html_entities(c).strip()
             if c:
                 constraints.append(c)
 
-    # 4. Clean description while preserving Markdown images
-    desc = re.sub(r'<pre>[\s\S]*?</pre>', '', working_html, flags=re.IGNORECASE)
-    desc = re.sub(r'<p><strong[^>]*>Constraints:</strong></p>\s*<ul>[\s\S]*?</ul>', '', desc, flags=re.IGNORECASE)
+    # 2. Extract per-example blocks with associated diagrams
+    examples = []
+    ex_pattern = re.compile(r'(?:<p><strong[^>]*class=["\']?example["\']?[^>]*>Example\s*(\d+):?</strong></p>|<strong[^>]*class=["\']?example["\']?[^>]*>Example\s*(\d+):?</strong>)([\s\S]*?)(?=(?:<p><strong[^>]*class=["\']?example["\']?[^>]*>Example\s*\d+:?</strong>|<strong[^>]*class=["\']?example["\']?[^>]*>Example\s*\d+:?</strong>|<p><strong[^>]*>Constraints:|<p>&nbsp;</p>\s*<p><strong>Constraints:|$))', re.IGNORECASE)
+    
+    matches = list(ex_pattern.finditer(html_str))
+    for m in matches:
+        body = m.group(3)
+        img_m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', body, re.IGNORECASE)
+        img_url = None
+        if img_m:
+            src = img_m.group(1).strip()
+            if src.startswith('/'):
+                img_url = f"https://assets.leetcode.com{src}"
+            elif not src.startswith('http'):
+                img_url = f"https://assets.leetcode.com/uploads/{src.lstrip('/')}"
+            else:
+                img_url = src
+
+        pre_m = re.search(r'<pre>([\s\S]*?)</pre>', body, re.IGNORECASE)
+        pre_text = pre_m.group(1) if pre_m else body
+        pre_clean = re.sub(r'<[^>]+>', '', pre_text).strip()
+        pre_clean = clean_html_entities(pre_clean)
+
+        in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', pre_clean, re.IGNORECASE)
+        out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', pre_clean, re.IGNORECASE)
+        exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', pre_clean, re.IGNORECASE)
+
+        inp = in_m.group(1).strip() if in_m else pre_clean
+        outp = out_m.group(1).strip() if out_m else ""
+        exp = exp_m.group(1).strip() if exp_m else None
+
+        examples.append({
+            "input": inp,
+            "output": outp,
+            "explanation": exp,
+            "image": img_url
+        })
+
+    if not examples:
+        ex_blocks = re.findall(r'<pre>([\s\S]*?)</pre>', html_str, re.IGNORECASE)
+        for eb in ex_blocks:
+            text = re.sub(r'<[^>]+>', '', eb).strip()
+            text = clean_html_entities(text)
+            in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', text, re.IGNORECASE)
+            out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', text, re.IGNORECASE)
+            exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', text, re.IGNORECASE)
+            inp = in_m.group(1).strip() if in_m else text
+            outp = out_m.group(1).strip() if out_m else ""
+            exp = exp_m.group(1).strip() if exp_m else None
+            if inp and outp:
+                examples.append({"input": inp, "output": outp, "explanation": exp})
+
+    # 3. Clean Description (Intro before Example 1)
+    parts = re.split(r'<p><strong[^>]*class=["\']?example["\']?[^>]*>Example\s*1:?</strong></p>|<strong[^>]*class=["\']?example["\']?[^>]*>Example\s*1:?</strong>|<pre>', html_str, maxsplit=1, flags=re.IGNORECASE)
+    desc_raw = parts[0] if len(parts) > 1 else html_str
+
+    desc = desc_raw
+    desc = re.sub(r'<p><strong[^>]*>Constraints:</strong></p>[\s\S]*$', '', desc, flags=re.IGNORECASE)
     desc = re.sub(r'</p>', '\n\n', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<br\s*/?>', '\n', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<code>([\s\S]*?)</code>', r'`\1`', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<strong>([\s\S]*?)</strong>', r'**\1**', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<em>([\s\S]*?)</em>', r'*\1*', desc, flags=re.IGNORECASE)
+    desc = re.sub(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)</a>', r'[\2](\1)', desc, flags=re.IGNORECASE)
     desc = re.sub(r'<[^>]+>', '', desc)
-    desc = desc.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&le;', '<=').replace('&ge;', '>=').replace('&quot;', '"')
+    desc = clean_html_entities(desc)
     desc = re.sub(r'\n{3,}', '\n\n', desc).strip()
 
     return {"description": desc, "examples": examples, "constraints": constraints}

@@ -6,6 +6,28 @@ interface FormattedChatTextProps {
   text: string;
 }
 
+function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/<sup>([\s\S]*?)<\/sup>/gi, '^$1')
+    .replace(/<sub>([\s\S]*?)<\/sub>/gi, '_$1')
+    .replace(/&ldquo;/g, '“')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rsquo;/g, '’')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&le;/g, '<=')
+    .replace(/&ge;/g, '>=')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&hellip;/g, '...')
+    .replace(/&times;/g, '×')
+    .replace(/&minus;/g, '-');
+}
+
 /**
  * Renders AI chat messages, problem descriptions, diagrams, and schema definitions cleanly.
  * Formats Markdown images, tables, headers, bold text, bullet points, inline code, and code blocks
@@ -15,8 +37,10 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   if (!text) return null;
 
+  const cleanedText = decodeHtmlEntities(text);
+
   // Pre-process and group lines into blocks (tables, code blocks, paragraphs)
-  const rawLines = text.split('\n');
+  const rawLines = cleanedText.split('\n');
   const blocks: Array<
     | { type: 'table'; headers: string[]; rows: string[][] }
     | { type: 'code'; code: string; lang?: string }
