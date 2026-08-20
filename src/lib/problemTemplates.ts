@@ -1,5 +1,6 @@
 import { SupportedLanguage } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
+import { MISTRAL_API_KEY } from './mistral';
 
 export interface ProblemApproach {
   id: string;
@@ -7,7 +8,7 @@ export interface ProblemApproach {
   timeComplexity: string;
   spaceComplexity: string;
   description: string;
-  starters: Record<SupportedLanguage, string>;
+  starters?: Record<SupportedLanguage, string>;
   solutionCode?: Record<SupportedLanguage, string>;
 }
 
@@ -24,6 +25,7 @@ export interface ProblemTemplate {
   constraints: string[];
   testCases: string[];
   expectedOutputs?: string[];
+  hints?: string[];
   approaches?: ProblemApproach[];
   starters: Record<SupportedLanguage, string>;
   solutions?: Record<SupportedLanguage, string>;
@@ -894,8 +896,232 @@ function getDynamicStarters(name: string, category: string): Record<SupportedLan
 }
 
 /**
+ * Cleans raw HTML problem statements from LeetCode into readable markdown with extracted examples and constraints.
+ */
+export function parseLeetCodeProblemHtml(htmlStr: string): {
+  description: string;
+  examples: { input: string; output: string; explanation?: string }[];
+  constraints: string[];
+} {
+  if (!htmlStr) return { description: '', examples: [], constraints: [] };
+
+  const examples: { input: string; output: string; explanation?: string }[] = [];
+  const exBlocks = htmlStr.match(/<pre>([\s\S]*?)<\/pre>/gi) || [];
+
+  for (const eb of exBlocks) {
+    const text = eb.replace(/<[^>]+>/g, '').trim();
+    const inputMatch = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+    const outputMatch = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+    const explMatch = text.match(/Explanation:\s*([\s\S]*?)$/i);
+
+    const inp = inputMatch ? inputMatch[1].trim() : text;
+    const outp = outputMatch ? outputMatch[1].trim() : '';
+    const expl = explMatch ? explMatch[1].trim() : undefined;
+
+    if (inp && outp) {
+      examples.push({ input: inp, output: outp, explanation: expl });
+    }
+  }
+
+  const constraints: string[] = [];
+  const conMatch = htmlStr.match(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i);
+  if (conMatch) {
+    const lis = conMatch[1].match(/<li>([\s\S]*?)<\/li>/gi) || [];
+    for (const li of lis) {
+      const cleanLi = li
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&le;/g, '<=')
+        .replace(/&ge;/g, '>=')
+        .replace(/&quot;/g, '"')
+        .trim();
+      if (cleanLi) constraints.push(cleanLi);
+    }
+  }
+
+  // Clean description markdown
+  let desc = htmlStr
+    .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+    .replace(/<p><strong[^>]*>Constraints:<\/strong><\/p>\s*<ul>[\s\S]*?<\/ul>/gi, '')
+    .replace(/<p><strong[^>]*>Example \d+:[\s\S]*?<\/strong><\/p>/gi, '')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '**$1**')
+    .replace(/<em>([\s\S]*?)<\/em>/gi, '*$1*')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&le;/g, '<=')
+    .replace(/&ge;/g, '>=')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return { description: desc, examples, constraints };
+}
+
+/**
+ * Fetches real problem statement, example test cases, constraints, and hints from LeetCode public API.
+ */
+export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplate | null> {
+  try {
+    const url = `https://alfa-leetcode-api.onrender.com/select?titleSlug=${encodeURIComponent(slug)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(6500) });
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    if (!data || !data.questionTitle) return null;
+
+    const parsed = parseLeetCodeProblemHtml(data.question || '');
+    const title = data.questionTitle;
+    const diff = (data.difficulty === 'Hard' ? 'Hard' : data.difficulty === 'Easy' ? 'Easy' : 'Medium') as 'Easy' | 'Medium' | 'Hard';
+    const hints = Array.isArray(data.hints) ? data.hints.map((h: string) => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean) : [];
+
+    // Parse example test cases
+    let testCases: string[] = [];
+    if (data.exampleTestcases && typeof data.exampleTestcases === 'string') {
+      const lines = data.exampleTestcases.split('\n').map((l: string) => l.trim()).filter(Boolean);
+      testCases = lines.length > 0 ? lines : [];
+    }
+    if (testCases.length === 0 && parsed.examples.length > 0) {
+      testCases = parsed.examples.map(e => e.input);
+    }
+
+    const dynamicFallback = generateDynamicTemplate(title, data.topicTags?.[0]?.name || 'Algorithms', diff);
+
+    return {
+      name: title,
+      category: data.topicTags?.[0]?.name || 'Algorithms',
+      difficulty: diff,
+      description: parsed.description || `${title} problem challenge.`,
+      examples: parsed.examples.length > 0 ? parsed.examples : dynamicFallback.examples,
+      constraints: parsed.constraints.length > 0 ? parsed.constraints : dynamicFallback.constraints,
+      testCases: testCases.length > 0 ? testCases : dynamicFallback.testCases,
+      expectedOutputs: parsed.examples.map(e => e.output),
+      hints: hints.length > 0 ? hints : [
+        `Analyze the problem constraints and identify the optimal time complexity boundary.`,
+        `Consider whether sorting, two-pointers, hash maps, or dynamic programming state transitions apply.`
+      ],
+      approaches: [
+        {
+          id: 'optimal',
+          name: `Optimal Approach for ${title}`,
+          timeComplexity: diff === 'Hard' ? 'O(N log N) / O(N)' : 'O(N)',
+          spaceComplexity: 'O(1) to O(N)',
+          description: `Identify invariant state boundaries and minimize auxiliary memory allocation for ${title}.`,
+          starters: dynamicFallback.starters,
+          solutionCode: dynamicFallback.solutions
+        }
+      ],
+      starters: dynamicFallback.starters,
+      solutions: dynamicFallback.solutions,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Uses Mistral AI to generate authentic, problem-specific problem statement, examples, testcases, hints, and code.
+ */
+export async function generateProblemWithMistral(
+  title: string,
+  category: string = 'Algorithms',
+  difficulty: 'Easy' | 'Medium' | 'Hard' = 'Medium'
+): Promise<ProblemTemplate | null> {
+  try {
+    const prompt = `You are a Senior Algorithms and Data Structures Lead.
+Generate a complete, high-quality, authentic coding problem specification in JSON for the challenge: "${title}" (Category: ${category}, Difficulty: ${difficulty}).
+
+Requirements:
+- Problem name: "${title}"
+- Detailed, crystal-clear description with objective and input/output behavior.
+- 2 to 3 realistic examples with input, output, and explanation.
+- Realistic constraints (e.g. 1 <= N <= 10^5).
+- 3 to 5 test case inputs matching the input format.
+- Corresponding expectedOutputs for the test cases.
+- 2 to 3 progressive hints (intuition, edge cases, optimization).
+- Approaches array with timeComplexity, spaceComplexity, and approach explanation.
+- starters in cpp, python, java, javascript, go, rust (clean class/function signature with comments).
+- solutions in cpp, python, java, javascript, go, rust.
+
+Output ONLY valid JSON matching this schema:
+{
+  "name": "${title}",
+  "category": "${category}",
+  "difficulty": "${difficulty}",
+  "description": "...",
+  "examples": [{"input": "...", "output": "...", "explanation": "..."}],
+  "constraints": ["..."],
+  "testCases": ["..."],
+  "expectedOutputs": ["..."],
+  "hints": ["...", "..."],
+  "approaches": [
+    {
+      "id": "optimal",
+      "name": "Optimal Approach",
+      "timeComplexity": "O(N)",
+      "spaceComplexity": "O(1)",
+      "description": "..."
+    }
+  ],
+  "starters": {
+    "cpp": "...",
+    "python": "...",
+    "java": "...",
+    "javascript": "...",
+    "go": "...",
+    "rust": "..."
+  },
+  "solutions": {
+    "cpp": "...",
+    "python": "...",
+    "java": "...",
+    "javascript": "...",
+    "go": "...",
+    "rust": "..."
+  }
+}`;
+
+    const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.2
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content);
+    if (parsed && parsed.name && parsed.description && parsed.testCases) {
+      return parsed as ProblemTemplate;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Mistral Problem Gen Notice]:', err);
+    return null;
+  }
+}
+
+/**
  * Fetches enriched LeetCode problem description, examples, constraints,
- * test cases, and official multi-language starter code from Cloudflare R2.
+ * test cases, hints, and official multi-language starter code from LeetCode API,
+ * GitHub repositories, or Mistral AI.
  */
 export async function fetchEnrichedProblem(
   slugOrTitle: string,
@@ -911,14 +1137,20 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_lc_problem_v5_${cleanSlug}`;
+  const cacheKey = `edustream_problem_enriched_v8_${cleanSlug}`;
 
-  // 1. Instant 0ms browser cache check (only if valid official starters present)
+  // 1. Instant 0ms browser cache check (only if valid, problem-specific non-dummy template)
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed?.description && parsed?.starters?.cpp && !parsed.starters.cpp.includes('setMatrixZeroes(vector<int>&')) {
+      if (
+        parsed?.description &&
+        parsed?.testCases &&
+        parsed.testCases.length > 0 &&
+        !parsed.description.includes('Given the input constraints for') &&
+        !(parsed.testCases.length === 1 && parsed.testCases[0] === 'nums = [1, 2, 3, 4, 5]')
+      ) {
         return parsed;
       }
     }
@@ -926,53 +1158,36 @@ export async function fetchEnrichedProblem(
 
   // 2. Check handcrafted templates first if available
   const norm = normalizeProblemTitle(slugOrTitle);
-  const staticTemplate = SPECIFIC_TEMPLATES[norm];
-
-  // 3. Fetch from Backend / Cloudflare R2
-  try {
-    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${cleanSlug}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data && data.title && (data.description || data.description_full)) {
-        const fullDesc = data.description_full || data.description;
-        const dynamicFallback = generateDynamicTemplate(data.title || slugOrTitle, category, data.difficulty || difficulty);
-
-        const template: ProblemTemplate = {
-          name: data.title || slugOrTitle,
-          category: data.topicTags?.[0] || category,
-          difficulty: data.difficulty || difficulty,
-          description: fullDesc,
-          examples: data.examples && data.examples.length > 0 ? data.examples : (staticTemplate?.examples || dynamicFallback.examples),
-          constraints: data.constraints && data.constraints.length > 0 ? data.constraints : (staticTemplate?.constraints || dynamicFallback.constraints),
-          testCases: data.testCases && data.testCases.length > 0 ? data.testCases : (staticTemplate?.testCases || dynamicFallback.testCases),
-          expectedOutputs: staticTemplate?.expectedOutputs || dynamicFallback.expectedOutputs,
-          approaches: staticTemplate?.approaches || [],
-          starters: {
-            cpp: data.starters?.cpp || staticTemplate?.starters?.cpp || dynamicFallback.starters.cpp,
-            python: data.starters?.python || staticTemplate?.starters?.python || dynamicFallback.starters.python,
-            java: data.starters?.java || staticTemplate?.starters?.java || dynamicFallback.starters.java,
-            javascript: data.starters?.javascript || staticTemplate?.starters?.javascript || dynamicFallback.starters.javascript,
-            go: data.starters?.go || staticTemplate?.starters?.go || dynamicFallback.starters.go,
-            rust: data.starters?.rust || staticTemplate?.starters?.rust || dynamicFallback.starters.rust,
-            sql: staticTemplate?.starters?.sql || dynamicFallback.starters.sql,
-          },
-          solutions: data.solutions || staticTemplate?.solutions || dynamicFallback.solutions,
-        };
-
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(template));
-        } catch {}
-
-        return template;
-      }
-    }
-  } catch (err) {
-    console.warn(`[EduStream] Cloudflare R2 problem fetch notice for ${cleanSlug}:`, err);
+  if (SPECIFIC_TEMPLATES[norm]) {
+    const staticTemplate = getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(staticTemplate));
+    } catch {}
+    return staticTemplate;
   }
 
-  // 4. Fallback to existing local generator
-  return getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+  // 3. Try LeetCode API (alfa-leetcode-api) if slug looks like a LeetCode problem
+  if (cleanSlug && cleanSlug.length > 1) {
+    const lcData = await fetchFromLeetCodeApi(cleanSlug);
+    if (lcData) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(lcData));
+      } catch {}
+      return lcData;
+    }
+  }
+
+  // 4. Try Mistral AI Generator (generates rich problem statement, test cases, hints, approaches)
+  const mistralData = await generateProblemWithMistral(slugOrTitle, category, difficulty);
+  if (mistralData) {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(mistralData));
+    } catch {}
+    return mistralData;
+  }
+
+  // 5. Fallback to existing local generator
+  const fallback = getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+  return fallback;
 }
 

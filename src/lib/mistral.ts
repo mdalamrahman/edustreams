@@ -1,6 +1,6 @@
 import { AIDiagnosticReport, QuizQuestion } from './types';
 
-const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
+export const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
 
 export interface CodeTAReview {
   time_complexity: string;

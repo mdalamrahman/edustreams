@@ -465,7 +465,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     setLanguage(newLang);
     if (problemTemplate.approaches && problemTemplate.approaches.length > 0) {
       const curApp = problemTemplate.approaches.find(a => a.id === selectedApproachId) || problemTemplate.approaches[0];
-      setCode(curApp.starters[newLang] || problemTemplate.starters[newLang]);
+      setCode((curApp?.starters && curApp.starters[newLang]) || problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
     } else {
       setCode(problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
     }
@@ -473,8 +473,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const handleSelectApproach = (approach: ProblemApproach) => {
     setSelectedApproachId(approach.id);
-    if (approach.starters[language]) {
+    if (approach?.starters && approach.starters[language]) {
       setCode(approach.starters[language]);
+    } else if (problemTemplate.starters[language]) {
+      setCode(problemTemplate.starters[language]);
     }
   };
 
@@ -1100,7 +1102,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: HINTS */}
+            {/* TAB 2: HINTS (DYNAMIC FROM LEETCODE API / MISTRAL) */}
             {leftTab === 'hints' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -1114,31 +1116,30 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </button>
                 </div>
                 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4" /> Hint 1: State & Invariant Analysis
+                {(problemTemplate.hints && problemTemplate.hints.length > 0) ? (
+                  problemTemplate.hints.map((hint, hIdx) => (
+                    <div key={hIdx} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                      <div className="font-bold text-amber-400 flex items-center gap-1.5 text-xs">
+                        <Lightbulb className="w-4 h-4 text-amber-400" /> Hint {hIdx + 1}
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed font-sans select-text">
+                        {hint}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-center text-slate-400 text-xs">
+                    No official hints provided for this problem. Try breaking down the problem into smaller subproblems or analyzing base conditions.
                   </div>
-                  <p className="text-xs text-slate-300">
-                    Think about what state needs to be preserved. Can you use in-place markers or hash tables to eliminate unnecessary iterations?
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="font-bold text-amber-400 flex items-center gap-1.5">
-                    <Lightbulb className="w-4 h-4" /> Hint 2: Two-Pointer & Reverse Pass
-                  </div>
-                  <p className="text-xs text-slate-300">
-                    To avoid overwriting active markers, perform updates in reverse direction or keep boundary flags.
-                  </p>
-                </div>
+                )}
               </div>
             )}
 
-            {/* TAB 3: EDITORIAL */}
+            {/* TAB 3: EDITORIAL & MULTI-APPROACH (DYNAMIC) */}
             {leftTab === 'editorial' && (
               <div className="space-y-4 font-sans">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Algorithmic Editorial</h3>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Algorithmic Editorial & Approaches</h3>
                   <button
                     onClick={handleCopyEditorial}
                     className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 font-bold cursor-pointer"
@@ -1148,25 +1149,51 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </button>
                 </div>
                 
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                  <div className="font-bold text-indigo-300 text-sm">Optimal Approach Walkthrough</div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    1. Traverse the input data and identify invariant state boundaries.<br />
-                    2. Use constant variables or first elements to record flags in-place.<br />
-                    3. Perform the secondary pass in reverse or directional order to prevent overwriting active markers.
-                  </p>
-                </div>
+                {(problemTemplate.approaches && problemTemplate.approaches.length > 0) ? (
+                  problemTemplate.approaches.map((app, aIdx) => (
+                    <div key={app.id || aIdx} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-indigo-300 text-sm">{app.name}</div>
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono">
+                          Approach {aIdx + 1}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed select-text">
+                        {app.description}
+                      </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Time Complexity</div>
-                    <div className="text-sm font-black text-emerald-400 font-mono mt-1">O(N) / O(M*N)</div>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase">Time Complexity</div>
+                          <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{app.timeComplexity || 'O(N)'}</div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase">Space Complexity</div>
+                          <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{app.spaceComplexity || 'O(1)'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+                    <div className="font-bold text-indigo-300 text-sm">Optimal Approach Walkthrough</div>
+                    <p className="text-xs text-slate-300 leading-relaxed select-text">
+                      1. Traverse the input structure and identify invariant state boundaries.<br />
+                      2. Use hash structures or pointer sliding to record conditions in-place.<br />
+                      3. Apply the optimal algorithmic transition to achieve minimal time complexity.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Time Complexity</div>
+                        <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{problemTemplate.difficulty === 'Hard' ? 'O(N log N)' : 'O(N)'}</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase">Space Complexity</div>
+                        <div className="text-xs font-black text-emerald-400 font-mono mt-0.5">{problemTemplate.difficulty === 'Easy' ? 'O(1)' : 'O(N)'}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Space Complexity</div>
-                    <div className="text-sm font-black text-emerald-400 font-mono mt-1">O(1) Auxiliary</div>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
