@@ -38,9 +38,7 @@ import {
   DSA_SHEETS_CONFIG, 
   getSheetData, 
   SDE_SHEET_191_DATA,
-  SDEProblem,
-  getGfgUrl,
-  getLeetCodeUrl
+  SDEProblem
 } from '../lib/dsaSheetsData';
 import { ProblemNotesModal } from './ProblemNotesModal';
 import { getLocalProblemNote } from '../lib/notesService';
@@ -1273,29 +1271,33 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                               <span>Code Arena</span>
                                             </button>
 
-                                            {/* LeetCode External Link */}
-                                            <a
-                                              href={getLeetCodeUrl(p)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-[10px] flex items-center gap-1 cursor-pointer"
-                                              title="Open on LeetCode"
-                                            >
-                                              <span>LC</span>
-                                              <ExternalLink className="w-2.5 h-2.5" />
-                                            </a>
+                                            {/* LeetCode External Link (Only if available) */}
+                                            {p.leetcode && p.leetcode.trim() !== '' && (
+                                              <a
+                                                href={p.leetcode}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                                                title="Open on LeetCode"
+                                              >
+                                                <span>LC</span>
+                                                <ExternalLink className="w-2.5 h-2.5" />
+                                              </a>
+                                            )}
 
-                                            {/* GFG External Link */}
-                                            <a
-                                              href={getGfgUrl(p)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono font-bold text-[10px] flex items-center gap-1 cursor-pointer"
-                                              title="Open on GeeksforGeeks"
-                                            >
-                                              <span>GFG</span>
-                                              <ExternalLink className="w-2.5 h-2.5" />
-                                            </a>
+                                            {/* GFG External Link (Only if available) */}
+                                            {p.gfg && p.gfg.trim() !== '' && (
+                                              <a
+                                                href={p.gfg}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+                                                title="Open on GeeksforGeeks"
+                                              >
+                                                <span>GFG</span>
+                                                <ExternalLink className="w-2.5 h-2.5" />
+                                              </a>
+                                            )}
 
                                           </div>
                                         </td>
@@ -1518,29 +1520,33 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               </button>
                             )}
 
-                            {/* LeetCode External Link */}
-                            <a
-                              href={getLeetCodeUrl(p)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-xs flex items-center gap-1 cursor-pointer"
-                              title="Open on LeetCode"
-                            >
-                              <span>LC</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            {/* LeetCode External Link (Only if available) */}
+                            {p.leetcode && p.leetcode.trim() !== '' && (
+                              <a
+                                href={p.leetcode}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-xs flex items-center gap-1 cursor-pointer"
+                                title="Open on LeetCode"
+                              >
+                                <span>LC</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
 
-                            {/* GFG External Link */}
-                            <a
-                              href={getGfgUrl(p)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono font-bold text-xs flex items-center gap-1 cursor-pointer"
-                              title="Open on GeeksforGeeks"
-                            >
-                              <span>GFG</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                            {/* GFG External Link (Only if available) */}
+                            {p.gfg && p.gfg.trim() !== '' && (
+                              <a
+                                href={p.gfg}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono font-bold text-xs flex items-center gap-1 cursor-pointer"
+                                title="Open on GeeksforGeeks"
+                              >
+                                <span>GFG</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
 
                           </div>
                         </td>
