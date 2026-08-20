@@ -465,7 +465,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -475,6 +475,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_cors_headers_middleware(request: Request, call_next):
+    origin = request.headers.get("origin") or "*"
     if request.method == "OPTIONS":
         response = Response(status_code=204)
     else:
@@ -484,10 +485,12 @@ async def add_cors_headers_middleware(request: Request, call_next):
             print(f"[Unhandled Exception] {exc}")
             response = JSONResponse(status_code=500, content={"detail": str(exc)})
 
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Expose-Headers"] = "Content-Range, Content-Length, Accept-Ranges, Content-Type"
+    return response
     return response
 
 
