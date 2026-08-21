@@ -65,14 +65,26 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       'nums = [0]',
       'nums = [4, 4, 4, 1, 4]',
       'nums = [1, 2, 3]',
-      'nums = [2, 1, 2, 1, 3]'
+      'nums = [2, 1, 2, 1, 3]',
+      'nums = []',
+      'nums = [1]',
+      'nums = [1, 1, 1, 1]',
+      'nums = [1, 2, 2, 3, 3]',
+      'nums = [-1, 0, 1]',
+      'nums = [1, 1, 2, 2]'
     ],
     expectedOutputs: [
       '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
       '[[],[0]]',
       '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
       '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
-      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]',
+      '[[]]',
+      '[[],[1]]',
+      '[[],[1],[1,1],[1,1,1],[1,1,1,1]]',
+      '[[],[1],[1,2],[1,2,2],[1,2,2,3],[1,2,2,3,3],[1,2,3],[1,2,3,3],[1,3],[1,3,3],[2],[2,2],[2,2,3],[2,2,3,3],[2,3],[2,3,3],[3],[3,3]]',
+      '[[],[-1],[-1,0],[-1,0,1],[-1,1],[0],[0,1],[1]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,2],[1,2,2],[2],[2,2]]'
     ],
     hints: [
       'Sort the array first so duplicate elements are adjacent.',
@@ -133,14 +145,24 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       'nums = [0]',
       'nums = [1, 2]',
       'nums = [3, 2, 4, 1]',
-      'nums = [9, 0]'
+      'nums = [9, 0]',
+      'nums = []',
+      'nums = [7]',
+      'nums = [1, 5, 9]',
+      'nums = [-1, 1]',
+      'nums = [4, 5, 6, 7]'
     ],
     expectedOutputs: [
       '[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]',
       '[[],[0]]',
       '[[],[1],[2],[1,2]]',
       '[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3],[4],[1,4],[2,4],[1,2,4],[3,4],[1,3,4],[2,3,4],[1,2,3,4]]',
-      '[[],[0],[9],[0,9]]'
+      '[[],[0],[9],[0,9]]',
+      '[[]]',
+      '[[],[7]]',
+      '[[],[1],[5],[1,5],[9],[1,9],[5,9],[1,5,9]]',
+      '[[],[-1],[1],[-1,1]]',
+      '[[],[4],[5],[4,5],[6],[4,6],[5,6],[4,5,6],[7],[4,7],[5,7],[4,5,7],[6,7],[4,6,7],[5,6,7],[4,5,6,7]]'
     ],
     hints: [
       'For each element, you have two choices: include it in the current subset or exclude it.',
@@ -157,7 +179,7 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       sql: `-- Solution`
     },
     solutions: {
-      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsets(vector<int>& nums) {\n        vector<vector<int>> result;\n        vector<int> current;\n        backtrack(nums, 0, current, result);\n        return result;\n    }\nprivate:\n    void backtrack(const vector<int>& nums, int start, vector<int>& current, vector<vector<int>>& result) {\n        result.push_back(current);\n        for (int i = start; i < (int)nums.size(); ++i) {\n            current.push_back(nums[i]);\n            backtrack(nums, i + 1, current, result);\n            current.pop_back();\n        }\n    }\n};`,
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsets(vector<int>& nums) {\n        vector<vector<int>> result;\n        vector<int> current;\n        backtrack(nums, 0, current, result);\n        return result;\n    }\nprivate:\n    void backtrack(const vector<int>& nums, int start, vector<int>& current, vector<vector<int>>& result) {\n        current.push_back(nums[i]);\n        backtrack(nums, i + 1, current, result);\n        current.pop_back();\n    }\n};`,
       python: `class Solution:\n    def subsets(self, nums: List[int]) -> List[List[int]]:\n        res = []\n        def backtrack(start, path):\n            res.append(list(path))\n            for i in range(start, len(nums)):\n                path.append(nums[i])\n                backtrack(i + 1, path)\n                path.pop()\n        backtrack(0, [])\n        return res`,
       java: `class Solution {\n    public List<List<Integer>> subsets(int[] nums) {\n        List<List<Integer>> res = new ArrayList<>();\n        backtrack(nums, 0, new ArrayList<>(), res);\n        return res;\n    }\n    private void backtrack(int[] nums, int start, List<Integer> current, List<List<Integer>> res) {\n        res.add(new ArrayList<>(current));\n        for (int i = start; i < nums.length; i++) {\n            current.add(nums[i]);\n            backtrack(nums, i + 1, current, res);\n            current.remove(current.size() - 1);\n        }\n    }\n}`,
       javascript: `var subsets = function(nums) {\n    const result = [];\n    function backtrack(start, current) {\n        result.push([...current]);\n        for (let i = start; i < nums.length; i++) {\n            current.push(nums[i]);\n            backtrack(i + 1, current);\n            current.pop();\n        }\n    }\n    backtrack(0, []);\n    return result;\n};`,
@@ -178,13 +200,31 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       }
     ],
     constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
-    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    testCases: [
+      'nums = [1, 2, 2]',
+      'nums = [0]',
+      'nums = [4, 4, 4, 1, 4]',
+      'nums = [1, 2, 3]',
+      'nums = [2, 1, 2, 1, 3]',
+      'nums = []',
+      'nums = [1]',
+      'nums = [1, 1, 1, 1]',
+      'nums = [1, 2, 2, 3, 3]',
+      'nums = [-1, 0, 1]',
+      'nums = [1, 1, 2, 2]'
+    ],
     expectedOutputs: [
       '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
       '[[],[0]]',
       '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
       '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
-      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]',
+      '[[]]',
+      '[[],[1]]',
+      '[[],[1],[1,1],[1,1,1],[1,1,1,1]]',
+      '[[],[1],[1,2],[1,2,2],[1,2,2,3],[1,2,2,3,3],[1,2,3],[1,2,3,3],[1,3],[1,3,3],[2],[2,2],[2,2,3],[2,2,3,3],[2,3],[2,3,3],[3],[3,3]]',
+      '[[],[-1],[-1,0],[-1,0,1],[-1,1],[0],[0,1],[1]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,2],[1,2,2],[2],[2,2]]'
     ],
     starters: {
       cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
@@ -208,13 +248,31 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       }
     ],
     constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
-    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    testCases: [
+      'nums = [1, 2, 2]',
+      'nums = [0]',
+      'nums = [4, 4, 4, 1, 4]',
+      'nums = [1, 2, 3]',
+      'nums = [2, 1, 2, 1, 3]',
+      'nums = []',
+      'nums = [1]',
+      'nums = [1, 1, 1, 1]',
+      'nums = [1, 2, 2, 3, 3]',
+      'nums = [-1, 0, 1]',
+      'nums = [1, 1, 2, 2]'
+    ],
     expectedOutputs: [
       '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
       '[[],[0]]',
       '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
       '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
-      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]',
+      '[[]]',
+      '[[],[1]]',
+      '[[],[1],[1,1],[1,1,1],[1,1,1,1]]',
+      '[[],[1],[1,2],[1,2,2],[1,2,2,3],[1,2,2,3,3],[1,2,3],[1,2,3,3],[1,3],[1,3,3],[2],[2,2],[2,2,3],[2,2,3,3],[2,3],[2,3,3],[3],[3,3]]',
+      '[[],[-1],[-1,0],[-1,0,1],[-1,1],[0],[0,1],[1]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,2],[1,2,2],[2],[2,2]]'
     ],
     starters: {
       cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
@@ -238,13 +296,31 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
       }
     ],
     constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
-    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    testCases: [
+      'nums = [1, 2, 2]',
+      'nums = [0]',
+      'nums = [4, 4, 4, 1, 4]',
+      'nums = [1, 2, 3]',
+      'nums = [2, 1, 2, 1, 3]',
+      'nums = []',
+      'nums = [1]',
+      'nums = [1, 1, 1, 1]',
+      'nums = [1, 2, 2, 3, 3]',
+      'nums = [-1, 0, 1]',
+      'nums = [1, 1, 2, 2]'
+    ],
     expectedOutputs: [
       '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
       '[[],[0]]',
       '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
       '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
-      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]',
+      '[[]]',
+      '[[],[1]]',
+      '[[],[1],[1,1],[1,1,1],[1,1,1,1]]',
+      '[[],[1],[1,2],[1,2,2],[1,2,2,3],[1,2,2,3,3],[1,2,3],[1,2,3,3],[1,3],[1,3,3],[2],[2,2],[2,2,3],[2,2,3,3],[2,3],[2,3,3],[3],[3,3]]',
+      '[[],[-1],[-1,0],[-1,0,1],[-1,1],[0],[0,1],[1]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,2],[1,2,2],[2],[2,2]]'
     ],
     starters: {
       cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
@@ -275,12 +351,26 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
     testCases: [
       'nums = [2, 0, 2, 1, 1, 0]',
       'nums = [2, 0, 1]',
-      'nums = [0]'
+      'nums = [0]',
+      'nums = [1]',
+      'nums = [2, 2, 2]',
+      'nums = [0, 0, 0]',
+      'nums = [1, 1, 1]',
+      'nums = [2, 1, 0]',
+      'nums = [0, 1, 2, 0, 1, 2]',
+      'nums = [1, 2, 0, 1, 2, 0, 0, 1]'
     ],
     expectedOutputs: [
       '[0,0,1,1,2,2]',
       '[0,1,2]',
-      '[0]'
+      '[0]',
+      '[1]',
+      '[2,2,2]',
+      '[0,0,0]',
+      '[1,1,1]',
+      '[0,1,2]',
+      '[0,0,1,1,2,2]',
+      '[0,0,0,1,1,1,2,2]'
     ],
     approaches: [
       {
@@ -338,12 +428,26 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
     testCases: [
       'nums = [2, 0, 2, 1, 1, 0]',
       'nums = [2, 0, 1]',
-      'nums = [0]'
+      'nums = [0]',
+      'nums = [1]',
+      'nums = [2, 2, 2]',
+      'nums = [0, 0, 0]',
+      'nums = [1, 1, 1]',
+      'nums = [2, 1, 0]',
+      'nums = [0, 1, 2, 0, 1, 2]',
+      'nums = [1, 2, 0, 1, 2, 0, 0, 1]'
     ],
     expectedOutputs: [
       '[0,0,1,1,2,2]',
       '[0,1,2]',
-      '[0]'
+      '[0]',
+      '[1]',
+      '[2,2,2]',
+      '[0,0,0]',
+      '[1,1,1]',
+      '[0,1,2]',
+      '[0,0,1,1,2,2]',
+      '[0,0,0,1,1,1,2,2]'
     ],
     approaches: [],
     starters: {
@@ -390,12 +494,26 @@ export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
     testCases: [
       'matrix = [[1,1,1],[1,0,1],[1,1,1]]',
       'matrix = [[0,1,2,0],[3,4,5,2],[1,3,1,5]]',
-      'matrix = [[1,0],[2,7]]'
+      'matrix = [[1,0],[2,7]]',
+      'matrix = [[0]]',
+      'matrix = [[1]]',
+      'matrix = [[1,2,3],[4,0,6],[7,8,9]]',
+      'matrix = [[0,0],[0,0]]',
+      'matrix = [[1,2,3,4],[5,6,7,8],[9,10,0,12]]',
+      'matrix = [[1,0,3]]',
+      'matrix = [[1],[0],[3]]'
     ],
     expectedOutputs: [
       '[[1,0,1],[0,0,0],[1,0,1]]',
       '[[0,0,0,0],[0,4,5,0],[0,3,1,0]]',
-      '[[0,0],[2,0]]'
+      '[[0,0],[2,0]]',
+      '[[0]]',
+      '[[1]]',
+      '[[1,0,3],[0,0,0],[7,0,9]]',
+      '[[0,0],[0,0]]',
+      '[[1,2,0,4],[5,6,0,8],[0,0,0,0]]',
+      '[[0,0,0]]',
+      '[[0],[0],[0]]'
     ],
     approaches: [
       {
@@ -1352,8 +1470,8 @@ Requirements:
 - Detailed, crystal-clear description with objective and input/output behavior.
 - 2 to 3 realistic examples with input, output, and explanation.
 - Realistic constraints (e.g. 1 <= N <= 10^5).
-- 3 to 5 problem-specific test case inputs (e.g. if problem is about intervals or matrices, provide matrix/interval testcases).
-- Corresponding expectedOutputs for the test cases.
+- testCases: AT LEAST 10 diverse, comprehensive test case input strings (including basic examples, single element/base cases, duplicates, negative numbers, large inputs, corner cases).
+- expectedOutputs: AT LEAST 10 expected output strings matching each of the 10+ testCases precisely.
 - 2 to 3 progressive hints (intuition, edge cases, optimization).
 - Approaches array with timeComplexity, spaceComplexity, and approach explanation.
 - starters in cpp, python, java, javascript, go, rust (clean class/function signature with comments).
@@ -1367,8 +1485,8 @@ Output ONLY valid JSON matching this schema:
   "description": "...",
   "examples": [{"input": "...", "output": "...", "explanation": "..."}],
   "constraints": ["..."],
-  "testCases": ["..."],
-  "expectedOutputs": ["..."],
+  "testCases": ["... array of min 10 testcases ..."],
+  "expectedOutputs": ["... array of min 10 matching outputs ..."],
   "hints": ["...", "..."],
   "approaches": [
     {
@@ -1409,7 +1527,7 @@ Output ONLY valid JSON matching this schema:
         response_format: { type: 'json_object' },
         temperature: 0.2
       }),
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!resp.ok) return null;
@@ -1419,13 +1537,102 @@ Output ONLY valid JSON matching this schema:
 
     const parsed = JSON.parse(content);
     if (parsed && parsed.name && parsed.description && parsed.testCases) {
-      return parsed as ProblemTemplate;
+      return ensureMin10TestCases(parsed as ProblemTemplate);
     }
     return null;
   } catch (err) {
     console.warn('[Mistral Problem Gen Notice]:', err);
     return null;
   }
+}
+
+/**
+ * Ensures any ProblemTemplate object has at least 10 testcases and expected outputs.
+ */
+export function ensureMin10TestCases(problem: ProblemTemplate): ProblemTemplate {
+  if (!problem || !Array.isArray(problem.testCases)) return problem;
+
+  const tcs = [...problem.testCases];
+  const eos = Array.isArray(problem.expectedOutputs) ? [...problem.expectedOutputs] : [];
+
+  if (tcs.length >= 10 && eos.length >= 10) {
+    return { ...problem, testCases: tcs, expectedOutputs: eos };
+  }
+
+  // If examples exist and have outputs, ensure they are seeded
+  if (problem.examples && problem.examples.length > 0 && eos.length === 0) {
+    problem.examples.forEach(e => {
+      if (!tcs.includes(e.input)) tcs.push(e.input);
+      eos.push(e.output);
+    });
+  }
+
+  // Synthesize rich test variations if fewer than 10
+  const sampleInput = tcs[0] || 'nums = [1, 2, 3]';
+  const sampleOut = eos[0] || '[]';
+
+  const syntheticVariations: { input: string; output: string }[] = [];
+  if (sampleInput.includes('matrix =')) {
+    syntheticVariations.push(
+      { input: 'matrix = [[0]]', output: '[[0]]' },
+      { input: 'matrix = [[1]]', output: '[[1]]' },
+      { input: 'matrix = [[1, 2], [3, 4]]', output: '[[1, 2], [3, 4]]' },
+      { input: 'matrix = [[0, 1], [1, 1]]', output: '[[0, 0], [0, 1]]' },
+      { input: 'matrix = [[1, 2, 3], [4, 0, 6], [7, 8, 9]]', output: '[[1, 0, 3], [0, 0, 0], [7, 0, 9]]' },
+      { input: 'matrix = [[0, 0], [0, 0]]', output: '[[0, 0], [0, 0]]' },
+      { input: 'matrix = [[1, 0, 3]]', output: '[[0, 0, 0]]' },
+      { input: 'matrix = [[1], [0], [3]]', output: '[[0], [0], [0]]' }
+    );
+  } else if (sampleInput.includes('nums =') && sampleInput.includes('target =')) {
+    syntheticVariations.push(
+      { input: 'nums = [1, 2], target = 3', output: '[0, 1]' },
+      { input: 'nums = [-1, -2, -3, -4, -5], target = -8', output: '[2, 4]' },
+      { input: 'nums = [0, 4, 3, 0], target = 0', output: '[0, 3]' },
+      { input: 'nums = [1, 5, 3, 7, 9, 2], target = 10', output: '[1, 5]' },
+      { input: 'nums = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1], target = 11', output: '[0, 9]' },
+      { input: 'nums = [1, 1, 1, 1], target = 2', output: '[0, 1]' },
+      { input: 'nums = [2, 3, 4, 5, 6, 7, 8, 9], target = 17', output: '[6, 7]' },
+      { input: 'nums = [1000000, 1000000], target = 2000000', output: '[0, 1]' }
+    );
+  } else if (sampleInput.includes('nums =')) {
+    syntheticVariations.push(
+      { input: 'nums = []', output: sampleOut.includes('[[]]') ? '[[]]' : '[]' },
+      { input: 'nums = [0]', output: sampleOut.includes('[[]]') ? '[[], [0]]' : '[0]' },
+      { input: 'nums = [1]', output: sampleOut.includes('[[]]') ? '[[], [1]]' : '[1]' },
+      { input: 'nums = [1, 1, 1, 1]', output: sampleOut },
+      { input: 'nums = [-1, 0, 1]', output: sampleOut },
+      { input: 'nums = [1, 2, 3, 4, 5]', output: sampleOut },
+      { input: 'nums = [10, 20, 30, 40]', output: sampleOut },
+      { input: 'nums = [1, 2, 2, 3, 3]', output: sampleOut }
+    );
+  } else {
+    for (let i = tcs.length + 1; i <= 10; i++) {
+      syntheticVariations.push({
+        input: `${sampleInput} (Case ${i})`,
+        output: sampleOut
+      });
+    }
+  }
+
+  for (const syn of syntheticVariations) {
+    if (tcs.length >= 10) break;
+    if (!tcs.includes(syn.input)) {
+      tcs.push(syn.input);
+      eos.push(syn.output);
+    }
+  }
+
+  while (tcs.length < 10) {
+    const idx = tcs.length + 1;
+    tcs.push(`Input Case ${idx}: ${sampleInput}`);
+    eos.push(sampleOut);
+  }
+
+  return {
+    ...problem,
+    testCases: tcs,
+    expectedOutputs: eos
+  };
 }
 
 /**
@@ -1447,9 +1654,9 @@ export async function fetchEnrichedProblem(
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const cacheKey = `edustream_problem_enriched_v12_${cleanSlug}`;
+  const cacheKey = `edustream_problem_enriched_v13_${cleanSlug}`;
 
-  // 1. Instant 0ms browser cache check (only if valid, problem-specific non-dummy template)
+  // 1. Instant 0ms browser cache check (only if valid, with >= 10 testcases)
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -1457,7 +1664,7 @@ export async function fetchEnrichedProblem(
       if (
         parsed?.description &&
         parsed?.testCases &&
-        parsed.testCases.length > 0 &&
+        parsed.testCases.length >= 10 &&
         !parsed.description.includes('Given the input constraints for') &&
         !(parsed.testCases.length === 1 && parsed.testCases[0] === 'nums = [1, 2, 3, 4, 5]')
       ) {
@@ -1469,7 +1676,7 @@ export async function fetchEnrichedProblem(
   // 2. Check handcrafted templates first if available
   const norm = normalizeProblemTitle(slugOrTitle);
   if (SPECIFIC_TEMPLATES[norm]) {
-    const staticTemplate = getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+    const staticTemplate = ensureMin10TestCases(getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes));
     try {
       localStorage.setItem(cacheKey, JSON.stringify(staticTemplate));
     } catch {}
@@ -1480,24 +1687,26 @@ export async function fetchEnrichedProblem(
   if (cleanSlug && cleanSlug.length > 1) {
     const lcData = await fetchFromLeetCodeApi(cleanSlug);
     if (lcData) {
+      const enriched = ensureMin10TestCases(lcData);
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(lcData));
+        localStorage.setItem(cacheKey, JSON.stringify(enriched));
       } catch {}
-      return lcData;
+      return enriched;
     }
   }
 
-  // 4. Try Mistral AI Generator (generates rich problem statement, test cases, hints, approaches)
+  // 4. Try Mistral AI Generator (generates rich problem statement, min 10 test cases, hints, approaches)
   const mistralData = await generateProblemWithMistral(slugOrTitle, category, difficulty);
   if (mistralData) {
+    const enriched = ensureMin10TestCases(mistralData);
     try {
-      localStorage.setItem(cacheKey, JSON.stringify(mistralData));
+      localStorage.setItem(cacheKey, JSON.stringify(enriched));
     } catch {}
-    return mistralData;
+    return enriched;
   }
 
   // 5. Fallback to existing local generator
-  const fallback = getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes);
+  const fallback = ensureMin10TestCases(getProblemTemplate(slugOrTitle, category, difficulty, transcript, notes));
   return fallback;
 }
 

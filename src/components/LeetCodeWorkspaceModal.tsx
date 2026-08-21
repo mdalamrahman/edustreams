@@ -1909,19 +1909,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {!isConsoleMinimized && (
               <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
                 
-                {/* TAB A: TESTCASES (Show First 3 Cases as Run Cases) */}
+                {/* TAB A: TESTCASES (Show All Test Cases) */}
                 {consoleTab === 'testcase' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                        {(problemTemplate.testCases || []).slice(0, 3).map((tc, idx) => (
+                      <div className="flex items-center space-x-2 overflow-x-auto pb-1 max-w-[80%] no-scrollbar">
+                        {(problemTemplate.testCases || []).map((tc, idx) => (
                           <button
                             key={idx}
                             onClick={() => {
                               setActiveTestCaseIdx(idx);
                               setTestInput(tc);
                             }}
-                            className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                            className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
                               activeTestCaseIdx === idx
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -1932,11 +1932,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         ))}
                       </div>
 
-                      {problemTemplate.testCases && problemTemplate.testCases.length > 3 && (
-                        <span className="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                          +{problemTemplate.testCases.length - 3} hidden submission cases
-                        </span>
-                      )}
+                      <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap ml-2">
+                        {problemTemplate.testCases?.length || 0} Cases
+                      </span>
                     </div>
 
                     <div className="space-y-1.5">

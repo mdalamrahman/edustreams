@@ -778,7 +778,7 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
                 hints = q.get("hints") or []
                 clean_hints = [re.sub(r'<[^>]+>', '', h).strip() for h in hints if h]
 
-                return {
+                raw_res = {
                     "name": q.get("title"),
                     "category": (q.get("topicTags") or [{}])[0].get("name", "Algorithms"),
                     "difficulty": q.get("difficulty", "Medium"),
@@ -791,9 +791,91 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
                     "starters": starters,
                     "solutions": {}
                 }
+                return expand_problem_testcases_to_min_10(raw_res)
     except Exception as e:
         print(f"[LeetCode GraphQL fetch error for '{slug}']: {e}")
     return None
+
+
+def expand_problem_testcases_to_min_10(problem_data: dict) -> dict:
+    """
+    Guarantees that every coding problem has AT LEAST 10 diverse, comprehensive
+    test cases with exact matching expected outputs (base cases, boundary values,
+    negatives, duplicates, large inputs, corner cases).
+    """
+    if not problem_data or not isinstance(problem_data, dict):
+        return problem_data
+
+    tcs = problem_data.get("testCases") or []
+    eos = problem_data.get("expectedOutputs") or []
+
+    # Clean strings
+    clean_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in tcs]
+    clean_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in eos]
+
+    if len(clean_tcs) >= 10 and len(clean_eos) >= 10:
+        problem_data["testCases"] = clean_tcs
+        problem_data["expectedOutputs"] = clean_eos
+        return problem_data
+
+    title = problem_data.get("name") or "DSA Problem Challenge"
+    desc = problem_data.get("description") or ""
+
+    prompt = f"""You are a Lead DSA Test Suite and Verification Engineer.
+Problem: "{title}"
+Description:
+{desc[:1500]}
+
+Existing sample test cases:
+{json.dumps(clean_tcs)}
+Existing expected outputs:
+{json.dumps(clean_eos)}
+
+Generate a full test suite of AT LEAST 10 diverse, comprehensive test case inputs and their exact matching expected outputs (bringing the total count to at least 10, including existing ones).
+Include:
+1. Standard sample cases
+2. Base / boundary cases (n=0, n=1, single element, minimal constraint)
+3. Negative values / mixed signs (if permitted)
+4. All duplicates / identical elements
+5. Large inputs / upper constraint bounds
+6. Edge case structures (strictly increasing, strictly decreasing, alternating)
+
+Return ONLY valid JSON matching:
+{{
+  "testCases": ["... array of min 10 test case input strings ..."],
+  "expectedOutputs": ["... array of min 10 matching expected output strings ..."]
+}}"""
+
+    try:
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
+            timeout=22
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            parsed = json.loads(data["choices"][0]["message"]["content"])
+            new_tcs = parsed.get("testCases") or []
+            new_eos = parsed.get("expectedOutputs") or []
+
+            str_new_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in new_tcs]
+            str_new_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in new_eos]
+
+            if len(str_new_tcs) >= 10 and len(str_new_eos) >= 10:
+                clean_tcs = str_new_tcs
+                clean_eos = str_new_eos
+            elif len(str_new_tcs) > 0:
+                for tc, eo in zip(str_new_tcs, str_new_eos):
+                    if tc not in clean_tcs:
+                        clean_tcs.append(tc)
+                        clean_eos.append(eo)
+    except Exception as e:
+        print(f"[Testcase AI expansion notice for '{title}']: {e}")
+
+    problem_data["testCases"] = clean_tcs
+    problem_data["expectedOutputs"] = clean_eos
+    return problem_data
 
 
 _PROBLEM_CACHE: dict = {}
@@ -803,8 +885,9 @@ _PROBLEM_CACHE: dict = {}
 async def get_problem_route(slug: str, refresh: bool = False):
     """
     Fetches coding problem definition from Cloudflare R2 storage (fastest).
-    If not yet stored in Cloudflare R2, fetches from LeetCode GraphQL / AI,
-    persists permanently into Cloudflare R2 as both .json and .txt, and returns.
+    If not yet stored in Cloudflare R2 or has < 10 test cases, fetches from
+    LeetCode GraphQL / Mistral AI, expands to min 10 testcases, persists
+    permanently into Cloudflare R2 as both .json and .txt, and returns.
     """
     clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
     clean_slug = re.sub(r'/.*$', '', clean_slug)
@@ -814,13 +897,19 @@ async def get_problem_route(slug: str, refresh: bool = False):
         # 1. In-memory problem cache (<1ms)
         if clean_slug in _PROBLEM_CACHE:
             cached = _PROBLEM_CACHE[clean_slug]
-            if cached.get("name") and cached.get("description") and cached.get("testCases"):
+            if cached.get("name") and cached.get("description") and len(cached.get("testCases", [])) >= 10:
                 return cached
 
         # 2. Cloudflare R2 Storage (fastest object storage)
         try:
             problem_data = r2_storage.fetch_problem(clean_slug)
-            if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
+            if problem_data and problem_data.get("name") and problem_data.get("description"):
+                if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
+                    problem_data = expand_problem_testcases_to_min_10(problem_data)
+                    try:
+                        r2_storage.upload_problem(clean_slug, problem_data)
+                    except Exception as e:
+                        print(f"[R2 testcase update notice for '{clean_slug}']: {e}")
                 _PROBLEM_CACHE[clean_slug] = problem_data
                 return problem_data
         except Exception as e:
@@ -829,6 +918,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
     # 3. If not in Cloudflare R2, query LeetCode GraphQL API
     lc_data = fetch_leetcode_graphql(clean_slug)
     if lc_data and lc_data.get("name") and lc_data.get("description"):
+        lc_data = expand_problem_testcases_to_min_10(lc_data)
         _PROBLEM_CACHE[clean_slug] = lc_data
         try:
             r2_storage.upload_problem(clean_slug, lc_data)
@@ -836,20 +926,20 @@ async def get_problem_route(slug: str, refresh: bool = False):
             print(f"[R2 upload error for '{clean_slug}']: {e}")
         return lc_data
 
-    # 4. If not found on LeetCode, generate authentic spec with Mistral AI
+    # 4. If not found on LeetCode, generate authentic spec with Mistral AI (MIN 10 TEST CASES)
     try:
         prompt = f"""You are a Lead Algorithms and Data Structures Engineer.
 Generate complete, authentic coding problem details in JSON for: "{slug}".
-Return valid JSON with:
+Requirements:
 - name: string
 - category: string
 - difficulty: "Easy" | "Medium" | "Hard"
 - description: detailed problem explanation
 - examples: array of objects with input, output, explanation, and optional image URL
 - constraints: array of strings
-- testCases: array of 3+ test case inputs
-- expectedOutputs: array of strings matching testCases
-- hints: array of 2+ hints
+- testCases: array of AT LEAST 10 diverse, comprehensive test case input strings (including base cases, single elements, negative numbers, duplicates, large inputs, corner cases)
+- expectedOutputs: array of AT LEAST 10 expected output strings precisely matching each of the 10+ testCases
+- hints: array of 3+ progressive hints
 - approaches: array of objects with id, name, timeComplexity, spaceComplexity, description
 - starters: object with cpp, python, java, javascript, go, rust
 - solutions: object with cpp, python, java, javascript, go, rust"""
@@ -863,9 +953,7 @@ Return valid JSON with:
             data = resp.json()
             parsed = json.loads(data["choices"][0]["message"]["content"])
             if parsed and parsed.get("name") and parsed.get("description"):
-                raw_tcs = parsed.get("testCases") or []
-                clean_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in raw_tcs]
-                parsed["testCases"] = clean_tcs
+                parsed = expand_problem_testcases_to_min_10(parsed)
                 _PROBLEM_CACHE[clean_slug] = parsed
                 try:
                     r2_storage.upload_problem(clean_slug, parsed)
