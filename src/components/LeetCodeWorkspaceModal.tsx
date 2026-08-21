@@ -55,8 +55,6 @@ import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
-import { KrokiDiagramViewer } from './KrokiDiagramViewer';
-import { KrokiDiagramModal } from './KrokiDiagramModal';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -240,39 +238,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return (codingProblem?.gfg && codingProblem.gfg.trim().length > 0) ? codingProblem.gfg : null;
   }, [codingProblem]);
 
-  // Only LLD (Low Level Design) / System Design questions should have Architecture Diagrams
-  const isLldQuestion = useMemo(() => {
-    const cat = (codingProblem?.category || problemTemplate.category || '').toLowerCase();
-    const title = (codingProblem?.name || problemTemplate.name || cleanTitle || '').toLowerCase();
-    const step = ((codingProblem as any)?.step || '').toLowerCase();
-
-    const isLldTerm = 
-      cat.includes('lld') ||
-      cat.includes('low level design') ||
-      cat.includes('system design') ||
-      cat.includes('design pattern') ||
-      cat.includes('object oriented') ||
-      step.includes('lld') ||
-      step.includes('low level design') ||
-      title.startsWith('lld') ||
-      title.includes('low level design') ||
-      title.includes('design parking lot') ||
-      title.includes('design rate limiter') ||
-      title.includes('design bookmyshow') ||
-      title.includes('design splitwise') ||
-      title.includes('design cricinfo') ||
-      title.includes('design snake and ladder') ||
-      title.includes('design vending machine') ||
-      title.includes('design atm') ||
-      title.includes('design cache') ||
-      title.includes('design elevator') ||
-      title.includes('design file system');
-
-    const isDsaOrSql = cat.includes('dsa') || cat.includes('sql') || cat.includes('database') || cat.includes('binary tree') || cat.includes('graph') || cat.includes('array') || cat.includes('dp') || cat.includes('string');
-
-    return isLldTerm && !isDsaOrSql;
-  }, [codingProblem, problemTemplate, cleanTitle]);
-
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
     return getLocalProblemNote(codingProblem?.slug || codingProblem?.name || cleanTitle);
@@ -320,28 +285,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   // Slide-out Ask AI popup on the RIGHT
   const [isRightAskAiOpen, setIsRightAskAiOpen] = useState<boolean>(false);
-
-  // Kroki LLD Diagram Popup Modal state & Credit deduction (20 paise)
-  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState<boolean>(false);
-
-  const handleOpenDiagramModal = () => {
-    const user = getCurrentStudent();
-    if (!canAffordAction(PRICING_CONFIG.LLD_DIAGRAM_VIEW, user?.email)) {
-      setInsufficientMeta({
-        cost: PRICING_CONFIG.LLD_DIAGRAM_VIEW,
-        action: `Kroki Visual LLD Architecture Diagram (20 paise): ${cleanTitle}`
-      });
-      setIsInsufficientCreditsOpen(true);
-      return;
-    }
-    deductCredits(
-      PRICING_CONFIG.LLD_DIAGRAM_VIEW,
-      'LLD_DIAGRAM',
-      `📐 LLD Architecture Diagram (20p): ${cleanTitle}`,
-      user?.email
-    );
-    setIsDiagramModalOpen(true);
-  };
 
   // AI Review state
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
@@ -867,18 +810,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </a>
           )}
 
-          {/* Small LLD Diagram Button on the Right (ONLY FOR LLD QUESTIONS) */}
-          {isLldQuestion && (
-            <button
-              onClick={handleOpenDiagramModal}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
-              title="Open Kroki LLD Visual Architecture Popup"
-            >
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">LLD Diagram</span>
-            </button>
-          )}
-
           {/* Telegram DSA Channel Video Button (ONLY IF MATCHING VIDEO EXISTS) */}
           {matchingVideo && (
             <button
@@ -989,17 +920,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-purple-400" />
               <span>Editorial</span>
             </button>
-
-            {isLldQuestion && (
-              <button
-                onClick={handleOpenDiagramModal}
-                className="px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-cyan-400 hover:text-cyan-200 hover:bg-cyan-950/40 border border-cyan-800/40"
-                title="Open Kroki LLD Visual Architecture Popup"
-              >
-                <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Diagram (Popup)</span>
-              </button>
-            )}
 
             <button
               onClick={() => setLeftTab('notes')}
@@ -1134,17 +1054,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         >
                           <Lightbulb className="w-3 h-3 text-amber-400" />
                           <span>Hint</span>
-                        </button>
-                      )}
-
-                      {isLldQuestion && (
-                        <button
-                          onClick={handleOpenDiagramModal}
-                          className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-bold transition-all shadow-sm cursor-pointer ml-auto"
-                          title="Open Kroki Unified UML & Visual Architecture Popup"
-                        >
-                          <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Architecture Diagram</span>
                         </button>
                       )}
                     </div>
@@ -1746,16 +1655,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 8: KROKI UNIFIED UML & LLD ARCHITECTURE DIAGRAM */}
-            {leftTab === 'diagram' && (
-              <div className="flex-1 flex flex-col h-full overflow-hidden -m-5">
-                <KrokiDiagramViewer
-                  slugOrTitle={codingProblem?.slug || codingProblem?.name || cleanTitle}
-                  category={codingProblem?.category || problemTemplate.category || 'System Design & LLD'}
-                />
-              </div>
-            )}
-
           </div>
         </div>
 
@@ -1800,15 +1699,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
             {/* Quick Actions overlay on top-right of Editor */}
             <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
-              <button
-                onClick={handleOpenDiagramModal}
-                className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-cyan-400 hover:text-cyan-200 border border-cyan-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
-                title="Open LLD Architecture Diagram Popup (20 paise)"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">LLD Diagram</span>
-              </button>
-
               <button
                 onClick={handleCopyCode}
                 className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
@@ -2204,15 +2094,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         onClose={() => setIsWalletTopupOpen(false)}
         initialAmount={50}
       />
-
-      {/* Kroki LLD Architecture Popup Modal (Charged at 20 paise) */}
-      {isDiagramModalOpen && (
-        <KrokiDiagramModal
-          slugOrTitle={codingProblem?.slug || codingProblem?.name || cleanTitle}
-          category={codingProblem?.category || problemTemplate.category || 'System Design & LLD'}
-          onClose={() => setIsDiagramModalOpen(false)}
-        />
-      )}
 
     </div>
   );
