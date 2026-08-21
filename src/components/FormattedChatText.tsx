@@ -161,7 +161,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
         );
       } else if (raw.startsWith('`') && raw.endsWith('`')) {
         parts.push(
-          <code key={match.index} className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-purple-300 font-mono text-[11px]">
+          <code key={match.index} className="lc-code-chip mx-0.5">
             {raw.slice(1, -1)}
           </code>
         );
@@ -183,21 +183,21 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
   };
 
   return (
-    <div className="space-y-2 select-text font-sans">
+    <div className="space-y-2.5 select-text font-sans text-[13px] sm:text-[14px] text-[#eff1f6] leading-[1.7]">
       {blocks.map((block, bIdx) => {
         if (block.type === 'image') {
           return (
             <div key={bIdx} className="my-3 flex flex-col items-center group">
               <div 
                 onClick={() => setZoomImage(block.src)}
-                className="p-2 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl overflow-hidden max-w-full cursor-zoom-in relative transition-transform hover:scale-[1.01]"
+                className="p-2 sm:p-3 rounded-2xl bg-[#1a1a1a] border border-white/10 shadow-xl overflow-hidden max-w-full cursor-zoom-in relative transition-transform hover:scale-[1.01]"
                 title="Click to zoom illustration"
               >
                 <img
                   src={block.src}
                   alt={block.alt}
                   referrerPolicy="no-referrer"
-                  className="rounded-xl max-h-72 object-contain bg-slate-900/90 border border-slate-800/80 mx-auto"
+                  className="rounded-xl max-h-72 object-contain bg-[#141414] border border-white/10 mx-auto"
                   loading="lazy"
                   onError={(e) => {
                     // Fallback to direct LeetCode URL if proxy fails
@@ -214,7 +214,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
               </div>
               {block.alt && block.alt.toLowerCase() !== 'example' && (
                 <span className="text-[10px] font-mono text-slate-400 mt-1.5 flex items-center gap-1">
-                  <ImageIcon className="w-3 h-3 text-purple-400" /> {block.alt}
+                  <ImageIcon className="w-3 h-3 text-teal-400" /> {block.alt}
                 </span>
               )}
             </div>
@@ -223,21 +223,21 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
 
         if (block.type === 'table') {
           return (
-            <div key={bIdx} className="my-3 rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow-inner max-w-full">
+            <div key={bIdx} className="my-3 rounded-xl border border-white/10 bg-[#1e1e1e] overflow-hidden shadow-inner max-w-full">
               <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-[11px]">
-                  <thead className="bg-slate-900 border-b border-slate-800 text-slate-300">
+                <table className="w-full text-left font-mono text-[12px]">
+                  <thead className="bg-[#282828] border-b border-white/10 text-slate-200">
                     <tr>
                       {block.headers.map((h, hIdx) => (
-                        <th key={hIdx} className="px-3.5 py-2 font-bold tracking-wider text-cyan-300">
+                        <th key={hIdx} className="px-3.5 py-2 font-bold tracking-wider text-teal-300">
                           {renderInlineParts(h)}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                  <tbody className="divide-y divide-white/5 text-[#eff1f6]">
                     {block.rows.map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-slate-900/40 transition-colors">
+                      <tr key={rIdx} className="hover:bg-white/[0.03] transition-colors">
                         {row.map((cell, cIdx) => (
                           <td key={cIdx} className="px-3.5 py-1.5">
                             {renderInlineParts(cell)}
@@ -254,7 +254,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
 
         if (block.type === 'code') {
           return (
-            <div key={bIdx} className="my-2 p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-indigo-300 overflow-x-auto">
+            <div key={bIdx} className="my-2 p-3 rounded-xl bg-[#1e1e1e] border border-white/10 font-mono text-[12.5px] text-[#eff1f6] overflow-x-auto">
               <pre>{block.code}</pre>
             </div>
           );
@@ -267,14 +267,14 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
 
         // Dividers
         if (/^(\-\-\-|\*\*\*|___)$/.test(trimmed)) {
-          return <hr key={bIdx} className="border-slate-800 my-2" />;
+          return <hr key={bIdx} className="border-white/10 my-2" />;
         }
 
         // Headings
         if (trimmed.startsWith('#')) {
           const cleanHeading = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '');
           return (
-            <h4 key={bIdx} className="text-xs font-bold text-indigo-300 mt-3 mb-1 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 key={bIdx} className="text-sm font-bold text-white mt-4 mb-1 tracking-tight flex items-center gap-1.5">
               <span>{cleanHeading}</span>
             </h4>
           );
@@ -285,9 +285,9 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
         if (isBullet) {
           trimmed = trimmed.replace(/^(\-|\*|•)\s+/, '');
           return (
-            <div key={bIdx} className="flex items-start space-x-2 my-1">
-              <span className="text-purple-400 font-bold text-xs mt-0.5">•</span>
-              <div className="flex-1 text-slate-200 text-xs leading-relaxed">
+            <div key={bIdx} className="flex items-start space-x-2 my-1.5">
+              <span className="text-slate-400 font-bold text-xs mt-1">•</span>
+              <div className="flex-1 text-[#eff1f6] text-[13px] sm:text-[14px] leading-[1.7]">
                 {renderInlineParts(trimmed)}
               </div>
             </div>
@@ -295,7 +295,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
         }
 
         return (
-          <p key={bIdx} className="text-xs text-slate-200 leading-relaxed my-1">
+          <p key={bIdx} className="text-[13px] sm:text-[14px] text-[#eff1f6] leading-[1.7] my-1.5 font-normal">
             {renderInlineParts(trimmed)}
           </p>
         );

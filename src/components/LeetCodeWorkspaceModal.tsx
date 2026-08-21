@@ -35,7 +35,13 @@ import {
   FileText,
   Save,
   Download,
-  Cloud
+  Cloud,
+  Tag,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  Star,
+  Share2
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -1069,7 +1075,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             
             {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 
                 {/* Cloudflare R2 Loading State Banner */}
                 {isLoadingEnriched && (
@@ -1084,24 +1090,44 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 )}
 
-                {/* Header & Meta Badges */}
-                <div className="space-y-2.5 pb-3 border-b border-slate-800">
-                  <h2 className="text-xl font-black text-slate-100 tracking-tight">{cleanTitle}</h2>
+                {/* Header & LeetCode Meta Badges */}
+                <div className="space-y-3 pb-3 border-b border-white/10">
+                  <h2 className="text-xl font-bold text-white tracking-tight">{cleanTitle}</h2>
                   
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-mono border ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                       difficulty === 'Easy'
-                        ? 'bg-emerald-950/90 text-emerald-400 border-emerald-700/60'
+                        ? 'bg-emerald-500/10 text-emerald-400'
                         : difficulty === 'Hard'
-                        ? 'bg-rose-950/90 text-rose-400 border-rose-700/60'
-                        : 'bg-amber-950/90 text-amber-400 border-amber-700/60'
+                        ? 'bg-rose-500/10 text-rose-400'
+                        : 'bg-amber-500/10 text-amber-400'
                     }`}>
                       {difficulty}
                     </span>
 
-                    <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-xs font-mono font-semibold">
-                      {problemTemplate.category}
-                    </span>
+                    <button 
+                      className="px-2.5 py-0.5 rounded-full bg-white/[0.07] hover:bg-white/[0.12] text-slate-300 text-xs font-medium flex items-center gap-1 transition-colors"
+                      title="Topic Category"
+                    >
+                      <Tag className="w-3 h-3 text-slate-400" />
+                      <span>{problemTemplate.category}</span>
+                    </button>
+
+                    <div className="px-2.5 py-0.5 rounded-full bg-white/[0.07] text-slate-300 text-xs font-medium flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-slate-400" />
+                      <span>{companies.slice(0, 3).join(', ')}</span>
+                    </div>
+
+                    {problemTemplate.hints && problemTemplate.hints.length > 0 && (
+                      <button
+                        onClick={() => setLeftTab('hints')}
+                        className="px-2.5 py-0.5 rounded-full bg-white/[0.07] hover:bg-white/[0.12] text-slate-300 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        title="View Hints"
+                      >
+                        <Lightbulb className="w-3 h-3 text-amber-400" />
+                        <span>Hint</span>
+                      </button>
+                    )}
 
                     {isLldQuestion && (
                       <button
@@ -1113,18 +1139,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <span>Architecture Diagram</span>
                       </button>
                     )}
-                  </div>
-
-                  {/* Company Pills */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
-                      <Building2 className="w-3 h-3 text-slate-500" /> Top Companies:
-                    </span>
-                    {companies.map((comp: string) => (
-                      <span key={comp} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[10px]">
-                        {comp}
-                      </span>
-                    ))}
                   </div>
                 </div>
 
@@ -1152,70 +1166,97 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </div>
                 )}
 
-                {/* Problem Statement with Copy Button */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Problem Description</h3>
-                    <button
-                      onClick={handleCopyDescription}
-                      className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 font-bold cursor-pointer"
-                      title="Copy Problem Statement"
-                    >
-                      {copiedDescription ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedDescription ? 'Copied' : 'Copy Description'}</span>
-                    </button>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
+                {/* Problem Statement Body */}
+                <div className="space-y-3">
+                  <div className="text-[14px] text-[#eff1f6] leading-[1.75] font-normal select-text">
                     <FormattedChatText text={problemTemplate.description} />
                   </div>
                 </div>
 
                 {/* Example Test Cases */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Example Test Cases</h3>
-                  
+                <div className="space-y-4 pt-2">
                   {problemTemplate.examples.map((ex, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-[11px]">
-                      <div className="text-indigo-400 font-bold">Example {idx + 1}:</div>
+                    <div key={idx} className="space-y-2">
+                      <div className="font-bold text-[14px] text-white tracking-tight">Example {idx + 1}:</div>
                       
-                      {/* LeetCode Example Illustration / Tree / Graph Diagram */}
-                      {(ex.image || (ex as any).img) && (
-                        <div className="my-2 p-2 rounded-xl bg-slate-900/90 border border-slate-800 inline-block max-w-full">
-                          <img 
-                            src={ex.image || (ex as any).img} 
-                            alt={`Example ${idx + 1} Diagram`} 
-                            className="max-h-60 rounded-lg object-contain bg-slate-950 p-1 border border-slate-800/80 mx-auto"
-                            loading="lazy"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              if (target.src.includes('/api/image/')) {
-                                const rel = target.src.split('/api/image/')[1];
-                                target.src = `https://assets.leetcode.com/uploads/${rel}`;
-                              }
-                            }}
-                          />
-                        </div>
-                      )}
+                      <div className="p-4 rounded-xl bg-white/[0.04] border-l-2 border-slate-600/70 space-y-1.5 font-mono text-[13px]">
+                        {/* LeetCode Example Illustration / Tree / Graph Diagram */}
+                        {(ex.image || (ex as any).img) && (
+                          <div className="my-2 p-2 rounded-xl bg-black/40 border border-white/10 inline-block max-w-full">
+                            <img 
+                              src={ex.image || (ex as any).img} 
+                              alt={`Example ${idx + 1} Diagram`} 
+                              className="max-h-60 rounded-lg object-contain mx-auto"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (target.src.includes('/api/image/')) {
+                                  const rel = target.src.split('/api/image/')[1];
+                                  target.src = `https://assets.leetcode.com/uploads/${rel}`;
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
 
-                      <div className="text-slate-300"><strong>Input:</strong> {ex.input}</div>
-                      <div className="text-slate-300"><strong>Output:</strong> {ex.output}</div>
-                      {ex.explanation && (
-                        <div className="text-slate-400 text-[10px] font-sans pt-1 border-t border-slate-900">
-                          <strong>Explanation:</strong> {ex.explanation}
+                        <div>
+                          <strong className="font-bold text-white font-sans mr-2">Input:</strong>
+                          <span className="text-[#eff1f6]">{ex.input}</span>
                         </div>
-                      )}
+                        <div>
+                          <strong className="font-bold text-white font-sans mr-2">Output:</strong>
+                          <span className="text-[#eff1f6]">{ex.output}</span>
+                        </div>
+                        {ex.explanation && (
+                          <div className="pt-1.5 text-slate-300 font-sans text-xs border-t border-white/5">
+                            <strong className="font-bold text-white mr-2">Explanation:</strong>
+                            <span>{ex.explanation}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Constraints */}
-                <div className="space-y-2 pt-2 border-t border-slate-800">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Constraints</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-slate-400 font-mono text-[11px]">
+                <div className="space-y-2.5 pt-4 border-t border-white/10">
+                  <div className="font-bold text-[14px] text-white tracking-tight">Constraints:</div>
+                  <ul className="list-disc pl-5 space-y-2 text-[#eff1f6] text-xs">
                     {problemTemplate.constraints.map((c, idx) => (
-                      <li key={idx}><code>{c}</code></li>
+                      <li key={idx}>
+                        <code className="lc-code-chip">{c}</code>
+                      </li>
                     ))}
                   </ul>
+                </div>
+
+                {/* LeetCode Bottom Action & Engagement Bar */}
+                <div className="pt-6 mt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-medium">
+                  <div className="flex items-center gap-3">
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer">
+                      <ThumbsUp className="w-3.5 h-3.5" />
+                      <span>11.2K</span>
+                    </button>
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer">
+                      <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer">
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>237</span>
+                    </button>
+                    <button 
+                      onClick={handleCopyDescription}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/[0.08] hover:text-white transition-colors cursor-pointer"
+                      title="Copy Problem Statement"
+                    >
+                      {copiedDescription ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>111 Online</span>
+                  </div>
                 </div>
 
               </div>
