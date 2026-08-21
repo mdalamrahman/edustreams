@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Cpu, 
   Sparkles, 
@@ -11,21 +11,54 @@ import {
   CheckCircle2, 
   RefreshCw,
   Zap,
-  Maximize2
+  Maximize2,
+  BookOpenText
 } from 'lucide-react';
 import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 import { HLDBossSheet } from './HLDBossSheet';
 import { HLD_PRACTICE_PROBLEMS } from './SystemDesignHub';
+import { CURATED_HLD_TOPICS, CuratedGitHubTopic, fetchGitHubMarkdown } from '../lib/githubLld';
+import { GitHubArticleReader } from './GitHubArticleReader';
 
 interface HLDHubProps {
   onOpenDirectProblem?: (problemId: string) => void;
 }
 
 export const HLDHub: React.FC<HLDHubProps> = () => {
-  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'practice_canvas'>('boss_sheet');
+  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'practice_canvas' | 'github_reader'>('boss_sheet');
   const [activeHldProblem, setActiveHldProblem] = useState<HLDProblemSpec | null>(null);
   const [isFreeformHldCanvas, setIsFreeformHldCanvas] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Curated HLD GitHub Reader states
+  const [selectedHldTopic, setSelectedHldTopic] = useState<CuratedGitHubTopic>(CURATED_HLD_TOPICS[0]);
+  const [githubMarkdown, setGithubMarkdown] = useState<string>('');
+  const [isLoadingGithub, setIsLoadingGithub] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setIsLoadingGithub(true);
+    fetchGitHubMarkdown(selectedHldTopic.repo, selectedHldTopic.path).then((res) => {
+      if (!isCancelled) {
+        setGithubMarkdown(res.content || selectedHldTopic.fallbackSummary);
+        setIsLoadingGithub(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) {
+        setGithubMarkdown(selectedHldTopic.fallbackSummary);
+        setIsLoadingGithub(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedHldTopic]);
+
+  const handleOpenGithubTopicFromSheet = (topic: CuratedGitHubTopic) => {
+    setSelectedHldTopic(topic);
+    setHldSubTab('github_reader');
+  };
 
   const filteredHldProblems = HLD_PRACTICE_PROBLEMS.filter((p) => {
     return (
@@ -48,7 +81,7 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight flex items-center gap-2">
               <span>High-Level Design (HLD)</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-950 border border-teal-700/60 text-[10px] font-mono text-teal-300">
+              <span className="px-2.5 py-0.5 rounded-full bg-teal-950 border border-teal-700/60 text-[10px] font-mono text-teal-300 font-bold">
                 System Design Boss Hub
               </span>
             </h1>
@@ -85,12 +118,24 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
             <LayoutTemplate className="w-4 h-4" />
             <span>Architecture Canvas</span>
           </button>
+
+          <button
+            onClick={() => setHldSubTab('github_reader')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              hldSubTab === 'github_reader'
+                ? 'bg-teal-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <BookOpenText className="w-4 h-4" />
+            <span>HLD Deep Dives</span>
+          </button>
         </div>
       </div>
 
       {/* SUB-VIEW 1: HLD BOSS SHEET (REVISION NOTES) */}
       {hldSubTab === 'boss_sheet' && (
-        <HLDBossSheet />
+        <HLDBossSheet onOpenGithubTopic={handleOpenGithubTopicFromSheet} />
       )}
 
       {/* SUB-VIEW 2: HLD PRACTICE CANVAS & SYSTEM DESIGN PROBLEMS */}
@@ -207,6 +252,33 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* SUB-VIEW 3: HLD GITHUB DEEP DIVE READER */}
+      {hldSubTab === 'github_reader' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+            {CURATED_HLD_TOPICS.map((top) => (
+              <button
+                key={top.id}
+                onClick={() => setSelectedHldTopic(top)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedHldTopic.id === top.id
+                    ? 'bg-teal-600 text-white shadow'
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                }`}
+              >
+                {top.title}
+              </button>
+            ))}
+          </div>
+
+          <GitHubArticleReader
+            topic={selectedHldTopic}
+            markdown={githubMarkdown}
+            isLoading={isLoadingGithub}
+          />
+        </div>
       )}
 
     </div>

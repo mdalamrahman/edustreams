@@ -287,6 +287,19 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
     });
   }, [selectedCategory, searchQuery]);
 
+  const handleOpenGithubTopicFromSheet = (topic: CuratedLLDTopic) => {
+    setSelectedGithubTopic(topic);
+    setLldSubTab('github_reader');
+  };
+
+  const handleOpenCodingProblemFromSheet = (probId: string) => {
+    const found = LLD_PROBLEMS.find(p => p.id === probId);
+    if (found) {
+      setActiveProblem(found);
+      setLldSubTab('coding_arena');
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -317,11 +330,11 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight flex items-center gap-2">
               <span>Low-Level Design (LLD)</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700/60 text-[10px] font-mono text-purple-300">
-                SDE-1 Boss Hub
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700/60 text-[10px] font-mono text-purple-300 font-bold">
+                SDE-1 OOP Studio
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Object-Oriented Design, SOLID Principles, GoF Patterns & Machine Coding Studio</p>
+            <p className="text-xs text-slate-400">SOLID Principles, GoF Design Patterns, SDE-1 Notes & Machine Coding Studio</p>
           </div>
         </div>
 
@@ -351,7 +364,7 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
             }`}
           >
             <Code2 className="w-4 h-4" />
-            <span>LLD Coding Arena</span>
+            <span>Coding Arena</span>
           </button>
 
           <button
@@ -363,14 +376,17 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
             }`}
           >
             <Github className="w-4 h-4" />
-            <span>Deep Dive Notes</span>
+            <span>LLD Deep Dives</span>
           </button>
         </div>
       </div>
 
       {/* SUB-VIEW 1: LLD BOSS SHEET (INTERVIEW NOTES) */}
       {lldSubTab === 'boss_sheet' && (
-        <LLDBossSheet />
+        <LLDBossSheet
+          onOpenGithubTopic={handleOpenGithubTopicFromSheet}
+          onOpenCodingProblem={handleOpenCodingProblemFromSheet}
+        />
       )}
 
       {/* SUB-VIEW 2: LLD CODING ARENA (MONACO + UML DIAGRAM MODAL) */}

@@ -1,5 +1,5 @@
 /**
- * GitHub REST API Client for fetching curated open-source LLD and System Design markdown materials
+ * GitHub REST API Client for fetching curated open-source LLD and HLD System Design markdown materials
  */
 
 export interface GitHubRepoItem {
@@ -10,7 +10,7 @@ export interface GitHubRepoItem {
   type: 'file' | 'dir';
 }
 
-export interface CuratedLLDTopic {
+export interface CuratedGitHubTopic {
   id: string;
   title: string;
   category: string;
@@ -20,14 +20,20 @@ export interface CuratedLLDTopic {
   fallbackSummary: string;
 }
 
-export const CURATED_LLD_TOPICS: CuratedLLDTopic[] = [
+// Alias for backward compatibility
+export type CuratedLLDTopic = CuratedGitHubTopic;
+
+/**
+ * Curated LLD-Only GitHub Deep Dive Repositories
+ */
+export const CURATED_LLD_TOPICS: CuratedGitHubTopic[] = [
   {
-    id: 'design-patterns-summary',
+    id: 'design-patterns-for-humans',
     title: 'Design Patterns for Humans (GoF Patterns)',
     category: 'Design Patterns',
     repo: 'kamranahmedse/design-patterns-for-humans',
     path: 'README.md',
-    description: 'Ultra-clear, practical explanation of Creational, Structural, and Behavioral patterns.',
+    description: 'Ultra-clear, practical explanation of Creational, Structural, and Behavioral patterns with real-world analogies.',
     fallbackSummary: `# Design Patterns for Humans
 
 > An ultra-simplified, real-world explanation of Gang of Four (GoF) Design Patterns.
@@ -66,6 +72,64 @@ These patterns are concerned with algorithms and assignment of responsibilities 
 - **State**: Allows an object to alter its behavior when its internal state changes.`
   },
   {
+    id: 'awesome-lld-parking-lot',
+    title: 'Low-Level Design Patterns & SOLID Principles',
+    category: 'Low Level Design',
+    repo: 'ashishps1/awesome-low-level-design',
+    path: 'README.md',
+    description: 'Comprehensive object-oriented low level design interview solutions, concurrency, and patterns.',
+    fallbackSummary: `# Low-Level Design (LLD) & Object-Oriented Principles
+
+> Master Object-Oriented Analysis and Design (OOAD) for senior engineering interviews.
+
+## SOLID Principles in Practice
+
+1. **S — Single Responsibility Principle (SRP)**: A class should have one, and only one, reason to change.
+2. **O — Open/Closed Principle (OCP)**: Software entities should be open for extension, but closed for modification.
+3. **L — Liskov Substitution Principle (LSP)**: Subtypes must be substitutable for their base types without altering correctness.
+4. **I — Interface Segregation Principle (ISP)**: Clients should not be forced to depend upon interfaces they do not use.
+5. **D — Dependency Inversion Principle (DIP)**: High-level modules should not depend on low-level modules; both should depend on abstractions.
+
+---
+
+## Standard LLD Interview Execution Framework
+
+1. **Clarify Requirements**: Functional requirements, capacity bounds, and concurrency expectations.
+2. **Identify Core Entities**: Nouns and Actors in the problem domain (e.g., Vehicle, ParkingSpot, Ticket).
+3. **Establish Relationships**: Inheritance (is-a), Composition (has-a), Aggregation (uses-a).
+4. **Select Design Patterns**: Factory for creation, Strategy for algorithms, State for lifecycle.
+5. **Implement Thread-Safety**: Synchronized blocks, Atomic variables, Concurrent collections, and Mutex locks.`
+  },
+  {
+    id: 'clean-code-principles',
+    title: 'Clean Code & Architectural Design',
+    category: 'Architecture',
+    repo: 'ryanmcdermott/clean-code-javascript',
+    path: 'README.md',
+    description: 'Clean code and SOLID design principles translated for modern object-oriented software engineering.',
+    fallbackSummary: `# Clean Code & Architectural Excellence
+
+## Functions & Methods
+- **Small and Focused**: A function should do one thing and do it exceptionally well.
+- **Monadic / Dyadic Arguments**: Strive for 1-2 function arguments. Use parameter objects for 3+ parameters.
+- **No Side Effects**: Avoid unexpected mutations of external state.
+
+## Naming Conventions
+- Use intention-revealing, pronounceable, and searchable names.
+- Avoid abbreviations and mental mapping.
+
+## Error Handling
+- Use Exceptions rather than Return Codes.
+- Write Try-Catch-Finally statements as first-class transactions.
+- Never pass or return null pointers; use Optional or Null Object Pattern.`
+  }
+];
+
+/**
+ * Curated HLD-Only GitHub Deep Dive Repositories
+ */
+export const CURATED_HLD_TOPICS: CuratedGitHubTopic[] = [
+  {
     id: 'system-design-primer-scalability',
     title: 'System Design Primer — Scalability & Architecture',
     category: 'System Design',
@@ -103,35 +167,6 @@ In a distributed computer system, you can only support two of the following guar
 - **Asynchronous Message Queues**: Kafka / RabbitMQ to decouple producers from consumers.`
   },
   {
-    id: 'awesome-lld-parking-lot',
-    title: 'Low-Level Design Patterns & SOLID Principles',
-    category: 'Low Level Design',
-    repo: 'ashishps1/awesome-low-level-design',
-    path: 'README.md',
-    description: 'Comprehensive object-oriented low level design interview solutions, concurrency, and patterns.',
-    fallbackSummary: `# Low-Level Design (LLD) & Object-Oriented Principles
-
-> Master Object-Oriented Analysis and Design (OOAD) for senior engineering interviews.
-
-## SOLID Principles in Practice
-
-1. **S — Single Responsibility Principle (SRP)**: A class should have one, and only one, reason to change.
-2. **O — Open/Closed Principle (OCP)**: Software entities should be open for extension, but closed for modification.
-3. **L — Liskov Substitution Principle (LSP)**: Subtypes must be substitutable for their base types without altering correctness.
-4. **I — Interface Segregation Principle (ISP)**: Clients should not be forced to depend upon interfaces they do not use.
-5. **D — Dependency Inversion Principle (DIP)**: High-level modules should not depend on low-level modules; both should depend on abstractions.
-
----
-
-## Standard LLD Interview Execution Framework
-
-1. **Clarify Requirements**: Functional requirements, capacity bounds, and concurrency expectations.
-2. **Identify Core Entities**: Nouns and Actors in the problem domain (e.g., Vehicle, ParkingSpot, Ticket).
-3. **Establish Relationships**: Inheritance (is-a), Composition (has-a), Aggregation (uses-a).
-4. **Select Design Patterns**: Factory for creation, Strategy for algorithms, State for lifecycle.
-5. **Implement Thread-Safety**: Synchronized blocks, Atomic variables, Concurrent collections, and Mutex locks.`
-  },
-  {
     id: 'system-design-interview-framework',
     title: 'System Design Interview Cheatsheet & Framework',
     category: 'System Design',
@@ -162,27 +197,29 @@ In a distributed computer system, you can only support two of the following guar
 - Health checks, Distributed tracing, Metrics (Prometheus/Grafana), Alerting.`
   },
   {
-    id: 'gof-oop-principles',
-    title: 'Clean Code & Architectural Design',
-    category: 'Architecture',
-    repo: 'ryanmcdermott/clean-code-javascript',
+    id: 'learn-system-design',
+    title: 'Learn System Design — Enterprise Architecture',
+    category: 'Enterprise Architecture',
+    repo: 'beagreatengineer/learn-system-design',
     path: 'README.md',
-    description: 'Clean code and SOLID design principles translated for modern object-oriented software engineering.',
-    fallbackSummary: `# Clean Code & Architectural Excellence
+    description: 'Comprehensive engineering learning repository covering microservices, event-driven architecture, and database scaling.',
+    fallbackSummary: `# Learn System Design — Enterprise Architecture Guide
 
-## Functions & Methods
-- **Small and Focused**: A function should do one thing and do it exceptionally well.
-- **Monadic / Dyadic Arguments**: Strive for 1-2 function arguments. Use parameter objects for 3+ parameters.
-- **No Side Effects**: Avoid unexpected mutations of external state.
+## 1. Microservices Patterns
+- **API Gateway Pattern**: Single entry point for routing, authentication, and monitoring.
+- **Saga Pattern**: Distributed transactions across microservices using choreography or orchestration.
+- **CQRS (Command Query Responsibility Segregation)**: Separate read and write data stores to optimize throughput.
+- **Event Sourcing**: Store state changes as an immutable append-only log of domain events.
 
-## Naming Conventions
-- Use intention-revealing, pronounceable, and searchable names.
-- Avoid abbreviations and mental mapping.
+## 2. Distributed Caching Strategies
+- **Cache-Aside (Lazy Loading)**: Application queries cache; on miss, queries DB and fills cache.
+- **Write-Through**: Application writes to cache, which synchronously writes to DB.
+- **Write-Back (Write-Behind)**: Application writes to cache; cache asynchronously writes to DB in batches.
 
-## Error Handling
-- Use Exceptions rather than Return Codes.
-- Write Try-Catch-Finally statements as first-class transactions.
-- Never pass or return null pointers; use Optional or Null Object Pattern.`
+## 3. Database Scaling
+- **Master-Slave Replication**: Single master handles writes; multiple read replicas handle reads.
+- **Horizontal Sharding**: Partitioning data across databases using shard keys (hash or range).
+- **Consistent Hashing**: Minimizes data movement when database nodes are added or removed.`
   }
 ];
 
@@ -251,14 +288,16 @@ export async function fetchGitHubMarkdown(repo: string, path: string): Promise<{
     }
 
     // 3. Fallback to curated local summary
-    const matching = CURATED_LLD_TOPICS.find(t => t.repo === repo);
+    const allTopics = [...CURATED_LLD_TOPICS, ...CURATED_HLD_TOPICS];
+    const matching = allTopics.find(t => t.repo === repo);
     if (matching?.fallbackSummary) {
       return { content: matching.fallbackSummary, error: null };
     }
 
     return { content: null, error: `Unable to load remote repository.` };
   } catch {
-    const matching = CURATED_LLD_TOPICS.find(t => t.repo === repo);
+    const allTopics = [...CURATED_LLD_TOPICS, ...CURATED_HLD_TOPICS];
+    const matching = allTopics.find(t => t.repo === repo);
     if (matching?.fallbackSummary) {
       return { content: matching.fallbackSummary, error: null };
     }

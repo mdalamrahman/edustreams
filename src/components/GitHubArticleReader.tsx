@@ -19,18 +19,12 @@ import {
   Sun,
   Moon,
   AlignLeft,
-  Menu,
-  Layers
+  Menu
 } from 'lucide-react';
-import { CuratedLLDTopic } from '../lib/githubLld';
-import { KrokiDiagramModal } from './KrokiDiagramModal';
-import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
-import { getCurrentStudent } from '../lib/auth';
-import { InsufficientCreditsModal } from './InsufficientCreditsModal';
-import { WalletTopupModal } from './WalletTopupModal';
+import { CuratedGitHubTopic } from '../lib/githubLld';
 
 interface GitHubArticleReaderProps {
-  topic: CuratedLLDTopic;
+  topic: CuratedGitHubTopic;
   markdown: string;
   isLoading: boolean;
 }
@@ -47,29 +41,6 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
   isLoading
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState(false);
-  const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
-  const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
-  const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 0.20, action: '' });
-
-  const handleOpenDiagramModal = () => {
-    const user = getCurrentStudent();
-    if (!canAffordAction(PRICING_CONFIG.LLD_DIAGRAM_VIEW, user?.email)) {
-      setInsufficientMeta({
-        cost: PRICING_CONFIG.LLD_DIAGRAM_VIEW,
-        action: `Kroki Visual LLD Architecture Diagram (20 paise): ${topic.title}`
-      });
-      setIsInsufficientCreditsOpen(true);
-      return;
-    }
-    deductCredits(
-      PRICING_CONFIG.LLD_DIAGRAM_VIEW,
-      'LLD_DIAGRAM',
-      `📐 LLD Architecture Diagram (20p): ${topic.title}`,
-      user?.email
-    );
-    setIsDiagramModalOpen(true);
-  };
 
   const [baseFontSize, setBaseFontSize] = useState<number>(16); // Dynamic px size (14 - 24)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -507,7 +478,7 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
         </div>
 
-        {/* Right Toolbar Controls: Font Scaling, LLD Diagram & Fullscreen */}
+        {/* Right Toolbar Controls: Font Scaling & Fullscreen */}
         <div className="flex items-center gap-2">
           
           {/* Dynamic Font Size Stepper (A-, A, A+) */}
@@ -528,16 +499,6 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
               A+
             </button>
           </div>
-
-          {/* Small LLD Diagram Button on the Right (20 paise) */}
-          <button
-            onClick={handleOpenDiagramModal}
-            className="px-3.5 py-2 rounded-2xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-            title="Open Kroki Visual LLD Architecture Popup (20 paise)"
-          >
-            <Layers className="w-4 h-4 text-cyan-400" />
-            <span>LLD Diagram</span>
-          </button>
 
           {/* Fullscreen Reading Mode with Native Monitor Full Viewport */}
           <button
@@ -658,34 +619,6 @@ export const GitHubArticleReader: React.FC<GitHubArticleReaderProps> = ({
           </div>
 
         </div>
-
-      {/* Kroki Visual LLD Architecture Popup Modal (Charged at 20 paise) */}
-      {isDiagramModalOpen && (
-        <KrokiDiagramModal
-          slugOrTitle={topic.title}
-          category={topic.category}
-          onClose={() => setIsDiagramModalOpen(false)}
-        />
-      )}
-
-      {/* Insufficient Credits Gatekeeper Modal */}
-      <InsufficientCreditsModal
-        isOpen={isInsufficientCreditsOpen}
-        onClose={() => setIsInsufficientCreditsOpen(false)}
-        onOpenRecharge={() => {
-          setIsInsufficientCreditsOpen(false);
-          setIsWalletTopupOpen(true);
-        }}
-        requiredCost={insufficientMeta.cost}
-        actionName={insufficientMeta.action}
-      />
-
-      {/* Wallet Top-up Modal */}
-      <WalletTopupModal
-        isOpen={isWalletTopupOpen}
-        onClose={() => setIsWalletTopupOpen(false)}
-        initialAmount={50}
-      />
 
     </div>
   );
