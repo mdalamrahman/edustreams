@@ -800,37 +800,41 @@ _PROBLEM_CACHE: dict = {}
 
 
 @app.get("/api/problem/{slug}")
-async def get_problem_route(slug: str):
+async def get_problem_route(slug: str, refresh: bool = False):
     """
-    Fetches authentic LeetCode problem description, constraints, examples,
-    and official multi-language starter code from LeetCode GraphQL or Mistral AI.
+    Fetches coding problem definition from Cloudflare R2 storage (fastest).
+    If not yet stored in Cloudflare R2, fetches from LeetCode GraphQL / AI,
+    persists permanently into Cloudflare R2 as both .json and .txt, and returns.
     """
     clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
     clean_slug = re.sub(r'/.*$', '', clean_slug)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
 
-    # 1. Query LeetCode GraphQL API directly (Authentic Official Source)
+    if not refresh:
+        # 1. In-memory problem cache (<1ms)
+        if clean_slug in _PROBLEM_CACHE:
+            cached = _PROBLEM_CACHE[clean_slug]
+            if cached.get("name") and cached.get("description") and cached.get("testCases"):
+                return cached
+
+        # 2. Cloudflare R2 Storage (fastest object storage)
+        try:
+            problem_data = r2_storage.fetch_problem(clean_slug)
+            if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
+                _PROBLEM_CACHE[clean_slug] = problem_data
+                return problem_data
+        except Exception as e:
+            print(f"[R2 fetch notice for '{clean_slug}']: {e}")
+
+    # 3. If not in Cloudflare R2, query LeetCode GraphQL API
     lc_data = fetch_leetcode_graphql(clean_slug)
-    if lc_data:
+    if lc_data and lc_data.get("name") and lc_data.get("description"):
         _PROBLEM_CACHE[clean_slug] = lc_data
         try:
-            r2_storage.upload_problem(clean_slug, json.dumps(lc_data).encode("utf-8"))
-        except Exception:
-            pass
+            r2_storage.upload_problem(clean_slug, lc_data)
+        except Exception as e:
+            print(f"[R2 upload error for '{clean_slug}']: {e}")
         return lc_data
-
-    # 2. Check in-memory problem cache
-    if clean_slug in _PROBLEM_CACHE:
-        return _PROBLEM_CACHE[clean_slug]
-
-    # 3. Check R2 Storage cache (fallback)
-    try:
-        problem_data = r2_storage.fetch_problem(clean_slug)
-        if problem_data and problem_data.get("name") and problem_data.get("description") and problem_data.get("testCases"):
-            _PROBLEM_CACHE[clean_slug] = problem_data
-            return problem_data
-    except Exception:
-        pass
 
     # 4. If not found on LeetCode, generate authentic spec with Mistral AI
     try:
@@ -841,7 +845,7 @@ Return valid JSON with:
 - category: string
 - difficulty: "Easy" | "Medium" | "Hard"
 - description: detailed problem explanation
-- examples: array of objects with input, output, explanation
+- examples: array of objects with input, output, explanation, and optional image URL
 - constraints: array of strings
 - testCases: array of 3+ test case inputs
 - expectedOutputs: array of strings matching testCases
@@ -863,6 +867,10 @@ Return valid JSON with:
                 clean_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in raw_tcs]
                 parsed["testCases"] = clean_tcs
                 _PROBLEM_CACHE[clean_slug] = parsed
+                try:
+                    r2_storage.upload_problem(clean_slug, parsed)
+                except Exception as e:
+                    print(f"[R2 upload error for AI problem '{clean_slug}']: {e}")
                 return parsed
     except Exception as e:
         print(f"[Mistral Problem Gen Error for '{slug}']: {e}")

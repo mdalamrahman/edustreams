@@ -180,55 +180,75 @@ class CloudflareR2Storage:
 
         return None
 
-    def upload_problem(self, slug: str, data: Dict[str, Any]) -> Optional[str]:
-        """Uploads a LeetCode problem JSON to R2 under problems/{slug}.json."""
+    def upload_problem(self, slug: str, data: Any) -> Optional[str]:
+        """Uploads a problem JSON/TXT to Cloudflare R2 under problems/{slug}.json and problems/{slug}.txt."""
         import re
         clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
-        key = f"problems/{clean_slug}.json"
-        payload_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        
+        if isinstance(data, (bytes, bytearray)):
+            payload_bytes = bytes(data)
+        elif isinstance(data, str):
+            payload_bytes = data.encode("utf-8")
+        else:
+            payload_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
 
+        json_key = f"problems/{clean_slug}.json"
+        txt_key = f"problems/{clean_slug}.txt"
+
+        # 1. Boto3 Upload
         if self._boto_client:
             try:
-                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key, Body=payload_bytes, ContentType="application/json")
-                print(f"[R2 Problem Upload] {key} ({len(payload_bytes)} bytes)")
-                return key
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=json_key, Body=payload_bytes, ContentType="application/json")
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=txt_key, Body=payload_bytes, ContentType="text/plain; charset=utf-8")
+                print(f"[Cloudflare R2 Problem Upload Boto3] {json_key} & {txt_key} ({len(payload_bytes)} bytes)")
+                return json_key
             except Exception as e:
-                print(f"[R2 Problem Upload Boto3 Error]: {e}")
+                print(f"[Cloudflare R2 Problem Upload Boto3 Error]: {e}")
 
+        # 2. Native SigV4 REST Upload
         try:
-            headers = self._get_sigv4_headers("PUT", key, payload_bytes)
+            headers = self._get_sigv4_headers("PUT", json_key, payload_bytes)
             headers["Content-Type"] = "application/json"
-            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{json_key}"
             resp = requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            
+            # Also store txt backup
+            headers_txt = self._get_sigv4_headers("PUT", txt_key, payload_bytes)
+            headers_txt["Content-Type"] = "text/plain; charset=utf-8"
+            requests.put(f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{txt_key}", headers=headers_txt, data=payload_bytes, timeout=10)
+
             if resp.status_code in [200, 201]:
-                print(f"[R2 Problem Upload SigV4] {key} ({len(payload_bytes)} bytes)")
-                return key
+                print(f"[Cloudflare R2 Problem Upload SigV4] {json_key} & {txt_key} ({len(payload_bytes)} bytes)")
+                return json_key
         except Exception as e:
-            print(f"[R2 Problem Upload SigV4 Error]: {e}")
+            print(f"[Cloudflare R2 Problem Upload SigV4 Error]: {e}")
         return None
 
     def fetch_problem(self, slug: str) -> Optional[Dict[str, Any]]:
-        """Fetches a LeetCode problem JSON from R2."""
+        """Fetches a problem definition from Cloudflare R2 (checks .json and .txt)."""
         import re
         clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
-        key = f"problems/{clean_slug}.json"
+        keys_to_try = [f"problems/{clean_slug}.json", f"problems/{clean_slug}.txt"]
 
         if self._boto_client:
-            try:
-                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
-                body = resp["Body"].read()
-                return json.loads(body.decode("utf-8"))
-            except Exception:
-                pass
+            for key in keys_to_try:
+                try:
+                    resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                    body = resp["Body"].read()
+                    return json.loads(body.decode("utf-8"))
+                except Exception:
+                    continue
 
-        try:
-            headers = self._get_sigv4_headers("GET", key)
-            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
-            resp = requests.get(url, headers=headers, timeout=8)
-            if resp.status_code == 200:
-                return resp.json()
-        except Exception:
-            pass
+        for key in keys_to_try:
+            try:
+                headers = self._get_sigv4_headers("GET", key)
+                url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+                resp = requests.get(url, headers=headers, timeout=8)
+                if resp.status_code == 200:
+                    text_content = resp.text
+                    return json.loads(text_content)
+            except Exception:
+                continue
         return None
 
     def upload_image(self, image_name: str, data: bytes, content_type: str = "image/jpeg") -> Optional[str]:

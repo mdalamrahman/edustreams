@@ -34,7 +34,8 @@ import {
   Eye,
   FileText,
   Save,
-  Download
+  Download,
+  Cloud
 } from 'lucide-react';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -826,6 +827,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </button>
 
           {/* External Links: LeetCode & GeeksforGeeks (Only if available) */}
+          {/* Cloudflare R2 Sync Status Badge */}
+          {isLoadingEnriched && (
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-[11px] font-mono animate-pulse">
+              <Cloud className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+              <span className="hidden sm:inline">Syncing R2...</span>
+            </div>
+          )}
+
           {lcUrl && (
             <a
               href={lcUrl}
@@ -1062,6 +1071,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {leftTab === 'description' && (
               <div className="space-y-4">
                 
+                {/* Cloudflare R2 Loading State Banner */}
+                {isLoadingEnriched && (
+                  <div className="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-700/50 flex items-center justify-between animate-pulse">
+                    <div className="flex items-center space-x-2 text-indigo-300 text-xs font-semibold">
+                      <Cloud className="w-4 h-4 text-cyan-400 animate-spin flex-shrink-0" />
+                      <span>Loading problem definition & illustrations from Cloudflare R2...</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded-md border border-cyan-800/60 flex-shrink-0">
+                      R2 Object Store
+                    </span>
+                  </div>
+                )}
+
                 {/* Header & Meta Badges */}
                 <div className="space-y-2.5 pb-3 border-b border-slate-800">
                   <h2 className="text-xl font-black text-slate-100 tracking-tight">{cleanTitle}</h2>
