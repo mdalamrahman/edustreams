@@ -39,6 +39,223 @@ export const normalizeProblemTitle = (title: string): string => {
 
 // Handcrafted specific templates for core SDE sheet problems with Multi-Approach support
 export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
+  'subsetsii': {
+    name: 'Subsets II (Unique Subsets)',
+    category: 'Recursion & Backtracking',
+    difficulty: 'Medium',
+    description: 'Given an integer array nums that may contain duplicates, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.',
+    examples: [
+      {
+        input: 'nums = [1,2,2]',
+        output: '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
+        explanation: 'All 6 distinct subsets formed without repeating identical combinations.'
+      },
+      {
+        input: 'nums = [0]',
+        output: '[[],[0]]',
+        explanation: 'Single element array.'
+      }
+    ],
+    constraints: [
+      '1 <= nums.length <= 10',
+      '-10 <= nums[i] <= 10'
+    ],
+    testCases: [
+      'nums = [1, 2, 2]',
+      'nums = [0]',
+      'nums = [4, 4, 4, 1, 4]',
+      'nums = [1, 2, 3]',
+      'nums = [2, 1, 2, 1, 3]'
+    ],
+    expectedOutputs: [
+      '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
+      '[[],[0]]',
+      '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
+      '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+    ],
+    hints: [
+      'Sort the array first so duplicate elements are adjacent.',
+      'During backtracking, if nums[i] == nums[i-1] and i > start, skip the iteration to avoid duplicate branches.'
+    ],
+    approaches: [
+      {
+        id: 'backtrack',
+        name: 'Approach 1: Backtracking with Duplicate Skip (Optimal O(2^N))',
+        timeComplexity: 'O(2^N * N)',
+        spaceComplexity: 'O(N)',
+        description: 'Sort the array first, then use standard subset backtracking skipping nums[i] == nums[i-1] when i > start.'
+      }
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def subsetsWithDup(self, nums: List[int]) -> List[List[int]]:\n        pass`,
+      java: `class Solution {\n    public List<List<Integer>> subsetsWithDup(int[] nums) {\n        \n    }\n}`,
+      javascript: `var subsetsWithDup = function(nums) {\n    \n};`,
+      go: `func subsetsWithDup(nums []int) [][]int {\n    \n}`,
+      rust: `impl Solution {\n    pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> {\n        \n    }\n}`,
+      sql: `-- Solution`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        sort(nums.begin(), nums.end());\n        vector<vector<int>> result;\n        vector<int> current;\n        backtrack(nums, 0, current, result);\n        return result;\n    }\nprivate:\n    void backtrack(const vector<int>& nums, int start, vector<int>& current, vector<vector<int>>& result) {\n        result.push_back(current);\n        for (int i = start; i < (int)nums.size(); ++i) {\n            if (i > start && nums[i] == nums[i - 1]) continue;\n            current.push_back(nums[i]);\n            backtrack(nums, i + 1, current, result);\n            current.pop_back();\n        }\n    }\n};`,
+      python: `class Solution:\n    def subsetsWithDup(self, nums: List[int]) -> List[List[int]]:\n        nums.sort()\n        res = []\n        def backtrack(start, path):\n            res.append(list(path))\n            for i in range(start, len(nums)):\n                if i > start and nums[i] == nums[i-1]:\n                    continue\n                path.append(nums[i])\n                backtrack(i + 1, path)\n                path.pop()\n        backtrack(0, [])\n        return res`,
+      java: `class Solution {\n    public List<List<Integer>> subsetsWithDup(int[] nums) {\n        Arrays.sort(nums);\n        List<List<Integer>> res = new ArrayList<>();\n        backtrack(nums, 0, new ArrayList<>(), res);\n        return res;\n    }\n    private void backtrack(int[] nums, int start, List<Integer> current, List<List<Integer>> res) {\n        res.add(new ArrayList<>(current));\n        for (int i = start; i < nums.length; i++) {\n            if (i > start && nums[i] == nums[i - 1]) continue;\n            current.add(nums[i]);\n            backtrack(nums, i + 1, current, res);\n            current.remove(current.size() - 1);\n        }\n    }\n}`,
+      javascript: `var subsetsWithDup = function(nums) {\n    nums.sort((a, b) => a - b);\n    const result = [];\n    function backtrack(start, current) {\n        result.push([...current]);\n        for (let i = start; i < nums.length; i++) {\n            if (i > start && nums[i] === nums[i - 1]) continue;\n            current.push(nums[i]);\n            backtrack(i + 1, current);\n            current.pop();\n        }\n    }\n    backtrack(0, []);\n    return result;\n};`,
+      go: `func subsetsWithDup(nums []int) [][]int { return [][]int{} }`,
+      rust: `impl Solution { pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> { vec![] } }`,
+      sql: `-- Solution`
+    }
+  },
+  'subsets': {
+    name: 'Subsets',
+    category: 'Recursion & Backtracking',
+    difficulty: 'Medium',
+    description: 'Given an integer array nums of unique elements, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.',
+    examples: [
+      {
+        input: 'nums = [1,2,3]',
+        output: '[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]',
+        explanation: 'All 8 subsets of [1,2,3].'
+      },
+      {
+        input: 'nums = [0]',
+        output: '[[],[0]]',
+        explanation: 'Single element array.'
+      }
+    ],
+    constraints: [
+      '1 <= nums.length <= 10',
+      '-10 <= nums[i] <= 10',
+      'All the numbers of nums are unique.'
+    ],
+    testCases: [
+      'nums = [1, 2, 3]',
+      'nums = [0]',
+      'nums = [1, 2]',
+      'nums = [3, 2, 4, 1]',
+      'nums = [9, 0]'
+    ],
+    expectedOutputs: [
+      '[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]',
+      '[[],[0]]',
+      '[[],[1],[2],[1,2]]',
+      '[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3],[4],[1,4],[2,4],[1,2,4],[3,4],[1,3,4],[2,3,4],[1,2,3,4]]',
+      '[[],[0],[9],[0,9]]'
+    ],
+    hints: [
+      'For each element, you have two choices: include it in the current subset or exclude it.',
+      'Use backtracking to explore all 2^N possible subsets.'
+    ],
+    approaches: [],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsets(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def subsets(self, nums: List[int]) -> List[List[int]]:\n        pass`,
+      java: `class Solution {\n    public List<List<Integer>> subsets(int[] nums) {\n        \n    }\n}`,
+      javascript: `var subsets = function(nums) {\n    \n};`,
+      go: `func subsets(nums []int) [][]int {\n    \n}`,
+      rust: `impl Solution {\n    pub fn subsets(nums: Vec<i32>) -> Vec<Vec<i32>> {\n        \n    }\n}`,
+      sql: `-- Solution`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsets(vector<int>& nums) {\n        vector<vector<int>> result;\n        vector<int> current;\n        backtrack(nums, 0, current, result);\n        return result;\n    }\nprivate:\n    void backtrack(const vector<int>& nums, int start, vector<int>& current, vector<vector<int>>& result) {\n        result.push_back(current);\n        for (int i = start; i < (int)nums.size(); ++i) {\n            current.push_back(nums[i]);\n            backtrack(nums, i + 1, current, result);\n            current.pop_back();\n        }\n    }\n};`,
+      python: `class Solution:\n    def subsets(self, nums: List[int]) -> List[List[int]]:\n        res = []\n        def backtrack(start, path):\n            res.append(list(path))\n            for i in range(start, len(nums)):\n                path.append(nums[i])\n                backtrack(i + 1, path)\n                path.pop()\n        backtrack(0, [])\n        return res`,
+      java: `class Solution {\n    public List<List<Integer>> subsets(int[] nums) {\n        List<List<Integer>> res = new ArrayList<>();\n        backtrack(nums, 0, new ArrayList<>(), res);\n        return res;\n    }\n    private void backtrack(int[] nums, int start, List<Integer> current, List<List<Integer>> res) {\n        res.add(new ArrayList<>(current));\n        for (int i = start; i < nums.length; i++) {\n            current.add(nums[i]);\n            backtrack(nums, i + 1, current, res);\n            current.remove(current.size() - 1);\n        }\n    }\n}`,
+      javascript: `var subsets = function(nums) {\n    const result = [];\n    function backtrack(start, current) {\n        result.push([...current]);\n        for (let i = start; i < nums.length; i++) {\n            current.push(nums[i]);\n            backtrack(i + 1, current);\n            current.pop();\n        }\n    }\n    backtrack(0, []);\n    return result;\n};`,
+      go: `func subsets(nums []int) [][]int { return [][]int{} }`,
+      rust: `impl Solution { pub fn subsets(nums: Vec<i32>) -> Vec<Vec<i32>> { vec![] } }`,
+      sql: `-- Solution`
+    }
+  },
+  'subsets2': {
+    name: 'Subsets II',
+    category: 'Recursion & Backtracking',
+    difficulty: 'Medium',
+    description: 'Given an integer array nums that may contain duplicates, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.',
+    examples: [
+      {
+        input: 'nums = [1,2,2]',
+        output: '[[],[1],[1,2],[1,2,2],[2],[2,2]]'
+      }
+    ],
+    constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
+    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    expectedOutputs: [
+      '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
+      '[[],[0]]',
+      '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
+      '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def subsetsWithDup(self, nums: List[int]) -> List[List[int]]:\n        pass`,
+      java: `class Solution {\n    public List<List<Integer>> subsetsWithDup(int[] nums) {\n        \n    }\n}`,
+      javascript: `var subsetsWithDup = function(nums) {\n    \n};`,
+      go: `func subsetsWithDup(nums []int) [][]int { }`,
+      rust: `impl Solution { pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> { vec![] } }`,
+      sql: `-- Solution`
+    }
+  },
+  'subsetii': {
+    name: 'Subsets II',
+    category: 'Recursion & Backtracking',
+    difficulty: 'Medium',
+    description: 'Given an integer array nums that may contain duplicates, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.',
+    examples: [
+      {
+        input: 'nums = [1,2,2]',
+        output: '[[],[1],[1,2],[1,2,2],[2],[2,2]]'
+      }
+    ],
+    constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
+    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    expectedOutputs: [
+      '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
+      '[[],[0]]',
+      '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
+      '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def subsetsWithDup(self, nums: List[int]) -> List[List[int]]:\n        pass`,
+      java: `class Solution {\n    public List<List<Integer>> subsetsWithDup(int[] nums) {\n        \n    }\n}`,
+      javascript: `var subsetsWithDup = function(nums) {\n    \n};`,
+      go: `func subsetsWithDup(nums []int) [][]int { }`,
+      rust: `impl Solution { pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> { vec![] } }`,
+      sql: `-- Solution`
+    }
+  },
+  'subsetiiuniquesubsets': {
+    name: 'Subsets II',
+    category: 'Recursion & Backtracking',
+    difficulty: 'Medium',
+    description: 'Given an integer array nums that may contain duplicates, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.',
+    examples: [
+      {
+        input: 'nums = [1,2,2]',
+        output: '[[],[1],[1,2],[1,2,2],[2],[2,2]]'
+      }
+    ],
+    constraints: ['1 <= nums.length <= 10', '-10 <= nums[i] <= 10'],
+    testCases: ['nums = [1, 2, 2]', 'nums = [0]', 'nums = [4, 4, 4, 1, 4]', 'nums = [1, 2, 3]', 'nums = [2, 1, 2, 1, 3]'],
+    expectedOutputs: [
+      '[[],[1],[1,2],[1,2,2],[2],[2,2]]',
+      '[[],[0]]',
+      '[[],[1],[1,4],[1,4,4],[1,4,4,4],[1,4,4,4,4],[4],[4,4],[4,4,4],[4,4,4,4]]',
+      '[[],[1],[1,2],[1,2,3],[1,3],[2],[2,3],[3]]',
+      '[[],[1],[1,1],[1,1,2],[1,1,2,2],[1,1,2,2,3],[1,1,2,3],[1,1,3],[1,2],[1,2,2],[1,2,2,3],[1,2,3],[1,3],[2],[2,2],[2,2,3],[2,3],[3]]'
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> subsetsWithDup(vector<int>& nums) {\n        \n    }\n};`,
+      python: `class Solution:\n    def subsetsWithDup(self, nums: List[int]) -> List[List[int]]:\n        pass`,
+      java: `class Solution {\n    public List<List<Integer>> subsetsWithDup(int[] nums) {\n        \n    }\n}`,
+      javascript: `var subsetsWithDup = function(nums) {\n    \n};`,
+      go: `func subsetsWithDup(nums []int) [][]int { }`,
+      rust: `impl Solution { pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> { vec![] } }`,
+      sql: `-- Solution`
+    }
+  },
   'sortcolors': {
     name: 'Sort an Array of 0s, 1s and 2s',
     category: 'Arrays',

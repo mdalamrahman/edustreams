@@ -40,10 +40,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquare,
-  Star,
   Share2
 } from 'lucide-react';
-import { executeCode, SupportedLanguage } from '../lib/compiler';
+import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
 import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
 import { DSAProblem } from '../lib/dsaSheetsData';
@@ -228,6 +227,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
   const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
+  
+  // Submission and Test Execution State
+  const [submissionResult, setSubmissionResult] = useState<{
+    isSubmission: boolean;
+    passedCount: number;
+    totalCount: number;
+    failedCaseIdx?: number;
+    failedInput?: string;
+    failedOutput?: string;
+    failedExpected?: string;
+    failedStderr?: string;
+    isSuccess: boolean;
+  } | null>(null);
   
   // Direct LeetCode & GeeksforGeeks links (Only if explicitly present)
   const lcUrl = useMemo(() => {
@@ -519,33 +531,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     } catch {}
   };
 
-  // Strict Output Validation Logic (Prevents empty or wrong solutions from getting Accepted)
+  // Strict Output Validation Logic (Handles order-independent nested subsets, bools, ints, whitespace)
   const currentExpectedOutput = useMemo(() => {
     return problemTemplate.expectedOutputs?.[activeTestCaseIdx] || problemTemplate.expectedOutputs?.[0] || '';
   }, [problemTemplate, activeTestCaseIdx]);
 
-  const normalizeOutput = (str: string) => {
-    return (str || '')
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .replace(/\s+/g, '')
-      .toLowerCase();
-  };
-
-  const isOutputValid = (stdout: string, stderr: string): boolean => {
+  const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput): boolean => {
     if (stderr && stderr.trim().length > 0) return false;
     if (!stdout || !stdout.trim()) return false;
-    
-    // If output is default placeholder string without real logic execution
-    if (stdout.includes('Solution executed successfully with test input') && currentExpectedOutput && !currentExpectedOutput.includes('Solution executed')) {
-      return false;
-    }
-    
-    if (!currentExpectedOutput) return stdout.trim().length > 0;
-    return normalizeOutput(stdout) === normalizeOutput(currentExpectedOutput);
+    if (!expectedOutput || !expectedOutput.trim()) return stdout.trim().length > 0;
+    return compareOutputs(stdout, expectedOutput);
   };
 
-  // Run Code / Submit
+  // Run Code (First 3 Run Cases) vs Submit (All Hidden Cases)
   const handleExecute = async (isSubmission: boolean = false) => {
     const cost = isSubmission ? PRICING_CONFIG.CODE_SUBMIT_DSA_LLD : PRICING_CONFIG.COMPILER_RUN_DSA_LLD;
     const actionLabel = isSubmission ? 'Submitting & Judging Solution (20 paise)' : 'Running Code via Compiler (5 paise)';
@@ -568,36 +566,114 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const start = Date.now();
 
     try {
-      const result = await executeCode(code, language, testInput, cleanTitle);
-      const elapsedMs = Date.now() - start;
-      setExecutionTime(elapsedMs);
-      setExecutionResult(result);
+      if (!isSubmission) {
+        // ----------------------------------------------------
+        // RUN MODE: Execute the currently active testcase
+        // ----------------------------------------------------
+        const result = await executeCode(code, language, testInput, cleanTitle);
+        const elapsedMs = Date.now() - start;
+        setExecutionTime(elapsedMs);
+        setExecutionResult(result);
 
-      // Strict Acceptance Check
-      const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr);
+        const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr, currentExpectedOutput);
 
-      if (isSubmission) {
+        setSubmissionResult({
+          isSubmission: false,
+          passedCount: isSuccess ? 1 : 0,
+          totalCount: 1,
+          failedCaseIdx: isSuccess ? undefined : activeTestCaseIdx,
+          failedInput: isSuccess ? undefined : testInput,
+          failedOutput: result.stdout,
+          failedExpected: currentExpectedOutput,
+          failedStderr: result.stderr,
+          isSuccess
+        });
+
+      } else {
+        // ----------------------------------------------------
+        // SUBMISSION MODE: Execute across ALL test cases
+        // ----------------------------------------------------
+        const allCases = problemTemplate.testCases && problemTemplate.testCases.length > 0 
+          ? problemTemplate.testCases 
+          : [testInput];
+        const allExpected = problemTemplate.expectedOutputs && problemTemplate.expectedOutputs.length > 0
+          ? problemTemplate.expectedOutputs
+          : [currentExpectedOutput];
+
+        let passed = 0;
+        let lastResult: CodeExecutionResult = {
+          stdout: '',
+          stderr: '',
+          status: 'SUCCESS',
+          exit_code: 0,
+          execution_time_ms: 0,
+          memory_used_kb: 3420
+        };
+        let failedIdx = -1;
+        let failedIn = '';
+        let failedExp = '';
+        let failedOut = '';
+        let failedErr = '';
+
+        for (let i = 0; i < allCases.length; i++) {
+          const caseInput = allCases[i];
+          const expectedOut = allExpected[i] || '';
+          
+          const res = await executeCode(code, language, caseInput, cleanTitle);
+          lastResult = res;
+
+          const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut);
+          if (casePass) {
+            passed++;
+          } else {
+            failedIdx = i;
+            failedIn = caseInput;
+            failedExp = expectedOut;
+            failedOut = res.stdout;
+            failedErr = res.stderr;
+            break;
+          }
+        }
+
+        const elapsedMs = Date.now() - start;
+        setExecutionTime(elapsedMs);
+        setExecutionResult(lastResult);
+
+        const isAllSuccess = passed === allCases.length;
+
+        setSubmissionResult({
+          isSubmission: true,
+          passedCount: passed,
+          totalCount: allCases.length,
+          failedCaseIdx: isAllSuccess ? undefined : failedIdx,
+          failedInput: isAllSuccess ? undefined : failedIn,
+          failedOutput: isAllSuccess ? undefined : failedOut,
+          failedExpected: isAllSuccess ? undefined : failedExp,
+          failedStderr: isAllSuccess ? undefined : failedErr,
+          isSuccess: isAllSuccess
+        });
+
         setSubmissionsList(prev => [
           {
             timestamp: new Date().toLocaleTimeString(),
-            status: isSuccess ? 'Accepted' : result.stderr ? 'Runtime Error' : 'Wrong Answer',
+            status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : `Wrong Answer (${passed}/${allCases.length})`,
             runtime: `${elapsedMs} ms`,
-            memory: `${result.memory_used_kb || 3420} KB`,
+            memory: `${lastResult.memory_used_kb || 3420} KB`,
             lang: language.toUpperCase()
           },
           ...prev
         ]);
 
-        if (isSuccess) {
+        if (isAllSuccess) {
           confetti({
-            particleCount: 100,
-            spread: 70,
+            particleCount: 120,
+            spread: 80,
             origin: { y: 0.6 }
           });
         }
 
         if (onCodeExecuted) {
-          onCodeExecuted(Math.max(1, Math.round(elapsedMs / 1000)), isSuccess);
+          onCodeExecuted(Math.max(1, Math.round(elapsedMs / 1000)), isAllSuccess);
         }
       }
     } catch (err: any) {
@@ -608,6 +684,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         exit_code: 1,
         execution_time_ms: 0,
         memory_used_kb: 0
+      });
+      setSubmissionResult({
+        isSubmission,
+        passedCount: 0,
+        totalCount: isSubmission ? (problemTemplate.testCases?.length || 1) : 1,
+        failedCaseIdx: activeTestCaseIdx,
+        failedInput: testInput,
+        failedStderr: err?.message || 'Compiler execution error',
+        isSuccess: false
       });
     } finally {
       setIsExecuting(false);
@@ -1805,30 +1890,45 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             {!isConsoleMinimized && (
               <div className="flex-1 p-4 overflow-y-auto font-mono text-xs select-text">
                 
-                {/* TAB A: TESTCASES */}
+                {/* TAB A: TESTCASES (Show First 3 Cases as Run Cases) */}
                 {consoleTab === 'testcase' && (
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-                      {problemTemplate.testCases.map((tc, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            setActiveTestCaseIdx(idx);
-                            setTestInput(tc);
-                          }}
-                          className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-                            activeTestCaseIdx === idx
-                              ? 'bg-indigo-600 text-white shadow-md'
-                              : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
-                          }`}
-                        >
-                          Case {idx + 1}
-                        </button>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+                        {(problemTemplate.testCases || []).slice(0, 3).map((tc, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setActiveTestCaseIdx(idx);
+                              setTestInput(tc);
+                            }}
+                            className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
+                              activeTestCaseIdx === idx
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                            }`}
+                          >
+                            Case {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+
+                      {problemTemplate.testCases && problemTemplate.testCases.length > 3 && (
+                        <span className="text-[10px] text-slate-400 font-mono px-2 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                          +{problemTemplate.testCases.length - 3} hidden submission cases
+                        </span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
-                      <div className="text-[10px] text-slate-400 uppercase font-bold">Input:</div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold">
+                        <span>Input (Case {activeTestCaseIdx + 1}):</span>
+                        {currentExpectedOutput && (
+                          <span className="text-slate-400 font-normal font-mono normal-case">
+                            Expected: <code className="text-indigo-300 font-bold">{currentExpectedOutput}</code>
+                          </span>
+                        )}
+                      </div>
                       <textarea
                         value={testInput}
                         onChange={(e) => setTestInput(e.target.value)}
@@ -1842,42 +1942,65 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 {/* TAB B: TEST RESULT */}
                 {consoleTab === 'result' && (
                   <div className="space-y-3 font-sans">
-                    {executionResult ? (
+                    {submissionResult ? (
                       <div className="space-y-3">
                         
-                        {/* Status Header with Strict Correctness Evaluation */}
+                        {/* Status Header with Comprehensive Correctness Evaluation */}
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                           <div className="flex items-center space-x-2 font-black text-sm">
-                            {executionResult.stderr ? (
+                            {submissionResult.failedStderr ? (
                               <>
                                 <XCircle className="w-5 h-5 text-rose-400" />
-                                <span className="text-rose-400">Runtime Error</span>
+                                <span className="text-rose-400">
+                                  {submissionResult.failedStderr.includes('error:') ? 'Compilation Error' : 'Runtime Error'}
+                                  {submissionResult.isSubmission && ` (Case ${(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})`}
+                                </span>
                               </>
-                            ) : isOutputValid(executionResult.stdout, executionResult.stderr) ? (
+                            ) : submissionResult.isSuccess ? (
                               <>
                                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                                <span className="text-emerald-400">Accepted (Case {activeTestCaseIdx + 1})</span>
+                                <span className="text-emerald-400">
+                                  {submissionResult.isSubmission
+                                    ? `Accepted (Passed all ${submissionResult.totalCount}/${submissionResult.totalCount} Test Cases)`
+                                    : `Accepted (Case ${activeTestCaseIdx + 1})`}
+                                </span>
                               </>
                             ) : (
                               <>
                                 <XCircle className="w-5 h-5 text-amber-400" />
-                                <span className="text-amber-400">Wrong Answer (Case {activeTestCaseIdx + 1})</span>
+                                <span className="text-amber-400">
+                                  {submissionResult.isSubmission
+                                    ? `Wrong Answer (Failed Case ${(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})`
+                                    : `Wrong Answer (Case ${activeTestCaseIdx + 1})`}
+                                </span>
                               </>
                             )}
                           </div>
 
                           <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
                             <span>Runtime: <strong className="text-slate-200">{executionTime} ms</strong></span>
-                            <span>Memory: <strong className="text-slate-200">{executionResult.memory_used_kb || 3420} KB</strong></span>
+                            <span>Memory: <strong className="text-slate-200">{executionResult?.memory_used_kb || 3420} KB</strong></span>
                           </div>
                         </div>
 
-                        {/* Stdout Output Box */}
-                        {executionResult.stdout && (
+                        {/* If failed in submission or run, show failing testcase input */}
+                        {submissionResult.failedInput && (
                           <div className="space-y-1">
-                            <div className="text-[10px] text-slate-400 font-bold uppercase">Stdout Output:</div>
-                            <div className={`p-2.5 rounded-xl bg-slate-950 border text-mono text-xs whitespace-pre-wrap ${
-                              isOutputValid(executionResult.stdout, executionResult.stderr)
+                            <div className="text-[10px] text-amber-400 font-bold uppercase flex items-center justify-between">
+                              <span>Failed Test Case Input (Case {(submissionResult.failedCaseIdx ?? 0) + 1}):</span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-950 border border-amber-900/40 text-slate-200 font-mono text-xs">
+                              {submissionResult.failedInput}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actual Output Box */}
+                        {executionResult?.stdout && (
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-slate-400 font-bold uppercase">Your Output:</div>
+                            <div className={`p-2.5 rounded-xl bg-slate-950 border font-mono text-xs whitespace-pre-wrap ${
+                              submissionResult.isSuccess
                                 ? 'border-emerald-800/80 text-emerald-400'
                                 : 'border-amber-800/80 text-amber-300'
                             }`}>
@@ -1887,28 +2010,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         )}
 
                         {/* Expected Output Box */}
-                        {currentExpectedOutput && (
+                        {(submissionResult.failedExpected || currentExpectedOutput) && (
                           <div className="space-y-1">
                             <div className="text-[10px] text-indigo-400 font-bold uppercase">Expected Output:</div>
                             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
-                              {currentExpectedOutput}
+                              {submissionResult.failedExpected || currentExpectedOutput}
                             </div>
                           </div>
                         )}
 
-                        {/* Stderr Error Box */}
-                        {executionResult.stderr && (
+                        {/* Stderr / Compiler Output Box */}
+                        {(executionResult?.stderr || submissionResult.failedStderr) && (
                           <div className="space-y-1">
-                            <div className="text-[10px] text-rose-400 font-bold uppercase">Error (Stderr):</div>
+                            <div className="text-[10px] text-rose-400 font-bold uppercase">Compiler / Runtime Diagnostics:</div>
                             <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
-                              {executionResult.stderr}
+                              {executionResult?.stderr || submissionResult.failedStderr}
                             </div>
                           </div>
                         )}
                       </div>
                     ) : (
                       <div className="text-slate-500 py-6 text-center">
-                        Click "Run" or "Submit" to compile and test your solution.
+                        Click "Run" to test the first 3 cases, or "Submit" to judge against all test cases.
                       </div>
                     )}
                   </div>
