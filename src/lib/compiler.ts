@@ -92,7 +92,7 @@ export function wrapLeetCodeExecutableCode(
   if (language === 'cpp') {
     if (userCode.includes('int main(')) return userCode;
 
-    // Detect method name and parameters from user's class Solution
+    // Detect method name, return type and parameters from user's class Solution
     const methodRegex = /([a-zA-Z0-9_<>,:\s\*]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
     const match = userCode.match(methodRegex);
 
@@ -106,14 +106,15 @@ export function wrapLeetCodeExecutableCode(
       paramsStr = match[3].trim();
     }
 
-    // Determine smart invocation
-    let invocation = '';
     const lowMethod = methodName.toLowerCase();
+
+    // Determine smart invocation tailored to DSA problem domain
+    let invocation = '';
 
     if (lowMethod.includes('subsets') || normTitle.includes('subset')) {
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find('[0]') != string::npos) nums.push_back(0);
+        if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
         auto res = sol.${methodName || 'subsetsWithDup'}(nums);
         print_val(res);
         cout << endl;
@@ -122,14 +123,7 @@ export function wrapLeetCodeExecutableCode(
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         if (nums.empty()) nums = {2, 7, 11, 15};
-        int target = 9;
-        size_t t_pos = raw_input.find("target");
-        if (t_pos != string::npos) {
-            size_t eq = raw_input.find('=', t_pos);
-            if (eq != string::npos) {
-                try { target = stoi(raw_input.substr(eq + 1)); } catch(...) {}
-            }
-        }
+        int target = parse_named_arg_int(raw_input, "target", 9);
         auto res = sol.${methodName || 'twoSum'}(nums, target);
         print_val(res);
         cout << endl;
@@ -142,26 +136,82 @@ export function wrapLeetCodeExecutableCode(
         print_val(nums);
         cout << endl;
 `;
-    } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes') || raw_input_has_2d(cleanInput)) {
+    } else if (lowMethod.includes('numislands') || normTitle.includes('numberofislands') || (raw_input_has_2d(cleanInput) && cleanInput.includes('"'))) {
       invocation = `
-        vector<vector<int>> matrix = parse_matrix_int(raw_input);
-        if (matrix.empty()) matrix = {{1,1,1},{1,0,1},{1,1,1}};
-        sol.${methodName || 'setZeroes'}(matrix);
-        print_val(matrix);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('maxsubarray') || normTitle.includes('maxsubarray') || normTitle.includes('kadane')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {-2, 1, -3, 4, -1, 2, 1, -5, 4};
-        auto res = sol.${methodName || 'maxSubArray'}(nums);
+        vector<vector<char>> grid = parse_matrix_char(raw_input);
+        auto res = sol.${methodName || 'numIslands'}(grid);
         print_val(res);
         cout << endl;
 `;
-    } else if (lowMethod.includes('generate') || normTitle.includes('pascal')) {
+    } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes') || lowMethod.includes('rotate') || raw_input_has_2d(cleanInput)) {
       invocation = `
-        int numRows = parse_single_int(raw_input, 5);
-        auto res = sol.${methodName || 'generate'}(numRows);
+        vector<vector<int>> matrix = parse_matrix_int(raw_input);
+        if (matrix.empty()) matrix = {{1,1,1},{1,0,1},{1,1,1}};
+        ${retType.includes('void') ? `sol.${methodName || 'setZeroes'}(matrix); print_val(matrix);` : `auto res = sol.${methodName || 'setZeroes'}(matrix); print_val(res);`}
+        cout << endl;
+`;
+    } else if (lowMethod.includes('canfinish') || lowMethod.includes('findorder') || normTitle.includes('courseschedule')) {
+      invocation = `
+        int numCourses = parse_named_arg_int(raw_input, "numCourses", 2);
+        vector<vector<int>> prereqs = parse_matrix_int(raw_input);
+        auto res = sol.${methodName || 'canFinish'}(numCourses, prereqs);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (lowMethod.includes('clonegraph') || normTitle.includes('clonegraph')) {
+      invocation = `
+        vector<vector<int>> adj = parse_matrix_int(raw_input);
+        // Build graph
+        int n = adj.size();
+        vector<Node*> nodes;
+        for (int i = 1; i <= n; ++i) nodes.push_back(new Node(i));
+        for (int i = 0; i < n; ++i) {
+            for (int neighborVal : adj[i]) {
+                if (neighborVal >= 1 && neighborVal <= n) {
+                    nodes[i]->neighbors.push_back(nodes[neighborVal - 1]);
+                }
+            }
+        }
+        Node* first = nodes.empty() ? nullptr : nodes[0];
+        auto res = sol.${methodName || 'cloneGraph'}(first);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (paramsStr.includes('TreeNode*') && (paramsStr.includes('int') || lowMethod.includes('pathsum'))) {
+      invocation = `
+        TreeNode* root = parse_tree_node(raw_input);
+        int targetSum = parse_named_arg_int(raw_input, "targetSum", parse_named_arg_int(raw_input, "sum", 22));
+        auto res = sol.${methodName}(root, targetSum);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (paramsStr.includes('TreeNode*')) {
+      invocation = `
+        TreeNode* root = parse_tree_node(raw_input);
+        auto res = sol.${methodName}(root);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (paramsStr.includes('ListNode*') && paramsStr.includes('int')) {
+      invocation = `
+        ListNode* head = parse_list_node(raw_input);
+        int n = parse_named_arg_int(raw_input, "n", 1);
+        auto res = sol.${methodName}(head, n);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (paramsStr.includes('ListNode*')) {
+      invocation = `
+        ListNode* head = parse_list_node(raw_input);
+        auto res = sol.${methodName}(head);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (lowMethod.includes('coinchange') || (paramsStr.includes('vector<int>') && paramsStr.includes('int'))) {
+      invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        int target = parse_named_arg_int(raw_input, "amount", parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", 0)));
+        auto res = sol.${methodName}(nums, target);
         print_val(res);
         cout << endl;
 `;
@@ -173,55 +223,60 @@ export function wrapLeetCodeExecutableCode(
         print_val(nums);
         cout << endl;
 `;
-    } else {
-      // Dynamic fallback by detected signature
-      if (paramsStr.includes('vector<vector<int>>')) {
-        invocation = `
+    } else if (paramsStr.includes('vector<vector<char>>')) {
+      invocation = `
+        vector<vector<char>> grid = parse_matrix_char(raw_input);
+        auto res = sol.${methodName}(grid);
+        print_val(res);
+        cout << endl;
+`;
+    } else if (paramsStr.includes('vector<vector<int>>')) {
+      invocation = `
         vector<vector<int>> mat = parse_matrix_int(raw_input);
         auto res = sol.${methodName}(mat);
         print_val(res);
         cout << endl;
 `;
-      } else if (paramsStr.includes('vector<int>') && retType.includes('void')) {
-        invocation = `
+    } else if (paramsStr.includes('vector<int>') && retType.includes('void')) {
+      invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         sol.${methodName}(nums);
         print_val(nums);
         cout << endl;
 `;
-      } else if (paramsStr.includes('vector<int>')) {
-        invocation = `
+    } else if (paramsStr.includes('vector<int>')) {
+      invocation = `
         vector<int> nums = parse_vector_int(raw_input);
+        if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
         auto res = sol.${methodName}(nums);
         print_val(res);
         cout << endl;
 `;
-      } else if (paramsStr.includes('string')) {
-        invocation = `
+    } else if (paramsStr.includes('string')) {
+      invocation = `
         string s = parse_string_arg(raw_input);
         auto res = sol.${methodName}(s);
         print_val(res);
         cout << endl;
 `;
-      } else if (paramsStr.includes('int') && !paramsStr.includes(',')) {
-        invocation = `
+    } else if (paramsStr.includes('int') && !paramsStr.includes(',')) {
+      invocation = `
         int n = parse_single_int(raw_input, 5);
         auto res = sol.${methodName}(n);
         print_val(res);
         cout << endl;
 `;
-      } else if (methodName) {
-        invocation = `
+    } else if (methodName) {
+      invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         auto res = sol.${methodName}(nums);
         print_val(res);
         cout << endl;
 `;
-      } else {
-        invocation = `
+    } else {
+      invocation = `
         cout << "Solution executed successfully with test input." << endl;
 `;
-      }
     }
 
     return `// SDETube Universal LeetCode C++ Test Harness
@@ -244,8 +299,10 @@ export function wrapLeetCodeExecutableCode(
 #include <utility>
 #include <tuple>
 #include <functional>
+#include <memory>
 using namespace std;
 
+// Standard DSA Structs
 struct ListNode {
     int val;
     ListNode *next;
@@ -263,13 +320,35 @@ struct TreeNode {
     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
 };
 
-// Universal JSON Printers
+class Node {
+public:
+    int val;
+    vector<Node*> neighbors;
+    Node() : val(0) {}
+    Node(int _val) : val(_val) {}
+    Node(int _val, vector<Node*> _neighbors) : val(_val), neighbors(_neighbors) {}
+};
+
+// Forward Declarations for Universal JSON Printers
+void print_val(int x);
+void print_val(long long x);
+void print_val(double x);
+void print_val(bool x);
+void print_val(char x);
+void print_val(const string& s);
+void print_val(ListNode* head);
+void print_val(TreeNode* root);
+void print_val(Node* graphNode);
+template<typename T> void print_val(const vector<T>& vec);
+template<typename T, typename U> void print_val(const pair<T, U>& p);
+
+// Implementations
 inline void print_val(int x) { cout << x; }
 inline void print_val(long long x) { cout << x; }
 inline void print_val(double x) { cout << x; }
 inline void print_val(bool x) { cout << (x ? "true" : "false"); }
-inline void print_val(const string& x) { cout << "\\"" << x << "\\""; }
 inline void print_val(char x) { cout << "\\"" << x << "\\""; }
+inline void print_val(const string& x) { cout << "\\"" << x << "\\""; }
 
 template<typename T>
 inline void print_val(const vector<T>& vec) {
@@ -281,6 +360,15 @@ inline void print_val(const vector<T>& vec) {
     cout << "]";
 }
 
+template<typename T, typename U>
+inline void print_val(const pair<T, U>& p) {
+    cout << "[";
+    print_val(p.first);
+    cout << ",";
+    print_val(p.second);
+    cout << "]";
+}
+
 inline void print_val(ListNode* head) {
     cout << "[";
     ListNode* curr = head;
@@ -288,6 +376,69 @@ inline void print_val(ListNode* head) {
         cout << curr->val;
         if (curr->next) cout << ",";
         curr = curr->next;
+    }
+    cout << "]";
+}
+
+inline void print_val(TreeNode* root) {
+    if (!root) {
+        cout << "[]";
+        return;
+    }
+    vector<string> res;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        TreeNode* node = q.front();
+        q.pop();
+        if (node) {
+            res.push_back(to_string(node->val));
+            q.push(node->left);
+            q.push(node->right);
+        } else {
+            res.push_back("null");
+        }
+    }
+    while (!res.empty() && res.back() == "null") res.pop_back();
+    cout << "[";
+    for (size_t i = 0; i < res.size(); ++i) {
+        if (res[i] == "null") cout << "null";
+        else cout << res[i];
+        if (i + 1 < res.size()) cout << ",";
+    }
+    cout << "]";
+}
+
+inline void print_val(Node* graphNode) {
+    if (!graphNode) {
+        cout << "[]";
+        return;
+    }
+    unordered_map<Node*, int> visited;
+    queue<Node*> q;
+    q.push(graphNode);
+    visited[graphNode] = graphNode->val;
+    vector<Node*> order = {graphNode};
+    while (!q.empty()) {
+        Node* curr = q.front();
+        q.pop();
+        for (Node* neighbor : curr->neighbors) {
+            if (visited.find(neighbor) == visited.end()) {
+                visited[neighbor] = neighbor->val;
+                order.push_back(neighbor);
+                q.push(neighbor);
+            }
+        }
+    }
+    cout << "[";
+    for (size_t i = 0; i < order.size(); ++i) {
+        cout << "[";
+        for (size_t j = 0; j < order[i]->neighbors.size(); ++j) {
+            cout << order[i]->neighbors[j]->val;
+            if (j + 1 < order[i]->neighbors.size()) cout << ",";
+        }
+        cout << "]";
+        if (i + 1 < order.size()) cout << ",";
     }
     cout << "]";
 }
@@ -319,13 +470,118 @@ inline vector<vector<int>> parse_matrix_int(string s) {
             size_t close = s.find(']', i);
             if (close != string::npos && close > i + 1) {
                 string sub = s.substr(i, close - i + 1);
-                res.push_back(parse_vector_int(sub));
+                auto row = parse_vector_int(sub);
+                if (!row.empty() || sub.find("[]") != string::npos) {
+                    res.push_back(row);
+                }
                 i = close;
             }
         }
         i++;
     }
     return res;
+}
+
+inline vector<vector<char>> parse_matrix_char(string s) {
+    vector<vector<char>> res;
+    size_t i = 0;
+    while (i < s.size()) {
+        if (s[i] == '[') {
+            size_t close = s.find(']', i);
+            if (close != string::npos && close > i + 1) {
+                string sub = s.substr(i + 1, close - i - 1);
+                vector<char> row;
+                for (char c : sub) {
+                    if (c != ' ' && c != ',' && c != '"' && c != '\\'') {
+                        row.push_back(c);
+                    }
+                }
+                if (!row.empty()) res.push_back(row);
+                i = close;
+            }
+        }
+        i++;
+    }
+    return res;
+}
+
+inline TreeNode* parse_tree_node(string s) {
+    size_t start = s.find('[');
+    size_t end = s.rfind(']');
+    if (start == string::npos || end == string::npos || start >= end) return nullptr;
+    string sub = s.substr(start + 1, end - start - 1);
+    stringstream ss(sub);
+    string token;
+    vector<string> tokens;
+    while (getline(ss, token, ',')) {
+        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
+        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
+        if (!token.empty()) tokens.push_back(token);
+    }
+    if (tokens.empty() || tokens[0] == "null") return nullptr;
+    TreeNode* root = new TreeNode(stoi(tokens[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t i = 1;
+    while (!q.empty() && i < tokens.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (i < tokens.size()) {
+            if (tokens[i] != "null") {
+                curr->left = new TreeNode(stoi(tokens[i]));
+                q.push(curr->left);
+            }
+            i++;
+        }
+        if (i < tokens.size()) {
+            if (tokens[i] != "null") {
+                curr->right = new TreeNode(stoi(tokens[i]));
+                q.push(curr->right);
+            }
+            i++;
+        }
+    }
+    return root;
+}
+
+inline ListNode* parse_list_node(string s) {
+    size_t start = s.find('[');
+    size_t end = s.rfind(']');
+    if (start == string::npos || end == string::npos || start >= end) return nullptr;
+    string sub = s.substr(start + 1, end - start - 1);
+    stringstream ss(sub);
+    string token;
+    ListNode dummy(0);
+    ListNode* tail = &dummy;
+    while (getline(ss, token, ',')) {
+        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
+        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
+        if (!token.empty()) {
+            try {
+                tail->next = new ListNode(stoi(token));
+                tail = tail->next;
+            } catch(...) {}
+        }
+    }
+    return dummy.next;
+}
+
+inline int parse_named_arg_int(string s, string name, int fallback = 0) {
+    size_t pos = s.find(name);
+    if (pos != string::npos) {
+        size_t eq = s.find('=', pos);
+        if (eq != string::npos) {
+            size_t p = s.find_first_of("-0123456789", eq);
+            if (p != string::npos) {
+                try { return stoi(s.substr(p)); } catch(...) {}
+            }
+        }
+    }
+    size_t p = s.find_first_of("-0123456789");
+    if (p != string::npos) {
+        try { return stoi(s.substr(p)); } catch(...) {}
+    }
+    return fallback;
 }
 
 inline int parse_single_int(string s, int fallback = 0) {
@@ -488,7 +744,7 @@ class Main {
         try {
             ${hasSolutionClass ? `
             Solution sol = new Solution();
-            System.out.println("[[],[1],[1,2],[1,2,2],[2],[2,2]]");
+            System.out.println("Java Solution executed successfully.");
             ` : `System.out.println("Java Solution executed successfully.");`}
         } catch (Exception e) {
             System.err.println("Runtime Error: " + e.getMessage());
@@ -545,19 +801,24 @@ export async function executeCode(
       const stdout = decodeB64(data.stdout);
       const stderr = decodeB64(data.stderr);
       const compileOut = decodeB64(data.compile_output);
-      const statusDesc = data.status?.description || 'Executed';
-
-      const finalStderr = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
+      const combinedDiag = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
       const finalStdout = stdout.trim();
-      const isErr = Boolean(finalStderr || (statusDesc !== 'Accepted' && statusDesc !== 'Executed'));
+
+      // Distinguish fatal errors (compilation errors, runtime exceptions, non-zero exit) from warnings
+      const isFatalErr = Boolean(
+        (data.status && data.status.id > 3) ||
+        (data.exit_code && data.exit_code !== 0) ||
+        (stderr && (stderr.includes('Runtime Error:') || stderr.includes('Exception') || stderr.includes('Traceback'))) ||
+        (compileOut && compileOut.includes('error:'))
+      );
 
       return {
-        stdout: finalStdout || (isErr ? '' : 'Executed successfully.'),
-        stderr: finalStderr,
-        exit_code: isErr ? 1 : 0,
+        stdout: finalStdout || (isFatalErr ? '' : 'Executed successfully.'),
+        stderr: combinedDiag,
+        exit_code: isFatalErr ? 1 : 0,
         execution_time_ms: Math.round(endTime - startTime),
         memory_used_kb: Math.round((data.memory || 1420)),
-        status: isErr ? 'ERROR' : 'SUCCESS'
+        status: isFatalErr ? 'ERROR' : 'SUCCESS'
       };
     }
   } catch (err) {
@@ -582,30 +843,29 @@ export async function executeCode(
     if (response.ok) {
       const resData = await response.json();
       const endTime = performance.now();
-      const isErr = Boolean(resData.stderr && resData.stderr.trim());
+      const rawStderr = (resData.stderr || resData.error || '').trim();
+      const isFatalErr = Boolean(rawStderr && (rawStderr.includes('error:') || rawStderr.includes('Runtime Error') || rawStderr.includes('Exception') || rawStderr.includes('Traceback')));
+
       return {
         stdout: resData.stdout || resData.output || '',
-        stderr: resData.stderr || resData.error || '',
-        exit_code: isErr ? 1 : (resData.exitCode ?? 0),
+        stderr: rawStderr,
+        exit_code: isFatalErr ? 1 : (resData.exitCode ?? 0),
         execution_time_ms: Math.round(endTime - startTime),
-        memory_used_kb: resData.memory || 14200,
-        status: isErr ? 'ERROR' : 'SUCCESS'
+        memory_used_kb: Math.round(resData.memoryUsedKb || 3420),
+        status: isFatalErr ? 'ERROR' : 'SUCCESS'
       };
     }
   } catch (err) {
-    console.warn('[SDETube Compiler] Backend notice:', err);
+    console.error('[SDETube Compiler] Execution error:', err);
   }
 
   // 3. Fallback
-  const endTime = performance.now();
-  const executionMs = Math.round(endTime - startTime);
-
   return {
-    stdout: `[[1,0,1],[0,0,0],[1,0,1]]\nTestcase passed on SDETube Cloud Compiler.`,
-    stderr: '',
-    exit_code: 0,
-    execution_time_ms: executionMs,
-    memory_used_kb: 14200,
-    status: 'SUCCESS'
+    stdout: '',
+    stderr: 'Compiler execution failed or timed out. Please try again.',
+    exit_code: 1,
+    execution_time_ms: Math.round(performance.now() - startTime),
+    memory_used_kb: 0,
+    status: 'ERROR'
   };
 }

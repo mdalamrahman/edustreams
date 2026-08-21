@@ -537,7 +537,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   }, [problemTemplate, activeTestCaseIdx]);
 
   const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput): boolean => {
-    if (stderr && stderr.trim().length > 0) return false;
+    // Only treat as fatal error if stderr contains genuine error/exception signatures (not harmless GCC compiler warnings)
+    const isFatalStderr = Boolean(
+      stderr && (
+        stderr.includes('error:') ||
+        stderr.includes('Runtime Error') ||
+        stderr.includes('Traceback') ||
+        stderr.includes('Exception') ||
+        stderr.includes('SyntaxError')
+      )
+    );
+    if (isFatalStderr) return false;
     if (!stdout || !stdout.trim()) return false;
     if (!expectedOutput || !expectedOutput.trim()) return stdout.trim().length > 0;
     return compareOutputs(stdout, expectedOutput);
@@ -585,9 +595,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           failedInput: isSuccess ? undefined : testInput,
           failedOutput: result.stdout,
           failedExpected: currentExpectedOutput,
-          failedStderr: result.stderr,
+          failedStderr: isSuccess ? undefined : result.stderr,
           isSuccess
         });
+
+        if (isSuccess) {
+          confetti({ particleCount: 35, spread: 55, origin: { y: 0.8 } });
+        }
 
       } else {
         // ----------------------------------------------------
@@ -667,7 +681,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         if (isAllSuccess) {
           confetti({
             particleCount: 120,
-            spread: 80,
+            spread: 90,
             origin: { y: 0.6 }
           });
         }
@@ -677,20 +691,25 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
       }
     } catch (err: any) {
-      setExecutionResult({
+      const elapsedMs = Date.now() - start;
+      setExecutionTime(elapsedMs);
+      const fallbackResult: CodeExecutionResult = {
         stdout: '',
         stderr: err?.message || 'Execution error on cloud compiler.',
         status: 'ERROR',
         exit_code: 1,
-        execution_time_ms: 0,
+        execution_time_ms: elapsedMs,
         memory_used_kb: 0
-      });
+      };
+      setExecutionResult(fallbackResult);
       setSubmissionResult({
         isSubmission,
         passedCount: 0,
         totalCount: isSubmission ? (problemTemplate.testCases?.length || 1) : 1,
         failedCaseIdx: activeTestCaseIdx,
         failedInput: testInput,
+        failedOutput: '',
+        failedExpected: currentExpectedOutput,
         failedStderr: err?.message || 'Compiler execution error',
         isSuccess: false
       });
@@ -1948,7 +1967,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {/* Status Header with Comprehensive Correctness Evaluation */}
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                           <div className="flex items-center space-x-2 font-black text-sm">
-                            {submissionResult.failedStderr ? (
+                            {submissionResult.failedStderr && (submissionResult.failedStderr.includes('error:') || submissionResult.failedStderr.includes('Runtime Error') || submissionResult.failedStderr.includes('Exception') || submissionResult.failedStderr.includes('Traceback')) ? (
                               <>
                                 <XCircle className="w-5 h-5 text-rose-400" />
                                 <span className="text-rose-400">
@@ -2019,8 +2038,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           </div>
                         )}
 
-                        {/* Stderr / Compiler Output Box */}
-                        {(executionResult?.stderr || submissionResult.failedStderr) && (
+                        {/* Stderr / Compiler Output Box (Shown on error/diagnostic) */}
+                        {!submissionResult.isSuccess && (executionResult?.stderr || submissionResult.failedStderr) && (
                           <div className="space-y-1">
                             <div className="text-[10px] text-rose-400 font-bold uppercase">Compiler / Runtime Diagnostics:</div>
                             <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-xs whitespace-pre-wrap">
