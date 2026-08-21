@@ -906,6 +906,39 @@ async def get_problem_image_route(image_name: str):
     return Response(status_code=404)
 
 
+@app.get("/api/notes/{doc_id}")
+async def get_notes_route(doc_id: str):
+    """
+    Fetches comprehensive educational notes (LLD Boss Sheet, HLD Boss Sheet)
+    directly from Cloudflare R2 object storage.
+    """
+    import re
+    clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '-', doc_id.strip().lower())
+    
+    doc = r2_storage.fetch_document(clean_id)
+    if doc:
+        return {"id": clean_id, "content": doc, "source": "cloudflare_r2"}
+    
+    return {"id": clean_id, "content": "", "source": "not_found", "error": f"Notes document '{doc_id}' not found in R2"}
+
+
+@app.post("/api/notes/{doc_id}")
+async def save_notes_route(doc_id: str, request: Request):
+    """
+    Uploads or updates educational notes into Cloudflare R2.
+    """
+    import re
+    clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '-', doc_id.strip().lower())
+    body = await request.json()
+    content = body.get("content", "")
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty")
+        
+    key = r2_storage.upload_document(clean_id, content)
+    return {"success": True, "doc_id": clean_id, "r2_key": key}
+
+
 # -------------------------------------------------------------------
 # TELEGRAM VIDEO CATALOG — Fetch real video list from channels
 # -------------------------------------------------------------------

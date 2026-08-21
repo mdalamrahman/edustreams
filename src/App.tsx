@@ -35,6 +35,8 @@ import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModa
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SystemDesignHub } from './components/SystemDesignHub';
+import { LLDHub } from './components/LLDHub';
+import { HLDHub } from './components/HLDHub';
 import { POTDModal } from './components/POTDModal';
 import { DashboardLandingPage } from './components/DashboardLandingPage';
 import { SDEProblem, SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA } from './lib/sdeSheetData';
@@ -59,7 +61,7 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings'>('dashboard');
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
@@ -108,15 +110,12 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'system_design' ? 'system-design' : tab}`;
+  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
       hash = `#/lesson/${encodeURIComponent(extra.videoId)}`;
-    }
-    if (window.location.hash !== hash) {
-      window.location.hash = hash;
     }
     setActiveTab(tab);
     if (tab === 'channels') {
@@ -170,8 +169,12 @@ export function App() {
           setActiveTab('lesson');
         } else if (hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet')) {
           setActiveTab('sde_sheet');
+        } else if (hash.startsWith('#/lld')) {
+          setActiveTab('lld');
+        } else if (hash.startsWith('#/hld')) {
+          setActiveTab('hld');
         } else if (hash.startsWith('#/system-design')) {
-          setActiveTab('system_design');
+          setActiveTab('hld');
         } else if (hash.startsWith('#/analytics')) {
           setActiveTab('analytics');
         } else if (hash.startsWith('#/channels')) {
@@ -1295,9 +1298,14 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           />
         )}
 
-        {/* VIEW 2.8: SYSTEM DESIGN & LLD PRACTICE HUB (VISUAL ARCHITECTURE & MISTRAL AI) */}
-        {activeTab === 'system_design' && (
-          <SystemDesignHub />
+        {/* VIEW 2.8: LLD DESIGN & OOP STUDIO */}
+        {activeTab === 'lld' && (
+          <LLDHub />
+        )}
+
+        {/* VIEW 2.9: HLD ARCHITECTURE & SYSTEM DESIGN HUB */}
+        {(activeTab === 'hld' || activeTab === 'system_design') && (
+          <HLDHub />
         )}
 
         {/* VIEW 3: DYNAMIC VELOCITY ANALYTICS & MISTRAL DIAGNOSTICS */}

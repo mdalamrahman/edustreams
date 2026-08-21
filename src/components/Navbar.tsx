@@ -21,15 +21,16 @@ import {
   Bot, 
   ArrowRight,
   Check,
-  CreditCard
+  CreditCard,
+  Layers
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics' | 'settings') => void;
+  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings';
+  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -151,12 +152,20 @@ export const Navbar: React.FC<NavbarProps> = ({
       activeColor: 'bg-purple-600 text-white'
     },
     {
-      id: 'system_design' as const,
-      label: 'System Design & LLD',
-      subtitle: 'Visual Architecture & OOP Studio',
-      icon: Cpu,
+      id: 'lld' as const,
+      label: 'LLD Design',
+      subtitle: 'OOP Studio & SDE-1 Notes',
+      icon: Layers,
       color: 'text-pink-400',
       activeColor: 'bg-pink-600 text-white'
+    },
+    {
+      id: 'hld' as const,
+      label: 'HLD Architecture',
+      subtitle: 'Boss Sheet & Visual Canvas',
+      icon: Cpu,
+      color: 'text-teal-400',
+      activeColor: 'bg-teal-600 text-white'
     },
     {
       id: 'channels' as const,

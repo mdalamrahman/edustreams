@@ -309,6 +309,59 @@ class CloudflareR2Storage:
                 return (resp.content, ct)
         except Exception:
             pass
+    def upload_document(self, doc_id: str, content: str, content_type: str = "text/html; charset=utf-8") -> Optional[str]:
+        """Uploads an educational boss sheet / markdown document to Cloudflare R2 under docs/{doc_id}.html and docs/{doc_id}.txt."""
+        import re
+        clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '-', doc_id.strip().lower())
+        key_html = f"docs/{clean_id}.html"
+        key_txt = f"docs/{clean_id}.txt"
+        payload_bytes = content.encode("utf-8")
+
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key_html, Body=payload_bytes, ContentType=content_type)
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key_txt, Body=payload_bytes, ContentType="text/plain; charset=utf-8")
+                print(f"[R2 Doc Upload Boto3] {key_html} ({len(payload_bytes)} bytes)")
+                return key_html
+            except Exception as e:
+                print(f"[R2 Doc Upload Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("PUT", key_html, payload_bytes)
+            headers["Content-Type"] = content_type
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key_html}"
+            resp = requests.put(url, headers=headers, data=payload_bytes, timeout=15)
+            if resp.status_code in [200, 201]:
+                print(f"[R2 Doc Upload SigV4] {key_html} ({len(payload_bytes)} bytes)")
+                return key_html
+        except Exception as e:
+            print(f"[R2 Doc Upload SigV4 Error]: {e}")
         return None
+
+    def fetch_document(self, doc_id: str) -> Optional[str]:
+        """Fetches an educational boss sheet / notes document from Cloudflare R2."""
+        import re
+        clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '-', doc_id.strip().lower())
+        keys_to_try = [f"docs/{clean_id}.html", f"docs/{clean_id}.txt", f"docs/{clean_id}.json"]
+
+        if self._boto_client:
+            for key in keys_to_try:
+                try:
+                    resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=key)
+                    return resp["Body"].read().decode("utf-8")
+                except Exception:
+                    continue
+
+        for key in keys_to_try:
+            try:
+                headers = self._get_sigv4_headers("GET", key)
+                url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key}"
+                resp = requests.get(url, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    return resp.text
+            except Exception:
+                continue
+        return None
+
 
 r2_storage = CloudflareR2Storage()
