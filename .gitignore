@@ -3,3 +3,6 @@ dist
 .vercel
 .env*
 *.session
+__pycache__/
+*.pyc
+scratch/

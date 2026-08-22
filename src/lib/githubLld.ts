@@ -198,12 +198,12 @@ In a distributed computer system, you can only support two of the following guar
   },
   {
     id: 'learn-system-design',
-    title: 'Learn System Design — Enterprise Architecture',
+    title: 'System Design & Enterprise Architecture (Karan Pratap Singh)',
     category: 'Enterprise Architecture',
-    repo: 'beagreatengineer/learn-system-design',
+    repo: 'karanpratapsingh/system-design',
     path: 'README.md',
-    description: 'Comprehensive engineering learning repository covering microservices, event-driven architecture, and database scaling.',
-    fallbackSummary: `# Learn System Design — Enterprise Architecture Guide
+    description: 'Comprehensive, visual, and in-depth engineering repository covering high availability, microservices, caching, and enterprise scaling.',
+    fallbackSummary: `# System Design & Enterprise Architecture Guide
 
 ## 1. Microservices Patterns
 - **API Gateway Pattern**: Single entry point for routing, authentication, and monitoring.

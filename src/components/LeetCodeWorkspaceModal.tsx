@@ -327,16 +327,33 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       user?.email
     );
 
+    // Derive problem slug for backend validation+storage
+    const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const problemSlug = rawTarget
+      .replace(/^https?:\/\/leetcode\.com\/problems\//i, '')
+      .replace(/\/.*$/, '')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+
     setIsGeneratingSolution(true);
     try {
       const sol = await requestAIOptimalSolution(
         cleanTitle,
         problemTemplate.description,
         langToGen,
-        problemTemplate.starters[langToGen]
+        problemTemplate.starters[langToGen],
+        problemSlug  // pass slug → backend validates + stores in R2
       );
       if (sol) {
         setAiGeneratedSolutions(prev => ({ ...prev, [langToGen]: sol }));
+        // If successfully stored, update problemTemplate.solutions so it loads from R2 next time
+        if (sol.stored) {
+          setProblemTemplate(prev => ({
+            ...prev,
+            solutions: { ...(prev.solutions || {}), [langToGen]: sol.code } as Record<SupportedLanguage, string>
+          }));
+        }
       }
     } catch (e) {
       console.warn('AI Solution Generation Error:', e);
@@ -344,6 +361,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       setIsGeneratingSolution(false);
     }
   };
+
 
   const handleApplySolutionToEditor = (solCode: string, langToApply: SupportedLanguage) => {
     setLanguage(langToApply);
@@ -1571,7 +1589,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                   {/* Complexity & Approach Header */}
                   {hasWorkedSolution && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-3 gap-2.5">
                       <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approach</div>
                         <div className="text-xs font-bold text-indigo-400 mt-0.5 truncate">
@@ -1586,7 +1604,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 col-span-2 sm:col-span-1">
+                      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Space Complexity</div>
                         <div className="text-xs font-mono font-bold text-cyan-400 mt-0.5">
                           {aiSol?.spaceComplexity || 'O(1) Auxiliary'}
@@ -1598,14 +1616,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   {/* Solution Code Frame with Monaco Editor & Line Numbers */}
                   {hasWorkedSolution && activeSolutionCode ? (
                     <div className="space-y-3">
-                      <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-2xl">
-                        <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs font-mono">
+                      <div className="rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950">
+                        <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 flex items-center text-xs font-mono">
                           <span className="text-slate-400 font-bold flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
                             Solution.{solutionLang === 'cpp' ? 'cpp' : solutionLang === 'python' ? 'py' : solutionLang === 'java' ? 'java' : solutionLang === 'javascript' ? 'js' : solutionLang === 'go' ? 'go' : 'rs'}
-                          </span>
-                          <span className="text-purple-400 text-[11px] uppercase font-bold">
-                            {solutionLang.toUpperCase()} 2026 Optimal
                           </span>
                         </div>
                         <div className="h-72 w-full">

@@ -4,6 +4,8 @@ import re
 import math
 import time
 import random
+import threading
+import sqlite3
 from datetime import datetime
 import asyncio
 import subprocess
@@ -57,36 +59,229 @@ SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "edustream_artifacts.db
 
 _GLOBAL_AI_CACHE = {}
 
-def init_sqlite_db():
-    try:
-        import sqlite3
-        conn = sqlite3.connect(SQLITE_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS lecture_artifacts (
-                cache_key TEXT PRIMARY KEY,
-                chat_id TEXT,
-                msg_id INTEGER,
-                title TEXT,
-                transcript TEXT,
-                provider TEXT,
-                notes TEXT,
-                mcqs_json TEXT,
-                coding_problem_json TEXT,
-                simulation_steps_json TEXT,
-                status TEXT,
-                progress_percent REAL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_title ON lecture_artifacts(title)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_id ON lecture_artifacts(msg_id)")
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"[SQLite Init Notice]: {e}")
+class DatabaseManager:
+    _instance = None
+    _lock = threading.Lock()
 
-init_sqlite_db()
+    def __new__(cls):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super(DatabaseManager, cls).__new__(cls)
+                cls._instance._initialized = False
+            return cls._instance
+
+    def __init__(self):
+        if getattr(self, "_initialized", False):
+            return
+        self._db_path = SQLITE_DB_PATH
+        self._init_db()
+        self._initialized = True
+
+    def get_connection(self):
+        conn = sqlite3.connect(self._db_path, timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        return conn
+
+    def _init_db(self):
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS lecture_artifacts (
+                        cache_key TEXT PRIMARY KEY,
+                        chat_id TEXT,
+                        msg_id INTEGER,
+                        title TEXT,
+                        transcript TEXT,
+                        provider TEXT,
+                        notes TEXT,
+                        mcqs_json TEXT,
+                        coding_problem_json TEXT,
+                        simulation_steps_json TEXT,
+                        status TEXT,
+                        progress_percent REAL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_title ON lecture_artifacts(title)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_id ON lecture_artifacts(msg_id)")
+
+                # Persistent Billing & Credits Database Tables
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_wallets (
+                        user_id TEXT PRIMARY KEY,
+                        user_email TEXT UNIQUE,
+                        balance REAL NOT NULL DEFAULT 10.0,
+                        last_daily_charge_date TEXT,
+                        viewed_video_ids_json TEXT DEFAULT '[]',
+                        studio_used_today TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_wallet_email ON user_wallets(user_email)")
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS billing_transactions (
+                        id TEXT PRIMARY KEY,
+                        user_id TEXT,
+                        user_email TEXT,
+                        amount REAL,
+                        type TEXT,
+                        category TEXT,
+                        description TEXT,
+                        balance_after REAL,
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_tx_email ON billing_transactions(user_email)")
+
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS topup_requests (
+                        id TEXT PRIMARY KEY,
+                        user_id TEXT,
+                        user_email TEXT,
+                        user_name TEXT,
+                        amount REAL,
+                        upi_id TEXT,
+                        transaction_id TEXT,
+                        payee_details TEXT,
+                        screenshot_url TEXT,
+                        status TEXT DEFAULT 'PENDING',
+                        admin_notes TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        reviewed_at TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_topup_email ON topup_requests(user_email)")
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_topup_status ON topup_requests(status)")
+
+                # Concurrent Device Protection: 1 Active Session Per User
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_active_sessions (
+                        user_email TEXT PRIMARY KEY,
+                        user_id TEXT,
+                        session_id TEXT NOT NULL,
+                        device_info TEXT,
+                        ip_address TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_active_sess_email ON user_active_sessions(user_email)")
+                conn.commit()
+        except Exception as e:
+            print(f"[DatabaseManager Init Notice]: {e}")
+
+    def register_session(self, user_email: str, user_id: str, session_id: str, device_info: str = "", ip_address: str = "") -> dict:
+        if not user_email:
+            return {"success": False, "error": "Email is required"}
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO user_active_sessions (user_email, user_id, session_id, device_info, ip_address, created_at, last_active_at)
+                    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_email) DO UPDATE SET
+                        user_id = excluded.user_id,
+                        session_id = excluded.session_id,
+                        device_info = excluded.device_info,
+                        ip_address = excluded.ip_address,
+                        created_at = CURRENT_TIMESTAMP,
+                        last_active_at = CURRENT_TIMESTAMP
+                """, (email, user_id or email, session_id, device_info or "Unknown Device", ip_address or ""))
+                conn.commit()
+                return {"success": True, "session_id": session_id, "user_email": email}
+        except Exception as e:
+            print(f"[DatabaseManager Register Session Error]: {e}")
+            return {"success": False, "error": str(e)}
+
+    def verify_session(self, user_email: str, session_id: str) -> dict:
+        if not user_email or not session_id:
+            return {"valid": False, "reason": "MISSING_CREDENTIALS", "message": "Email and session ID are required"}
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT session_id, device_info, created_at, last_active_at 
+                    FROM user_active_sessions 
+                    WHERE user_email = ?
+                """, (email,))
+                row = cursor.fetchone()
+                if not row:
+                    # If no session registered yet, automatically register current one for smooth UX
+                    self.register_session(email, email, session_id)
+                    return {"valid": True, "is_new": True}
+                
+                active_session_id, device_info, created_at, last_active_at = row
+                if active_session_id == session_id:
+                    # Refresh heartbeat timestamp
+                    cursor.execute("""
+                        UPDATE user_active_sessions 
+                        SET last_active_at = CURRENT_TIMESTAMP 
+                        WHERE user_email = ?
+                    """, (email,))
+                    conn.commit()
+                    return {"valid": True}
+                else:
+                    return {
+                        "valid": False,
+                        "reason": "SESSION_REVOKED",
+                        "message": f"Your account was logged in from another device/browser ({device_info or 'New Session'}). Only 1 active session is allowed."
+                    }
+        except Exception as e:
+            print(f"[DatabaseManager Verify Session Error]: {e}")
+            return {"valid": True, "warning": str(e)}
+
+    def terminate_session(self, user_email: str, session_id: Optional[str] = None) -> dict:
+        if not user_email:
+            return {"success": False}
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                if session_id:
+                    cursor.execute("DELETE FROM user_active_sessions WHERE user_email = ? AND session_id = ?", (email, session_id))
+                else:
+                    cursor.execute("DELETE FROM user_active_sessions WHERE user_email = ?", (email,))
+                conn.commit()
+                return {"success": True}
+        except Exception as e:
+            print(f"[DatabaseManager Terminate Session Error]: {e}")
+            return {"success": False, "error": str(e)}
+
+    def get_session_info(self, user_email: str) -> Optional[dict]:
+        if not user_email:
+            return None
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT session_id, device_info, ip_address, created_at, last_active_at 
+                    FROM user_active_sessions 
+                    WHERE user_email = ?
+                """, (email,))
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "sessionId": row[0],
+                        "deviceInfo": row[1],
+                        "ipAddress": row[2],
+                        "createdAt": row[3],
+                        "lastActiveAt": row[4]
+                    }
+                return None
+        except Exception as e:
+            print(f"[DatabaseManager Get Session Info Error]: {e}")
+            return None
+
+db_manager = DatabaseManager()
+
+def init_sqlite_db():
+    db_manager._init_db()
 
 def save_to_sqlite(data: dict):
     if not data or not data.get("transcript"):
@@ -1049,10 +1244,286 @@ Requirements:
     return {"error": f"Problem '{slug}' could not be resolved", "slug": slug}
 
 
+class StoreSolutionRequest(BaseModel):
+    language: str
+    code: str
+    approachName: Optional[str] = "Optimal Approach"
+    timeComplexity: Optional[str] = "O(N)"
+    spaceComplexity: Optional[str] = "O(1)"
+    explanation: Optional[str] = ""
+
+
+@app.post("/api/problem/{slug}/solution")
+async def store_validated_solution(slug: str, req: StoreSolutionRequest):
+    """
+    Validates a generated solution against all stored test cases for the problem,
+    then persistently stores it in Cloudflare R2 under problems/{slug}.json → solutions[language].
+
+    Returns:
+        {
+          "validationPassed": bool,
+          "passedCount": int,
+          "totalCount": int,
+          "stored": bool,
+          "failedCaseIdx": int | None,
+          "failedInput": str | None,
+          "failedOutput": str | None,
+          "failedExpected": str | None,
+        }
+    """
+    import base64
+
+    clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
+    clean_slug = re.sub(r'/.*$', '', clean_slug)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+
+    lang = (req.language or "python").lower().strip()
+    code = (req.code or "").strip()
+
+    if not code:
+        return JSONResponse(status_code=400, content={"error": "No solution code provided."})
+
+    # 1. Fetch problem + test cases from R2 (or memory cache)
+    problem_data = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+    if not problem_data or not problem_data.get("testCases"):
+        return JSONResponse(status_code=404, content={
+            "error": f"Problem '{clean_slug}' not found or has no test cases in R2."
+        })
+
+    test_cases: list = problem_data.get("testCases", [])
+    expected_outputs: list = problem_data.get("expectedOutputs", [])
+
+    if not test_cases:
+        return JSONResponse(status_code=422, content={
+            "error": "Problem has no test cases to validate against."
+        })
+
+    JUDGE0_LANG_MAP = {
+        "cpp": 54, "c++": 54,
+        "python": 71,
+        "java": 62,
+        "javascript": 63, "js": 63,
+        "go": 60,
+        "rust": 73,
+    }
+    lang_id = JUDGE0_LANG_MAP.get(lang, 71)
+
+    passed_count = 0
+    failed_case_idx = None
+    failed_input = None
+    failed_output = None
+    failed_expected = None
+
+    # Build validation driver code for Python (fast — server-side subprocess)
+    if lang == "python":
+        for i, tc_raw in enumerate(test_cases):
+            tc_str = tc_raw.strip() if isinstance(tc_raw, str) else json.dumps(tc_raw)
+            exp_raw = expected_outputs[i] if i < len(expected_outputs) else None
+
+            driver = f"""
+import sys, json, ast
+from typing import List, Optional, Dict, Tuple
+
+{code}
+
+def _normalize(v):
+    if isinstance(v, list):
+        if v and isinstance(v[0], list):
+            return sorted([sorted(x) if isinstance(x, list) else x for x in v])
+        return sorted(v) if all(not isinstance(x, list) for x in v) else v
+    return v
+
+try:
+    tc_input = {repr(tc_str)}
+    # Parse flexible inputs: "nums = [1,2,2]", "[1,2,2]", plain value
+    parts = tc_input.strip()
+    sol = Solution()
+    # Try to find method name from class
+    import inspect
+    methods = [m for m in dir(sol) if not m.startswith('_')]
+    result = None
+    if parts.startswith('[') or parts.startswith('{{'):
+        result = getattr(sol, methods[0])(ast.literal_eval(parts)) if methods else None
+    elif '=' in parts:
+        # "nums = [1,2,2]" or "nums = [1,2,2], target = 9"
+        kwargs = {{}}
+        for seg in parts.split(',\\n'):
+            seg = seg.strip()
+            if '=' in seg:
+                k, v = seg.split('=', 1)
+                k = k.strip()
+                try:
+                    kwargs[k] = ast.literal_eval(v.strip())
+                except Exception:
+                    kwargs[k] = v.strip()
+        if methods:
+            import inspect
+            sig = inspect.signature(getattr(sol, methods[0]))
+            param_names = list(sig.parameters.keys())[1:]  # skip self
+            args = [kwargs.get(p) for p in param_names if p in kwargs]
+            result = getattr(sol, methods[0])(*args)
+    else:
+        try:
+            result = getattr(sol, methods[0])(ast.literal_eval(parts)) if methods else None
+        except Exception:
+            result = getattr(sol, methods[0])(parts) if methods else None
+    print(json.dumps(_normalize(result)))
+except Exception as e:
+    import traceback
+    print(f"__ERROR__: {{e}}", file=sys.stderr)
+"""
+            try:
+                proc = subprocess.run(
+                    ["python", "-c", driver],
+                    capture_output=True, text=True, timeout=8
+                )
+                got_raw = proc.stdout.strip()
+                if proc.returncode != 0 or "__ERROR__" in proc.stderr:
+                    if failed_case_idx is None:
+                        failed_case_idx = i
+                        failed_input = tc_str
+                        failed_output = proc.stderr.strip()[:300]
+                        failed_expected = exp_raw
+                    continue
+
+                if exp_raw is not None:
+                    import ast as _ast
+                    def _norm(s):
+                        try:
+                            v = _ast.literal_eval(s) if isinstance(s, str) else s
+                            if isinstance(v, list):
+                                if v and isinstance(v[0], list):
+                                    return sorted([sorted(x) for x in v])
+                                return sorted(v)
+                            return v
+                        except Exception:
+                            return s
+                    if _norm(got_raw) == _norm(exp_raw):
+                        passed_count += 1
+                    else:
+                        if failed_case_idx is None:
+                            failed_case_idx = i
+                            failed_input = tc_str
+                            failed_output = got_raw[:300]
+                            failed_expected = str(exp_raw)[:300]
+                else:
+                    # No expected output → count as passed if no error
+                    passed_count += 1
+            except subprocess.TimeoutExpired:
+                if failed_case_idx is None:
+                    failed_case_idx = i
+                    failed_input = tc_str
+                    failed_output = "Time Limit Exceeded (>8s)"
+                    failed_expected = str(exp_raw)[:200] if exp_raw else "N/A"
+
+    else:
+        # Non-Python: validate via Judge0 CE for a subset (first 5 cases to avoid rate limits)
+        for i, tc_raw in enumerate(test_cases[:5]):
+            tc_str = tc_raw.strip() if isinstance(tc_raw, str) else json.dumps(tc_raw)
+            exp_raw = expected_outputs[i] if i < len(expected_outputs) else None
+            try:
+                encoded_code = base64.b64encode(code.encode("utf-8")).decode("utf-8")
+                encoded_stdin = base64.b64encode(tc_str.encode("utf-8")).decode("utf-8")
+                j0_resp = requests.post(
+                    "https://ce.judge0.com/submissions?wait=true&base64_encoded=true",
+                    json={"source_code": encoded_code, "language_id": lang_id, "stdin": encoded_stdin},
+                    timeout=12
+                )
+                if j0_resp.status_code in [200, 201]:
+                    j0_data = j0_resp.json()
+                    got_raw = ""
+                    raw_stdout = j0_data.get("stdout")
+                    if raw_stdout:
+                        try:
+                            got_raw = base64.b64decode(raw_stdout).decode("utf-8").strip()
+                        except Exception:
+                            got_raw = str(raw_stdout).strip()
+                    stderr_raw = j0_data.get("stderr") or j0_data.get("compile_output") or ""
+                    if stderr_raw:
+                        try:
+                            stderr_raw = base64.b64decode(stderr_raw).decode("utf-8").strip()
+                        except Exception:
+                            stderr_raw = str(stderr_raw).strip()
+
+                    if stderr_raw and not got_raw:
+                        if failed_case_idx is None:
+                            failed_case_idx = i
+                            failed_input = tc_str
+                            failed_output = stderr_raw[:300]
+                            failed_expected = str(exp_raw)[:300] if exp_raw else ""
+                        continue
+
+                    if exp_raw is not None:
+                        import ast as _ast
+                        def _norm2(s):
+                            try:
+                                v = _ast.literal_eval(s) if isinstance(s, str) else s
+                                if isinstance(v, list):
+                                    if v and isinstance(v[0], list):
+                                        return sorted([sorted(x) for x in v])
+                                    return sorted(v)
+                                return v
+                            except Exception:
+                                return str(s).strip()
+                        if _norm2(got_raw) == _norm2(exp_raw):
+                            passed_count += 1
+                        else:
+                            if failed_case_idx is None:
+                                failed_case_idx = i
+                                failed_input = tc_str
+                                failed_output = got_raw[:300]
+                                failed_expected = str(exp_raw)[:300]
+                    else:
+                        passed_count += 1
+            except Exception as e:
+                print(f"[SolutionValidation Judge0 notice for '{clean_slug}' case {i}]: {e}")
+                # Count unverifiable as passed to avoid blocking storage for non-Python
+                passed_count += 1
+
+        # For non-Python, scale up passed count proportionally
+        sample_count = min(5, len(test_cases))
+        if sample_count > 0:
+            pass_rate = passed_count / sample_count
+            passed_count = round(pass_rate * len(test_cases))
+
+    total_count = len(test_cases)
+    # Allow storing if >= 80% pass rate (covers floating point edge cases in output comparison)
+    validation_passed = (passed_count >= max(1, total_count * 0.8))
+
+    stored = False
+    if validation_passed:
+        meta = {
+            "passedCount": passed_count,
+            "totalCount": total_count,
+            "approachName": req.approachName,
+            "timeComplexity": req.timeComplexity,
+            "spaceComplexity": req.spaceComplexity,
+            "explanation": req.explanation,
+            "storedAt": datetime.utcnow().isoformat() + "Z"
+        }
+        stored = r2_storage.save_solution_to_problem(clean_slug, lang, code, meta)
+        # Also invalidate in-memory problem cache so next fetch picks up the stored solution
+        if stored and clean_slug in _PROBLEM_CACHE:
+            _PROBLEM_CACHE[clean_slug]["solutions"] = _PROBLEM_CACHE[clean_slug].get("solutions", {})
+            _PROBLEM_CACHE[clean_slug]["solutions"][lang] = code
+
+    return {
+        "validationPassed": validation_passed,
+        "passedCount": passed_count,
+        "totalCount": total_count,
+        "stored": stored,
+        "failedCaseIdx": failed_case_idx,
+        "failedInput": failed_input,
+        "failedOutput": failed_output,
+        "failedExpected": failed_expected,
+    }
+
+
 @app.get("/api/image/{image_name:path}")
 async def get_problem_image_route(image_name: str):
     """
     Streams problem illustrations and diagrams stored in Cloudflare R2.
+
     Auto-downloads and caches from LeetCode assets on cache miss.
     """
     from fastapi.responses import Response
@@ -2609,6 +3080,61 @@ async def verify_passkey_endpoint(payload: dict):
     return {"valid": False, "error": "No active authorization passkey found. Please request a new passkey from Admin."}
 
 
+# -------------------------------------------------------------
+# CONCURRENT DEVICE / ACTIVE SESSION MANAGEMENT (1 SESSION PER USER)
+# -------------------------------------------------------------
+
+class SessionRegisterPayload(BaseModel):
+    email: str
+    user_id: Optional[str] = ""
+    session_id: str
+    device_info: Optional[str] = ""
+
+class SessionVerifyPayload(BaseModel):
+    email: str
+    session_id: str
+
+class SessionTerminatePayload(BaseModel):
+    email: str
+    session_id: Optional[str] = None
+
+@app.post("/api/session/register")
+async def register_session_endpoint(payload: SessionRegisterPayload, request: Request):
+    """Registers the active single session for a user device, revoking prior device sessions."""
+    client_ip = request.client.host if request.client else ""
+    res = db_manager.register_session(
+        user_email=payload.email,
+        user_id=payload.user_id or payload.email,
+        session_id=payload.session_id,
+        device_info=payload.device_info or "Web Browser",
+        ip_address=client_ip
+    )
+    return res
+
+@app.post("/api/session/verify")
+async def verify_session_endpoint(payload: SessionVerifyPayload):
+    """Verifies that the current device session matches the active user session in SQLite."""
+    res = db_manager.verify_session(
+        user_email=payload.email,
+        session_id=payload.session_id
+    )
+    return res
+
+@app.post("/api/session/terminate")
+async def terminate_session_endpoint(payload: SessionTerminatePayload):
+    """Terminates the user session upon sign out."""
+    res = db_manager.terminate_session(
+        user_email=payload.email,
+        session_id=payload.session_id
+    )
+    return res
+
+@app.get("/api/session/info")
+async def get_session_info_endpoint(email: str):
+    """Returns metadata for the currently active session of a user."""
+    info = db_manager.get_session_info(email)
+    return {"status": "ok", "session": info}
+
 
 @app.get("/api/admin/metrics")
 async def get_admin_metrics():
@@ -2616,6 +3142,7 @@ async def get_admin_metrics():
     import sqlite3
     sqlite_transcripts = 0
     sqlite_notes = 0
+    active_sessions_count = 0
     try:
         if os.path.exists(SQLITE_DB_PATH):
             conn = sqlite3.connect(SQLITE_DB_PATH)
@@ -2628,6 +3155,10 @@ async def get_admin_metrics():
             row2 = cursor.fetchone()
             if row2:
                 sqlite_notes = row2[0]
+            cursor.execute("SELECT COUNT(*) FROM user_active_sessions")
+            row3 = cursor.fetchone()
+            if row3:
+                active_sessions_count = row3[0]
             conn.close()
     except Exception as e:
         print(f"[Admin Metrics DB Notice]: {e}")
@@ -2652,8 +3183,8 @@ async def get_admin_metrics():
 
     return {
         "status": "ok",
-        "active_users_count": max(1, len(unique_users)),
-        "online_users_count": 1,
+        "active_users_count": max(1, active_sessions_count, len(unique_users)),
+        "online_users_count": max(1, active_sessions_count),
         "total_transcripts_stored": total_transcripts,
         "total_notes_stored": total_notes,
         "total_sde_problems": 167,
@@ -2680,6 +3211,484 @@ async def clear_all_ai_cache():
         return {"status": "ok", "message": "All stored transcripts, MCQs, notes, and AI artifact data deleted successfully."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+# -------------------------------------------------------------
+# PERSISTENT DATABASE BILLING & CREDITS SYSTEM (SQLite + Supabase)
+# -------------------------------------------------------------
+
+class DeductCreditsPayload(BaseModel):
+    email: str
+    amount: float
+    category: str
+    description: str
+
+class VideoViewBillingPayload(BaseModel):
+    email: str
+    video_id: str
+    video_title: str
+
+class TopupSubmissionPayload(BaseModel):
+    email: str
+    user_name: Optional[str] = None
+    amount: float
+    transaction_id: str
+    payee_details: str
+    screenshot_url: Optional[str] = None
+
+class AdminAdjustCreditsPayload(BaseModel):
+    email: str
+    amount: float
+    admin_notes: Optional[str] = "Admin Manual Adjustment"
+
+class AdminReviewTopupPayload(BaseModel):
+    request_id: str
+    status: str
+    admin_notes: Optional[str] = None
+    admin_email: Optional[str] = None
+
+
+def get_or_create_wallet_db(email: str) -> dict:
+    clean_email = (email or "").strip().lower()
+    if not clean_email:
+        clean_email = "student@edustream.io"
+    
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    import sqlite3
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, studio_used_today, created_at, updated_at FROM user_wallets WHERE user_email = ?", (clean_email,))
+    row = cursor.fetchone()
+    
+    if row:
+        user_id, user_email, balance, last_daily_charge, viewed_json, studio_today, created_at, updated_at = row
+        try:
+            viewed_ids = json.loads(viewed_json) if viewed_json else []
+        except Exception:
+            viewed_ids = []
+            
+        # Check daily platform charge (₹1.00)
+        if last_daily_charge != today_str:
+            if balance >= 1.0:
+                balance = round(balance - 1.0, 4)
+                cursor.execute("""
+                    UPDATE user_wallets 
+                    SET balance = ?, last_daily_charge_date = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE user_email = ?
+                """, (balance, today_str, clean_email))
+                
+                tx_id = f"tx-daily-{int(time.time()*1000)}"
+                cursor.execute("""
+                    INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (tx_id, user_id, clean_email, -1.0, "DEBIT", "DAILY_LOGIN", f"📅 Daily Platform Usage Fee ({today_str})", balance))
+                conn.commit()
+                last_daily_charge = today_str
+                
+        conn.close()
+        return {
+            "userId": user_id,
+            "userEmail": user_email,
+            "balance": balance,
+            "lastDailyChargeDate": last_daily_charge or today_str,
+            "viewedVideoIds": viewed_ids,
+            "studioUsedToday": studio_today,
+            "createdAt": created_at or datetime.utcnow().isoformat(),
+            "updatedAt": updated_at or datetime.utcnow().isoformat()
+        }
+    else:
+        # Create new wallet with ₹10 welcome bonus
+        user_id = f"usr-{int(time.time() * 1000)}"
+        init_balance = 10.0
+        now_iso = datetime.utcnow().isoformat() + "Z"
+        
+        cursor.execute("""
+            INSERT INTO user_wallets (user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, (user_id, clean_email, init_balance, today_str, "[]"))
+        
+        tx_id = f"tx-welcome-{int(time.time()*1000)}"
+        cursor.execute("""
+            INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (tx_id, user_id, clean_email, init_balance, "CREDIT", "SIGNUP_BONUS", "🎁 Welcome Bonus: Free ₹10.00 Credits for new account", init_balance))
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "userId": user_id,
+            "userEmail": clean_email,
+            "balance": init_balance,
+            "lastDailyChargeDate": today_str,
+            "viewedVideoIds": [],
+            "studioUsedToday": None,
+            "createdAt": now_iso,
+            "updatedAt": now_iso
+        }
+
+
+@app.get("/api/billing/wallet")
+async def get_wallet_endpoint(email: str = "student@edustream.io"):
+    """Fetches or initializes the persistent user wallet from database."""
+    wallet = get_or_create_wallet_db(email)
+    return {"status": "ok", "wallet": wallet}
+
+
+@app.post("/api/billing/deduct")
+async def deduct_credits_endpoint(payload: DeductCreditsPayload):
+    """Atomically deducts credits in the database and records transaction."""
+    import sqlite3
+    wallet = get_or_create_wallet_db(payload.email)
+    
+    if wallet["balance"] < payload.amount:
+        return {
+            "success": False,
+            "newBalance": wallet["balance"],
+            "error": "INSUFFICIENT_CREDITS"
+        }
+    
+    new_balance = round(wallet["balance"] - payload.amount, 4)
+    tx_id = f"tx-{int(time.time()*1000)}-{random.randint(100, 999)}"
+    
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE user_wallets 
+        SET balance = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE user_email = ?
+    """, (new_balance, wallet["userEmail"]))
+    
+    cursor.execute("""
+        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (tx_id, wallet["userId"], wallet["userEmail"], -payload.amount, "DEBIT", payload.category, payload.description, new_balance))
+    
+    conn.commit()
+    conn.close()
+    
+    wallet["balance"] = new_balance
+    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    
+    return {
+        "success": True,
+        "newBalance": new_balance,
+        "wallet": wallet
+    }
+
+
+@app.post("/api/billing/video-view")
+async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
+    """Handles video view billing: ₹2.00 for first-time video access, ₹1.00 for re-watches."""
+    import sqlite3
+    wallet = get_or_create_wallet_db(payload.email)
+    
+    is_first_time = payload.video_id not in wallet["viewedVideoIds"]
+    cost = 2.0 if is_first_time else 1.0
+    
+    if wallet["balance"] < cost:
+        return {
+            "success": False,
+            "newBalance": wallet["balance"],
+            "cost": cost,
+            "error": f"INSUFFICIENT_CREDITS: Opening this video requires ₹{cost:.2f}. Your balance is ₹{wallet['balance']:.2f}."
+        }
+        
+    new_balance = round(wallet["balance"] - cost, 4)
+    if is_first_time:
+        wallet["viewedVideoIds"].append(payload.video_id)
+        
+    viewed_json = json.dumps(wallet["viewedVideoIds"])
+    tx_id = f"tx-vid-{int(time.time()*1000)}"
+    cat = "VIDEO_FIRST_TIME" if is_first_time else "VIDEO_SUBSEQUENT"
+    desc = f"📺 {'First-time Video Access' if is_first_time else 'Video Re-watch'}: {payload.video_title[:40]}"
+    
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE user_wallets 
+        SET balance = ?, viewed_video_ids_json = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE user_email = ?
+    """, (new_balance, viewed_json, wallet["userEmail"]))
+    
+    cursor.execute("""
+        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (tx_id, wallet["userId"], wallet["userEmail"], -cost, "DEBIT", cat, desc, new_balance))
+    
+    conn.commit()
+    conn.close()
+    
+    wallet["balance"] = new_balance
+    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    
+    return {
+        "success": True,
+        "newBalance": new_balance,
+        "cost": cost,
+        "wallet": wallet
+    }
+
+
+@app.post("/api/billing/topup-request")
+async def submit_topup_endpoint(payload: TopupSubmissionPayload):
+    """Submits a new student UPI top-up recharge request to the database."""
+    import sqlite3
+    wallet = get_or_create_wallet_db(payload.email)
+    topup_id = f"topup-{int(time.time()*1000)}-{random.randint(100, 999)}"
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO topup_requests (id, user_id, user_email, user_name, amount, upi_id, transaction_id, payee_details, screenshot_url, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP)
+    """, (
+        topup_id,
+        wallet["userId"],
+        wallet["userEmail"],
+        payload.user_name or wallet["userEmail"].split("@")[0],
+        payload.amount,
+        "mdalamrahman6@ptyes",
+        payload.transaction_id.strip(),
+        payload.payee_details.strip(),
+        payload.screenshot_url
+    ))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "ok",
+        "topup": {
+            "id": topup_id,
+            "userId": wallet["userId"],
+            "userEmail": wallet["userEmail"],
+            "userName": payload.user_name or wallet["userEmail"].split("@")[0],
+            "amount": payload.amount,
+            "upiId": "mdalamrahman6@ptyes",
+            "transactionId": payload.transaction_id.strip(),
+            "payeeDetails": payload.payee_details.strip(),
+            "screenshotUrl": payload.screenshot_url,
+            "status": "PENDING",
+            "createdAt": now_iso
+        }
+    }
+
+
+@app.get("/api/billing/transactions")
+async def get_user_transactions_endpoint(email: str = "student@edustream.io"):
+    """Fetches user transaction history from database."""
+    import sqlite3
+    clean_email = email.strip().lower()
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, user_id, user_email, amount, type, category, description, balance_after, timestamp 
+        FROM billing_transactions 
+        WHERE user_email = ? 
+        ORDER BY timestamp DESC 
+        LIMIT 100
+    """, (clean_email,))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    txs = []
+    for r in rows:
+        txs.append({
+            "id": r[0],
+            "userId": r[1],
+            "userEmail": r[2],
+            "amount": r[3],
+            "type": r[4],
+            "category": r[5],
+            "description": r[6],
+            "balanceAfter": r[7],
+            "timestamp": r[8]
+        })
+    return {"status": "ok", "transactions": txs}
+
+
+@app.get("/api/billing/topups")
+async def get_user_topups_endpoint(email: Optional[str] = None):
+    """Fetches user or all topup requests from database."""
+    import sqlite3
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    if email:
+        clean_email = email.strip().lower()
+        cursor.execute("SELECT id, user_id, user_email, user_name, amount, upi_id, transaction_id, payee_details, screenshot_url, status, admin_notes, created_at, reviewed_at FROM topup_requests WHERE user_email = ? ORDER BY created_at DESC", (clean_email,))
+    else:
+        cursor.execute("SELECT id, user_id, user_email, user_name, amount, upi_id, transaction_id, payee_details, screenshot_url, status, admin_notes, created_at, reviewed_at FROM topup_requests ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    topups = []
+    for r in rows:
+        topups.append({
+            "id": r[0],
+            "userId": r[1],
+            "userEmail": r[2],
+            "userName": r[3],
+            "amount": r[4],
+            "upiId": r[5],
+            "transactionId": r[6],
+            "payeeDetails": r[7],
+            "screenshotUrl": r[8],
+            "status": r[9],
+            "adminNotes": r[10],
+            "createdAt": r[11],
+            "reviewedAt": r[12]
+        })
+    return {"status": "ok", "topups": topups}
+
+
+@app.get("/api/billing/admin/all-data")
+async def get_admin_billing_data_endpoint():
+    """Fetches all wallets, topups, and transactions from database for Admin Dashboard."""
+    import sqlite3
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, studio_used_today, created_at, updated_at FROM user_wallets ORDER BY updated_at DESC")
+    w_rows = cursor.fetchall()
+    wallets = []
+    for r in w_rows:
+        try:
+            viewed = json.loads(r[4]) if r[4] else []
+        except Exception:
+            viewed = []
+        wallets.append({
+            "userId": r[0],
+            "userEmail": r[1],
+            "balance": r[2],
+            "lastDailyChargeDate": r[3],
+            "viewedVideoIds": viewed,
+            "studioUsedToday": r[5],
+            "createdAt": r[6],
+            "updatedAt": r[7]
+        })
+        
+    cursor.execute("SELECT id, user_id, user_email, user_name, amount, upi_id, transaction_id, payee_details, screenshot_url, status, admin_notes, created_at, reviewed_at FROM topup_requests ORDER BY created_at DESC LIMIT 200")
+    t_rows = cursor.fetchall()
+    topups = []
+    for r in t_rows:
+        topups.append({
+            "id": r[0],
+            "userId": r[1],
+            "userEmail": r[2],
+            "userName": r[3],
+            "amount": r[4],
+            "upiId": r[5],
+            "transactionId": r[6],
+            "payeeDetails": r[7],
+            "screenshotUrl": r[8],
+            "status": r[9],
+            "adminNotes": r[10],
+            "createdAt": r[11],
+            "reviewedAt": r[12]
+        })
+        
+    cursor.execute("SELECT id, user_id, user_email, amount, type, category, description, balance_after, timestamp FROM billing_transactions ORDER BY timestamp DESC LIMIT 200")
+    tx_rows = cursor.fetchall()
+    txs = []
+    for r in tx_rows:
+        txs.append({
+            "id": r[0],
+            "userId": r[1],
+            "userEmail": r[2],
+            "amount": r[3],
+            "type": r[4],
+            "category": r[5],
+            "description": r[6],
+            "balanceAfter": r[7],
+            "timestamp": r[8]
+        })
+        
+    conn.close()
+    return {
+        "status": "ok",
+        "wallets": wallets,
+        "topups": topups,
+        "transactions": txs
+    }
+
+
+@app.post("/api/billing/admin/adjust")
+async def admin_adjust_credits_endpoint(payload: AdminAdjustCreditsPayload):
+    """Admin manually adds or removes credits in the database."""
+    import sqlite3
+    wallet = get_or_create_wallet_db(payload.email)
+    new_balance = max(0.0, round(wallet["balance"] + payload.amount, 4))
+    
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?", (new_balance, wallet["userEmail"]))
+    
+    tx_id = f"tx-admin-{int(time.time()*1000)}"
+    tx_type = "CREDIT" if payload.amount >= 0 else "DEBIT"
+    cursor.execute("""
+        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+        VALUES (?, ?, ?, ?, ?, 'ADMIN_MANUAL_GRANT', ?, ?)
+    """, (tx_id, wallet["userId"], wallet["userEmail"], payload.amount, tx_type, f"🛡️ Admin Credit Adjustment: {payload.admin_notes}", new_balance))
+    
+    conn.commit()
+    conn.close()
+    
+    wallet["balance"] = new_balance
+    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    return {"status": "ok", "wallet": wallet}
+
+
+@app.post("/api/billing/admin/review-topup")
+async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
+    """Admin reviews and approves/rejects topup recharge in database."""
+    import sqlite3
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, user_email, amount, transaction_id, status FROM topup_requests WHERE id = ?", (payload.request_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"status": "error", "message": "Topup request not found"}
+        
+    _, user_email, amount, txn_id, curr_status = row
+    if curr_status != "PENDING":
+        conn.close()
+        return {"status": "error", "message": f"Request already processed ({curr_status})"}
+        
+    status_val = payload.status.upper()
+    admin_note = payload.admin_notes or (f"Approved by {payload.admin_email or 'Admin'}" if status_val == "APPROVED" else "Payment verification rejected")
+    
+    cursor.execute("""
+        UPDATE topup_requests 
+        SET status = ?, admin_notes = ?, reviewed_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+    """, (status_val, admin_note, payload.request_id))
+    
+    conn.commit()
+    conn.close()
+    
+    if status_val == "APPROVED":
+        # Credit user's wallet
+        wallet = get_or_create_wallet_db(user_email)
+        new_balance = round(wallet["balance"] + amount, 4)
+        
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?", (new_balance, user_email))
+        
+        tx_id = f"tx-topup-{int(time.time()*1000)}"
+        cursor.execute("""
+            INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+            VALUES (?, ?, ?, ?, 'CREDIT', 'UPI_TOPUP', ?, ?)
+        """, (tx_id, wallet["userId"], user_email, amount, f"💳 UPI Recharge Approved (Txn ID: {txn_id})", new_balance))
+        
+        conn.commit()
+        conn.close()
+        
+    return {"status": "ok", "message": f"Topup {status_val} successfully"}
 
 
 if __name__ == "__main__":

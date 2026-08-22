@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { isWebAuthnSupported, registerWebAuthnPasskey } from './webauthn';
+import { registerDeviceSession, terminateDeviceSession } from './session';
 
 export interface StudentUser {
   id: string;
@@ -33,13 +34,17 @@ export async function checkAndAutoLogin(): Promise<StudentUser | null> {
         created_at: u.created_at || new Date().toISOString()
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
       return studentUser;
     }
   } catch {}
 
   // 2. Check saved local session
   const local = getCurrentStudent();
-  if (local?.email) return local;
+  if (local?.email) {
+    registerDeviceSession(local.email, local.id).catch(() => {});
+    return local;
+  }
 
   return null;
 }
@@ -93,6 +98,7 @@ export async function signUpStudent(email: string, password: string, captchaToke
       }
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
       return { user: studentUser, needsEmailVerification: false, error: null };
     }
 
@@ -135,6 +141,7 @@ export async function verifyEmailOtp(email: string, token: string): Promise<{ us
           created_at: retryData.user.created_at || new Date().toISOString(),
         };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
         return { user: studentUser, error: null };
       }
     }
@@ -146,6 +153,7 @@ export async function verifyEmailOtp(email: string, token: string): Promise<{ us
         created_at: data.user.created_at || new Date().toISOString(),
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
       return { user: studentUser, error: null };
     }
 
@@ -233,6 +241,7 @@ export async function signInStudent(email: string, password: string, captchaToke
         created_at: data.user.created_at || new Date().toISOString(),
       };
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+      registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
       return { user: studentUser, error: null };
     }
 
@@ -287,6 +296,10 @@ export function getAllRegisteredUsers(): Array<{ id: string; email: string; name
 }
 
 export function signOutStudent() {
+  const current = getCurrentStudent();
+  if (current?.email) {
+    terminateDeviceSession(current.email).catch(() => {});
+  }
   localStorage.removeItem(AUTH_STORAGE_KEY);
   supabase.auth.signOut().catch(() => {});
 }

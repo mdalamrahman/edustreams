@@ -43,6 +43,7 @@ import { SDEProblem, SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA,
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
+import { startSessionHeartbeat } from './lib/session';
 import { recordRealActivity } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
@@ -228,6 +229,7 @@ export function App() {
   const [user, setUser] = useState<any>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [revokedSessionMessage, setRevokedSessionMessage] = useState<string>('');
 
   // Video-specific Quiz State
   const [activeVideoQuiz, setActiveVideoQuiz] = useState<QuizQuestion[]>([]);
@@ -312,6 +314,20 @@ export function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // 1 Active Session Per Device Live Heartbeat & Revocation Monitor
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const cleanup = startSessionHeartbeat(user.email, (msg) => {
+      console.warn('[EduStream Session] Revoked from another device:', msg);
+      setRevokedSessionMessage(msg);
+      signOutStudent();
+      setUser(null);
+    });
+
+    return () => cleanup();
+  }, [user?.email]);
 
   // Real Dynamic Velocity Analytics State (persisted in localStorage & synced across SDE Sheet)
   const [totalSolved, setTotalSolved] = useState<number>(() => {
@@ -738,7 +754,11 @@ export function App() {
       <AuthModal
         isOpen={true}
         isFullPage={true}
-        onSuccess={(loggedUser) => setUser(loggedUser)}
+        revokedMessage={revokedSessionMessage}
+        onSuccess={(loggedUser) => {
+          setRevokedSessionMessage('');
+          setUser(loggedUser);
+        }}
       />
     );
   }
@@ -1408,7 +1428,9 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        revokedMessage={revokedSessionMessage}
         onSuccess={(loggedUser) => {
+          setRevokedSessionMessage('');
           setUser(loggedUser);
         }}
       />

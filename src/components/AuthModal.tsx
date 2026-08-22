@@ -3,6 +3,7 @@ import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv
 import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle } from '../lib/auth';
 import { verifyStudentPasskey } from '../lib/passkey';
 import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
+import { registerDeviceSession } from '../lib/session';
 import { TurnstileCaptcha } from './TurnstileCaptcha';
 
 interface AuthModalProps {
@@ -10,13 +11,15 @@ interface AuthModalProps {
   onClose?: () => void;
   onSuccess: (user: any) => void;
   isFullPage?: boolean;
+  revokedMessage?: string;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ 
   isOpen, 
   onClose, 
   onSuccess,
-  isFullPage = false
+  isFullPage = false,
+  revokedMessage = ''
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'verify_otp'>('signin');
   const [authMethod, setAuthMethod] = useState<'passkey' | 'password'>('passkey');
@@ -66,6 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       try {
         localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
+        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
       } catch {}
 
       setSuccessMsg(`🛡️ Authenticated via Supabase Passkey!`);
@@ -285,6 +289,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           >
             <span>← Back to Sign In</span>
           </button>
+        )}
+
+        {/* Session Revocation Alert */}
+        {revokedMessage && (
+          <div className="mb-4 p-3.5 rounded-2xl bg-amber-950/70 border border-amber-500/50 text-xs text-amber-200 flex items-start gap-2.5 animate-fadeIn shadow-lg shadow-amber-950/40">
+            <ShieldAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-bold text-amber-300">Single Device Session Active</div>
+              <div className="text-amber-200/90 leading-relaxed">{revokedMessage}</div>
+            </div>
+          </div>
         )}
 
         {/* Error Alert */}

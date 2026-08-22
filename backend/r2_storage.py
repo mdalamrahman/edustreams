@@ -363,5 +363,35 @@ class CloudflareR2Storage:
                 continue
         return None
 
+    def save_solution_to_problem(self, slug: str, language: str, code: str, metadata: dict = None) -> bool:
+        """
+        Merges a validated solution (code string) for a given language into an existing
+        problem's R2 JSON, then re-uploads. Returns True if successful.
+        """
+        try:
+            problem_data = self.fetch_problem(slug)
+            if not problem_data:
+                print(f"[R2 SaveSolution] Problem '{slug}' not found in R2 — cannot store solution.")
+                return False
+
+            if "solutions" not in problem_data or not isinstance(problem_data["solutions"], dict):
+                problem_data["solutions"] = {}
+
+            problem_data["solutions"][language] = code
+
+            # Optionally store validation metadata alongside the solution
+            if metadata:
+                if "solutionsMeta" not in problem_data:
+                    problem_data["solutionsMeta"] = {}
+                problem_data["solutionsMeta"][language] = metadata
+
+            key = self.upload_problem(slug, problem_data)
+            if key:
+                print(f"[R2 SaveSolution] Stored validated '{language}' solution for '{slug}' → {key}")
+                return True
+        except Exception as e:
+            print(f"[R2 SaveSolution Error for '{slug}'/{language}]: {e}")
+        return False
+
 
 r2_storage = CloudflareR2Storage()

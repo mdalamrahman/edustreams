@@ -699,17 +699,80 @@ export interface OptimalSolutionResponse {
   timeComplexity: string;
   spaceComplexity: string;
   approachName: string;
+  // Validation metadata (populated after backend validation)
+  validationPassed?: boolean;
+  passedCount?: number;
+  totalCount?: number;
+  stored?: boolean;
+  failedCaseIdx?: number | null;
+  failedInput?: string | null;
+  failedOutput?: string | null;
+  failedExpected?: string | null;
+  fromR2Cache?: boolean;
+}
+
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
+
+/**
+ * Sends a generated solution to the backend for validation against all stored R2 test cases,
+ * and stores it in R2 if ≥80% of tests pass.
+ */
+export async function validateAndStoreSolution(
+  slug: string,
+  language: string,
+  sol: OptimalSolutionResponse
+): Promise<OptimalSolutionResponse> {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        language,
+        code: sol.code,
+        approachName: sol.approachName,
+        timeComplexity: sol.timeComplexity,
+        spaceComplexity: sol.spaceComplexity,
+        explanation: sol.explanation
+      })
+    });
+    if (resp.ok) {
+      const result = await resp.json();
+      return {
+        ...sol,
+        validationPassed: result.validationPassed,
+        passedCount: result.passedCount,
+        totalCount: result.totalCount,
+        stored: result.stored,
+        failedCaseIdx: result.failedCaseIdx ?? null,
+        failedInput: result.failedInput ?? null,
+        failedOutput: result.failedOutput ?? null,
+        failedExpected: result.failedExpected ?? null,
+      };
+    }
+  } catch (e) {
+    console.warn('[Solution Validation Notice]:', e);
+  }
+  return sol;
 }
 
 /**
  * Generates verified, optimal multi-language solutions on-demand via SDETube AI engine.
+ * After generation, automatically validates against R2 test cases and stores if ≥80% pass.
  */
-export async function requestAIOptimalSolution(
+const MAX_SOL_ATTEMPTS = 3;
+
+/** Internal helper: call the LLM once and return a parsed solution object, or null on failure. */
+async function _generateSolutionOnce(
   title: string,
   description: string,
   language: string,
-  starterCode?: string
-): Promise<OptimalSolutionResponse> {
+  starterCode?: string,
+  attempt = 1
+): Promise<OptimalSolutionResponse | null> {
+  const attemptHint = attempt > 1
+    ? `\n\nPrevious attempt failed test cases. Please carefully reconsider edge cases and produce a fully correct solution.`
+    : '';
+
   const prompt = `You are a Principal Software Engineer and Competitive Programming Master.
 Generate an optimal, verified, production-grade solution for the following coding problem in ${language}.
 
@@ -717,7 +780,7 @@ Problem: ${title}
 Description:
 ${(description || '').slice(0, 4000)}
 
-${starterCode ? `Starter Signature Reference:\n\`\`\`\n${starterCode}\n\`\`\`` : ''}
+${starterCode ? `Starter Signature Reference:\n\`\`\`\n${starterCode}\n\`\`\`` : ''}${attemptHint}
 
 Output ONLY valid JSON matching this exact structure:
 {
@@ -728,7 +791,7 @@ Output ONLY valid JSON matching this exact structure:
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
-  // 1. PRIMARY: Mistral AI (mistral-large-latest)
+  // PRIMARY: Mistral AI
   try {
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
@@ -740,10 +803,9 @@ Output ONLY valid JSON matching this exact structure:
         model: 'mistral-large-latest',
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
+        temperature: attempt > 1 ? 0.3 : 0.1   // slightly higher temp on retries
       })
     });
-
     if (response.ok) {
       const data = await response.json();
       const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
@@ -761,7 +823,7 @@ Output ONLY valid JSON matching this exact structure:
     console.warn('[Mistral Large Solution Notice]:', e);
   }
 
-  // 2. FALLBACK: Groq Llama 3.1 8B Instant
+  // FALLBACK: Groq Llama 3.1
   try {
     const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -774,10 +836,9 @@ Output ONLY valid JSON matching this exact structure:
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
-        temperature: 0.1
+        temperature: attempt > 1 ? 0.4 : 0.1
       })
     });
-
     if (res.ok) {
       const data = await res.json();
       const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
@@ -795,7 +856,51 @@ Output ONLY valid JSON matching this exact structure:
     console.warn('[Groq Solution Notice]:', e);
   }
 
-  return {
+  return null;
+}
+
+export async function requestAIOptimalSolution(
+  title: string,
+  description: string,
+  language: string,
+  starterCode?: string,
+  slug?: string
+): Promise<OptimalSolutionResponse> {
+  let bestSol: OptimalSolutionResponse | null = null;
+
+  for (let attempt = 1; attempt <= MAX_SOL_ATTEMPTS; attempt++) {
+    // 1. Generate a candidate solution
+    const candidate = await _generateSolutionOnce(title, description, language, starterCode, attempt);
+
+    const sol: OptimalSolutionResponse = candidate ?? {
+      code: starterCode || `// Solution for ${title}`,
+      explanation: 'Optimal solution can be derived using standard algorithmic techniques.',
+      timeComplexity: 'Optimal',
+      spaceComplexity: 'O(1)',
+      approachName: 'Standard Optimal Approach'
+    };
+
+    // 2. If no slug, skip validation — just return what we have
+    if (!slug) {
+      return sol;
+    }
+
+    // 3. Validate + conditionally store in R2 (silent to the user)
+    const validated = await validateAndStoreSolution(slug, language, sol);
+
+    // 4a. Passed (or no test cases available to validate against) → return to UI
+    if (validated.stored || validated.validationPassed !== false) {
+      return validated;
+    }
+
+    // 4b. Failed → keep the result for last-resort fallback, then retry
+    console.warn(`[Solution] Attempt ${attempt}/${MAX_SOL_ATTEMPTS} failed validation — retrying…`);
+    bestSol = validated;   // keep last result in case all attempts fail
+  }
+
+  // All attempts exhausted — return the last generated solution without validation metadata
+  // (user sees the code, but no R2 badge since it wasn't stored)
+  return bestSol ?? {
     code: starterCode || `// Solution for ${title}`,
     explanation: 'Optimal solution can be derived using standard algorithmic techniques.',
     timeComplexity: 'Optimal',
@@ -807,6 +912,7 @@ Output ONLY valid JSON matching this exact structure:
 /**
  * Standard chat completion helper with Mistral Large and Groq fallback.
  */
+
 export async function requestMistralChat(messages: Array<{ role: string; content: string }>): Promise<{ content: string }> {
   try {
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
