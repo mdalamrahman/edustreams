@@ -5,4 +5,5 @@ dist
 *.session
 __pycache__/
 *.pyc
+*.db
 scratch/
