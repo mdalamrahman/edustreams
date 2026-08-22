@@ -521,13 +521,13 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-300">📺 First-time Video Access</span>
-                  <strong className="text-slate-200 font-mono">₹2.00</strong>
+                  <span className="text-slate-300">📺 First-time Video Access (24h Pass)</span>
+                  <strong className="text-slate-200 font-mono">₹2.00 (Free for 24h)</strong>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-300">📺 Subsequent Video Re-watch</span>
-                  <strong className="text-slate-200 font-mono">₹1.00</strong>
+                  <span className="text-slate-300">📺 Video Re-watch (24h Pass)</span>
+                  <strong className="text-slate-200 font-mono">₹1.00 (Free for 24h)</strong>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">

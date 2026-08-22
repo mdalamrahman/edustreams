@@ -94,7 +94,7 @@ export function App() {
     if (!billRes.success) {
       setInsufficientMeta({
         cost: billRes.cost,
-        action: `Unlocking Video Lecture (${billRes.cost === 2 ? 'First-time: ₹2.00' : 'Re-watch: ₹1.00'}): ${v.title}`
+        action: `Unlocking Video Lecture (${billRes.cost === 2 ? 'First-time: ₹2.00 (24h Pass)' : 'Re-watch: ₹1.00 (24h Pass)'}): ${v.title}`
       });
       setIsInsufficientCreditsOpen(true);
       return;

@@ -3264,8 +3264,18 @@ def get_or_create_wallet_db(email: str) -> dict:
     if row:
         user_id, user_email, balance, last_daily_charge, viewed_json, studio_today, created_at, updated_at = row
         try:
-            viewed_ids = json.loads(viewed_json) if viewed_json else []
+            raw_viewed = json.loads(viewed_json) if viewed_json else {}
+            if isinstance(raw_viewed, dict):
+                video_passes = raw_viewed
+                viewed_ids = list(raw_viewed.keys())
+            elif isinstance(raw_viewed, list):
+                video_passes = {v: 0 for v in raw_viewed}
+                viewed_ids = raw_viewed
+            else:
+                video_passes = {}
+                viewed_ids = []
         except Exception:
+            video_passes = {}
             viewed_ids = []
             
         # Check daily platform charge (₹1.00)
@@ -3293,6 +3303,7 @@ def get_or_create_wallet_db(email: str) -> dict:
             "balance": balance,
             "lastDailyChargeDate": last_daily_charge or today_str,
             "viewedVideoIds": viewed_ids,
+            "videoAccessPasses": video_passes,
             "studioUsedToday": studio_today,
             "createdAt": created_at or datetime.utcnow().isoformat(),
             "updatedAt": updated_at or datetime.utcnow().isoformat()
@@ -3306,7 +3317,7 @@ def get_or_create_wallet_db(email: str) -> dict:
         cursor.execute("""
             INSERT INTO user_wallets (user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        """, (user_id, clean_email, init_balance, today_str, "[]"))
+        """, (user_id, clean_email, init_balance, today_str, "{}"))
         
         tx_id = f"tx-welcome-{int(time.time()*1000)}"
         cursor.execute("""
@@ -3323,6 +3334,7 @@ def get_or_create_wallet_db(email: str) -> dict:
             "balance": init_balance,
             "lastDailyChargeDate": today_str,
             "viewedVideoIds": [],
+            "videoAccessPasses": {},
             "studioUsedToday": None,
             "createdAt": now_iso,
             "updatedAt": now_iso
@@ -3380,11 +3392,35 @@ async def deduct_credits_endpoint(payload: DeductCreditsPayload):
 
 @app.post("/api/billing/video-view")
 async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
-    """Handles video view billing: ₹2.00 for first-time video access, ₹1.00 for re-watches."""
+    """Handles video view billing with 24-Hour Free Access Pass rule."""
     import sqlite3
     wallet = get_or_create_wallet_db(payload.email)
     
-    is_first_time = payload.video_id not in wallet["viewedVideoIds"]
+    video_id = str(payload.video_id)
+    passes = wallet.get("videoAccessPasses", {})
+    viewed_ids = set(wallet.get("viewedVideoIds", []))
+    
+    now_ms = time.time() * 1000
+    twenty_four_hours_ms = 24 * 60 * 60 * 1000
+    
+    last_paid_at = passes.get(video_id, 0)
+    elapsed_ms = now_ms - last_paid_at
+    
+    # 1. If video was unlocked within the last 24 hours -> 100% FREE!
+    if 0 <= elapsed_ms < twenty_four_hours_ms:
+        remaining_hours = round((twenty_four_hours_ms - elapsed_ms) / (3600 * 1000), 1)
+        return {
+            "success": True,
+            "newBalance": wallet["balance"],
+            "cost": 0.0,
+            "isFreeWithin24h": True,
+            "remainingHours": remaining_hours,
+            "message": f"Free 24-hour access active ({remaining_hours}h remaining)",
+            "wallet": wallet
+        }
+        
+    # 2. 24h pass expired or never viewed
+    is_first_time = video_id not in viewed_ids
     cost = 2.0 if is_first_time else 1.0
     
     if wallet["balance"] < cost:
@@ -3392,17 +3428,18 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
             "success": False,
             "newBalance": wallet["balance"],
             "cost": cost,
-            "error": f"INSUFFICIENT_CREDITS: Opening this video requires ₹{cost:.2f}. Your balance is ₹{wallet['balance']:.2f}."
+            "isFreeWithin24h": False,
+            "error": f"INSUFFICIENT_CREDITS: Unlocking this video requires ₹{cost:.2f} for 24-hour full access. Your balance is ₹{wallet['balance']:.2f}."
         }
         
     new_balance = round(wallet["balance"] - cost, 4)
-    if is_first_time:
-        wallet["viewedVideoIds"].append(payload.video_id)
-        
-    viewed_json = json.dumps(wallet["viewedVideoIds"])
+    passes[video_id] = now_ms
+    viewed_ids.add(video_id)
+    
+    viewed_json = json.dumps(passes)
     tx_id = f"tx-vid-{int(time.time()*1000)}"
     cat = "VIDEO_FIRST_TIME" if is_first_time else "VIDEO_SUBSEQUENT"
-    desc = f"📺 {'First-time Video Access' if is_first_time else 'Video Re-watch'}: {payload.video_title[:40]}"
+    desc = f"📺 {'First-time Video Access (24h Pass)' if is_first_time else 'Video Re-watch (24h Pass)'}: {payload.video_title[:40]}"
     
     conn = sqlite3.connect(SQLITE_DB_PATH)
     cursor = conn.cursor()
@@ -3421,12 +3458,17 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     conn.close()
     
     wallet["balance"] = new_balance
+    wallet["viewedVideoIds"] = list(viewed_ids)
+    wallet["videoAccessPasses"] = passes
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
     
     return {
         "success": True,
         "newBalance": new_balance,
         "cost": cost,
+        "isFreeWithin24h": False,
+        "expiresAt": now_ms + twenty_four_hours_ms,
+        "message": f"Unlocked for 24 hours (₹{cost:.2f} deducted)",
         "wallet": wallet
     }
 
@@ -3555,15 +3597,26 @@ async def get_admin_billing_data_endpoint():
     wallets = []
     for r in w_rows:
         try:
-            viewed = json.loads(r[4]) if r[4] else []
+            raw_viewed = json.loads(r[4]) if r[4] else {}
+            if isinstance(raw_viewed, dict):
+                v_ids = list(raw_viewed.keys())
+                v_passes = raw_viewed
+            elif isinstance(raw_viewed, list):
+                v_ids = raw_viewed
+                v_passes = {v: 0 for v in raw_viewed}
+            else:
+                v_ids = []
+                v_passes = {}
         except Exception:
-            viewed = []
+            v_ids = []
+            v_passes = {}
         wallets.append({
             "userId": r[0],
             "userEmail": r[1],
             "balance": r[2],
             "lastDailyChargeDate": r[3],
-            "viewedVideoIds": viewed,
+            "viewedVideoIds": v_ids,
+            "videoAccessPasses": v_passes,
             "studioUsedToday": r[5],
             "createdAt": r[6],
             "updatedAt": r[7]

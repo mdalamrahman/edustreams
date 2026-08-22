@@ -88,6 +88,7 @@ export interface UserWallet {
   balance: number;
   lastDailyChargeDate?: string;
   viewedVideoIds: string[]; // Set of video IDs previously charged
+  videoAccessPasses?: Record<string, number>; // Map of videoId -> last charged timestamp (epoch ms)
   studioUsedToday?: string; // Date studio usage was charged
   createdAt: string;
   updatedAt: string;
@@ -96,6 +97,7 @@ export interface UserWallet {
 const WALLETS_STORAGE_KEY = 'sdetube_billing_wallets';
 const TRANSACTIONS_STORAGE_KEY = 'sdetube_billing_transactions';
 const TOPUPS_STORAGE_KEY = 'sdetube_billing_topups';
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 // Helper to notify other UI components of wallet changes
 export function emitWalletUpdate(wallet: UserWallet) {
@@ -163,6 +165,35 @@ function saveTopupRequests(list: TopupRequest[]) {
 }
 
 /**
+ * Checks if a specific video is currently within its active 24-hour free access window.
+ */
+export function isVideoFreeWithin24h(videoId: string, email?: string): boolean {
+  const userEmail = getActiveEmail(email);
+  const wallets = getAllWallets();
+  const wallet = wallets[userEmail] || getUserWallet(userEmail);
+  const passes = wallet.videoAccessPasses || {};
+  const lastPaid = passes[videoId] || 0;
+  const elapsed = Date.now() - lastPaid;
+  return elapsed >= 0 && elapsed < TWENTY_FOUR_HOURS_MS;
+}
+
+/**
+ * Returns remaining hours of free access for a video, or 0 if expired/not unlocked.
+ */
+export function getVideoAccessRemainingHours(videoId: string, email?: string): number {
+  const userEmail = getActiveEmail(email);
+  const wallets = getAllWallets();
+  const wallet = wallets[userEmail] || getUserWallet(userEmail);
+  const passes = wallet.videoAccessPasses || {};
+  const lastPaid = passes[videoId] || 0;
+  const elapsed = Date.now() - lastPaid;
+  if (elapsed >= 0 && elapsed < TWENTY_FOUR_HOURS_MS) {
+    return Number(((TWENTY_FOUR_HOURS_MS - elapsed) / (3600 * 1000)).toFixed(1));
+  }
+  return 0;
+}
+
+/**
  * Synchronizes user wallet directly with persistent Database.
  */
 export async function syncWalletWithDatabase(email?: string): Promise<UserWallet> {
@@ -178,6 +209,7 @@ export async function syncWalletWithDatabase(email?: string): Promise<UserWallet
           balance: Number(data.wallet.balance),
           lastDailyChargeDate: data.wallet.lastDailyChargeDate,
           viewedVideoIds: Array.isArray(data.wallet.viewedVideoIds) ? data.wallet.viewedVideoIds : [],
+          videoAccessPasses: typeof data.wallet.videoAccessPasses === 'object' && data.wallet.videoAccessPasses ? data.wallet.videoAccessPasses : {},
           studioUsedToday: data.wallet.studioUsedToday,
           createdAt: data.wallet.createdAt,
           updatedAt: data.wallet.updatedAt,
@@ -213,6 +245,7 @@ export function getUserWallet(email?: string): UserWallet {
       balance: PRICING_CONFIG.SIGNUP_FREE_CREDITS,
       lastDailyChargeDate: todayStr,
       viewedVideoIds: [],
+      videoAccessPasses: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -324,18 +357,36 @@ export function deductCredits(
 }
 
 /**
- * Handles video view billing: ₹2.00 for first time opening a video, ₹1.00 for subsequent times.
- * Syncs viewed history & balance with database.
+ * Handles video view billing: 24-hour full access pass upon unlocking (₹2.00 first time, ₹1.00 re-watch).
+ * Within 24 hours of unlocking, the same video is 100% FREE to open.
+ * Syncs viewed history, 24h passes, and balance with database.
  */
 export function handleVideoViewBilling(
   videoId: string, 
   videoTitle: string, 
   email?: string
-): { success: boolean; newBalance: number; cost: number; error?: string } {
+): { success: boolean; newBalance: number; cost: number; isFreeWithin24h?: boolean; remainingHours?: number; error?: string } {
   const userEmail = getActiveEmail(email);
   const wallets = getAllWallets();
   const wallet = getUserWallet(userEmail);
 
+  if (!wallet.videoAccessPasses) {
+    wallet.videoAccessPasses = {};
+  }
+
+  // 1. Check if video is within active 24-hour free access window
+  if (isVideoFreeWithin24h(videoId, userEmail)) {
+    const remaining = getVideoAccessRemainingHours(videoId, userEmail);
+    return {
+      success: true,
+      newBalance: wallet.balance,
+      cost: 0.0,
+      isFreeWithin24h: true,
+      remainingHours: remaining
+    };
+  }
+
+  // 2. 24h pass expired or never viewed
   const isFirstTime = !wallet.viewedVideoIds.includes(videoId);
   const cost = isFirstTime ? PRICING_CONFIG.VIDEO_FIRST_TIME : PRICING_CONFIG.VIDEO_SUBSEQUENT;
 
@@ -344,12 +395,14 @@ export function handleVideoViewBilling(
       success: false,
       newBalance: wallet.balance,
       cost,
-      error: `INSUFFICIENT_CREDITS: Opening this video requires ₹${cost.toFixed(2)}. Your current balance is ₹${wallet.balance.toFixed(2)}.`
+      isFreeWithin24h: false,
+      error: `INSUFFICIENT_CREDITS: Unlocking this video requires ₹${cost.toFixed(2)} for 24-hour full access. Your current balance is ₹${wallet.balance.toFixed(2)}.`
     };
   }
 
   // Optimistic update
   wallet.balance = parseFloat((wallet.balance - cost).toFixed(4));
+  wallet.videoAccessPasses[videoId] = Date.now();
   if (isFirstTime) {
     wallet.viewedVideoIds.push(videoId);
   }
@@ -364,7 +417,7 @@ export function handleVideoViewBilling(
     amount: -cost,
     type: 'DEBIT',
     category: isFirstTime ? 'VIDEO_FIRST_TIME' : 'VIDEO_SUBSEQUENT',
-    description: `📺 ${isFirstTime ? 'First-time Video Access' : 'Video Re-watch'}: ${videoTitle.slice(0, 40)}`,
+    description: `📺 ${isFirstTime ? 'First-time Video Access (24h Pass)' : 'Video Re-watch (24h Pass)'}: ${videoTitle.slice(0, 40)}`,
     balanceAfter: wallet.balance,
     timestamp: new Date().toISOString()
   };
@@ -388,6 +441,9 @@ export function handleVideoViewBilling(
       const data = await res.json();
       if (data.wallet) {
         wallet.balance = Number(data.wallet.balance);
+        if (data.wallet.videoAccessPasses) {
+          wallet.videoAccessPasses = data.wallet.videoAccessPasses;
+        }
         wallets[userEmail] = wallet;
         saveAllWallets(wallets);
         emitWalletUpdate(wallet);
@@ -400,7 +456,9 @@ export function handleVideoViewBilling(
   return {
     success: true,
     newBalance: wallet.balance,
-    cost
+    cost,
+    isFreeWithin24h: false,
+    remainingHours: 24.0
   };
 }
 
