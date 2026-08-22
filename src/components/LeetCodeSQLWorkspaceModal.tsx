@@ -26,7 +26,9 @@ import {
   ChevronUp,
   GripVertical,
   Lock,
-  Eye
+  Eye,
+  RotateCcw,
+  Cloud
 } from 'lucide-react';
 import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } from '../lib/sqlJudge';
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
@@ -36,6 +38,7 @@ import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
+import { toSlug } from '../lib/problemService';
 
 interface LeetCodeSQLWorkspaceModalProps {
   problemTitle: string;
@@ -62,7 +65,37 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     return generateSQLProblem(cleanTitle, transcript, notes);
   }, [cleanTitle, transcript, notes]);
 
-  const [code, setCode] = useState<string>(() => sqlProblem.starterSql);
+  const [code, setCode] = useState<string>(() => {
+    try {
+      const cached = localStorage.getItem(`edustream_sql_code_${toSlug(cleanTitle)}`);
+      if (cached !== null && cached.trim().length > 0) return cached;
+    } catch {}
+    return sqlProblem.starterSql;
+  });
+
+  const [codeSaveStatus, setCodeSaveStatus] = useState<'idle' | 'saved'>('idle');
+
+  // Instant Synchronous Autosave on every keystroke
+  const handleCodeChange = (newVal: string | undefined) => {
+    const nextCode = newVal ?? '';
+    setCode(nextCode);
+    try {
+      localStorage.setItem(`edustream_sql_code_${toSlug(cleanTitle)}`, nextCode);
+      setCodeSaveStatus('saved');
+    } catch {}
+  };
+
+  // Reset to default starter SQL
+  const handleResetCode = () => {
+    if (window.confirm('Reset SQL query to default template? Any local edits will be discarded.')) {
+      setCode(sqlProblem.starterSql);
+      try {
+        localStorage.removeItem(`edustream_sql_code_${toSlug(cleanTitle)}`);
+        setCodeSaveStatus('idle');
+      } catch {}
+    }
+  };
+
   const [leftTab, setLeftTab] = useState<'description' | 'editorial' | 'solutions' | 'submissions'>('description');
   const [consoleTab, setConsoleTab] = useState<'tables' | 'result'>('tables');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
@@ -683,7 +716,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
               language="sql"
               value={code}
               theme="vs-dark"
-              onChange={(val) => setCode(val || '')}
+              onChange={handleCodeChange}
               options={{
                 fontSize: 13,
                 fontFamily: "'Fira Code', 'Courier New', monospace",
@@ -698,6 +731,19 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
             {/* Quick Actions */}
             <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
+              <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/60 text-[10px] font-mono text-slate-300 shadow-md">
+                <Cloud className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                <span>Saved in Browser Cache ⚡</span>
+              </div>
+
+              <button
+                onClick={handleResetCode}
+                className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-slate-700/60 hover:border-rose-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer transition-colors"
+                title="Reset SQL query to default template"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+
               <button
                 onClick={handleCopyCode}
                 className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"

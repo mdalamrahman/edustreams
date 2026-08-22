@@ -195,6 +195,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     setIsLoadingEnriched(true);
 
     const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const currentSlug = toSlug(rawTarget);
+
     fetchEnrichedProblem(
       rawTarget,
       codingProblem?.category || 'Arrays',
@@ -205,6 +207,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       if (!isCancelled && enriched) {
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
+
+        // Check if user already has saved code in browser cache for this problem & language
+        try {
+          const cached = localStorage.getItem(`edustream_user_code_${currentSlug}_${language}`);
+          if (cached !== null && cached.trim().length > 0) {
+            setCode(cached);
+            if (enriched.testCases && enriched.testCases.length > 0) {
+              setActiveTestCaseIdx(0);
+              setTestInput(enriched.testCases[0]);
+            }
+            return;
+          }
+        } catch {}
+
         if (!initialCode || initialCode.trim().length < 10) {
           setCode(enriched.starters[language] || enriched.starters.cpp || '');
         }
@@ -233,8 +249,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [code, setCode] = useState<string>(() => {
     if (initialCode && initialCode.trim().length > 10) return initialCode;
     try {
-      const cached = localStorage.getItem(`edustream_user_code_${toSlug(cleanTitle)}_${initialLanguage}`);
-      if (cached && cached.trim().length > 5) return cached;
+      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+      const cached = localStorage.getItem(`edustream_user_code_${slug}_${initialLanguage}`);
+      if (cached !== null && cached.trim().length > 0) return cached;
     } catch {}
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });
@@ -546,26 +563,37 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     }
   }, [cleanTitle]);
 
-  // Debounced Autosave User Code in Browser Cache (localStorage)
-  useEffect(() => {
-    if (!code) return;
-    const slug = toSlug(cleanTitle);
-    const timer = setTimeout(() => {
+  // Instant Synchronous Autosave on every keystroke (like LeetCode)
+  const handleCodeChange = (newVal: string | undefined) => {
+    const nextCode = newVal ?? '';
+    setCode(nextCode);
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    try {
+      localStorage.setItem(`edustream_user_code_${slug}_${language}`, nextCode);
+      setCodeSaveStatus('saved');
+    } catch {}
+  };
+
+  // Reset to default template (LeetCode reload button)
+  const handleResetCode = () => {
+    if (window.confirm('Reset code to default template? Any unsaved edits for this language will be discarded.')) {
+      const starter = problemTemplate.starters[language] || problemTemplate.starters.cpp || '';
+      setCode(starter);
+      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
       try {
-        localStorage.setItem(`edustream_user_code_${slug}_${language}`, code);
-        setCodeSaveStatus('saved');
+        localStorage.removeItem(`edustream_user_code_${slug}_${language}`);
+        setCodeSaveStatus('idle');
       } catch {}
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [code, cleanTitle, language]);
+    }
+  };
 
   // Update starter code or load from cache when language changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    const slug = toSlug(cleanTitle);
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
     try {
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${newLang}`);
-      if (cached && cached.trim().length > 5) {
+      if (cached !== null && cached.trim().length > 0) {
         setCode(cached);
         return;
       }
@@ -2061,7 +2089,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               language={language === 'rust' ? 'rust' : language === 'go' ? 'go' : language}
               value={code}
               theme="vs-dark"
-              onChange={(val) => setCode(val || '')}
+              onChange={handleCodeChange}
               options={{
                 fontSize: 13,
                 fontFamily: "'Fira Code', 'Courier New', monospace",
@@ -2088,6 +2116,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               >
                 <Save className="w-3.5 h-3.5 text-indigo-300" />
                 <span>{codeSaveStatus === 'synced' ? 'Synced!' : 'Save Code'}</span>
+              </button>
+
+              <button
+                onClick={handleResetCode}
+                className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-slate-700/60 hover:border-rose-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer transition-colors"
+                title="Reset code to default template definition (clears local edits)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
               </button>
 
               <button
