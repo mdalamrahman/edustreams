@@ -65,14 +65,16 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
   const quickAmounts = [20, 50, 100, 200, 500, 1000];
 
-  const refreshData = async () => {
+  const refreshData = async (fetchFromDb: boolean = true) => {
     const w = getUserWallet(userEmail);
     setWallet(w);
     const targetEmail = (userEmail || w.userEmail).toLowerCase();
     setTransactions(getAllTransactions().filter(t => t.userEmail.toLowerCase() === targetEmail));
     setUserRequests(getAllTopupRequests().filter(r => r.userEmail.toLowerCase() === targetEmail));
 
-    // Live sync with database
+    if (!fetchFromDb) return;
+
+    // Live sync with database (only on explicit user modal open or refresh)
     try {
       const syncedW = await syncWalletWithDatabase(userEmail);
       setWallet(syncedW);
@@ -87,14 +89,15 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      refreshData();
+      refreshData(true);
       setSubmittedSuccess(false);
       setErrorMessage(null);
     }
   }, [isOpen, userEmail]);
 
   useEffect(() => {
-    const handleWalletUpdated = () => refreshData();
+    // Only update local state synchronously when wallet updates; NEVER trigger DB sync loop
+    const handleWalletUpdated = () => refreshData(false);
     window.addEventListener('sdetube_wallet_updated', handleWalletUpdated);
     return () => window.removeEventListener('sdetube_wallet_updated', handleWalletUpdated);
   }, [userEmail]);

@@ -193,11 +193,20 @@ export function getVideoAccessRemainingHours(videoId: string, email?: string): n
   return 0;
 }
 
+const _walletSyncThrottles: Record<string, number> = {};
+
 /**
- * Synchronizes user wallet directly with persistent Database.
+ * Synchronizes user wallet directly with persistent Database (throttled to at most once per 10s).
  */
 export async function syncWalletWithDatabase(email?: string): Promise<UserWallet> {
   const userEmail = getActiveEmail(email);
+  const now = Date.now();
+  const lastSync = _walletSyncThrottles[userEmail] || 0;
+  if (now - lastSync < 10000) {
+    return getUserWallet(userEmail);
+  }
+  _walletSyncThrottles[userEmail] = now;
+
   try {
     const res = await fetch(`${BACKEND_URL}/api/billing/wallet?email=${encodeURIComponent(userEmail)}`);
     if (res.ok) {
@@ -215,9 +224,12 @@ export async function syncWalletWithDatabase(email?: string): Promise<UserWallet
           updatedAt: data.wallet.updatedAt,
         };
         const wallets = getAllWallets();
+        const prevBal = wallets[userEmail]?.balance;
         wallets[userEmail] = wallet;
         saveAllWallets(wallets);
-        emitWalletUpdate(wallet);
+        if (prevBal !== wallet.balance) {
+          emitWalletUpdate(wallet);
+        }
         return wallet;
       }
     }
