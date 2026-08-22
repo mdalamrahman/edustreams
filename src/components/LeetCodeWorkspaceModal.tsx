@@ -607,11 +607,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     }
   };
 
-  // Sync user code directly to Cloudflare R2 as a .txt file
+  // Sync user code directly to Cloudflare R2 as a .txt file (deducts ₹0.05)
   const handleSyncCodeToCloud = async () => {
     setCodeSaveStatus('idle');
-    const slug = toSlug(cleanTitle);
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
     const student = getCurrentStudent();
+
+    if (!canAffordAction(PRICING_CONFIG.CLOUD_CODE_SAVE, student?.email)) {
+      setInsufficientMeta({
+        cost: PRICING_CONFIG.CLOUD_CODE_SAVE,
+        action: `Save Code to Cloud Backup (5 paise): ${cleanTitle}`
+      });
+      setIsInsufficientCreditsOpen(true);
+      return;
+    }
+
+    deductCredits(
+      PRICING_CONFIG.CLOUD_CODE_SAVE,
+      'CLOUD_CODE_SAVE',
+      `☁️ Save Code to Cloud (5p): ${cleanTitle}`,
+      student?.email
+    );
+
     try {
       localStorage.setItem(`edustream_user_code_${slug}_${language}`, code);
       if (student?.email) {
@@ -625,14 +642,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             problemTitle: cleanTitle
           })
         });
-        setCodeSaveStatus('synced');
-      } else {
-        setCodeSaveStatus('saved');
       }
+      setCodeSaveStatus('synced');
     } catch {
       setCodeSaveStatus('saved');
     }
-    setTimeout(() => setCodeSaveStatus('idle'), 3000);
+    setTimeout(() => setCodeSaveStatus('idle'), 3500);
   };
 
   const handleSelectApproach = (approach: ProblemApproach) => {
@@ -1173,30 +1188,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>{isReviewing ? 'Analyzing...' : 'AI Review'}</span>
           </button>
-
-          {/* Language Selector */}
-          <div className="flex items-center space-x-1.5">
-            <select
-              value={language}
-              onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-mono font-bold focus:outline-none focus:border-purple-500 cursor-pointer"
-            >
-              <option value="cpp">C++ 20 (STL)</option>
-              <option value="python">Python 3</option>
-              <option value="java">Java 17</option>
-              <option value="javascript">JavaScript</option>
-              <option value="go">Go 1.21</option>
-              <option value="rust">Rust 1.75</option>
-            </select>
-
-            <button
-              onClick={() => setCode(problemTemplate.starters[language] || problemTemplate.starters.cpp)}
-              className="p-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-              title="Reset code to clean official starter signature"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </div>
 
           {/* Close Modal */}
           <button
@@ -2081,6 +2072,85 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           style={{ width: `${100 - splitPercent}%` }}
           className="flex-1 lg:flex-none bg-slate-950 flex flex-col overflow-hidden relative transition-all duration-75"
         >
+          {/* LeetCode Standard Editor Header Bar */}
+          <div className="h-10 bg-[#1e1e1e] border-b border-white/10 px-3 flex items-center justify-between flex-shrink-0 z-10 select-none">
+            {/* Left: Language Selector */}
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <select
+                  value={language}
+                  onChange={(e) => handleLanguageChange(e.target.value as SupportedLanguage)}
+                  className="bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-xs font-mono font-semibold text-slate-200 rounded-lg px-2.5 py-1 outline-none cursor-pointer appearance-none pr-7 transition-all focus:border-indigo-500"
+                >
+                  <option value="cpp" className="bg-[#1e1e1e] text-slate-200">C++</option>
+                  <option value="python" className="bg-[#1e1e1e] text-slate-200">Python 3</option>
+                  <option value="java" className="bg-[#1e1e1e] text-slate-200">Java</option>
+                  <option value="javascript" className="bg-[#1e1e1e] text-slate-200">JavaScript</option>
+                  <option value="go" className="bg-[#1e1e1e] text-slate-200">Go</option>
+                  <option value="rust" className="bg-[#1e1e1e] text-slate-200">Rust</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {problemTemplate.approaches && problemTemplate.approaches.length > 1 && (
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-950/60 border border-indigo-700/50 text-[10px] font-mono text-indigo-300">
+                  {problemTemplate.approaches.find(a => a.id === selectedApproachId)?.name || 'Approach'}
+                </span>
+              )}
+            </div>
+
+            {/* Right: LeetCode Toolbar Actions */}
+            <div className="flex items-center space-x-1.5">
+              {/* Save to Cloud Button with Hover Tooltip */}
+              <div className="relative group">
+                <button
+                  onClick={handleSyncCodeToCloud}
+                  className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                    codeSaveStatus === 'synced'
+                      ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/60 shadow-sm'
+                      : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Cloud className={`w-3.5 h-3.5 ${codeSaveStatus === 'synced' ? 'text-cyan-400' : 'text-slate-400 group-hover:text-cyan-300'}`} />
+                  <span className="text-[11px]">{codeSaveStatus === 'synced' ? 'Synced (₹0.05)' : 'Save to Cloud'}</span>
+                </button>
+
+                {/* Tooltip on Hover */}
+                <div className="absolute top-8 right-0 bg-slate-900 border border-slate-700/80 text-slate-200 text-[11px] font-sans px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl pointer-events-none z-30 flex items-center gap-1">
+                  <span>Save to Cloud</span>
+                  <span className="text-amber-400 font-mono font-bold">(Deducts ₹0.05)</span>
+                </div>
+              </div>
+
+              {/* Reset to Default Template Button */}
+              <div className="relative group">
+                <button
+                  onClick={handleResetCode}
+                  className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-700/60 transition-colors cursor-pointer"
+                  aria-label="Reset to default code definition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+                <div className="absolute top-8 right-0 bg-slate-900 border border-slate-700/80 text-slate-200 text-[11px] font-sans px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl pointer-events-none z-30">
+                  Reset to default code definition
+                </div>
+              </div>
+
+              {/* Copy Code Button */}
+              <div className="relative group">
+                <button
+                  onClick={handleCopyCode}
+                  className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-slate-200 border border-white/10 transition-colors cursor-pointer"
+                  aria-label="Copy code"
+                >
+                  {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+                <div className="absolute top-8 right-0 bg-slate-900 border border-slate-700/80 text-slate-200 text-[11px] font-sans px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl pointer-events-none z-30">
+                  {copiedCode ? 'Copied!' : 'Copy code'}
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* Monaco Editor Container */}
           <div className="flex-1 min-h-[160px] relative overflow-hidden">
@@ -2101,40 +2171,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 tabSize: 4
               }}
             />
-
-            {/* Quick Actions overlay on top-right of Editor */}
-            <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
-              <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/60 text-[10px] font-mono text-slate-300 shadow-md">
-                <Cloud className={`w-3.5 h-3.5 ${codeSaveStatus === 'synced' ? 'text-cyan-400' : 'text-emerald-400 animate-pulse'}`} />
-                <span>{codeSaveStatus === 'synced' ? 'Cloud Synced (.txt) ☁️' : 'Saved in Browser Cache ⚡'}</span>
-              </div>
-
-              <button
-                onClick={handleSyncCodeToCloud}
-                className="p-1.5 px-2.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-[11px] font-mono font-bold flex items-center gap-1 shadow-md cursor-pointer transition-all"
-                title="Save and backup code to Cloudflare R2 as a .txt file"
-              >
-                <Save className="w-3.5 h-3.5 text-indigo-300" />
-                <span>{codeSaveStatus === 'synced' ? 'Synced!' : 'Save Code'}</span>
-              </button>
-
-              <button
-                onClick={handleResetCode}
-                className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 border border-slate-700/60 hover:border-rose-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer transition-colors"
-                title="Reset code to default template definition (clears local edits)"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={handleCopyCode}
-                className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"
-                title="Copy editor code"
-              >
-                {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedCode ? 'Copied' : 'Copy Code'}</span>
-              </button>
-            </div>
           </div>
 
           {/* --------------------------------------------------------------------- */}

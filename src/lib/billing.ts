@@ -21,6 +21,7 @@ export const PRICING_CONFIG = {
   COMPILER_RUN_DSA_LLD: 0.05,        // 5 paise (₹0.05) per compiler run
   CODE_SUBMIT_DSA_LLD: 0.20,         // 20 paise (₹0.20) per submission / judge
   SQL_RUN_JUDGE: 0.10,               // 10 paise (₹0.10) per SQL run
+  CLOUD_CODE_SAVE: 0.05,             // 5 paise (₹0.05) per cloud code sync
   LLD_DIAGRAM_VIEW: 0.20,            // 20 paise (₹0.20) per Kroki LLD architecture diagram render
   HLD_EXCALIDRAW_DRAWING: 0.00,      // Free on Excalidraw
   HLD_STUDIO_PLATFORM_DRAWING: 0.50, // 50 paise (₹0.50) if our Architecture Studio platform is used
@@ -48,6 +49,7 @@ export type BillingActionType =
   | 'COMPILER_RUN'
   | 'CODE_SUBMIT'
   | 'SQL_RUN'
+  | 'CLOUD_CODE_SAVE'
   | 'HLD_STUDIO_DRAW'
   | 'ANALYTICS_REFRESH'
   | 'UPI_TOPUP'
