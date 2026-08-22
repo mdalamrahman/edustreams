@@ -75,6 +75,28 @@ export function formatProblemAsTxt(problem: ProblemTemplate): string {
     lines.push(``);
   });
 
+  if (problem.solutions && Object.keys(problem.solutions).length > 0) {
+    lines.push(`=== OFFICIAL REFERENCE SOLUTIONS ===`);
+    Object.entries(problem.solutions).forEach(([lang, solCode]) => {
+      if (solCode && solCode.trim()) {
+        lines.push(`--- LANGUAGE: ${lang.toUpperCase()} ---`);
+        lines.push(solCode.trim());
+        lines.push(``);
+      }
+    });
+  }
+
+  if (problem.approaches && problem.approaches.length > 0) {
+    lines.push(`=== APPROACHES & COMPLEXITY ===`);
+    problem.approaches.forEach((app, i) => {
+      lines.push(`--- APPROACH ${i + 1}: ${app.name} ---`);
+      lines.push(`TIME COMPLEXITY: ${app.timeComplexity}`);
+      lines.push(`SPACE COMPLEXITY: ${app.spaceComplexity}`);
+      lines.push(`DESCRIPTION: ${app.description}`);
+      lines.push(``);
+    });
+  }
+
   return lines.join('\n');
 }
 

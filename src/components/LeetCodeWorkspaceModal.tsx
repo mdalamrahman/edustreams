@@ -40,11 +40,14 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquare,
-  Share2
+  Share2,
+  Code2,
+  BarChart3,
+  ArrowUpRight
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { fetchEnrichedProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters } from '../lib/problemService';
+import { fetchEnrichedProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug } from '../lib/problemService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -55,6 +58,7 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
 import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
+import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -225,11 +229,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       : 'default';
   });
 
-  // Code state
+  // Code state with localStorage initial load
   const [code, setCode] = useState<string>(() => {
     if (initialCode && initialCode.trim().length > 10) return initialCode;
+    try {
+      const cached = localStorage.getItem(`edustream_user_code_${toSlug(cleanTitle)}_${initialLanguage}`);
+      if (cached && cached.trim().length > 5) return cached;
+    } catch {}
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });
+
+  const [codeSaveStatus, setCodeSaveStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
 
   const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'notes' | 'video' | 'solutions' | 'submissions' | 'aireview' | 'diagram'>('description');
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
@@ -486,24 +496,115 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     }
   }, [aiChatMessages, isRightAskAiOpen]);
 
-  // Submission History State
+  // Submission History State with LocalStorage & Cloud Sync
   const [submissionsList, setSubmissionsList] = useState<{
+    id?: string;
     timestamp: string;
     status: string;
     runtime: string;
     memory: string;
     lang: string;
-  }[]>([]);
+    code?: string;
+    passedCount?: number;
+    totalCount?: number;
+    analytics?: SubmissionAnalyticsData;
+  }[]>(() => {
+    try {
+      const stored = localStorage.getItem(`edustream_submissions_${toSlug(cleanTitle)}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
 
-  // Update starter code when language or approach changes
+  // Sync submissions from Cloudflare R2 on mount
+  useEffect(() => {
+    const slug = toSlug(cleanTitle);
+    try {
+      const stored = localStorage.getItem(`edustream_submissions_${slug}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) setSubmissionsList(parsed);
+      }
+    } catch {}
+
+    const student = getCurrentStudent();
+    if (student?.email) {
+      fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions?email=${encodeURIComponent(student.email)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.submissions && Array.isArray(data.submissions) && data.submissions.length > 0) {
+            setSubmissionsList(data.submissions);
+            try {
+              localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(data.submissions));
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    }
+  }, [cleanTitle]);
+
+  // Debounced Autosave User Code in Browser Cache (localStorage)
+  useEffect(() => {
+    if (!code) return;
+    const slug = toSlug(cleanTitle);
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(`edustream_user_code_${slug}_${language}`, code);
+        setCodeSaveStatus('saved');
+      } catch {}
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [code, cleanTitle, language]);
+
+  // Update starter code or load from cache when language changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
+    const slug = toSlug(cleanTitle);
+    try {
+      const cached = localStorage.getItem(`edustream_user_code_${slug}_${newLang}`);
+      if (cached && cached.trim().length > 5) {
+        setCode(cached);
+        return;
+      }
+    } catch {}
+
     if (problemTemplate.approaches && problemTemplate.approaches.length > 0) {
       const curApp = problemTemplate.approaches.find(a => a.id === selectedApproachId) || problemTemplate.approaches[0];
       setCode((curApp?.starters && curApp.starters[newLang]) || problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
     } else {
       setCode(problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
     }
+  };
+
+  // Sync user code directly to Cloudflare R2 as a .txt file
+  const handleSyncCodeToCloud = async () => {
+    setCodeSaveStatus('idle');
+    const slug = toSlug(cleanTitle);
+    const student = getCurrentStudent();
+    try {
+      localStorage.setItem(`edustream_user_code_${slug}_${language}`, code);
+      if (student?.email) {
+        await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/user-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: student.email,
+            language,
+            code,
+            problemTitle: cleanTitle
+          })
+        });
+        setCodeSaveStatus('synced');
+      } else {
+        setCodeSaveStatus('saved');
+      }
+    } catch {
+      setCodeSaveStatus('saved');
+    }
+    setTimeout(() => setCodeSaveStatus('idle'), 3000);
   };
 
   const handleSelectApproach = (approach: ProblemApproach) => {
@@ -753,16 +854,39 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           isSuccess: isAllSuccess
         });
 
-        setSubmissionsList(prev => [
-          {
-            timestamp: new Date().toLocaleTimeString(),
-            status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : `Wrong Answer (${passed}/${allCases.length})`,
-            runtime: `${elapsedMs} ms`,
-            memory: `${lastResult.memory_used_kb || 3420} KB`,
-            lang: language.toUpperCase()
-          },
-          ...prev
-        ]);
+        const newSubItem = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: new Date().toLocaleString(),
+          status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : `Wrong Answer (${passed}/${allCases.length})`,
+          runtime: `${elapsedMs} ms`,
+          memory: `${lastResult.memory_used_kb || 3420} KB`,
+          lang: language.toUpperCase(),
+          code: code,
+          passedCount: passed,
+          totalCount: allCases.length,
+          analytics: analytics
+        };
+
+        setSubmissionsList(prev => {
+          const updated = [newSubItem, ...prev];
+          try {
+            localStorage.setItem(`edustream_submissions_${toSlug(cleanTitle)}`, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // Sync submission to backend Cloudflare R2
+        const student = getCurrentStudent();
+        if (student?.email) {
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(toSlug(cleanTitle))}/submissions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: student.email,
+              submission: newSubItem
+            })
+          }).catch(() => {});
+        }
 
         if (isAllSuccess) {
           confetti({
@@ -1754,32 +1878,96 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
             {/* TAB 6: SUBMISSIONS */}
             {leftTab === 'submissions' && (
-              <div className="space-y-3 font-sans">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Run & Submission History</h3>
+              <div className="space-y-4 font-sans">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-indigo-400" />
+                    <span>Submission History ({submissionsList.length})</span>
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    Persisted in Browser Cache & Cloud
+                  </span>
+                </div>
                 
                 {submissionsList.length === 0 ? (
-                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center text-slate-500 text-xs">
-                    No submissions recorded yet in this workspace session.
+                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center mx-auto text-slate-500">
+                      <Code2 className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs text-slate-400 font-medium">No submissions recorded yet for {cleanTitle}.</div>
+                    <p className="text-[11px] text-slate-600">Click "Submit" to judge your solution and view complexity analytics.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {submissionsList.map((sub, idx) => (
-                      <div key={idx} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-                        <div className="flex items-center space-x-3">
-                          <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
-                            sub.status === 'Accepted'
-                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/60'
-                              : 'bg-rose-950 text-rose-400 border border-rose-700/60'
-                          }`}>
-                            {sub.status}
-                          </span>
-                          <span className="text-slate-400 font-mono">{sub.lang}</span>
+                      <div key={sub.id || idx} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-all space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2.5">
+                            <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-black border ${
+                              sub.status === 'Accepted'
+                                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60 shadow-sm shadow-emerald-900/30'
+                                : sub.status === 'Runtime Error'
+                                ? 'bg-rose-950/80 text-rose-400 border-rose-700/60'
+                                : 'bg-amber-950/80 text-amber-400 border-amber-700/60'
+                            }`}>
+                              {sub.status}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-purple-300">{sub.lang}</span>
+                            <span className="text-[11px] text-slate-500 font-mono">({sub.passedCount ?? (sub.status === 'Accepted' ? 'All' : 'Partial')}/{sub.totalCount || problemTemplate.testCases?.length || 10} Cases)</span>
+                          </div>
+
+                          <span className="text-[10px] text-slate-500 font-mono">{sub.timestamp}</span>
                         </div>
 
-                        <div className="flex items-center space-x-4 text-slate-400 font-mono text-[11px]">
-                          <span>{sub.runtime}</span>
-                          <span>{sub.memory}</span>
-                          <span className="text-slate-500">{sub.timestamp}</span>
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-xs font-mono text-slate-400">
+                          <div className="flex items-center space-x-3">
+                            <span>Runtime: <strong className="text-slate-200">{sub.runtime}</strong></span>
+                            <span>Memory: <strong className="text-slate-200">{sub.memory}</strong></span>
+                          </div>
+
+                          <div className="flex items-center space-x-1.5">
+                            {sub.analytics && (
+                              <button
+                                onClick={() => {
+                                  setSubmissionAnalytics(sub.analytics!);
+                                  setIsSubmissionVisualizerOpen(true);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/50 text-purple-300 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                                title="Open Graphical Complexity & Big-O Visualizer"
+                              >
+                                <BarChart3 className="w-3 h-3 text-purple-300" />
+                                <span>Visualizer</span>
+                              </button>
+                            )}
+
+                            {sub.code && (
+                              <button
+                                onClick={() => {
+                                  setCode(sub.code!);
+                                  if (sub.lang) setLanguage(sub.lang.toLowerCase() as SupportedLanguage);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                title="Load this code into the editor"
+                              >
+                                <Code className="w-3 h-3 text-indigo-400" />
+                                <span>Load Code</span>
+                              </button>
+                            )}
+
+                            {sub.code && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(sub.code!);
+                                  setCopiedCode(true);
+                                  setTimeout(() => setCopiedCode(false), 2000);
+                                }}
+                                className="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] cursor-pointer"
+                                title="Copy submitted code"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1888,6 +2076,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
             {/* Quick Actions overlay on top-right of Editor */}
             <div className="absolute top-2 right-4 flex items-center space-x-2 z-10">
+              <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700/60 text-[10px] font-mono text-slate-300 shadow-md">
+                <Cloud className={`w-3.5 h-3.5 ${codeSaveStatus === 'synced' ? 'text-cyan-400' : 'text-emerald-400 animate-pulse'}`} />
+                <span>{codeSaveStatus === 'synced' ? 'Cloud Synced (.txt) ☁️' : 'Saved in Browser Cache ⚡'}</span>
+              </div>
+
+              <button
+                onClick={handleSyncCodeToCloud}
+                className="p-1.5 px-2.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-[11px] font-mono font-bold flex items-center gap-1 shadow-md cursor-pointer transition-all"
+                title="Save and backup code to Cloudflare R2 as a .txt file"
+              >
+                <Save className="w-3.5 h-3.5 text-indigo-300" />
+                <span>{codeSaveStatus === 'synced' ? 'Synced!' : 'Save Code'}</span>
+              </button>
+
               <button
                 onClick={handleCopyCode}
                 className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/60 text-[11px] font-mono flex items-center gap-1 shadow-md cursor-pointer"

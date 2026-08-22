@@ -1415,10 +1415,110 @@ async def get_problem_testcases_txt(slug: str):
         eo = eos[idx] if idx < len(eos) else ""
         txt_lines.append(f"--- CASE {idx + 1} ---")
         txt_lines.append(f"INPUT: {tc}")
-        txt_lines.append(f"EXPECTED: {eo}")
-        txt_lines.append("")
+    # Include official solutions in testcases.txt export
+    solutions = problem.get("solutions") or {}
+    if solutions and isinstance(solutions, dict):
+        txt_lines.append("=== OFFICIAL REFERENCE SOLUTIONS ===")
+        for lang, code in solutions.items():
+            if code and str(code).strip():
+                txt_lines.append(f"--- LANGUAGE: {str(lang).upper()} ---")
+                txt_lines.append(str(code).strip())
+                txt_lines.append("")
 
     return PlainTextResponse("\n".join(txt_lines))
+
+
+class UserCodePayload(BaseModel):
+    email: str
+    language: str
+    code: str
+    problemTitle: Optional[str] = ""
+
+
+@app.post("/api/problem/{slug}/user-code")
+async def save_user_code(slug: str, payload: UserCodePayload):
+    """
+    Persistently stores the user's solution code in Cloudflare R2 as a .txt file.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (payload.email or "anonymous").lower())
+    lang = (payload.language or "python").lower()
+    
+    txt_key = f"user_code/{safe_email}/{clean_slug}_{lang}.txt"
+    try:
+        r2_storage.save_note(txt_key, payload.code)
+        return {"success": True, "key": txt_key}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/problem/{slug}/user-code")
+async def get_user_code(slug: str, email: str, language: str = "python"):
+    """
+    Fetches the user's autosaved solution code from Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (email or "anonymous").lower())
+    lang = (language or "python").lower()
+    
+    txt_key = f"user_code/{safe_email}/{clean_slug}_{lang}.txt"
+    try:
+        code_txt = r2_storage.get_note(txt_key)
+        return {"code": code_txt or ""}
+    except Exception:
+        return {"code": ""}
+
+
+class SubmissionPayload(BaseModel):
+    email: str
+    submission: dict
+
+
+@app.post("/api/problem/{slug}/submissions")
+async def save_user_submission(slug: str, payload: SubmissionPayload):
+    """
+    Stores a submission record persistently in Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (payload.email or "anonymous").lower())
+    sub_key = f"user_submissions/{safe_email}/{clean_slug}.json"
+
+    try:
+        existing = []
+        try:
+            raw = r2_storage.get_note(sub_key)
+            if raw:
+                existing = json.loads(raw)
+        except Exception:
+            existing = []
+
+        if not isinstance(existing, list):
+            existing = []
+
+        existing.insert(0, payload.submission)
+        existing = existing[:50]
+        r2_storage.save_note(sub_key, json.dumps(existing, indent=2))
+        return {"success": True, "count": len(existing)}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/problem/{slug}/submissions")
+async def get_user_submissions(slug: str, email: str):
+    """
+    Fetches submission history for a user on a problem from Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (email or "anonymous").lower())
+    sub_key = f"user_submissions/{safe_email}/{clean_slug}.json"
+
+    try:
+        raw = r2_storage.get_note(sub_key)
+        if raw:
+            return {"submissions": json.loads(raw)}
+    except Exception:
+        pass
+    return {"submissions": []}
 
 
 class StoreSolutionRequest(BaseModel):

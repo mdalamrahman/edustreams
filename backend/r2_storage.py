@@ -180,17 +180,78 @@ class CloudflareR2Storage:
 
         return None
 
+def format_problem_data_as_txt(data: dict) -> str:
+    """Formats full problem definition including official solutions, testcases, and complexity into clean TXT."""
+    if not isinstance(data, dict):
+        return str(data)
+    
+    title = data.get("name") or "Problem"
+    cat = data.get("category") or "Algorithms"
+    diff = data.get("difficulty") or "Medium"
+    desc = data.get("description") or ""
+    constraints = data.get("constraints") or []
+    tcs = data.get("testCases") or []
+    eos = data.get("expectedOutputs") or []
+    solutions = data.get("solutions") or {}
+    approaches = data.get("approaches") or []
+
+    lines = [
+        f"=== PROBLEM: {title} ===",
+        f"CATEGORY: {cat}",
+        f"DIFFICULTY: {diff}",
+        "",
+        "=== DESCRIPTION ===",
+        desc,
+        "",
+        "=== CONSTRAINTS ===",
+        *(f"- {c}" for c in constraints),
+        "",
+        f"=== TESTCASES ({len(tcs)}) ===",
+    ]
+
+    for idx, tc in enumerate(tcs):
+        eo = eos[idx] if idx < len(eos) else ""
+        lines.append(f"--- CASE {idx + 1} ---")
+        lines.append(f"INPUT: {tc}")
+        lines.append(f"EXPECTED: {eo}")
+        lines.append("")
+
+    if solutions and isinstance(solutions, dict):
+        lines.append("=== OFFICIAL REFERENCE SOLUTIONS ===")
+        for lang, code in solutions.items():
+            if code and str(code).strip():
+                lines.append(f"--- LANGUAGE: {str(lang).upper()} ---")
+                lines.append(str(code).strip())
+                lines.append("")
+
+    if approaches and isinstance(approaches, list):
+        lines.append("=== APPROACHES & COMPLEXITY ===")
+        for i, app in enumerate(approaches):
+            if isinstance(app, dict):
+                lines.append(f"--- APPROACH {i + 1}: {app.get('name', 'Approach')} ---")
+                lines.append(f"TIME COMPLEXITY: {app.get('timeComplexity', 'O(N)')}")
+                lines.append(f"SPACE COMPLEXITY: {app.get('spaceComplexity', 'O(1)')}")
+                lines.append(f"DESCRIPTION: {app.get('description', '')}")
+                lines.append("")
+
+    return "\n".join(lines)
+
+
     def upload_problem(self, slug: str, data: Any) -> Optional[str]:
-        """Uploads a problem JSON/TXT to Cloudflare R2 under problems/{slug}.json and problems/{slug}.txt."""
+        """Uploads a problem JSON/TXT to Cloudflare R2 under problems/{slug}.json and problems/{slug}.txt with official solutions."""
         import re
         clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
         
         if isinstance(data, (bytes, bytearray)):
-            payload_bytes = bytes(data)
+            json_bytes = bytes(data)
+            txt_bytes = bytes(data)
         elif isinstance(data, str):
-            payload_bytes = data.encode("utf-8")
+            json_bytes = data.encode("utf-8")
+            txt_bytes = data.encode("utf-8")
         else:
-            payload_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+            json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+            txt_str = format_problem_data_as_txt(data)
+            txt_bytes = txt_str.encode("utf-8")
 
         json_key = f"problems/{clean_slug}.json"
         txt_key = f"problems/{clean_slug}.txt"
@@ -198,27 +259,27 @@ class CloudflareR2Storage:
         # 1. Boto3 Upload
         if self._boto_client:
             try:
-                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=json_key, Body=payload_bytes, ContentType="application/json")
-                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=txt_key, Body=payload_bytes, ContentType="text/plain; charset=utf-8")
-                print(f"[Cloudflare R2 Problem Upload Boto3] {json_key} & {txt_key} ({len(payload_bytes)} bytes)")
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=json_key, Body=json_bytes, ContentType="application/json")
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=txt_key, Body=txt_bytes, ContentType="text/plain; charset=utf-8")
+                print(f"[Cloudflare R2 Problem Upload Boto3] {json_key} ({len(json_bytes)}b) & {txt_key} ({len(txt_bytes)}b)")
                 return json_key
             except Exception as e:
                 print(f"[Cloudflare R2 Problem Upload Boto3 Error]: {e}")
 
         # 2. Native SigV4 REST Upload
         try:
-            headers = self._get_sigv4_headers("PUT", json_key, payload_bytes)
-            headers["Content-Type"] = "application/json"
-            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{json_key}"
-            resp = requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            headers_json = self._get_sigv4_headers("PUT", json_key, json_bytes)
+            headers_json["Content-Type"] = "application/json"
+            url_json = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{json_key}"
+            resp = requests.put(url_json, headers=headers_json, data=json_bytes, timeout=10)
             
-            # Also store txt backup
-            headers_txt = self._get_sigv4_headers("PUT", txt_key, payload_bytes)
+            # Store formatted txt backup with official solutions
+            headers_txt = self._get_sigv4_headers("PUT", txt_key, txt_bytes)
             headers_txt["Content-Type"] = "text/plain; charset=utf-8"
-            requests.put(f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{txt_key}", headers=headers_txt, data=payload_bytes, timeout=10)
+            requests.put(f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{txt_key}", headers=headers_txt, data=txt_bytes, timeout=10)
 
             if resp.status_code in [200, 201]:
-                print(f"[Cloudflare R2 Problem Upload SigV4] {json_key} & {txt_key} ({len(payload_bytes)} bytes)")
+                print(f"[Cloudflare R2 Problem Upload SigV4] {json_key} ({len(json_bytes)}b) & {txt_key} ({len(txt_bytes)}b)")
                 return json_key
         except Exception as e:
             print(f"[Cloudflare R2 Problem Upload SigV4 Error]: {e}")
