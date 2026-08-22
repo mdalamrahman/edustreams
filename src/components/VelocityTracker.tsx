@@ -79,7 +79,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
             <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mt-2">
               <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700" style={{ width: `${dsaPct}%` }}></div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">SDE Sheet Curated Coding Arena & Monaco LeetCode Execution</p>
+            <p className="text-[11px] text-slate-400 mt-2">SDE Sheet Curated Coding Arena & Monaco IDE Execution</p>
           </div>
         </div>
 
@@ -296,7 +296,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
               <div>
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="flex items-center gap-1.5 text-slate-300">
-                    <Code className="w-3.5 h-3.5 text-emerald-400" /> LeetCode Workspace
+                    <Code className="w-3.5 h-3.5 text-emerald-400" /> Coding Workspace
                   </span>
                   <span className="font-mono text-emerald-300 font-bold">{timeBreakdown.codingMins} mins ({codingPct}%)</span>
                 </div>

@@ -266,9 +266,6 @@ export function getUserWallet(email?: string): UserWallet {
     const allTx = getAllTransactions();
     allTx.unshift(initialTx);
     saveTransactions(allTx);
-
-    // Sync with backend database asynchronously
-    syncWalletWithDatabase(userEmail).catch(() => {});
   }
 
   return wallet;

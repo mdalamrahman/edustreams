@@ -123,15 +123,29 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
     i++;
   }
 
-  const renderInlineParts = (str: string): React.ReactNode[] => {
+  const renderInlineParts = (rawStr: string): React.ReactNode[] => {
+    if (!rawStr) return [];
+    
+    // Pre-clean nested and triple asterisks
+    let str = rawStr
+      .replace(/\*\*\*([^*]+)\*\*\*/g, '**$1**')
+      .replace(/\*\*([^*]+)\*/g, '**$1**')
+      .replace(/\*([^*]+)\*\*/g, '**$1**');
+
     const parts: React.ReactNode[] = [];
-    const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+    const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*)/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
+    const sanitizePlainText = (t: string) => {
+      // Remove any leftover stray unclosed asterisks or markdown artifacts
+      return t.replace(/\*{1,3}/g, '');
+    };
+
     while ((match = regex.exec(str)) !== null) {
       if (match.index > lastIndex) {
-        parts.push(str.substring(lastIndex, match.index));
+        const textSegment = sanitizePlainText(str.substring(lastIndex, match.index));
+        if (textSegment) parts.push(textSegment);
       }
 
       const raw = match[0];
@@ -154,9 +168,10 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
           </span>
         );
       } else if (raw.startsWith('**') && raw.endsWith('**')) {
+        const inner = raw.slice(2, -2).replace(/\*/g, '').trim();
         parts.push(
           <strong key={match.index} className="font-bold text-slate-100">
-            {raw.slice(2, -2)}
+            {inner}
           </strong>
         );
       } else if (raw.startsWith('`') && raw.endsWith('`')) {
@@ -166,9 +181,10 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
           </code>
         );
       } else if (raw.startsWith('*') && raw.endsWith('*')) {
+        const inner = raw.slice(1, -1).replace(/\*/g, '').trim();
         parts.push(
           <em key={match.index} className="italic text-slate-200">
-            {raw.slice(1, -1)}
+            {inner}
           </em>
         );
       }
@@ -176,7 +192,8 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
     }
 
     if (lastIndex < str.length) {
-      parts.push(str.substring(lastIndex));
+      const textSegment = sanitizePlainText(str.substring(lastIndex));
+      if (textSegment) parts.push(textSegment);
     }
 
     return parts;

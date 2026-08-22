@@ -141,7 +141,7 @@ export async function terminateDeviceSession(email: string): Promise<boolean> {
 
 /**
  * Starts a real-time heartbeat that periodically checks if the session was superseded by another device.
- * Automatically checks every 15s, on tab visibility changes, and window focus.
+ * Automatically checks every 60s, or when tab becomes visible (throttled).
  */
 export function startSessionHeartbeat(
   email: string,
@@ -150,9 +150,15 @@ export function startSessionHeartbeat(
   if (!email) return () => {};
 
   let isRevoked = false;
+  let lastCheckedTime = 0;
 
-  const check = async () => {
+  const check = async (force: boolean = false) => {
     if (isRevoked) return;
+    const now = Date.now();
+    // Throttle checks to at most once every 30 seconds unless forced
+    if (!force && now - lastCheckedTime < 30000) return;
+    lastCheckedTime = now;
+
     const result = await verifyDeviceSession(email);
     if (!result.valid && result.reason === 'SESSION_REVOKED') {
       isRevoked = true;
@@ -162,27 +168,22 @@ export function startSessionHeartbeat(
   };
 
   // Immediate check
-  check();
+  check(true);
 
-  // Periodic heartbeat every 15 seconds
-  const intervalId = setInterval(check, 15000);
+  // Periodic heartbeat every 60 seconds (1 minute)
+  const intervalId = setInterval(() => check(false), 60000);
 
-  // Check on tab focus / visibility return
+  // Check on tab focus / visibility return (throttled)
   const handleVisibility = () => {
     if (document.visibilityState === 'visible') {
-      check();
+      check(false);
     }
-  };
-  const handleFocus = () => {
-    check();
   };
 
   document.addEventListener('visibilitychange', handleVisibility);
-  window.addEventListener('focus', handleFocus);
 
   return () => {
     clearInterval(intervalId);
     document.removeEventListener('visibilitychange', handleVisibility);
-    window.removeEventListener('focus', handleFocus);
   };
 }

@@ -949,7 +949,7 @@ export const HLDBossSheet: React.FC<HLDBossSheetProps> = ({ onOpenGithubTopic })
 
           {/* Footer */}
           <footer className="text-center text-xs text-slate-500 pt-8 pb-12 border-t border-slate-800/80">
-            HLD Boss Sheet • Cloudflare R2 Persistent Edition • Authored by @rathoreadiitya
+            HLD Boss Sheet • Cloud Storage Edition • Authored by @rathoreadiitya
           </footer>
 
         </main>

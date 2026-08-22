@@ -318,7 +318,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                 </span>
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-emerald-400 text-[10px] font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  {dataSource === 'supabase' ? 'Supabase PostgreSQL' : 'Cloudflare R2 & SQLite'}
+                  {dataSource === 'supabase' ? 'Database Telemetry' : 'Cloud Storage & SQLite'}
                 </span>
               </div>
               <p className="text-xs text-slate-400">Global active learners, real-time presence, storage analytics, and user metrics</p>
@@ -506,7 +506,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   <div className="text-2xl font-black text-slate-100 font-mono mt-2">
                     {statsData.totalTranscriptsStored}
                   </div>
-                  <div className="text-[11px] text-purple-300 mt-1">100% Synced to R2</div>
+                  <div className="text-[11px] text-purple-300 mt-1">100% Synced to Cloud</div>
                 </div>
 
                 {/* Card 4: Notes & Summaries */}
@@ -545,7 +545,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                   
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <div className="text-[11px] font-bold text-slate-400">Cloudflare R2 Object Store</div>
+                      <div className="text-[11px] font-bold text-slate-400">Cloud Object Store</div>
                       <div className="text-xs font-mono font-bold text-emerald-400">{statsData.r2StorageStatus}</div>
                     </div>
                     <Database className="w-4 h-4 text-emerald-400" />

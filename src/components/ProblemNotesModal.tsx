@@ -225,7 +225,7 @@ export const ProblemNotesModal: React.FC<ProblemNotesModalProps> = ({
             {saveStatus === 'synced' && (
               <span className="text-emerald-400 font-bold flex items-center space-x-1 animate-fadeIn">
                 <Check className="w-3.5 h-3.5" />
-                <span>Saved & Synced to Cloudflare R2</span>
+                <span>Saved & Synced to Cloud Storage</span>
               </span>
             )}
             {saveStatus === 'saved' && (

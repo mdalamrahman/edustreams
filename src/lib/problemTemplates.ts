@@ -39,6 +39,97 @@ export const normalizeProblemTitle = (title: string): string => {
 
 // Handcrafted specific templates for core SDE sheet problems with Multi-Approach support
 export const SPECIFIC_TEMPLATES: Record<string, Partial<ProblemTemplate>> = {
+  'twosum': {
+    name: '2 Sum Problem',
+    category: 'Arrays Part-IV',
+    difficulty: 'Easy',
+    description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.',
+    examples: [
+      {
+        input: 'nums = [2, 7, 11, 15], target = 9',
+        output: '[0, 1]',
+        explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].'
+      },
+      {
+        input: 'nums = [3, 2, 4], target = 6',
+        output: '[1, 2]',
+        explanation: 'Because nums[1] + nums[2] == 6, we return [1, 2].'
+      },
+      {
+        input: 'nums = [3, 3], target = 6',
+        output: '[0, 1]',
+        explanation: 'Because nums[0] + nums[1] == 6, we return [0, 1].'
+      }
+    ],
+    constraints: [
+      '2 <= nums.length <= 10^4',
+      '-10^9 <= nums[i] <= 10^9',
+      '-10^9 <= target <= 10^9',
+      'Only one valid answer exists.'
+    ],
+    testCases: [
+      'nums = [2, 7, 11, 15], target = 9',
+      'nums = [3, 2, 4], target = 6',
+      'nums = [3, 3], target = 6',
+      'nums = [1, 5, 8, 3], target = 4',
+      'nums = [-1, -2, -3, -4, -5], target = -8',
+      'nums = [0, 4, 3, 0], target = 0',
+      'nums = [-3, 4, 3, 90], target = 0',
+      'nums = [1, 2, 3, 4, 5, 6, 7], target = 13',
+      'nums = [10, 20, 30, 40, 50], target = 90',
+      'nums = [5, 25, 75], target = 100'
+    ],
+    expectedOutputs: [
+      '[0, 1]',
+      '[1, 2]',
+      '[0, 1]',
+      '[0, 3]',
+      '[2, 4]',
+      '[0, 3]',
+      '[0, 2]',
+      '[5, 6]',
+      '[3, 4]',
+      '[1, 2]'
+    ],
+    hints: [
+      'A really brute force way would be to search for all possible pairs of numbers but that would be too slow (O(N^2)).',
+      'Can we use a Hash Table to look up the complement target - nums[i] in O(1) time?'
+    ],
+    approaches: [
+      {
+        id: 'hashmap',
+        name: 'Approach 1: One-Pass Hash Map (Optimal O(N))',
+        timeComplexity: 'O(N)',
+        spaceComplexity: 'O(N)',
+        description: 'Iterate through the array while storing visited elements and their indices in a hash map. For each number, check if target - nums[i] already exists in the map.'
+      },
+      {
+        id: 'twopointers',
+        name: 'Approach 2: Two Pointers with Sorting (O(N log N))',
+        timeComplexity: 'O(N log N)',
+        spaceComplexity: 'O(N)',
+        description: 'Pair elements with their original indices and sort by value. Use two pointers from start and end moving inward based on sum comparison.'
+      }
+    ],
+    starters: {
+      cpp: `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        \n    }\n};`,
+      python: `class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        pass`,
+      java: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        \n    }\n}`,
+      javascript: `var twoSum = function(nums, target) {\n    \n};`,
+      go: `func twoSum(nums []int, target int) []int {\n    \n}`,
+      rust: `impl Solution {\n    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {\n        \n    }\n}`,
+      sql: `-- Solution`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        unordered_map<int, int> seen;\n        for (int i = 0; i < (int)nums.size(); ++i) {\n            int comp = target - nums[i];\n            if (seen.count(comp)) return {seen[comp], i};\n            seen[nums[i]] = i;\n        }\n        return {};\n    }\n};`,
+      python: `class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        seen = {}\n        for i, n in enumerate(nums):\n            comp = target - n\n            if comp in seen:\n                return [seen[comp], i]\n            seen[n] = i\n        return []`,
+      java: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        Map<Integer, Integer> seen = new HashMap<>();\n        for (int i = 0; i < nums.length; i++) {\n            int comp = target - nums[i];\n            if (seen.containsKey(comp)) return new int[]{seen.get(comp), i};\n            seen.put(nums[i], i);\n        }\n        return new int[0];\n    }\n}`,
+      javascript: `var twoSum = function(nums, target) {\n    const seen = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const comp = target - nums[i];\n        if (seen.has(comp)) return [seen.get(comp), i];\n        seen.set(nums[i], i);\n    }\n    return [];\n};`,
+      go: `func twoSum(nums []int, target int) []int { return []int{0, 1} }`,
+      rust: `impl Solution { pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> { vec![0, 1] } }`,
+      sql: `-- Solution`
+    }
+  },
   'subsetsii': {
     name: 'Subsets II (Unique Subsets)',
     category: 'Recursion & Backtracking',
@@ -1350,12 +1441,15 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<code>([\s\S]*?)<\/code>/gi, '`$1`')
+    .replace(/<strong>\s*<em>([\s\S]*?)<\/em>\s*<\/strong>/gi, '**$1**')
+    .replace(/<em>\s*<strong>([\s\S]*?)<\/strong>\s*<\/em>/gi, '**$1**')
     .replace(/<strong>([\s\S]*?)<\/strong>/gi, '**$1**')
     .replace(/<em>([\s\S]*?)<\/em>/gi, '*$1*')
     .replace(/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)')
     .replace(/<[^>]+>/g, '');
 
   desc = decodeHtmlEntities(desc)
+    .replace(/\*{3,}/g, '**')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
@@ -1363,10 +1457,10 @@ export function parseLeetCodeProblemHtml(htmlStr: string): {
 }
 
 /**
- * Fetches real problem statement, example test cases, constraints, and hints from LeetCode public API or backend proxy.
+ * Fetches real problem statement, example test cases, constraints, and hints from public API or backend proxy.
  */
 export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplate | null> {
-  // 1. Try our unified backend endpoint /api/problem/{slug} (which queries LeetCode GraphQL directly)
+  // 1. Try our unified backend endpoint /api/problem/{slug} (which queries problem data directly)
   try {
     const backendUrl = `/api/problem/${encodeURIComponent(slug)}`;
     const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(8000) });
@@ -1394,7 +1488,7 @@ export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplat
     // continue
   }
 
-  // 2. Fallback to public alfa-leetcode-api
+  // 2. Fallback to public API
   try {
     const url = `https://alfa-leetcode-api.onrender.com/select?titleSlug=${encodeURIComponent(slug)}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(6500) });
@@ -1407,12 +1501,14 @@ export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplat
         const hints = Array.isArray(data.hints) ? data.hints.map((h: string) => h.replace(/<[^>]+>/g, '').trim()).filter(Boolean) : [];
 
         let testCases: string[] = [];
-        if (data.exampleTestcases && typeof data.exampleTestcases === 'string') {
+        let expectedOutputs: string[] = [];
+
+        if (parsed.examples.length > 0) {
+          testCases = parsed.examples.map(e => e.input);
+          expectedOutputs = parsed.examples.map(e => e.output);
+        } else if (data.exampleTestcases && typeof data.exampleTestcases === 'string') {
           const lines = data.exampleTestcases.split('\n').map((l: string) => l.trim()).filter(Boolean);
           testCases = lines.length > 0 ? lines : [];
-        }
-        if (testCases.length === 0 && parsed.examples.length > 0) {
-          testCases = parsed.examples.map(e => e.input);
         }
 
         const dynamicFallback = generateDynamicTemplate(title, data.topicTags?.[0]?.name || 'Algorithms', diff);
@@ -1425,7 +1521,7 @@ export async function fetchFromLeetCodeApi(slug: string): Promise<ProblemTemplat
           examples: parsed.examples.length > 0 ? parsed.examples : dynamicFallback.examples,
           constraints: parsed.constraints.length > 0 ? parsed.constraints : dynamicFallback.constraints,
           testCases: testCases.length > 0 ? testCases : dynamicFallback.testCases,
-          expectedOutputs: parsed.examples.map(e => e.output),
+          expectedOutputs: expectedOutputs.length > 0 ? expectedOutputs : (parsed.examples.map(e => e.output).length > 0 ? parsed.examples.map(e => e.output) : dynamicFallback.expectedOutputs),
           hints: hints.length > 0 ? hints : [
             `Analyze the problem constraints and identify the optimal time complexity boundary.`,
             `Consider whether sorting, two-pointers, hash maps, or dynamic programming state transitions apply.`

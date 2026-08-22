@@ -897,12 +897,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </span>
           </button>
 
-          {/* External Links: LeetCode & GeeksforGeeks (Only if available) */}
-          {/* Cloudflare R2 Sync Status Badge */}
+          {/* Cloud Sync Status Badge */}
           {isLoadingEnriched && (
             <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-[11px] font-mono animate-pulse">
               <Cloud className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span className="hidden sm:inline">Syncing R2...</span>
+              <span className="hidden sm:inline">Syncing Cloud...</span>
             </div>
           )}
 
@@ -912,9 +911,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 font-mono font-bold text-xs transition-all shadow-sm cursor-pointer"
-              title="Open Problem on LeetCode"
+              title="Open External Problem Statement"
             >
-              <span>LC</span>
+              <span>Practice</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -996,132 +995,135 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       {/* ========================================================================= */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         
-        {/* ----------------------------------------------------------------------- */}
-        {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, SOLUTIONS, AI REVIEW   */}
-        {/* ----------------------------------------------------------------------- */}
+        {/* LEFT PANEL: DESCRIPTION, HINTS, EDITORIAL, VIDEO, SOLUTIONS, AI REVIEW */}
         <div 
           style={{ width: `${splitPercent}%` }}
-          className="hidden lg:flex bg-slate-900/90 border-r border-slate-800 flex-col overflow-hidden transition-all duration-75"
+          className="hidden lg:flex bg-[#1e1e1e] border-r border-white/10 flex-col overflow-hidden transition-all duration-75"
         >
           
-          {/* Left Panel Tabs Bar */}
-          <div className="flex items-center gap-1 p-2 bg-slate-950 border-b border-slate-800 overflow-x-auto no-scrollbar text-xs font-bold flex-shrink-0">
-            
+          {/* LEFT SUB-NAVBAR TABS */}
+          <div className="flex items-center space-x-1 px-3 py-2 bg-[#252526] border-b border-white/10 overflow-x-auto no-scrollbar flex-shrink-0">
             <button
               onClick={() => setLeftTab('description')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'description'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+              <BookOpen className="w-3.5 h-3.5 text-teal-400" />
               <span>Description</span>
             </button>
 
             <button
               onClick={() => setLeftTab('hints')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'hints'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
               <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-              <span>Hints</span>
+              <span>Hints ({problemTemplate.hints?.length || 0})</span>
+            </button>
+
+            <button
+              onClick={() => setLeftTab('solutions')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                leftTab === 'solutions'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Approaches ({problemTemplate.approaches?.length || 1})</span>
+            </button>
+
+            {matchingVideo && (
+              <button
+                onClick={() => setLeftTab('video')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  leftTab === 'video'
+                    ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
+                <span>Video Lesson</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setLeftTab('diagram')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                leftTab === 'diagram'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Visualizer</span>
             </button>
 
             <button
               onClick={() => setLeftTab('editorial')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'editorial'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <FileText className="w-3.5 h-3.5 text-emerald-400" />
               <span>Editorial</span>
             </button>
 
             <button
               onClick={() => setLeftTab('notes')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'notes'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <FileText className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Notes (.txt)</span>
-            </button>
-
-            {/* VIDEO TAB BUTTON (ONLY IF REAL MATCHING VIDEO FROM TELEGRAM CHANNEL EXISTS) */}
-            {matchingVideo && (
-              <button
-                onClick={() => setLeftTab('video')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  leftTab === 'video'
-                    ? 'bg-purple-600 text-white shadow-inner'
-                    : 'text-purple-300 hover:text-white hover:bg-purple-950/40 border border-purple-800/40'
-                }`}
-                title={`Watch Telegram DSA Channel Lecture: ${matchingVideo.title}`}
-              >
-                <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
-                <span>Video</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setLeftTab('solutions')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                leftTab === 'solutions'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <FileCode className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Solutions</span>
+              <Save className="w-3.5 h-3.5 text-purple-400" />
+              <span>Notes</span>
             </button>
 
             <button
               onClick={() => setLeftTab('submissions')}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'submissions'
-                  ? 'bg-slate-800 text-white shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-sky-400" />
+              <CheckCircle className="w-3.5 h-3.5 text-blue-400" />
               <span>Submissions ({submissionsList.length})</span>
             </button>
 
-            {/* AI REVIEW TAB */}
-            {aiReview && (
-              <button
-                onClick={() => setLeftTab('aireview')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                  leftTab === 'aireview'
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'text-amber-400 hover:text-amber-200 hover:bg-purple-950/40'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Review</span>
-              </button>
-            )}
-
+            <button
+              onClick={() => setLeftTab('aireview')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                leftTab === 'aireview'
+                  ? 'bg-purple-900/60 text-purple-200 shadow-sm border border-purple-500/40 font-bold'
+                  : 'text-purple-300 hover:text-purple-100 hover:bg-purple-950/40'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+              <span>AI Code Review</span>
+            </button>
           </div>
 
-          {/* Left Panel Content Body */}
-          <div className="flex-1 p-5 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed font-sans select-text">
+          {/* LEFT PANEL CONTENT */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 text-sm text-[#eff1f6] leading-relaxed custom-scrollbar">
             
             {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
               isLoadingEnriched ? (
-                <div className="flex flex-col items-center justify-center min-h-[460px] py-20 px-6 text-center space-y-4 animate-fadeIn">
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600/30 via-purple-600/20 to-cyan-600/30 border border-indigo-500/40 flex items-center justify-center shadow-xl">
-                      <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin" />
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center animate-spin">
+                      <BookOpen className="w-7 h-7 text-white" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/60 flex items-center justify-center shadow-lg">
                       <Cloud className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
@@ -1130,17 +1132,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <div className="space-y-1.5 max-w-sm">
                     <h3 className="text-sm font-bold text-white tracking-tight">Loading Problem Definition...</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Fetching authentic LeetCode statement, test cases & diagrams from Cloudflare R2 object storage.
+                      Fetching authentic problem statement, test cases & diagrams from Cloud storage.
                     </p>
                   </div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono text-cyan-400">
                     <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                    <span>Cloudflare R2 Direct Stream</span>
+                    <span>Cloud Storage Direct Stream</span>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-5 animate-fadeIn">
-                  {/* Header & LeetCode Meta Badges */}
+                  {/* Header & Meta Badges */}
                   <div className="space-y-3 pb-3 border-b border-white/10">
                     <h2 className="text-xl font-bold text-white tracking-tight">{cleanTitle}</h2>
                     

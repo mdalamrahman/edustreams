@@ -134,7 +134,7 @@ export const LLDBossSheet: React.FC<LLDBossSheetProps> = ({ onOpenGithubTopic, o
             <Sparkles className="w-3.5 h-3.5 text-purple-400" /> SDE-1 / Fresher LLD Complete Syllabus
           </span>
           <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-700/60 text-cyan-300 text-xs font-mono font-bold">
-            Cloudflare R2 Persistent Edition
+            Cloud Storage Edition
           </span>
         </div>
 
@@ -736,7 +736,7 @@ class Car {
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-500 pt-8 pb-12 border-t border-slate-800/80">
-        LLD Boss Sheet & SDE-1 Notes • Cloudflare R2 Persistent Edition • Built for Fresher & SDE-1 Candidates
+        LLD Boss Sheet & SDE-1 Notes • Cloud Storage Edition • Built for Fresher & SDE-1 Candidates
       </footer>
 
     </div>

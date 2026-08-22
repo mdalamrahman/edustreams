@@ -51,7 +51,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   Today's Streak
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">Choose between SDETube's Curated POTD or the Official LeetCode Daily Problem</p>
+              <p className="text-xs text-slate-400">Choose between SDETube's Curated POTD or the Global Daily Challenge</p>
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
             }`}
           >
             <Code className="w-4 h-4 text-amber-200" />
-            <span>Official LeetCode POTD</span>
+            <span>Global POTD</span>
           </button>
         </div>
 
@@ -108,7 +108,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
             <div>
               <h4 className="text-base font-bold text-slate-100">{sdePotd.name}</h4>
-              <p className="text-xs text-slate-400 mt-1">High-frequency interview challenge selected from the 191 SDE Sheet.</p>
+              <p className="text-xs text-slate-400 mt-1">High-frequency interview challenge selected from the SDE Sheet.</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -120,19 +120,19 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 <Code className="w-4 h-4" />
-                <span>Solve in SDETube Monaco IDE</span>
+                <span>Solve in SDETube IDE</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* OPTION 2: OFFICIAL LEETCODE POTD */}
+        {/* OPTION 2: GLOBAL POTD */}
         {activeTab === 'leetcode' && (
           <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
             {isLoadingLc ? (
               <div className="py-8 text-center text-slate-400 font-mono text-xs animate-pulse">
-                Fetching Official Daily Challenge from LeetCode API...
+                Fetching Global Daily Challenge...
               </div>
             ) : lcPotd ? (
               <>
@@ -155,7 +155,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
                 <div>
                   <h4 className="text-base font-bold text-slate-100">{lcPotd.title}</h4>
-                  <p className="text-xs text-slate-400 mt-1 font-mono">Official Daily Problem &bull; {lcPotd.date}</p>
+                  <p className="text-xs text-slate-400 mt-1 font-mono">Global Daily Challenge &bull; {lcPotd.date}</p>
                 </div>
 
                 <div className="flex items-center gap-3 pt-2">
@@ -165,7 +165,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     rel="noreferrer"
                     className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
-                    <span>Solve Directly on LeetCode</span>
+                    <span>Solve Challenge Online</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
 
@@ -180,7 +180,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
               </>
             ) : (
               <div className="text-center py-6 text-slate-500 text-xs font-mono">
-                Failed to load LeetCode POTD.
+                Failed to load Global POTD.
               </div>
             )}
           </div>
