@@ -48,7 +48,7 @@ import { recordRealActivity } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
-import { handleVideoViewBilling, canAffordAction, deductCredits, PRICING_CONFIG } from './lib/billing';
+import { handleVideoViewBilling, canAffordAction, deductCredits, syncWalletWithDatabase, PRICING_CONFIG } from './lib/billing';
 import { InsufficientCreditsModal } from './components/InsufficientCreditsModal';
 import { WalletTopupModal } from './components/WalletTopupModal';
 
@@ -318,6 +318,9 @@ export function App() {
   // 1 Active Session Per Device Live Heartbeat & Revocation Monitor
   useEffect(() => {
     if (!user?.email) return;
+
+    // Sync persistent wallet & transactions from database
+    syncWalletWithDatabase(user.email).catch(() => {});
 
     const cleanup = startSessionHeartbeat(user.email, (msg) => {
       console.warn('[EduStream Session] Revoked from another device:', msg);

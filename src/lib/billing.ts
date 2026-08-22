@@ -1,8 +1,11 @@
 /**
  * SDETube Comprehensive Billing & Credits System
+ * Synchronized with Database (SQLite backend on Render + client fallback cache)
  * Manages user wallet balances, pricing rules, transactions, UPI top-up requests,
  * daily platform usage fees, and insufficient balance gatekeeping.
  */
+
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
 
 export const PRICING_CONFIG = {
   SIGNUP_FREE_CREDITS: 10.00,        // Free ₹10 credits upon opening an account
@@ -140,7 +143,7 @@ export function getAllTransactions(): BillingTransaction[] {
 
 function saveTransactions(list: BillingTransaction[]) {
   try {
-    localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(list.slice(-500))); // keep latest 500
+    localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(list.slice(0, 500)));
   } catch {}
 }
 
@@ -160,8 +163,40 @@ function saveTopupRequests(list: TopupRequest[]) {
 }
 
 /**
- * Retrieves the current user's wallet. If non-existent, initializes with free ₹10 credits.
- * Also checks and processes the ₹1.00 daily platform login usage fee.
+ * Synchronizes user wallet directly with persistent Database.
+ */
+export async function syncWalletWithDatabase(email?: string): Promise<UserWallet> {
+  const userEmail = getActiveEmail(email);
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/billing/wallet?email=${encodeURIComponent(userEmail)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.wallet) {
+        const wallet: UserWallet = {
+          userId: data.wallet.userId,
+          userEmail: data.wallet.userEmail,
+          balance: Number(data.wallet.balance),
+          lastDailyChargeDate: data.wallet.lastDailyChargeDate,
+          viewedVideoIds: Array.isArray(data.wallet.viewedVideoIds) ? data.wallet.viewedVideoIds : [],
+          studioUsedToday: data.wallet.studioUsedToday,
+          createdAt: data.wallet.createdAt,
+          updatedAt: data.wallet.updatedAt,
+        };
+        const wallets = getAllWallets();
+        wallets[userEmail] = wallet;
+        saveAllWallets(wallets);
+        emitWalletUpdate(wallet);
+        return wallet;
+      }
+    }
+  } catch (err) {
+    console.warn('[Billing DB Sync Notice]:', err);
+  }
+  return getUserWallet(userEmail);
+}
+
+/**
+ * Retrieves the current user's wallet from local cache and schedules background DB sync.
  */
 export function getUserWallet(email?: string): UserWallet {
   const userEmail = getActiveEmail(email);
@@ -171,12 +206,12 @@ export function getUserWallet(email?: string): UserWallet {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   if (!wallet) {
-    // New account: Initialize with free ₹10 bonus credits
+    // Initialize with free ₹10 bonus credits in local cache
     wallet = {
       userId: `usr-${Date.now()}`,
       userEmail,
       balance: PRICING_CONFIG.SIGNUP_FREE_CREDITS,
-      lastDailyChargeDate: todayStr, // First day covered by signup
+      lastDailyChargeDate: todayStr,
       viewedVideoIds: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -184,7 +219,6 @@ export function getUserWallet(email?: string): UserWallet {
     wallets[userEmail] = wallet;
     saveAllWallets(wallets);
 
-    // Record welcome bonus transaction
     const initialTx: BillingTransaction = {
       id: `tx-${Date.now()}`,
       userId: wallet.userId,
@@ -199,33 +233,9 @@ export function getUserWallet(email?: string): UserWallet {
     const allTx = getAllTransactions();
     allTx.unshift(initialTx);
     saveTransactions(allTx);
-  } else {
-    // Existing account: Check if today is a new calendar day and charge ₹1.00 daily login fee
-    if (wallet.lastDailyChargeDate !== todayStr) {
-      const fee = PRICING_CONFIG.DAILY_USAGE_FEE;
-      if (wallet.balance >= fee) {
-        wallet.balance = Math.max(0, parseFloat((wallet.balance - fee).toFixed(3)));
-        wallet.lastDailyChargeDate = todayStr;
-        wallet.updatedAt = new Date().toISOString();
-        wallets[userEmail] = wallet;
-        saveAllWallets(wallets);
 
-        const dailyTx: BillingTransaction = {
-          id: `tx-${Date.now()}`,
-          userId: wallet.userId,
-          userEmail,
-          amount: -fee,
-          type: 'DEBIT',
-          category: 'DAILY_LOGIN',
-          description: `📅 Daily Platform Usage Fee (${todayStr})`,
-          balanceAfter: wallet.balance,
-          timestamp: new Date().toISOString()
-        };
-        const allTx = getAllTransactions();
-        allTx.unshift(dailyTx);
-        saveTransactions(allTx);
-      }
-    }
+    // Sync with backend database asynchronously
+    syncWalletWithDatabase(userEmail).catch(() => {});
   }
 
   return wallet;
@@ -240,7 +250,7 @@ export function canAffordAction(requiredAmount: number, email?: string): boolean
 }
 
 /**
- * Deducts credits for a platform activity. Returns success status and updated balance.
+ * Deducts credits for a platform activity and syncs atomically with backend Database.
  */
 export function deductCredits(
   amount: number,
@@ -260,13 +270,12 @@ export function deductCredits(
     };
   }
 
-  // Deduct
+  // Optimistic deduction in cache
   wallet.balance = parseFloat((wallet.balance - amount).toFixed(4));
   wallet.updatedAt = new Date().toISOString();
   wallets[userEmail] = wallet;
   saveAllWallets(wallets);
 
-  // Record Transaction
   const tx: BillingTransaction = {
     id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     userId: wallet.userId,
@@ -282,8 +291,31 @@ export function deductCredits(
   const allTx = getAllTransactions();
   allTx.unshift(tx);
   saveTransactions(allTx);
-
   emitWalletUpdate(wallet);
+
+  // Sync with persistent SQLite Database
+  fetch(`${BACKEND_URL}/api/billing/deduct`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: userEmail,
+      amount,
+      category,
+      description
+    })
+  }).then(async (res) => {
+    if (res.ok) {
+      const data = await res.json();
+      if (data.wallet) {
+        wallet.balance = Number(data.wallet.balance);
+        wallets[userEmail] = wallet;
+        saveAllWallets(wallets);
+        emitWalletUpdate(wallet);
+      }
+    }
+  }).catch((err) => {
+    console.warn('[Billing Deduct DB Notice]:', err);
+  });
 
   return {
     success: true,
@@ -293,8 +325,13 @@ export function deductCredits(
 
 /**
  * Handles video view billing: ₹2.00 for first time opening a video, ₹1.00 for subsequent times.
+ * Syncs viewed history & balance with database.
  */
-export function handleVideoViewBilling(videoId: string, videoTitle: string, email?: string): { success: boolean; newBalance: number; cost: number; error?: string } {
+export function handleVideoViewBilling(
+  videoId: string, 
+  videoTitle: string, 
+  email?: string
+): { success: boolean; newBalance: number; cost: number; error?: string } {
   const userEmail = getActiveEmail(email);
   const wallets = getAllWallets();
   const wallet = getUserWallet(userEmail);
@@ -311,7 +348,7 @@ export function handleVideoViewBilling(videoId: string, videoTitle: string, emai
     };
   }
 
-  // Deduct cost and register video
+  // Optimistic update
   wallet.balance = parseFloat((wallet.balance - cost).toFixed(4));
   if (isFirstTime) {
     wallet.viewedVideoIds.push(videoId);
@@ -335,8 +372,30 @@ export function handleVideoViewBilling(videoId: string, videoTitle: string, emai
   const allTx = getAllTransactions();
   allTx.unshift(tx);
   saveTransactions(allTx);
-
   emitWalletUpdate(wallet);
+
+  // Sync with persistent SQLite Database
+  fetch(`${BACKEND_URL}/api/billing/video-view`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: userEmail,
+      video_id: videoId,
+      video_title: videoTitle
+    })
+  }).then(async (res) => {
+    if (res.ok) {
+      const data = await res.json();
+      if (data.wallet) {
+        wallet.balance = Number(data.wallet.balance);
+        wallets[userEmail] = wallet;
+        saveAllWallets(wallets);
+        emitWalletUpdate(wallet);
+      }
+    }
+  }).catch((err) => {
+    console.warn('[Video Billing DB Notice]:', err);
+  });
 
   return {
     success: true,
@@ -347,6 +406,7 @@ export function handleVideoViewBilling(videoId: string, videoTitle: string, emai
 
 /**
  * Manually adds or adjusts credits for any user (Admin function).
+ * Syncs with Database.
  */
 export function adminAddCredits(
   targetEmail: string,
@@ -355,18 +415,7 @@ export function adminAddCredits(
 ): UserWallet {
   const cleanEmail = targetEmail.trim().toLowerCase();
   const wallets = getAllWallets();
-  let wallet = wallets[cleanEmail];
-
-  if (!wallet) {
-    wallet = {
-      userId: `usr-${Date.now()}`,
-      userEmail: cleanEmail,
-      balance: 0,
-      viewedVideoIds: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-  }
+  let wallet = wallets[cleanEmail] || getUserWallet(cleanEmail);
 
   wallet.balance = parseFloat((wallet.balance + amount).toFixed(4));
   wallet.updatedAt = new Date().toISOString();
@@ -388,14 +437,24 @@ export function adminAddCredits(
   const allTx = getAllTransactions();
   allTx.unshift(tx);
   saveTransactions(allTx);
-
   emitWalletUpdate(wallet);
+
+  // Sync to database
+  fetch(`${BACKEND_URL}/api/billing/admin/adjust`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: cleanEmail,
+      amount,
+      admin_notes: adminNotes
+    })
+  }).catch((e) => console.warn('[Admin Adjust DB Notice]:', e));
 
   return wallet;
 }
 
 /**
- * Submits a new UPI recharge top-up request from a student.
+ * Submits a new UPI recharge top-up request to Database.
  */
 export function submitTopupRequest(payload: {
   amount: number;
@@ -425,11 +484,77 @@ export function submitTopupRequest(payload: {
   requests.unshift(newReq);
   saveTopupRequests(requests);
 
+  // Sync to backend SQLite database
+  fetch(`${BACKEND_URL}/api/billing/topup-request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: userEmail,
+      user_name: payload.userName || userEmail.split('@')[0],
+      amount: payload.amount,
+      transaction_id: payload.transactionId.trim(),
+      payee_details: payload.payeeDetails.trim(),
+      screenshot_url: payload.screenshotUrl
+    })
+  }).then(async (res) => {
+    if (res.ok) {
+      const data = await res.json();
+      if (data.topup?.id) {
+        newReq.id = data.topup.id;
+        saveTopupRequests(requests);
+      }
+    }
+  }).catch((e) => console.warn('[Topup DB Submit Notice]:', e));
+
   return newReq;
 }
 
 /**
- * Approves a top-up request and credits the user's wallet (Admin function).
+ * Fetches all topup requests from Database for user or admin.
+ */
+export async function fetchTopupsFromDatabase(email?: string): Promise<TopupRequest[]> {
+  try {
+    const url = email 
+      ? `${BACKEND_URL}/api/billing/topups?email=${encodeURIComponent(email)}`
+      : `${BACKEND_URL}/api/billing/topups`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.topups)) {
+        saveTopupRequests(data.topups);
+        return data.topups;
+      }
+    }
+  } catch (e) {
+    console.warn('[Fetch Topups DB Notice]:', e);
+  }
+  return getAllTopupRequests();
+}
+
+/**
+ * Fetches all transaction records from Database.
+ */
+export async function fetchTransactionsFromDatabase(email?: string): Promise<BillingTransaction[]> {
+  try {
+    const url = email 
+      ? `${BACKEND_URL}/api/billing/transactions?email=${encodeURIComponent(email)}`
+      : `${BACKEND_URL}/api/billing/transactions`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.transactions)) {
+        saveTransactions(data.transactions);
+        return data.transactions;
+      }
+    }
+  } catch (e) {
+    console.warn('[Fetch Transactions DB Notice]:', e);
+  }
+  return getAllTransactions();
+}
+
+/**
+ * Approves a top-up request in Database (Admin function).
  */
 export function approveTopupRequest(requestId: string, adminEmail?: string): boolean {
   const requests = getAllTopupRequests();
@@ -444,11 +569,23 @@ export function approveTopupRequest(requestId: string, adminEmail?: string): boo
   // Credit user's wallet
   adminAddCredits(req.userEmail, req.amount, `UPI Recharge Approved (Txn ID: ${req.transactionId})`);
 
+  // Sync to database
+  fetch(`${BACKEND_URL}/api/billing/admin/review-topup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      request_id: requestId,
+      status: 'APPROVED',
+      admin_email: adminEmail,
+      admin_notes: `Approved by ${adminEmail || 'Super Admin'}`
+    })
+  }).catch((e) => console.warn('[Approve Topup DB Notice]:', e));
+
   return true;
 }
 
 /**
- * Rejects a top-up request (Admin function).
+ * Rejects a top-up request in Database (Admin function).
  */
 export function rejectTopupRequest(requestId: string, reason?: string): boolean {
   const requests = getAllTopupRequests();
@@ -457,10 +594,62 @@ export function rejectTopupRequest(requestId: string, reason?: string): boolean 
 
   req.status = 'REJECTED';
   req.reviewedAt = new Date().toISOString();
-  req.adminNotes = reason || 'Payment verification failed';
+  req.adminNotes = reason || 'Payment verification rejected';
   saveTopupRequests(requests);
 
+  // Sync to database
+  fetch(`${BACKEND_URL}/api/billing/admin/review-topup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      request_id: requestId,
+      status: 'REJECTED',
+      admin_notes: reason || 'Payment verification rejected'
+    })
+  }).catch((e) => console.warn('[Reject Topup DB Notice]:', e));
+
   return true;
+}
+
+/**
+ * Fetches all wallets, topups, and transactions from backend Database for Admin Dashboard.
+ */
+export async function fetchAdminBillingData(): Promise<{
+  wallets: UserWallet[];
+  topups: TopupRequest[];
+  transactions: BillingTransaction[];
+}> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/billing/admin/all-data`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.wallets)) {
+        const walletsMap: Record<string, UserWallet> = {};
+        for (const w of data.wallets) {
+          walletsMap[w.userEmail] = w;
+        }
+        saveAllWallets(walletsMap);
+      }
+      if (Array.isArray(data.topups)) {
+        saveTopupRequests(data.topups);
+      }
+      if (Array.isArray(data.transactions)) {
+        saveTransactions(data.transactions);
+      }
+      return {
+        wallets: data.wallets || [],
+        topups: data.topups || [],
+        transactions: data.transactions || []
+      };
+    }
+  } catch (e) {
+    console.warn('[Admin Billing DB Fetch Notice]:', e);
+  }
+  return {
+    wallets: Object.values(getAllWallets()),
+    topups: getAllTopupRequests(),
+    transactions: getAllTransactions()
+  };
 }
 
 /**

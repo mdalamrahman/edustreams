@@ -42,6 +42,7 @@ import {
   rejectTopupRequest, 
   adminAddCredits, 
   getUserWallet, 
+  fetchAdminBillingData,
   TopupRequest, 
   UserWallet 
 } from '../lib/billing';
@@ -98,13 +99,15 @@ const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
       totalCodeRuns: isCurrent ? attempts : 0,
       lastActive: isCurrent ? 'Active Now' : 'Offline',
       isOnline: isCurrent,
-      joinedDate: u.createdAt || '2026-08-16'
+      joinedDate: u.createdAt || '2026-08-01'
     };
   });
 };
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClose, currentUserEmail }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'users' | 'transcripts' | 'notes' | 'storage'>('users');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState<AdminUserStat | null>(null);
   const [filterRole, setFilterRole] = useState<'all' | 'online' | 'active'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState<'supabase' | 'r2_backend'>('r2_backend');
@@ -122,9 +125,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [manualSuccessMsg, setManualSuccessMsg] = useState<string | null>(null);
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
-  const refreshTopups = () => {
-    setTopupRequests(getAllTopupRequests());
+  const refreshTopups = async () => {
+    try {
+      const data = await fetchAdminBillingData();
+      if (data?.topups) {
+        setTopupRequests(data.topups);
+      }
+    } catch {
+      setTopupRequests(getAllTopupRequests());
+    }
   };
+
+  useEffect(() => {
+    refreshTopups();
+  }, [adminTab]);
 
   // Dynamic 10-Minute Student Registration Passkey State (Direct from Supabase Auth)
   const [currentPasskey, setCurrentPasskey] = useState<DynamicPasskey | null>(null);

@@ -24,6 +24,9 @@ import {
   getAllTopupRequests, 
   submitTopupRequest, 
   generateUpiPaymentUrl, 
+  syncWalletWithDatabase,
+  fetchTransactionsFromDatabase,
+  fetchTopupsFromDatabase,
   UPI_CONFIG, 
   PRICING_CONFIG, 
   UserWallet, 
@@ -62,13 +65,24 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
   const quickAmounts = [20, 50, 100, 200, 500, 1000];
 
-  const refreshData = () => {
+  const refreshData = async () => {
     const w = getUserWallet(userEmail);
     setWallet(w);
-    const tx = getAllTransactions().filter(t => t.userEmail.toLowerCase() === (userEmail || w.userEmail).toLowerCase());
-    setTransactions(tx);
-    const reqs = getAllTopupRequests().filter(r => r.userEmail.toLowerCase() === (userEmail || w.userEmail).toLowerCase());
-    setUserRequests(reqs);
+    const targetEmail = (userEmail || w.userEmail).toLowerCase();
+    setTransactions(getAllTransactions().filter(t => t.userEmail.toLowerCase() === targetEmail));
+    setUserRequests(getAllTopupRequests().filter(r => r.userEmail.toLowerCase() === targetEmail));
+
+    // Live sync with database
+    try {
+      const syncedW = await syncWalletWithDatabase(userEmail);
+      setWallet(syncedW);
+      const [tx, reqs] = await Promise.all([
+        fetchTransactionsFromDatabase(targetEmail),
+        fetchTopupsFromDatabase(targetEmail)
+      ]);
+      setTransactions(tx.filter(t => t.userEmail.toLowerCase() === targetEmail));
+      setUserRequests(reqs.filter(r => r.userEmail.toLowerCase() === targetEmail));
+    } catch {}
   };
 
   useEffect(() => {
