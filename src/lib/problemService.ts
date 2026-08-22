@@ -101,6 +101,109 @@ export function generateDefaultStarters(title: string): Record<SupportedLanguage
 }
 
 /**
+ * Extracts parameter names from starter code or examples
+ */
+export function extractParamNames(starters: Record<SupportedLanguage, string> | undefined, examples: { input: string }[] | undefined): string[] {
+  const pyCode = starters?.python || '';
+  if (pyCode) {
+    const match = pyCode.match(/def\s+[a-zA-Z0-9_]+\s*\(\s*self\s*,\s*([^)]+)\)/);
+    if (match) {
+      const parts = match[1].split(',').map(p => p.trim().split(':')[0].trim()).filter(p => p && p !== 'self');
+      if (parts.length > 0) return parts;
+    }
+  }
+
+  const cppCode = starters?.cpp || '';
+  if (cppCode) {
+    const match = cppCode.match(/[a-zA-Z0-9_<>]+\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)/);
+    if (match) {
+      const parts = match[2].split(',').map(p => {
+        const tokens = p.trim().replace(/[&*]/g, ' ').split(/\s+/).filter(Boolean);
+        return tokens[tokens.length - 1];
+      }).filter(Boolean);
+      if (parts.length > 0) return parts;
+    }
+  }
+
+  if (examples && examples.length > 0) {
+    for (const ex of examples) {
+      const matches = Array.from(ex.input.matchAll(/([a-zA-Z0-9_]+)\s*=/g)).map(m => m[1]);
+      if (matches.length > 0) return matches;
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Hardens problem testcases so that multi-parameter questions (like Two Sum)
+ * NEVER split parameters across different testcase lines.
+ */
+export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplate {
+  if (!problem) return problem;
+
+  const paramNames = extractParamNames(problem.starters, problem.examples);
+  const numParams = paramNames.length;
+  const tcs = problem.testCases || [];
+
+  if (numParams >= 2 && tcs.length > 0) {
+    // Check if testcases are split across lines (e.g. [2,7,11,15] on line 1, 9 on line 2)
+    const isBroken = tcs.some(tc => {
+      const str = String(tc).trim();
+      return !str.includes('=') || paramNames.some(p => !str.includes(p));
+    });
+
+    if (isBroken) {
+      if (tcs.length % numParams === 0 && tcs.length >= numParams) {
+        const fixedTcs: string[] = [];
+        for (let i = 0; i < tcs.length; i += numParams) {
+          const chunk = tcs.slice(i, i + numParams);
+          const parts = chunk.map((val, idx) => {
+            const vStr = String(val).trim();
+            if (vStr.includes('=')) return vStr;
+            const pName = paramNames[idx] || `arg${idx + 1}`;
+            return `${pName} = ${vStr}`;
+          });
+          fixedTcs.push(parts.join(', '));
+        }
+        problem.testCases = fixedTcs;
+      } else if (problem.examples && problem.examples.length > 0) {
+        const validEx = problem.examples.filter(e => e.input && e.input.includes('='));
+        if (validEx.length > 0) {
+          problem.testCases = validEx.map(e => e.input);
+          problem.expectedOutputs = validEx.map(e => e.output);
+        }
+      }
+    }
+  }
+
+  // Ensure minimum 10 test cases for common patterns
+  if (paramNames.includes('nums') && paramNames.includes('target') && (!problem.testCases || problem.testCases.length < 10 || isTwoSum(problem.name))) {
+    const standardTwoSumCases = [
+      { input: 'nums = [2, 7, 11, 15], target = 9', output: '[0, 1]' },
+      { input: 'nums = [3, 2, 4], target = 6', output: '[1, 2]' },
+      { input: 'nums = [3, 3], target = 6', output: '[0, 1]' },
+      { input: 'nums = [1, 5, 8, 3], target = 4', output: '[0, 3]' },
+      { input: 'nums = [-1, -2, -3, -4, -5], target = -8', output: '[2, 4]' },
+      { input: 'nums = [0, 4, 3, 0], target = 0', output: '[0, 3]' },
+      { input: 'nums = [-3, 4, 3, 90], target = 0', output: '[0, 2]' },
+      { input: 'nums = [1, 2, 3, 4, 5, 6, 7], target = 13', output: '[5, 6]' },
+      { input: 'nums = [10, 20, 30, 40, 50], target = 90', output: '[3, 4]' },
+      { input: 'nums = [5, 25, 75], target = 100', output: '[1, 2]' }
+    ];
+    problem.testCases = standardTwoSumCases.map(c => c.input);
+    problem.expectedOutputs = standardTwoSumCases.map(c => c.output);
+  }
+
+  return problem;
+}
+
+function isTwoSum(name: string): boolean {
+  const n = (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return n.includes('twosum') || n.includes('2sum');
+}
+
+/**
  * Generates problem definition + AT LEAST 10 testcases with expected outputs using Mistral AI.
  * Also stores testcases as a .txt file.
  */
@@ -119,18 +222,17 @@ Context Category: "${category}", Difficulty: "${difficulty}".
 ${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
 ${notes ? `Study Notes: ${notes.slice(0, 1500)}` : ''}
 
-CRITICAL TEST CASE REQUIREMENTS:
-1. Provide AT LEAST 10 diverse, comprehensive test case input strings in "testCases".
-   Include:
-   - Standard sample cases
-   - Base cases (single element, empty / min bound)
-   - Edge cases (negative values, mixed signs, zeroes)
-   - Duplicate values / all identical elements
-   - Constraint boundaries (large inputs, max limits)
-   - Specific orderings (sorted ascending, sorted descending, alternating)
-2. Provide AT LEAST 10 precisely matching expected output strings in "expectedOutputs" corresponding 1-to-1 with "testCases".
-3. Provide realistic starter code templates for C++, Python, Java, JavaScript, Go, Rust.
-4. Provide verified optimal solution implementations for C++, Python, Java, JavaScript.
+CRITICAL MULTI-ARGUMENT TEST CASE REQUIREMENTS:
+1. If the function takes multiple parameters (e.g. twoSum(nums, target), coin_change(coins, amount), max_area(height, k)):
+   EVERY single item in "testCases" MUST be a single string containing ALL parameters formatted with parameter names.
+   Example: "nums = [2, 7, 11, 15], target = 9"
+   Example: "nums = [3, 2, 4], target = 6"
+   DO NOT put array in Case 1 and target in Case 2! Each testcase MUST contain ALL function arguments in a single string.
+2. Provide AT LEAST 10 diverse, comprehensive test case input strings in "testCases".
+   Include standard sample cases, base cases, negative values, duplicates, large bounds, alternating patterns.
+3. Provide AT LEAST 10 matching expected output strings in "expectedOutputs" corresponding 1-to-1 with "testCases".
+4. Provide realistic starter code templates for C++, Python, Java, JavaScript, Go, Rust.
+5. Provide verified optimal solution implementations for C++, Python, Java, JavaScript.
 
 Return ONLY valid JSON matching this exact structure:
 {
@@ -140,7 +242,7 @@ Return ONLY valid JSON matching this exact structure:
   "description": "Complete problem explanation with markdown bold/code markers",
   "examples": [
     {
-      "input": "input representation string",
+      "input": "input representation string containing all arguments",
       "output": "expected output string",
       "explanation": "why this output is correct"
     }
@@ -150,16 +252,16 @@ Return ONLY valid JSON matching this exact structure:
     "constraint 2"
   ],
   "testCases": [
-    "case 1 input string",
-    "case 2 input string",
-    "case 3 input string",
-    "case 4 input string",
-    "case 5 input string",
-    "case 6 input string",
-    "case 7 input string",
-    "case 8 input string",
-    "case 9 input string",
-    "case 10 input string"
+    "case 1 input string with all parameters",
+    "case 2 input string with all parameters",
+    "case 3 input string with all parameters",
+    "case 4 input string with all parameters",
+    "case 5 input string with all parameters",
+    "case 6 input string with all parameters",
+    "case 7 input string with all parameters",
+    "case 8 input string with all parameters",
+    "case 9 input string with all parameters",
+    "case 10 input string with all parameters"
   ],
   "expectedOutputs": [
     "case 1 output string",
@@ -336,7 +438,8 @@ export async function fetchEnrichedProblem(
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
-      const parsed = JSON.parse(cached) as ProblemTemplate;
+      let parsed = JSON.parse(cached) as ProblemTemplate;
+      parsed = repairAndHardenProblem(parsed);
       if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
         return parsed;
       }
@@ -349,13 +452,15 @@ export async function fetchEnrichedProblem(
     const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(8000) });
     if (resp.ok) {
       const data = await resp.json();
-      if (data && data.name && data.testCases && Array.isArray(data.testCases) && data.testCases.length >= 10 && !data.error) {
-        const problemObj = data as ProblemTemplate;
-        try {
-          localStorage.setItem(cacheKey, JSON.stringify(problemObj));
-          localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
-        } catch (_) {}
-        return problemObj;
+      if (data && data.name && !data.error) {
+        const problemObj = repairAndHardenProblem(data as ProblemTemplate);
+        if (problemObj.testCases && problemObj.testCases.length >= 10) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(problemObj));
+            localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
+          } catch (_) {}
+          return problemObj;
+        }
       }
     }
   } catch (err) {
@@ -363,7 +468,8 @@ export async function fetchEnrichedProblem(
   }
 
   // 3. If not in R2 or testcases missing / < 10, invoke Mistral AI to generate testcases and store as .txt
-  const generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
+  let generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
+  generated = repairAndHardenProblem(generated);
   try {
     localStorage.setItem(cacheKey, JSON.stringify(generated));
     localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(generated));

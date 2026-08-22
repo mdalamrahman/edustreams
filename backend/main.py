@@ -918,6 +918,101 @@ def parse_leetcode_html(html_str: str) -> dict:
     return {"description": desc, "examples": examples, "constraints": constraints}
 
 
+def extract_function_param_names(starters: dict, examples: list) -> list:
+    """
+    Extracts the parameter names for the problem solution method.
+    e.g. ['nums', 'target'] or ['matrix'] or ['s', 'k']
+    """
+    py_code = (starters or {}).get("python") or ""
+    if py_code:
+        m = re.search(r'def\s+[a-zA-Z0-9_]+\s*\(\s*self\s*,\s*([^)]+)\)', py_code)
+        if m:
+            raw_params = m.group(1).split(',')
+            names = []
+            for p in raw_params:
+                p_clean = p.strip().split(':')[0].strip()
+                if p_clean and p_clean != 'self':
+                    names.append(p_clean)
+            if names:
+                return names
+
+    # Fallback: check C++ starter
+    cpp_code = (starters or {}).get("cpp") or ""
+    if cpp_code:
+        m = re.search(r'[a-zA-Z0-9_<>]+\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)', cpp_code)
+        if m:
+            raw_params = m.group(2).split(',')
+            names = []
+            for p in raw_params:
+                tokens = p.strip().replace('&', ' ').replace('*', ' ').split()
+                if tokens:
+                    names.append(tokens[-1])
+            if names:
+                return names
+
+    # Fallback: check examples inputs
+    for ex in (examples or []):
+        inp = ex.get("input") or ""
+        matches = re.findall(r'([a-zA-Z0-9_]+)\s*=', inp)
+        if matches:
+            return matches
+
+    return []
+
+
+def sanitize_and_harden_testcases(problem_data: dict) -> dict:
+    """
+    Ensures that test cases for multi-parameter problems are never split across lines.
+    Every testcase in testCases MUST contain all function arguments in a single string.
+    """
+    if not problem_data or not isinstance(problem_data, dict):
+        return problem_data
+
+    starters = problem_data.get("starters") or {}
+    examples = problem_data.get("examples") or []
+    param_names = extract_function_param_names(starters, examples)
+    num_params = len(param_names)
+
+    tcs = problem_data.get("testCases") or []
+    eos = problem_data.get("expectedOutputs") or []
+
+    # If we have 2 or more parameters:
+    if num_params >= 2 and tcs:
+        is_broken = False
+        for tc in tcs:
+            tc_str = str(tc).strip()
+            # If a test case does NOT have all parameter names, or is just a single number/array
+            has_all = all(f"{p}" in tc_str for p in param_names)
+            if not has_all or '=' not in tc_str:
+                is_broken = True
+                break
+
+        if is_broken:
+            # If tcs has lines that can be grouped in steps of num_params:
+            if len(tcs) % num_params == 0 and len(tcs) >= num_params:
+                fixed_tcs = []
+                for i in range(0, len(tcs), num_params):
+                    chunk = tcs[i : i + num_params]
+                    combined_parts = []
+                    for j, val in enumerate(chunk):
+                        val_str = str(val).strip()
+                        if '=' in val_str:
+                            combined_parts.append(val_str)
+                        else:
+                            p_name = param_names[j] if j < len(param_names) else f"arg{j+1}"
+                            combined_parts.append(f"{p_name} = {val_str}")
+                    fixed_tcs.append(", ".join(combined_parts))
+                problem_data["testCases"] = fixed_tcs
+            elif examples:
+                ex_tcs = [e["input"] for e in examples if e.get("input")]
+                ex_eos = [e["output"] for e in examples if e.get("output")]
+                if ex_tcs:
+                    problem_data["testCases"] = ex_tcs
+                    problem_data["expectedOutputs"] = ex_eos
+
+    return problem_data
+
+
 def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
     query = """
     query getQuestionDetail($titleSlug: String!) {
@@ -954,11 +1049,6 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
             q = resp.json().get("data", {}).get("question")
             if q and q.get("title"):
                 parsed = parse_leetcode_html(q.get("content", ""))
-                raw_tc = q.get("exampleTestcases") or ""
-                test_cases = [line.strip() for line in raw_tc.split("\n") if line.strip()]
-                if not test_cases and parsed["examples"]:
-                    test_cases = [e["input"] for e in parsed["examples"]]
-
                 starters = {}
                 for s in (q.get("codeSnippets") or []):
                     l = s.get("langSlug")
@@ -969,6 +1059,24 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
                     elif l == "javascript": starters["javascript"] = c
                     elif l == "golang": starters["go"] = c
                     elif l == "rust": starters["rust"] = c
+
+                param_names = extract_function_param_names(starters, parsed.get("examples", []))
+                num_params = len(param_names)
+
+                raw_tc = q.get("exampleTestcases") or ""
+                raw_lines = [line.strip() for line in raw_tc.split("\n") if line.strip()]
+                test_cases = []
+
+                if parsed["examples"]:
+                    test_cases = [e["input"] for e in parsed["examples"]]
+                elif raw_lines:
+                    if num_params >= 2 and len(raw_lines) % num_params == 0:
+                        for i in range(0, len(raw_lines), num_params):
+                            chunk = raw_lines[i : i + num_params]
+                            parts = [f"{param_names[j]} = {chunk[j]}" for j in range(num_params)]
+                            test_cases.append(", ".join(parts))
+                    else:
+                        test_cases = raw_lines
 
                 hints = q.get("hints") or []
                 clean_hints = [re.sub(r'<[^>]+>', '', h).strip() for h in hints if h]
@@ -986,6 +1094,7 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
                     "starters": starters,
                     "solutions": {}
                 }
+                raw_res = sanitize_and_harden_testcases(raw_res)
                 return expand_problem_testcases_to_min_10(raw_res)
     except Exception as e:
         print(f"[LeetCode GraphQL fetch error for '{slug}']: {e}")
@@ -1074,6 +1183,8 @@ def expand_problem_testcases_to_min_10(problem_data: dict) -> dict:
     if not problem_data or not isinstance(problem_data, dict):
         return problem_data
 
+    problem_data = sanitize_and_harden_testcases(problem_data)
+
     tcs = problem_data.get("testCases") or []
     eos = problem_data.get("expectedOutputs") or []
     py_sol = (problem_data.get("solutions") or {}).get("python") or ""
@@ -1087,6 +1198,9 @@ def expand_problem_testcases_to_min_10(problem_data: dict) -> dict:
 
     # If < 10 test cases, ask AI to generate diverse test case inputs
     if len(clean_tcs) < 10:
+        param_names = extract_function_param_names(problem_data.get("starters") or {}, problem_data.get("examples") or [])
+        param_hint = f"All parameters ({', '.join(param_names)}) MUST be included in every single testcase string, e.g. '{param_names[0]} = ..., {param_names[1]} = ...'" if len(param_names) >= 2 else "Every testcase must be a complete valid function call input."
+
         prompt = f"""You are a Lead DSA Test Suite and Verification Engineer.
 Problem: "{title}"
 Description:
@@ -1095,8 +1209,11 @@ Description:
 Existing sample test cases:
 {json.dumps(clean_tcs)}
 
-Generate a full test suite of AT LEAST 10 diverse, comprehensive test case inputs (bringing the total count to at least 10, including existing ones).
-Include:
+CRITICAL MULTI-ARGUMENT TEST CASE RULE:
+{param_hint}
+DO NOT separate arguments into different test cases! Each item in "testCases" must be ONE COMPLETE FUNCTION INVOCATION INPUT containing all arguments.
+
+Generate a full test suite of AT LEAST 10 diverse, comprehensive test case inputs:
 1. Standard sample cases
 2. Base / boundary cases (n=0, n=1, single element, minimal constraint)
 3. Negative values / mixed signs (if permitted)
@@ -1136,6 +1253,13 @@ Return ONLY valid JSON matching:
                             clean_eos.append(eo)
         except Exception as e:
             print(f"[Testcase AI expansion notice for '{title}']: {e}")
+
+    problem_data["testCases"] = clean_tcs
+    problem_data["expectedOutputs"] = clean_eos
+    problem_data = sanitize_and_harden_testcases(problem_data)
+
+    clean_tcs = problem_data.get("testCases") or []
+    clean_eos = problem_data.get("expectedOutputs") or []
 
     # Re-evaluate all test cases with Python Reference Solution to ensure 100% mathematical accuracy
     if py_sol and len(clean_tcs) > 0:
@@ -1182,6 +1306,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
         try:
             problem_data = r2_storage.fetch_problem(clean_slug)
             if problem_data and problem_data.get("name") and problem_data.get("description"):
+                problem_data = sanitize_and_harden_testcases(problem_data)
                 if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
                     problem_data = expand_problem_testcases_to_min_10(problem_data)
                     try:
@@ -1196,6 +1321,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
     # 3. If not in Cloudflare R2, query LeetCode GraphQL API
     lc_data = fetch_leetcode_graphql(clean_slug)
     if lc_data and lc_data.get("name") and lc_data.get("description"):
+        lc_data = sanitize_and_harden_testcases(lc_data)
         lc_data = expand_problem_testcases_to_min_10(lc_data)
         _PROBLEM_CACHE[clean_slug] = lc_data
         try:
