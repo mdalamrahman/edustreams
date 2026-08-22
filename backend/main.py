@@ -1244,6 +1244,57 @@ Requirements:
     return {"error": f"Problem '{slug}' could not be resolved", "slug": slug}
 
 
+@app.post("/api/problem/{slug}/upload")
+async def upload_problem_route(slug: str, req: Request):
+    """
+    Accepts problem definition and test cases from frontend or Mistral AI,
+    formats it as both .json and .txt, and stores it in Cloudflare R2.
+    """
+    clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
+    clean_slug = re.sub(r'/.*$', '', clean_slug)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+
+    try:
+        data = await req.json()
+        if not data or not isinstance(data, dict):
+            return JSONResponse(status_code=400, content={"error": "Invalid problem JSON"})
+
+        _PROBLEM_CACHE[clean_slug] = data
+        key = r2_storage.upload_problem(clean_slug, data)
+        return {"success": True, "slug": clean_slug, "r2_key": key}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/problem/{slug}/testcases.txt")
+async def get_problem_testcases_txt(slug: str):
+    """
+    Returns the formatted .txt testcase file for a problem.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+    if not problem:
+        return PlainTextResponse("Problem testcases not found", status_code=404)
+
+    txt_lines = [
+        f"=== PROBLEM: {problem.get('name', clean_slug)} ===",
+        f"CATEGORY: {problem.get('category', 'Algorithms')}",
+        f"DIFFICULTY: {problem.get('difficulty', 'Medium')}",
+        "",
+        f"=== TESTCASES ({len(problem.get('testCases', []))}) ===",
+    ]
+    tcs = problem.get('testCases', [])
+    eos = problem.get('expectedOutputs', [])
+    for idx, tc in enumerate(tcs):
+        eo = eos[idx] if idx < len(eos) else ""
+        txt_lines.append(f"--- CASE {idx + 1} ---")
+        txt_lines.append(f"INPUT: {tc}")
+        txt_lines.append(f"EXPECTED: {eo}")
+        txt_lines.append("")
+
+    return PlainTextResponse("\n".join(txt_lines))
+
+
 class StoreSolutionRequest(BaseModel):
     language: str
     code: str

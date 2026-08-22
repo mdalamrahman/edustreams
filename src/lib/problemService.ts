@@ -1,0 +1,373 @@
+import { SupportedLanguage } from './compiler';
+import { TELEGRAM_BACKEND_URL } from './telegram';
+import { MISTRAL_API_KEY } from './mistral';
+
+export interface ProblemApproach {
+  id: string;
+  name: string;
+  timeComplexity: string;
+  spaceComplexity: string;
+  description: string;
+  starters?: Record<SupportedLanguage, string>;
+  solutionCode?: Record<SupportedLanguage, string>;
+}
+
+export interface ProblemTemplate {
+  name: string;
+  category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  description: string;
+  examples: {
+    input: string;
+    output: string;
+    explanation?: string;
+    image?: string;
+  }[];
+  constraints: string[];
+  testCases: string[];
+  expectedOutputs?: string[];
+  hints?: string[];
+  approaches?: ProblemApproach[];
+  starters: Record<SupportedLanguage, string>;
+  solutions?: Record<SupportedLanguage, string>;
+}
+
+// Normalize problem titles into clean slugs
+export const normalizeProblemTitle = (title: string): string => {
+  return title.toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
+export const toSlug = (str: string): string => {
+  return str
+    .replace(/^https?:\/\/leetcode\.com\/problems\//i, '')
+    .replace(/\/.*$/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+};
+
+/**
+ * Generate human-readable .txt testcase content for cloud/local storage
+ */
+export function formatProblemAsTxt(problem: ProblemTemplate): string {
+  const lines: string[] = [
+    `=== PROBLEM: ${problem.name} ===`,
+    `CATEGORY: ${problem.category}`,
+    `DIFFICULTY: ${problem.difficulty}`,
+    ``,
+    `=== DESCRIPTION ===`,
+    problem.description,
+    ``,
+    `=== CONSTRAINTS ===`,
+    ...(problem.constraints || []).map(c => `- ${c}`),
+    ``,
+    `=== TESTCASES (${problem.testCases?.length || 0}) ===`
+  ];
+
+  const tcs = problem.testCases || [];
+  const eos = problem.expectedOutputs || [];
+
+  tcs.forEach((tc, idx) => {
+    const eo = eos[idx] || '';
+    lines.push(`--- CASE ${idx + 1} ---`);
+    lines.push(`INPUT: ${tc}`);
+    lines.push(`EXPECTED: ${eo}`);
+    lines.push(``);
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Dynamic starter code generator for any problem name and category
+ */
+export function generateDefaultStarters(title: string): Record<SupportedLanguage, string> {
+  const clean = title.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  const camelCase = words.length > 0
+    ? words[0].toLowerCase() + words.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
+    : 'solve';
+  const snakeCase = words.map(w => w.toLowerCase()).join('_') || 'solve';
+
+  return {
+    cpp: `class Solution {\npublic:\n    vector<int> ${camelCase}(vector<int>& nums) {\n        // Implement optimal solution\n        return {};\n    }\n};`,
+    python: `class Solution:\n    def ${camelCase}(self, nums: List[int]) -> List[int]:\n        # Implement optimal solution\n        return []`,
+    java: `class Solution {\n    public int[] ${camelCase}(int[] nums) {\n        // Implement optimal solution\n        return new int[]{};\n    }\n}`,
+    javascript: `var ${camelCase} = function(nums) {\n    // Implement optimal solution\n    return [];\n};`,
+    go: `func ${camelCase}(nums []int) []int {\n    // Implement optimal solution\n    return []int{}\n}`,
+    rust: `impl Solution {\n    pub fn ${snakeCase}(nums: Vec<i32>) -> Vec<i32> {\n        // Implement optimal solution\n        vec![]\n    }\n}`,
+    sql: `-- Write your PostgreSQL / MySQL query here\nSELECT * FROM table_name;`
+  };
+}
+
+/**
+ * Generates problem definition + AT LEAST 10 testcases with expected outputs using Mistral AI.
+ * Also stores testcases as a .txt file.
+ */
+export async function generateProblemWithMistral(
+  slugOrTitle: string,
+  category: string = 'Algorithms',
+  difficulty: 'Easy' | 'Medium' | 'Hard' = 'Medium',
+  transcript?: string,
+  notes?: string
+): Promise<ProblemTemplate> {
+  const cleanTitle = slugOrTitle.replace(/-/g, ' ').trim();
+  
+  const prompt = `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
+Generate complete, authentic coding problem details in JSON for: "${cleanTitle}".
+Context Category: "${category}", Difficulty: "${difficulty}".
+${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
+${notes ? `Study Notes: ${notes.slice(0, 1500)}` : ''}
+
+CRITICAL TEST CASE REQUIREMENTS:
+1. Provide AT LEAST 10 diverse, comprehensive test case input strings in "testCases".
+   Include:
+   - Standard sample cases
+   - Base cases (single element, empty / min bound)
+   - Edge cases (negative values, mixed signs, zeroes)
+   - Duplicate values / all identical elements
+   - Constraint boundaries (large inputs, max limits)
+   - Specific orderings (sorted ascending, sorted descending, alternating)
+2. Provide AT LEAST 10 precisely matching expected output strings in "expectedOutputs" corresponding 1-to-1 with "testCases".
+3. Provide realistic starter code templates for C++, Python, Java, JavaScript, Go, Rust.
+4. Provide verified optimal solution implementations for C++, Python, Java, JavaScript.
+
+Return ONLY valid JSON matching this exact structure:
+{
+  "name": "${cleanTitle}",
+  "category": "${category}",
+  "difficulty": "${difficulty}",
+  "description": "Complete problem explanation with markdown bold/code markers",
+  "examples": [
+    {
+      "input": "input representation string",
+      "output": "expected output string",
+      "explanation": "why this output is correct"
+    }
+  ],
+  "constraints": [
+    "constraint 1",
+    "constraint 2"
+  ],
+  "testCases": [
+    "case 1 input string",
+    "case 2 input string",
+    "case 3 input string",
+    "case 4 input string",
+    "case 5 input string",
+    "case 6 input string",
+    "case 7 input string",
+    "case 8 input string",
+    "case 9 input string",
+    "case 10 input string"
+  ],
+  "expectedOutputs": [
+    "case 1 output string",
+    "case 2 output string",
+    "case 3 output string",
+    "case 4 output string",
+    "case 5 output string",
+    "case 6 output string",
+    "case 7 output string",
+    "case 8 output string",
+    "case 9 output string",
+    "case 10 output string"
+  ],
+  "hints": [
+    "Hint 1: Intuition",
+    "Hint 2: Algorithm approach",
+    "Hint 3: Edge cases"
+  ],
+  "approaches": [
+    {
+      "id": "optimal",
+      "name": "Optimal Approach",
+      "timeComplexity": "O(N)",
+      "spaceComplexity": "O(1)",
+      "description": "Explanation of optimal technique"
+    }
+  ],
+  "starters": {
+    "cpp": "class Solution { ... };",
+    "python": "class Solution: ...",
+    "java": "class Solution { ... }",
+    "javascript": "var solve = function(...) { ... };",
+    "go": "func solve(...) { ... }",
+    "rust": "impl Solution { ... }",
+    "sql": "-- SQL query"
+  },
+  "solutions": {
+    "cpp": "class Solution { ... };",
+    "python": "class Solution: ...",
+    "java": "class Solution { ... }",
+    "javascript": "var solve = function(...) { ... };"
+  }
+}`;
+
+  try {
+    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "mistral-small-latest",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      }),
+      signal: AbortSignal.timeout(28000)
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content) as ProblemTemplate;
+        if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
+          // Save testcases as .txt file in localStorage & attempt cloud sync
+          const txtContent = formatProblemAsTxt(parsed);
+          const slug = toSlug(parsed.name || cleanTitle);
+          try {
+            localStorage.setItem(`edustream_testcases_txt_${slug}`, txtContent);
+            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(parsed));
+          } catch (_) {}
+
+          // Attempt async upload to Cloudflare R2 backend
+          try {
+            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(parsed)
+            }).catch(() => {});
+          } catch (_) {}
+
+          return parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`[Mistral Problem Generation Notice for '${cleanTitle}']:`, err);
+  }
+
+  // Fallback template if network/Mistral fails
+  const defaultStarters = generateDefaultStarters(cleanTitle);
+  const fallbackProblem: ProblemTemplate = {
+    name: cleanTitle,
+    category,
+    difficulty,
+    description: `Given the problem constraints for **${cleanTitle}**, design an optimal algorithm with minimum time and auxiliary space complexity.`,
+    examples: [
+      {
+        input: 'nums = [2, 7, 11, 15], target = 9',
+        output: '[0, 1]',
+        explanation: 'Because nums[0] + nums[1] == 9, return [0, 1].'
+      },
+      {
+        input: 'nums = [3, 2, 4], target = 6',
+        output: '[1, 2]'
+      }
+    ],
+    constraints: [
+      '1 <= nums.length <= 10^5',
+      '-10^9 <= nums[i] <= 10^9'
+    ],
+    testCases: [
+      'nums = [2, 7, 11, 15], target = 9',
+      'nums = [3, 2, 4], target = 6',
+      'nums = [3, 3], target = 6',
+      'nums = [1, 5, 8, 3], target = 4',
+      'nums = [-1, -2, -3, -4, -5], target = -8',
+      'nums = [0, 4, 3, 0], target = 0',
+      'nums = [-3, 4, 3, 90], target = 0',
+      'nums = [1, 2, 3, 4, 5, 6, 7], target = 13',
+      'nums = [10, 20, 30, 40, 50], target = 90',
+      'nums = [5, 25, 75], target = 100'
+    ],
+    expectedOutputs: [
+      '[0, 1]',
+      '[1, 2]',
+      '[0, 1]',
+      '[0, 3]',
+      '[2, 4]',
+      '[0, 3]',
+      '[0, 2]',
+      '[5, 6]',
+      '[3, 4]',
+      '[1, 2]'
+    ],
+    hints: [
+      'Analyze the problem invariants and identify whether hash maps, two-pointers, or binary search apply.',
+      'Check boundary conditions such as negative values, duplicates, and single-element inputs.'
+    ],
+    approaches: [
+      {
+        id: 'optimal',
+        name: 'Optimal Approach',
+        timeComplexity: 'O(N)',
+        spaceComplexity: 'O(1)',
+        description: `Optimal linear scan algorithm for ${cleanTitle}.`
+      }
+    ],
+    starters: defaultStarters,
+    solutions: defaultStarters
+  };
+
+  return fallbackProblem;
+}
+
+/**
+ * Main function to load a problem definition:
+ * 1. Checks local cache / localStorage
+ * 2. Checks Cloudflare R2 storage via /api/problem/{slug}
+ * 3. If testcases are not in R2 or < 10 testcases, calls Mistral AI to generate min 10 testcases and stores as .txt / .json in R2
+ */
+export async function fetchEnrichedProblem(
+  slugOrTitle: string,
+  category: string = 'Algorithms',
+  difficulty: 'Easy' | 'Medium' | 'Hard' = 'Medium',
+  transcript?: string,
+  notes?: string
+): Promise<ProblemTemplate> {
+  const slug = toSlug(slugOrTitle);
+  const cacheKey = `edustream_problem_spec_${slug}`;
+
+  // 1. Check local spec cache
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached) as ProblemTemplate;
+      if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
+        return parsed;
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fetch from Cloudflare R2 via Backend API
+  try {
+    const backendUrl = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`;
+    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.name && data.testCases && Array.isArray(data.testCases) && data.testCases.length >= 10 && !data.error) {
+        const problemObj = data as ProblemTemplate;
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(problemObj));
+          localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
+        } catch (_) {}
+        return problemObj;
+      }
+    }
+  } catch (err) {
+    console.warn(`[R2 Backend problem fetch notice for '${slug}']:`, err);
+  }
+
+  // 3. If not in R2 or testcases missing / < 10, invoke Mistral AI to generate testcases and store as .txt
+  const generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(generated));
+    localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(generated));
+  } catch (_) {}
+
+  return generated;
+}

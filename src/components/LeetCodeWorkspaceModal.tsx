@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { getProblemTemplate, fetchEnrichedProblem, ProblemTemplate, ProblemApproach } from '../lib/problemTemplates';
+import { fetchEnrichedProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters } from '../lib/problemService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -166,13 +166,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
   const [problemTemplate, setProblemTemplate] = useState<ProblemTemplate>(() => {
-    return getProblemTemplate(
-      cleanTitle,
-      codingProblem?.category || 'Arrays',
-      codingProblem?.difficulty || 'Medium',
-      effectiveTranscript,
-      notes
-    );
+    return {
+      name: cleanTitle,
+      category: codingProblem?.category || 'Algorithms',
+      difficulty: (codingProblem?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
+      description: `Loading **${cleanTitle}** challenge from Cloud Storage...`,
+      examples: [],
+      constraints: [],
+      testCases: ['nums = [2, 7, 11, 15], target = 9'],
+      expectedOutputs: ['[0, 1]'],
+      hints: [],
+      approaches: [],
+      starters: generateDefaultStarters(cleanTitle),
+      solutions: generateDefaultStarters(cleanTitle)
+    };
   });
 
   const [isLoadingEnriched, setIsLoadingEnriched] = useState<boolean>(true);
