@@ -52,6 +52,7 @@ import { handleVideoViewBilling, canAffordAction, deductCredits, syncWalletWithD
 import { InsufficientCreditsModal } from './components/InsufficientCreditsModal';
 import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -63,7 +64,7 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings'>('dashboard');
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
@@ -113,8 +114,8 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab}`;
+  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'profile' ? 'profile' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -178,6 +179,8 @@ export function App() {
           setActiveTab('hld');
         } else if (hash.startsWith('#/system-design')) {
           setActiveTab('hld');
+        } else if (hash.startsWith('#/profile') || hash.startsWith('#/user/')) {
+          setActiveTab('profile');
         } else if (hash.startsWith('#/analytics')) {
           setActiveTab('analytics');
         } else if (hash.startsWith('#/channels')) {
@@ -1337,6 +1340,20 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
               accuracyPercent={accuracyPercent}
             />
           </div>
+        )}
+
+        {/* VIEW 4: LEETCODE-INSPIRED FULL DEVELOPER PROFILE, HEATMAP & CERTIFICATES */}
+        {activeTab === 'profile' && (
+          <DeveloperProfilePage
+            user={user}
+            onOpenProblem={(pNameOrSlug) => {
+              const allProbs = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
+              const match = allProbs.find(p => p.name.toLowerCase() === pNameOrSlug.toLowerCase() || p.slug === pNameOrSlug) || allProbs[0];
+              handleOpenCodingFullscreen(match);
+            }}
+            onOpenWallet={() => setIsWalletModalOpen(true)}
+            onNavigateToTab={navigateTo}
+          />
         )}
 
       </main>

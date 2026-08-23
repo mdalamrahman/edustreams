@@ -30,8 +30,8 @@ import { addPasskeyToSupabase } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'settings') => void;
+  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings';
+  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -273,6 +273,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Profile Page Quick Button */}
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group ${
+                activeTab === 'profile'
+                  ? 'bg-purple-600 text-white border-purple-500 shadow-purple-600/30'
+                  : 'bg-slate-900 hover:bg-slate-850 border-slate-800 text-purple-300 hover:text-white'
+              }`}
+              title="Open LeetCode-style Developer Profile, Heatmap & Certificates"
+            >
+              <User className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Profile</span>
+            </button>
+
             {/* Admin Shield Button */}
             {isAdminUser && onOpenAdmin && (
               <button
@@ -308,12 +322,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
-                        onOpenProfile?.();
+                        setActiveTab('profile');
                       }}
                       className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-purple-300 hover:bg-purple-950/50 flex items-center gap-2 transition-all cursor-pointer"
                     >
                       <User className="w-4 h-4 text-purple-400" />
-                      <span>Developer Profile & Heatmap</span>
+                      <span>LeetCode Profile & Heatmap</span>
                     </button>
 
                     <button
