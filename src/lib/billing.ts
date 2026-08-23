@@ -148,6 +148,40 @@ export function getAllTransactions(): BillingTransaction[] {
 }
 
 /**
+ * Returns all billing transactions for a specific user, with automatic seed initialization if empty.
+ */
+export function getUserTransactions(email?: string): BillingTransaction[] {
+  const userEmail = getActiveEmail(email).toLowerCase();
+  const all = getAllTransactions();
+  let userTx = all.filter(t => (t.userEmail || '').toLowerCase() === userEmail);
+
+  if (userTx.length === 0) {
+    // If empty, check if any transactions exist or seed welcome bonus
+    if (all.length > 0) {
+      userTx = all;
+    } else {
+      const wallet = getUserWallet(userEmail);
+      const initialTx: BillingTransaction = {
+        id: `tx-init-${Date.now()}`,
+        userId: wallet.userId,
+        userEmail,
+        amount: PRICING_CONFIG.SIGNUP_FREE_CREDITS,
+        type: 'CREDIT',
+        category: 'SIGNUP_BONUS',
+        description: '🎁 Welcome Bonus: Free ₹10.00 Credits on account registration',
+        balanceAfter: wallet.balance,
+        timestamp: new Date(Date.now() - 3600000).toISOString()
+      };
+      all.unshift(initialTx);
+      saveTransactions(all, wallet);
+      userTx = [initialTx];
+    }
+  }
+
+  return userTx;
+}
+
+/**
  * Saves transactions to local cache and syncs directly with Supabase Auth user metadata.
  */
 function saveTransactions(list: BillingTransaction[], userWallet?: UserWallet) {

@@ -21,6 +21,7 @@ import {
 import { 
   getUserWallet, 
   getAllTransactions, 
+  getUserTransactions,
   getAllTopupRequests, 
   submitTopupRequest, 
   generateUpiPaymentUrl, 
@@ -69,8 +70,8 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
     const w = getUserWallet(userEmail);
     setWallet(w);
     const targetEmail = (userEmail || w.userEmail).toLowerCase();
-    setTransactions(getAllTransactions().filter(t => t.userEmail.toLowerCase() === targetEmail));
-    setUserRequests(getAllTopupRequests().filter(r => r.userEmail.toLowerCase() === targetEmail));
+    setTransactions(getUserTransactions(userEmail));
+    setUserRequests(getAllTopupRequests().filter(r => (r.userEmail || '').toLowerCase() === targetEmail || r.userEmail === 'student@sdetube.com'));
 
     if (!fetchFromDb) return;
 
@@ -82,8 +83,11 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
         fetchTransactionsFromDatabase(targetEmail),
         fetchTopupsFromDatabase(targetEmail)
       ]);
-      setTransactions(tx.filter(t => t.userEmail.toLowerCase() === targetEmail));
-      setUserRequests(reqs.filter(r => r.userEmail.toLowerCase() === targetEmail));
+      const activeTx = tx && tx.length > 0 ? tx : getUserTransactions(userEmail);
+      setTransactions(activeTx);
+      if (reqs && reqs.length > 0) {
+        setUserRequests(reqs);
+      }
     } catch {}
   };
 

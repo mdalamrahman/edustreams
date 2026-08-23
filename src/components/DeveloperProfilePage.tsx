@@ -31,7 +31,12 @@ import {
   Linkedin,
   MapPin,
   Lock,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Clock,
+  Coins
 } from 'lucide-react';
 import {
   LeetCodeFullProfileData,
@@ -49,7 +54,13 @@ import {
   TrackCertificateProgress,
   UserSubmissionRecord
 } from '../lib/userProfileService';
-import { getUserWallet } from '../lib/billing';
+import {
+  getUserWallet,
+  getUserTransactions,
+  getAllTopupRequests,
+  BillingTransaction,
+  TopupRequest
+} from '../lib/billing';
 import { CertificateModal, CertificateData } from './CertificateModal';
 
 interface DeveloperProfilePageProps {
@@ -59,12 +70,15 @@ interface DeveloperProfilePageProps {
   onNavigateToTab?: (tab: any) => void;
 }
 
+export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode_github';
+
 export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   user,
   onOpenProblem,
   onOpenWallet,
   onNavigateToTab
 }) => {
+  const [profileMode, setProfileMode] = useState<ProfileSectionMode>('combined');
   const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(user?.email));
   const [leetcodeData, setLeetcodeData] = useState<LeetCodeFullProfileData | null>(null);
   const [githubData, setGithubData] = useState<GitHubProfileData | null>(null);
@@ -73,8 +87,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<CertificateData | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<SDETubeBadge | null>(null);
-  const [activeSubmissionsTab, setActiveSubmissionsTab] = useState<'all' | 'accepted' | 'certificates'>('all');
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [billingFilter, setBillingFilter] = useState<'all' | 'credits' | 'debits'>('all');
 
   // Edit form state
   const [formName, setFormName] = useState(user?.user_metadata?.name || 'Mudit');
@@ -85,10 +99,12 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [formSavedNotice, setFormSavedNotice] = useState(false);
 
   const wallet = useMemo(() => getUserWallet(user?.email), [user?.email]);
+  const transactions = useMemo(() => getUserTransactions(user?.email), [user?.email]);
+  const topups = useMemo(() => getAllTopupRequests().filter(r => (r.userEmail || '').toLowerCase() === (user?.email || 'student@sdetube.com').toLowerCase()), [user?.email]);
   const heatmap = useMemo(() => generateUserSubmissionHeatmap(), []);
   const badges = useMemo(() => getUserBadges(), []);
   const tracks = useMemo(() => getUserTracksCertificates(user?.email), [user?.email]);
-  const submissions = useMemo(() => getUserRecentSubmissions(), []);
+  const localSubmissions = useMemo(() => getUserRecentSubmissions(), []);
 
   // Fetch live LeetCode data
   const loadLeetcode = async (uname: string) => {
@@ -139,19 +155,34 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     if (updated.githubUsername) loadGithub(updated.githubUsername);
   };
 
-  // Total Solved calculation
+  // Solved Stats calculation
   const sdeSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]') as any[]).length;
   const a2zSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]') as any[]).length;
   const blindSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]') as any[]).length;
   const mikSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]') as any[]).length;
   const lldSolved = (JSON.parse(localStorage.getItem('sdetube_lld_solved_problems') || '[]') as any[]).length;
 
-  const totalLocalSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved;
-  const displaySolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || totalLocalSolved || 148;
+  const totalSdetubeSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved || 38;
+  const leetcodeSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || 148;
+  const combinedSolved = totalSdetubeSolved + leetcodeSolved;
 
-  const easySolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count || Math.round(displaySolved * 0.42);
-  const medSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count || Math.round(displaySolved * 0.48);
-  const hardSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count || Math.max(0, displaySolved - easySolved - medSolved);
+  const easySolved = profileMode === 'sdetube'
+    ? Math.round(totalSdetubeSolved * 0.45)
+    : profileMode === 'leetcode_github'
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count || 62)
+    : Math.round(combinedSolved * 0.42);
+
+  const medSolved = profileMode === 'sdetube'
+    ? Math.round(totalSdetubeSolved * 0.45)
+    : profileMode === 'leetcode_github'
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count || 74)
+    : Math.round(combinedSolved * 0.48);
+
+  const hardSolved = profileMode === 'sdetube'
+    ? Math.max(0, totalSdetubeSolved - easySolved - medSolved)
+    : profileMode === 'leetcode_github'
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count || 12)
+    : Math.max(0, combinedSolved - easySolved - medSolved);
 
   // 52-week heatmap columns
   const weeks = [];
@@ -175,19 +206,60 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     });
   };
 
+  const filteredTransactions = useMemo(() => {
+    if (billingFilter === 'credits') return transactions.filter(t => t.amount > 0 || t.type === 'CREDIT');
+    if (billingFilter === 'debits') return transactions.filter(t => t.amount < 0 || t.type === 'DEBIT');
+    return transactions;
+  }, [transactions, billingFilter]);
+
   return (
-    <div className="w-full max-w-[1340px] mx-auto space-y-6 animate-fadeIn pb-16">
+    <div className="w-full max-w-[1340px] mx-auto space-y-6 animate-fadeIn pb-20">
       
-      {/* ── TOP BREADCRUMB / ACTION BAR ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
-        <div className="flex items-center space-x-2 text-xs font-mono">
-          <span className="text-slate-500">SDETube</span>
-          <span className="text-slate-600">/</span>
-          <span className="text-slate-400">Users</span>
-          <span className="text-slate-600">/</span>
-          <span className="text-purple-400 font-bold">@{formLcUsername || 'mudit_2904'}</span>
+      {/* ── TOP SECTION SELECTOR (3 MODES) ── */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-4">
+        
+        {/* Left: 3-Way Mode Switcher */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+          
+          <button
+            onClick={() => setProfileMode('combined')}
+            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              profileMode === 'combined'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Combined (SDETube + LeetCode + GitHub)</span>
+          </button>
+
+          <button
+            onClick={() => setProfileMode('sdetube')}
+            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              profileMode === 'sdetube'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
+            <span>SDETube Alone</span>
+          </button>
+
+          <button
+            onClick={() => setProfileMode('leetcode_github')}
+            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              profileMode === 'leetcode_github'
+                ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5 text-amber-300" />
+            <span>LeetCode + GitHub</span>
+          </button>
+
         </div>
 
+        {/* Right: Profile Actions & Live Wallet Balance */}
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsEditModalOpen(true)}
@@ -200,24 +272,26 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
           {onOpenWallet && (
             <button
               onClick={onOpenWallet}
-              className="px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-950 border border-emerald-600/50 text-emerald-300 text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-950 border border-emerald-600/60 text-emerald-300 text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Click to recharge wallet via UPI"
             >
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
+              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
               <span>₹{wallet.balance.toFixed(2)}</span>
             </button>
           )}
         </div>
+
       </div>
 
-      {/* ── MAIN 2-COLUMN LEETCODE-INSPIRED GRID ── */}
+      {/* ── 2-COLUMN LEETCODE-INSPIRED MAIN GRID ── */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         
         {/* ═══════════════════════════════════════════════════════════
-            LEFT SIDEBAR: USER IDENTITY & COMMUNITY STATS CARD
+            LEFT SIDEBAR: DEVELOPER IDENTITY & CREDENTIALS CARD
         ═══════════════════════════════════════════════════════════ */}
         <div className="w-full lg:w-80 flex flex-col space-y-6 flex-shrink-0">
           
-          {/* Main User Card */}
+          {/* Identity Card */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-5">
             
             {/* Avatar & Real Name */}
@@ -226,7 +300,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 {githubData?.avatar_url || leetcodeData?.matchedUser?.profile?.userAvatar ? (
                   <img
                     src={githubData?.avatar_url || leetcodeData?.matchedUser?.profile?.userAvatar}
-                    alt="User Avatar"
+                    alt="Avatar"
                     className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-500/50 shadow-xl"
                   />
                 ) : (
@@ -234,7 +308,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                     {(user?.user_metadata?.name || formName || 'M').charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center" title="Active on SDETube">
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center" title="Active">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                 </div>
               </div>
@@ -246,7 +320,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <p className="text-xs text-slate-400 font-mono">@{formLcUsername || 'mudit_2904'}</p>
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800/80 text-[10px] font-bold font-mono">
-                    Rank #{leetcodeData?.matchedUser?.profile?.ranking?.toLocaleString() || '1,420,381'}
+                    Global Rank #{leetcodeData?.matchedUser?.profile?.ranking?.toLocaleString() || '1,420,381'}
                   </span>
                 </div>
               </div>
@@ -257,7 +331,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               {formBio || leetcodeData?.matchedUser?.profile?.aboutMe || 'Crafting scalable software architectures and mastering algorithms on SDETube.'}
             </p>
 
-            {/* Location & Social Pills */}
+            {/* Location & External Profiles */}
             <div className="space-y-2 pt-2 border-t border-slate-800/80 text-xs">
               <div className="flex items-center gap-2 text-slate-400">
                 <MapPin className="w-3.5 h-3.5 text-slate-500" />
@@ -295,7 +369,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               )}
             </div>
 
-            {/* Community Stats */}
+            {/* Community Metrics */}
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center">
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Views</p>
@@ -303,7 +377,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               </div>
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Solutions</p>
-                <p className="text-xs font-black text-slate-200 mt-0.5">{displaySolved}</p>
+                <p className="text-xs font-black text-slate-200 mt-0.5">{combinedSolved}</p>
               </div>
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Reputation</p>
@@ -312,21 +386,21 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             </div>
           </div>
 
-          {/* Languages Used Card */}
+          {/* Languages Breakdown Card */}
           <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Terminal className="w-4 h-4 text-cyan-400" />
-                <span>Languages</span>
+                <span>Languages Breakdown</span>
               </span>
               <span className="text-[10px] font-mono text-slate-500">{leetcodeData?.matchedUser?.languageProblemCount?.length || 4} languages</span>
             </h3>
 
             <div className="space-y-2">
               {(leetcodeData?.matchedUser?.languageProblemCount || [
-                { languageName: 'C++', problemsSolved: Math.round(displaySolved * 0.65) },
-                { languageName: 'Python', problemsSolved: Math.round(displaySolved * 0.22) },
-                { languageName: 'Java', problemsSolved: Math.round(displaySolved * 0.10) },
+                { languageName: 'C++', problemsSolved: Math.round(combinedSolved * 0.60) },
+                { languageName: 'Python', problemsSolved: Math.round(combinedSolved * 0.25) },
+                { languageName: 'Java', problemsSolved: Math.round(combinedSolved * 0.10) },
                 { languageName: 'SQL', problemsSolved: 8 }
               ]).map((lang) => (
                 <div key={lang.languageName} className="space-y-1">
@@ -337,7 +411,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
                     <div
                       className="bg-cyan-500 h-1.5 rounded-full"
-                      style={{ width: `${Math.min(100, (lang.problemsSolved / Math.max(1, displaySolved)) * 100)}%` }}
+                      style={{ width: `${Math.min(100, (lang.problemsSolved / Math.max(1, combinedSolved)) * 100)}%` }}
                     />
                   </div>
                 </div>
@@ -353,11 +427,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             </h3>
 
             <div className="space-y-3 text-xs">
-              {/* Advanced */}
               <div>
-                <p className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider mb-1.5">
-                  Advanced
-                </p>
+                <p className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider mb-1.5">Advanced</p>
                 <div className="flex flex-wrap gap-1.5">
                   {['Dynamic Programming', 'Graph Theory', 'Segment Tree', 'Trie', 'Bit Manipulation'].map((s) => (
                     <span key={s} className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 font-mono">
@@ -367,11 +438,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 </div>
               </div>
 
-              {/* Intermediate */}
               <div>
-                <p className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider mb-1.5">
-                  Intermediate
-                </p>
+                <p className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider mb-1.5">Intermediate</p>
                 <div className="flex flex-wrap gap-1.5">
                   {['Binary Search', 'Binary Tree', 'Heap / Priority Queue', 'Sliding Window', 'Greedy'].map((s) => (
                     <span key={s} className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 font-mono">
@@ -381,11 +449,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 </div>
               </div>
 
-              {/* Fundamental */}
               <div>
-                <p className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1.5">
-                  Fundamental
-                </p>
+                <p className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider mb-1.5">Fundamental</p>
                 <div className="flex flex-wrap gap-1.5">
                   {['Array', 'String', 'Hash Table', 'Two Pointers', 'Math', 'Recursion'].map((s) => (
                     <span key={s} className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-300 font-mono">
@@ -400,11 +465,11 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════
-            RIGHT MAIN COLUMN: SOLVED METRICS, BADGES, HEATMAP & HISTORY
+            RIGHT MAIN COLUMN: 3 DISTINCT SECTION VIEWS
         ═══════════════════════════════════════════════════════════ */}
         <div className="flex-1 min-w-0 space-y-6 w-full">
           
-          {/* ── TOP SECTION: SOLVED PROBLEMS RING & BADGES & CONTEST METRICS ── */}
+          {/* ── METRIC HERO ROW: SOLVED DONUT + BADGES & CONTEST RATING ── */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             
             {/* Solved Problems Breakdown Card (5 cols) */}
@@ -412,7 +477,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Solved Problems</span>
+                  <span>
+                    {profileMode === 'sdetube' ? 'SDETube Solved' : profileMode === 'leetcode_github' ? 'LeetCode Solved' : 'Combined Solved'}
+                  </span>
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">
                   Beats 88.6%
@@ -423,15 +490,18 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               <div className="flex items-center justify-center py-2">
                 <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-emerald-500 via-amber-400 to-rose-500 p-2 shadow-xl flex items-center justify-center">
                   <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-white font-mono">{displaySolved}</span>
-                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">/ 3,420 Solved</span>
+                    <span className="text-3xl font-black text-white font-mono">
+                      {profileMode === 'sdetube' ? totalSdetubeSolved : profileMode === 'leetcode_github' ? leetcodeSolved : combinedSolved}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
+                      / {profileMode === 'sdetube' ? '500+ Sheet' : '3,420 Solved'}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Difficulty Breakdown Bars */}
               <div className="space-y-2.5">
-                {/* Easy */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-emerald-400 font-bold">Easy</span>
@@ -442,7 +512,6 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   </div>
                 </div>
 
-                {/* Medium */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-amber-400 font-bold">Medium</span>
@@ -453,7 +522,6 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   </div>
                 </div>
 
-                {/* Hard */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-rose-400 font-bold">Hard</span>
@@ -469,13 +537,16 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             {/* Badges & Milestones & Contest Ranking Card (7 cols) */}
             <div className="md:col-span-7 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4">
               
-              {/* Badges Header */}
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Medal className="w-4 h-4 text-purple-400" />
-                  <span>Badges ({badges.filter(b => b.unlocked).length} Unlocked)</span>
+                  <span>
+                    {profileMode === 'sdetube' ? 'SDETube Milestones' : profileMode === 'leetcode_github' ? 'LeetCode Official Badges' : 'Omnichannel Badges'}
+                  </span>
                 </h3>
-                <span className="text-[10px] text-slate-500 font-mono">Milestones & POTD Streaks</span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {badges.filter(b => b.unlocked).length} Unlocked
+                </span>
               </div>
 
               {/* Badges Grid */}
@@ -535,111 +606,114 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
           </div>
 
-          {/* ── OFFICIAL SDETUBE TRACK COMPLETION CERTIFICATES (≥90%) ── */}
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-400" />
-                  <span>Official SDETube Course Completion Certificates</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">
-                    90% REQUIREMENT
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Earn accredited, cryptographic certificates of mastery by solving ≥90% of curriculum lectures and live code exercises.
-                </p>
+          {/* ── SECTION: SDETUBE VERIFIED COURSE COMPLETION CERTIFICATES (≥90%) ── */}
+          {(profileMode === 'combined' || profileMode === 'sdetube') && (
+            <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <Award className="w-5 h-5 text-amber-400" />
+                    <span>Official SDETube Course Completion Certificates</span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">
+                      90% REQUIREMENT
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Earn accredited, cryptographic certificates of mastery by solving ≥90% of curriculum lectures and live code exercises.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Tracks List Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {tracks.map((track) => (
-                <div
-                  key={track.trackId}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
-                    track.isEligible
-                      ? 'bg-slate-950/90 border-amber-500/50 shadow-lg shadow-amber-500/5'
-                      : 'bg-slate-950/60 border-slate-800/80'
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-mono text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
-                        {track.category}
-                      </span>
-                      <span className={`font-mono text-xs font-bold ${track.isEligible ? 'text-amber-300' : 'text-slate-400'}`}>
-                        {track.percentage}% Completed
-                      </span>
+              {/* Tracks List Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {tracks.map((track) => (
+                  <div
+                    key={track.trackId}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+                      track.isEligible
+                        ? 'bg-slate-950/90 border-amber-500/50 shadow-lg shadow-amber-500/5'
+                        : 'bg-slate-950/60 border-slate-800/80'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-mono text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
+                          {track.category}
+                        </span>
+                        <span className={`font-mono text-xs font-bold ${track.isEligible ? 'text-amber-300' : 'text-slate-400'}`}>
+                          {track.percentage}% Completed
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-100">{track.title}</h4>
+                      <p className="text-xs text-slate-400 line-clamp-2">{track.description}</p>
                     </div>
 
-                    <h4 className="text-sm font-bold text-slate-100">{track.title}</h4>
-                    <p className="text-xs text-slate-400 line-clamp-2">{track.description}</p>
-                  </div>
+                    <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${
+                          track.isEligible ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-indigo-600'
+                        }`}
+                        style={{ width: `${track.percentage}%` }}
+                      />
+                    </div>
 
-                  {/* Progress Bar */}
-                  <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        track.isEligible ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-indigo-600'
-                      }`}
-                      style={{ width: `${track.percentage}%` }}
-                    />
-                  </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] font-mono text-slate-500">
+                        {track.solvedItems} / {track.totalItems} solved
+                      </span>
 
-                  {/* Action Button */}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] font-mono text-slate-500">
-                      {track.solvedItems} / {track.totalItems} solved
-                    </span>
-
-                    {track.isEligible ? (
-                      <button
-                        onClick={() => handleOpenCert(track)}
-                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-500/20"
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                        <span>View Verified Certificate</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenCert(track)}
-                        className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                        title="Preview Certificate"
-                      >
-                        <span>Preview Certificate</span>
-                        <Eye className="w-3 h-3" />
-                      </button>
-                    )}
+                      {track.isEligible ? (
+                        <button
+                          onClick={() => handleOpenCert(track)}
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-500/20"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>View Verified Certificate</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenCert(track)}
+                          className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                          title="Preview Certificate"
+                        >
+                          <span>Preview Certificate</span>
+                          <Eye className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* ── 365-DAY LEETCODE-EXACT ACTIVITY HEATMAP ── */}
+          {/* ── SECTION: 365-DAY SUBMISSION HEATMAP ── */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-400" />
-                  <span>{heatmap.totalSubmissions || displaySolved} submissions in the past one year</span>
+                  <span>
+                    {profileMode === 'sdetube'
+                      ? `${heatmap.totalSubmissions || totalSdetubeSolved} SDETube submissions in past year`
+                      : profileMode === 'leetcode_github'
+                      ? `${leetcodeSolved} LeetCode submissions in past year`
+                      : `${heatmap.totalSubmissions + leetcodeSolved} combined submissions in past year`}
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Total active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong>
+                  Active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong>
                 </p>
               </div>
 
-              {/* Year Filter Buttons */}
               <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
                 {[2026, 2025].map((yr) => (
                   <button
                     key={yr}
                     onClick={() => setSelectedYear(yr)}
                     className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      selectedYear === yr
-                        ? 'bg-purple-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-slate-200'
+                      selectedYear === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     {yr}
@@ -648,17 +722,15 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               </div>
             </div>
 
-            {/* 52-Week Heatmap Grid */}
+            {/* 52-Week Heatmap Calendar */}
             <div className="overflow-x-auto pb-2 custom-scrollbar">
               <div className="inline-flex flex-col gap-1.5 min-w-[760px] p-2 bg-slate-950/80 rounded-2xl border border-slate-800/80">
-                {/* Month Labels Header */}
                 <div className="flex justify-between px-2 text-[10px] text-slate-500 font-mono">
                   {monthLabels.map((m) => (
                     <span key={m}>{m}</span>
                   ))}
                 </div>
 
-                {/* Day Blocks */}
                 <div className="flex gap-1">
                   {weeks.map((week, wIdx) => (
                     <div key={wIdx} className="flex flex-col gap-1">
@@ -685,41 +757,108 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             </div>
           </div>
 
-          {/* ── RECENT SUBMISSIONS & SOLVED QUESTIONS TABLE ── */}
+          {/* ── SECTION: SDETUBE BILLING & TRANSACTION HISTORY LEDGER ── */}
+          {(profileMode === 'combined' || profileMode === 'sdetube') && (
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
+              
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-400">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <span>SDETube Wallet & Billing Transaction History</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">
+                        ₹{wallet.balance.toFixed(2)} Balance
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Live ledger of top-ups, daily login credits, AI queries & video access fees</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+                  <button
+                    onClick={() => setBillingFilter('all')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      billingFilter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    All ({transactions.length})
+                  </button>
+                  <button
+                    onClick={() => setBillingFilter('credits')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      billingFilter === 'credits' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-300'
+                    }`}
+                  >
+                    Credits
+                  </button>
+                  <button
+                    onClick={() => setBillingFilter('debits')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      billingFilter === 'debits' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-rose-300'
+                    }`}
+                  >
+                    Debits
+                  </button>
+                </div>
+              </div>
+
+              {/* Transactions Ledger Table */}
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                {filteredTransactions.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-500">
+                    No billing transactions recorded yet.
+                  </div>
+                ) : (
+                  filteredTransactions.map((tx) => {
+                    const isCredit = tx.amount > 0 || tx.type === 'CREDIT';
+                    return (
+                      <div
+                        key={tx.id}
+                        className="p-3 rounded-2xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 flex items-center justify-between text-xs transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`p-2 rounded-xl border ${isCredit ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                            {isCredit ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-200 truncate">{tx.description}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                              {new Date(tx.timestamp).toLocaleString()} • {tx.category}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right flex-shrink-0">
+                          <span className={`font-mono font-black text-xs ${isCredit ? 'text-emerald-400' : 'text-slate-300'}`}>
+                            {isCredit ? `+₹${Math.abs(tx.amount).toFixed(2)}` : `-₹${Math.abs(tx.amount).toFixed(2)}`}
+                          </span>
+                          <p className="text-[10px] text-slate-500 font-mono">Bal: ₹{tx.balanceAfter.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* ── SECTION: RECENT SUBMISSIONS & SOLVED PROBLEMS ── */}
           <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-            
-            {/* Table Header & Filter Tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Code2 className="w-4 h-4 text-indigo-400" />
                 <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
                   Recent Submissions & Solved Problems
                 </h3>
               </div>
-
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                <button
-                  onClick={() => setActiveSubmissionsTab('all')}
-                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                    activeSubmissionsTab === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All Solved ({submissions.length})
-                </button>
-                <button
-                  onClick={() => setActiveSubmissionsTab('accepted')}
-                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                    activeSubmissionsTab === 'accepted' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Accepted Solutions
-                </button>
-              </div>
             </div>
 
-            {/* Submissions List */}
             <div className="space-y-2">
-              {submissions.slice(0, 15).map((sub, idx) => {
+              {localSubmissions.slice(0, 15).map((sub, idx) => {
                 const diffColor = sub.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : sub.difficulty === 'Medium' ? 'bg-amber-950 text-amber-300 border-amber-800' : 'bg-rose-950 text-rose-300 border-rose-800';
                 return (
                   <div
@@ -761,7 +900,6 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 );
               })}
             </div>
-
           </div>
 
         </div>
@@ -779,7 +917,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               </h3>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
@@ -815,7 +953,6 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   placeholder="e.g. mudit_2904"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-amber-500 focus:outline-none"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">Directly syncs live ranking, stats, contest performance, and badges.</p>
               </div>
 
               <div>
@@ -846,7 +983,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold cursor-pointer"
                 >
                   Cancel
                 </button>
