@@ -570,7 +570,7 @@ export const WalletTopupModal: React.FC<WalletTopupModalProps> = ({
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
                   <span className="text-slate-300">🎯 DSA / LLD Test Submission</span>
-                  <strong className="text-slate-200 font-mono">20 Paise (₹0.20)</strong>
+                  <strong className="text-slate-200 font-mono">50 Paise (₹0.50)</strong>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">

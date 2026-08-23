@@ -163,15 +163,21 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     }
   });
 
-  // Re-sync solved state when switching sheets
+  // Re-sync solved state when switching sheets or when a problem is solved
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_ACTIVE_SHEET_KEY, activeSheet);
-      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
-      const legacyKey = activeSheet === 'sde' ? 'sdetube_sde_sheet_solved_ids' : '';
-      const saved = localStorage.getItem(savedKey) || (legacyKey ? localStorage.getItem(legacyKey) : null);
-      setSolvedIds(saved ? JSON.parse(saved) : []);
-    } catch {}
+    const syncSolved = () => {
+      try {
+        localStorage.setItem(STORAGE_ACTIVE_SHEET_KEY, activeSheet);
+        const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
+        const legacyKey = activeSheet === 'sde' ? 'sdetube_sde_sheet_solved_ids' : '';
+        const saved = localStorage.getItem(savedKey) || (legacyKey ? localStorage.getItem(legacyKey) : null);
+        setSolvedIds(saved ? JSON.parse(saved) : []);
+      } catch {}
+    };
+
+    syncSolved();
+    window.addEventListener('sdetube_problem_solved', syncSolved);
+    return () => window.removeEventListener('sdetube_problem_solved', syncSolved);
   }, [activeSheet]);
 
   // Save solved state on change

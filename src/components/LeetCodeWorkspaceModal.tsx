@@ -59,6 +59,7 @@ import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from 
 import { WalletTopupModal } from './WalletTopupModal';
 import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { markProblemSolved } from '../lib/analytics';
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -937,6 +938,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             spread: 90,
             origin: { y: 0.6 }
           });
+          markProblemSolved(codingProblem?.id || codingProblem?.name || cleanTitle, Math.max(1, Math.round(elapsedMs / 60000)));
         }
 
         if (onCodeExecuted) {

@@ -69,13 +69,27 @@ interface AdminDashboardModalProps {
 const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
   const registered = getAllRegisteredUsers();
   
-  // Real active session metrics
-  const sde1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-  const sde2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-  const combined = new Set([
-    ...(Array.isArray(sde1) ? sde1 : []),
-    ...(Array.isArray(sde2) ? sde2 : [])
-  ]);
+  // Real active session metrics across all sheets
+  const keys = [
+    'sdetube_sde_sheet_solved_ids',
+    'sdetube_dsa_solved_sde',
+    'sdetube_dsa_solved_a2z',
+    'sdetube_dsa_solved_79',
+    'sdestream_solved_problems',
+    'sdetube_lld_solved_ids'
+  ];
+  const combined = new Set<string | number>();
+  keys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach(item => combined.add(item));
+        }
+      }
+    } catch {}
+  });
   const solved = combined.size;
   const activeMins = parseFloat(localStorage.getItem('edustream_active_mins') || '0');
   const attempts = parseInt(localStorage.getItem('edustream_total_attempts') || '0', 10);

@@ -3525,6 +3525,29 @@ class AdminReviewTopupPayload(BaseModel):
     admin_email: Optional[str] = None
 
 
+def load_wallet_from_cloud(email: str) -> Optional[dict]:
+    """Retrieves user wallet from durable Cloudflare R2 storage if local SQLite was reset."""
+    import re
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "").strip().lower())
+    try:
+        data = r2_storage.fetch_json(f"wallets/{safe_email}.json")
+        if data and isinstance(data, dict) and "balance" in data:
+            return data
+    except Exception as e:
+        print(f"[R2 Load Wallet Notice]: {e}")
+    return None
+
+
+def save_wallet_to_cloud(wallet: dict):
+    """Saves user wallet to durable Cloudflare R2 storage so data is never lost on server restarts."""
+    import re
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', wallet.get("userEmail", "").strip().lower())
+    try:
+        r2_storage.upload_json(f"wallets/{safe_email}.json", wallet)
+    except Exception as e:
+        print(f"[R2 Save Wallet Notice]: {e}")
+
+
 def get_or_create_wallet_db(email: str) -> dict:
     clean_email = (email or "").strip().lower()
     if not clean_email:
@@ -3574,7 +3597,7 @@ def get_or_create_wallet_db(email: str) -> dict:
                 last_daily_charge = today_str
                 
         conn.close()
-        return {
+        res_wallet = {
             "userId": user_id,
             "userEmail": user_email,
             "balance": balance,
@@ -3585,7 +3608,23 @@ def get_or_create_wallet_db(email: str) -> dict:
             "createdAt": created_at or datetime.utcnow().isoformat(),
             "updatedAt": updated_at or datetime.utcnow().isoformat()
         }
+        save_wallet_to_cloud(res_wallet)
+        return res_wallet
     else:
+        # Check if R2 cloud storage has previous wallet before creating new
+        cloud_wallet = load_wallet_from_cloud(clean_email)
+        if cloud_wallet:
+            user_id = cloud_wallet.get("userId", f"usr-{int(time.time() * 1000)}")
+            balance = float(cloud_wallet.get("balance", 10.0))
+            passes_json = json.dumps(cloud_wallet.get("videoAccessPasses", {}))
+            cursor.execute("""
+                INSERT OR REPLACE INTO user_wallets (user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, (user_id, clean_email, balance, cloud_wallet.get("lastDailyChargeDate", today_str), passes_json))
+            conn.commit()
+            conn.close()
+            return cloud_wallet
+
         # Create new wallet with ₹10 welcome bonus
         user_id = f"usr-{int(time.time() * 1000)}"
         init_balance = 10.0
@@ -3605,7 +3644,7 @@ def get_or_create_wallet_db(email: str) -> dict:
         conn.commit()
         conn.close()
         
-        return {
+        res_wallet = {
             "userId": user_id,
             "userEmail": clean_email,
             "balance": init_balance,
@@ -3616,6 +3655,8 @@ def get_or_create_wallet_db(email: str) -> dict:
             "createdAt": now_iso,
             "updatedAt": now_iso
         }
+        save_wallet_to_cloud(res_wallet)
+        return res_wallet
 
 
 @app.get("/api/billing/wallet")
@@ -3659,6 +3700,7 @@ async def deduct_credits_endpoint(payload: DeductCreditsPayload):
     
     wallet["balance"] = new_balance
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    save_wallet_to_cloud(wallet)
     
     return {
         "success": True,
@@ -3738,6 +3780,7 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     wallet["viewedVideoIds"] = list(viewed_ids)
     wallet["videoAccessPasses"] = passes
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    save_wallet_to_cloud(wallet)
     
     return {
         "success": True,
@@ -3967,6 +4010,7 @@ async def admin_adjust_credits_endpoint(payload: AdminAdjustCreditsPayload):
     
     wallet["balance"] = new_balance
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    save_wallet_to_cloud(wallet)
     return {"status": "ok", "wallet": wallet}
 
 
@@ -4017,6 +4061,10 @@ async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
         
         conn.commit()
         conn.close()
+        
+        wallet["balance"] = new_balance
+        wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+        save_wallet_to_cloud(wallet)
         
     return {"status": "ok", "message": f"Topup {status_val} successfully"}
 

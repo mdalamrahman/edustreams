@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Zap, Clock, Target, CheckCircle2, TrendingUp, BookOpen, HelpCircle, Code, Award, Flame, Layers, BarChart3, Check, Database, Network, Sparkles, Cpu } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { getRealAnalytics, RealAnalyticsMetrics } from '../lib/analytics';
@@ -12,7 +12,17 @@ interface VelocityTrackerProps {
 
 export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
   // Always query strictly REAL computed analytics from storage & SDE sheet data
-  const metrics: RealAnalyticsMetrics = useMemo(() => getRealAnalytics(), []);
+  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics());
+
+  useEffect(() => {
+    const handleUpdate = () => setMetrics(getRealAnalytics());
+    window.addEventListener('sdetube_problem_solved', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('sdetube_problem_solved', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   const {
     dsaSolved,

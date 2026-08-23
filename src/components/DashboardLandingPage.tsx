@@ -43,8 +43,18 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   onOpenSqlWorkspace,
   onOpenAskAI
 }) => {
-  // Query 100% real computed student analytics
-  const metrics: RealAnalyticsMetrics = useMemo(() => getRealAnalytics(), []);
+  // Query 100% real computed student analytics (reactive on problem solve)
+  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics());
+
+  useEffect(() => {
+    const handleUpdate = () => setMetrics(getRealAnalytics());
+    window.addEventListener('sdetube_problem_solved', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('sdetube_problem_solved', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   const {
     dsaSolved,

@@ -1,4 +1,4 @@
-import { SDE_SHEET_DATA } from './sdeSheetData';
+import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug } from './dsaSheetsData';
 import { LLD_PROBLEMS } from './lldData';
 
 export interface DailyActivityItem {
@@ -135,6 +135,62 @@ export function recordRealActivity(
 }
 
 /**
+ * Marks any DSA problem as solved across all sheets and updates analytics in real time.
+ */
+export function markProblemSolved(identifier: string | number, timeMins: number = 5): boolean {
+  if (typeof window === 'undefined') return false;
+
+  let matchedId: number | null = null;
+  const strId = String(identifier).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (typeof identifier === 'number' && identifier > 0) {
+    matchedId = identifier;
+  } else {
+    // Search across all sheets to match problem by title or slug
+    const allProblems = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
+    const match = allProblems.find(p => {
+      const pName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const pSlug = (p.slug || getLeetCodeSlug(p)).toLowerCase().replace(/[^a-z0-9]/g, '');
+      return pName === strId || pSlug === strId || pName.includes(strId) || strId.includes(pName);
+    });
+    if (match) {
+      matchedId = match.id;
+    }
+  }
+
+  if (matchedId !== null) {
+    // 1. Update all sheet solved storage keys
+    const sheetKeys = [
+      'sdetube_sde_sheet_solved_ids',
+      'sdetube_dsa_solved_sde',
+      'sdetube_dsa_solved_a2z',
+      'sdetube_dsa_solved_79',
+      'sdestream_solved_problems'
+    ];
+
+    sheetKeys.forEach(k => {
+      try {
+        const raw = localStorage.getItem(k);
+        const set = new Set<number>(raw ? JSON.parse(raw) : []);
+        set.add(matchedId!);
+        localStorage.setItem(k, JSON.stringify(Array.from(set)));
+      } catch {}
+    });
+
+    // 2. Record real analytics activity
+    recordRealActivity('coding', timeMins, 1, true);
+
+    // 3. Dispatch global custom event for instant UI reaction across all components
+    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
+      detail: { problemId: matchedId, identifier }
+    }));
+
+    return true;
+  }
+  return false;
+}
+
+/**
  * Marks an LLD problem as solved.
  */
 export function markLLDProblemSolved(problemId: string) {
@@ -145,6 +201,9 @@ export function markLLDProblemSolved(problemId: string) {
     set.add(problemId);
     localStorage.setItem(STORAGE_LLD_SOLVED_KEY, JSON.stringify(Array.from(set)));
     recordRealActivity('lld', 15, 1, true);
+    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
+      detail: { lldProblemId: problemId }
+    }));
   } catch {}
 }
 
@@ -152,15 +211,28 @@ export function markLLDProblemSolved(problemId: string) {
  * Computes strictly 100% REAL user analytics data across DSA + LLD + Bonus (CN & DBMS).
  */
 export function getRealAnalytics(): RealAnalyticsMetrics {
-  // 1. DSA Solved
+  // 1. DSA Solved across all storage keys
   let dsaSolvedIds: number[] = [];
   try {
-    const raw1 = localStorage.getItem(STORAGE_SOLVED_IDS_KEY);
-    const raw2 = localStorage.getItem('sdestream_solved_problems');
-    const set = new Set<number>([
-      ...(raw1 ? JSON.parse(raw1) : []),
-      ...(raw2 ? JSON.parse(raw2) : [])
-    ]);
+    const keys = [
+      STORAGE_SOLVED_IDS_KEY,
+      'sdetube_dsa_solved_sde',
+      'sdetube_dsa_solved_a2z',
+      'sdetube_dsa_solved_79',
+      'sdestream_solved_problems'
+    ];
+    const set = new Set<number>();
+    keys.forEach(k => {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            list.forEach(id => typeof id === 'number' && set.add(id));
+          }
+        }
+      } catch {}
+    });
     dsaSolvedIds = Array.from(set);
   } catch {
     dsaSolvedIds = [];

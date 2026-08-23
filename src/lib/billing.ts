@@ -19,7 +19,7 @@ export const PRICING_CONFIG = {
   AI_EVALUATION_HLD: 1.00,           // ₹1 for AI evaluation of HLD
   AI_EVALUATION_LLD: 0.75,           // ₹0.75 (75 paise) for AI evaluation of LLD
   COMPILER_RUN_DSA_LLD: 0.05,        // 5 paise (₹0.05) per compiler run
-  CODE_SUBMIT_DSA_LLD: 0.20,         // 20 paise (₹0.20) per submission / judge
+  CODE_SUBMIT_DSA_LLD: 0.50,         // 50 paise (₹0.50) per submission / judge
   SQL_RUN_JUDGE: 0.10,               // 10 paise (₹0.10) per SQL run
   CLOUD_CODE_SAVE: 0.05,             // 5 paise (₹0.05) per cloud code sync
   LLD_DIAGRAM_VIEW: 0.20,            // 20 paise (₹0.20) per Kroki LLD architecture diagram render

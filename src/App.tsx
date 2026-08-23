@@ -44,7 +44,7 @@ import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
 import { startSessionHeartbeat } from './lib/session';
-import { recordRealActivity } from './lib/analytics';
+import { recordRealActivity, markProblemSolved } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
 import { requestMistralQuiz } from './lib/mistral';
@@ -398,32 +398,19 @@ export function App() {
     const mins = Math.max(0.5, Number(((timeTakenSeconds || 60) / 60).toFixed(1)));
     const correct = isCorrect !== false;
 
-    // Record real persistent activity into daily analytics log
-    const actType = (lessonSubTab === 'code' || sdeFullscreenProblem) ? 'coding' : 'quiz';
-    recordRealActivity(actType, mins, correct ? 1 : 0, correct);
+    if (correct) {
+      const target = sdeFullscreenProblem?.id || sdeFullscreenProblem?.name || selectedVideo?.title || 'Problem';
+      markProblemSolved(target, mins);
+      setTotalSolved((prev) => prev + 1);
+      setCorrectAttempts((prev) => prev + 1);
+    } else {
+      const actType = (lessonSubTab === 'code' || sdeFullscreenProblem) ? 'coding' : 'quiz';
+      recordRealActivity(actType, mins, 0, false);
+    }
 
     setTotalActiveMins((prev) => Number((prev + mins).toFixed(1)));
 
-    if (correct) {
-      setTotalSolved((prev) => prev + 1);
-      setCorrectAttempts((prev) => prev + 1);
-
-      if (sdeFullscreenProblem) {
-        try {
-          const saved1 = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-          if (!saved1.includes(sdeFullscreenProblem.id)) {
-            saved1.push(sdeFullscreenProblem.id);
-            localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(saved1));
-          }
-          const saved2 = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-          if (!saved2.includes(sdeFullscreenProblem.id)) {
-            saved2.push(sdeFullscreenProblem.id);
-            localStorage.setItem('sdestream_solved_problems', JSON.stringify(saved2));
-          }
-        } catch {}
-      }
-    }
-
+    const actType = (lessonSubTab === 'code' || sdeFullscreenProblem) ? 'coding' : 'quiz';
     if (actType === 'coding') {
       setTimeBreakdown((prev: { lecturesMins: number; quizzesMins: number; codingMins: number }) => ({ 
         ...prev, 

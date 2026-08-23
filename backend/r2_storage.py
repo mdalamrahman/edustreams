@@ -454,5 +454,62 @@ def format_problem_data_as_txt(data: dict) -> str:
             print(f"[R2 SaveSolution Error for '{slug}'/{language}]: {e}")
         return False
 
+    def upload_json(self, key: str, data: Any) -> Optional[str]:
+        """Uploads arbitrary JSON data to Cloudflare R2 under the specified key."""
+        clean_key = key.lstrip('/')
+        try:
+            json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+        except Exception as e:
+            print(f"[Cloudflare R2 JSON Serialize Error]: {e}")
+            return None
+
+        # 1. Boto3 Upload
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=clean_key,
+                    Body=json_bytes,
+                    ContentType="application/json"
+                )
+                return clean_key
+            except Exception as e:
+                print(f"[Cloudflare R2 Boto3 upload_json Notice]: {e}")
+
+        # 2. Native SigV4 REST Upload
+        try:
+            headers = self._get_sigv4_headers("PUT", clean_key, json_bytes)
+            headers["Content-Type"] = "application/json"
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.put(url, headers=headers, data=json_bytes, timeout=10)
+            if resp.status_code in [200, 201]:
+                return clean_key
+        except Exception as e:
+            print(f"[Cloudflare R2 SigV4 upload_json Notice]: {e}")
+        return None
+
+    def fetch_json(self, key: str) -> Optional[Any]:
+        """Fetches arbitrary JSON data from Cloudflare R2 under the specified key."""
+        clean_key = key.lstrip('/')
+        # 1. Boto3 Fetch
+        if self._boto_client:
+            try:
+                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=clean_key)
+                body = resp["Body"].read()
+                return json.loads(body.decode("utf-8"))
+            except Exception:
+                pass
+
+        # 2. Native SigV4 REST Fetch
+        try:
+            headers = self._get_sigv4_headers("GET", clean_key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return None
+
 
 r2_storage = CloudflareR2Storage()
