@@ -108,10 +108,57 @@ export function wrapLeetCodeExecutableCode(
 
     const lowMethod = methodName.toLowerCase();
 
+    // Helper to safely split parameter types outside angle brackets <...>
+    const splitCppParams = (str: string): string[] => {
+      const result: string[] = [];
+      let current = '';
+      let depth = 0;
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        if (ch === '<') depth++;
+        else if (ch === '>') depth = Math.max(0, depth - 1);
+        else if (ch === ',' && depth === 0) {
+          if (current.trim()) result.push(current.trim());
+          current = '';
+          continue;
+        }
+        current += ch;
+      }
+      if (current.trim()) result.push(current.trim());
+      return result;
+    };
+
+    const paramList = splitCppParams(paramsStr);
+    const paramCount = paramList.length;
+
     // Determine smart invocation tailored to DSA problem domain
     let invocation = '';
 
-    if (lowMethod.includes('subsets') || normTitle.includes('subset')) {
+    if (lowMethod.includes('nextpermutation') || normTitle.includes('nextpermutation') || (lowMethod.includes('permutation') && paramCount === 1)) {
+      invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        if (nums.empty()) nums = {1, 2, 3};
+        sol.${methodName || 'nextPermutation'}(nums);
+        print_val(nums);
+        cout << endl;
+`;
+    } else if (lowMethod.includes('sortcolors') || normTitle.includes('sortcolors') || normTitle.includes('dutchflag') || normTitle.includes('012')) {
+      invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        if (nums.empty()) nums = {2, 0, 2, 1, 1, 0};
+        sol.${methodName || 'sortColors'}(nums);
+        print_val(nums);
+        cout << endl;
+`;
+    } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes')) {
+      invocation = `
+        vector<vector<int>> matrix = parse_matrix_int(raw_input);
+        if (matrix.empty()) matrix = {{1,1,1},{1,0,1},{1,1,1}};
+        sol.${methodName || 'setZeroes'}(matrix);
+        print_val(matrix);
+        cout << endl;
+`;
+    } else if (lowMethod.includes('subsets') || normTitle.includes('subset')) {
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
@@ -128,26 +175,11 @@ export function wrapLeetCodeExecutableCode(
         print_val(res);
         cout << endl;
 `;
-    } else if (lowMethod.includes('sortcolors') || normTitle.includes('sortcolors') || normTitle.includes('dutchflag') || normTitle.includes('012')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {2, 0, 2, 1, 1, 0};
-        sol.${methodName || 'sortColors'}(nums);
-        print_val(nums);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('numislands') || normTitle.includes('numberofislands') || (raw_input_has_2d(cleanInput) && cleanInput.includes('"'))) {
+    } else if (lowMethod.includes('numislands') || normTitle.includes('numberofislands')) {
       invocation = `
         vector<vector<char>> grid = parse_matrix_char(raw_input);
         auto res = sol.${methodName || 'numIslands'}(grid);
         print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes') || lowMethod.includes('rotate') || raw_input_has_2d(cleanInput)) {
-      invocation = `
-        vector<vector<int>> matrix = parse_matrix_int(raw_input);
-        if (matrix.empty()) matrix = {{1,1,1},{1,0,1},{1,1,1}};
-        ${retType.includes('void') ? `sol.${methodName || 'setZeroes'}(matrix); print_val(matrix);` : `auto res = sol.${methodName || 'setZeroes'}(matrix); print_val(res);`}
         cout << endl;
 `;
     } else if (lowMethod.includes('canfinish') || lowMethod.includes('findorder') || normTitle.includes('courseschedule')) {
@@ -161,7 +193,6 @@ export function wrapLeetCodeExecutableCode(
     } else if (lowMethod.includes('clonegraph') || normTitle.includes('clonegraph')) {
       invocation = `
         vector<vector<int>> adj = parse_matrix_int(raw_input);
-        // Build graph
         int n = adj.size();
         vector<Node*> nodes;
         for (int i = 1; i <= n; ++i) nodes.push_back(new Node(i));
@@ -177,100 +208,111 @@ export function wrapLeetCodeExecutableCode(
         print_val(res);
         cout << endl;
 `;
-    } else if (paramsStr.includes('TreeNode*') && (paramsStr.includes('int') || lowMethod.includes('pathsum'))) {
-      invocation = `
+    } else if (paramCount === 2) {
+      // 2 Parameters
+      if (paramList[0].includes('TreeNode*') && paramList[1].includes('int')) {
+        invocation = `
         TreeNode* root = parse_tree_node(raw_input);
         int targetSum = parse_named_arg_int(raw_input, "targetSum", parse_named_arg_int(raw_input, "sum", 22));
         auto res = sol.${methodName}(root, targetSum);
         print_val(res);
         cout << endl;
 `;
-    } else if (paramsStr.includes('TreeNode*')) {
-      invocation = `
-        TreeNode* root = parse_tree_node(raw_input);
-        auto res = sol.${methodName}(root);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (paramsStr.includes('ListNode*') && paramsStr.includes('int')) {
-      invocation = `
+      } else if (paramList[0].includes('ListNode*') && paramList[1].includes('int')) {
+        invocation = `
         ListNode* head = parse_list_node(raw_input);
         int n = parse_named_arg_int(raw_input, "n", 1);
         auto res = sol.${methodName}(head, n);
         print_val(res);
         cout << endl;
 `;
-    } else if (paramsStr.includes('ListNode*')) {
-      invocation = `
+      } else if (paramList[0].includes('int') && paramList[1].includes('vector')) {
+        invocation = `
+        int n = parse_named_arg_int(raw_input, "numCourses", parse_named_arg_int(raw_input, "n", 2));
+        vector<vector<int>> mat = parse_matrix_int(raw_input);
+        auto res = sol.${methodName}(n, mat);
+        print_val(res);
+        cout << endl;
+`;
+      } else if (paramList[0].includes('vector<int>') && paramList[1].includes('int')) {
+        invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        int target = parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", parse_named_arg_int(raw_input, "amount", 0)));
+        auto res = sol.${methodName}(nums, target);
+        print_val(res);
+        cout << endl;
+`;
+      } else {
+        invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        int target = parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", 0));
+        auto res = sol.${methodName}(nums, target);
+        print_val(res);
+        cout << endl;
+`;
+      }
+    } else if (paramCount === 1) {
+      // Exactly 1 Parameter
+      if (paramList[0].includes('TreeNode*')) {
+        invocation = `
+        TreeNode* root = parse_tree_node(raw_input);
+        auto res = sol.${methodName}(root);
+        print_val(res);
+        cout << endl;
+`;
+      } else if (paramList[0].includes('ListNode*')) {
+        invocation = `
         ListNode* head = parse_list_node(raw_input);
         auto res = sol.${methodName}(head);
         print_val(res);
         cout << endl;
 `;
-    } else if (lowMethod.includes('coinchange') || (paramsStr.includes('vector<int>') && paramsStr.includes('int'))) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        int target = parse_named_arg_int(raw_input, "amount", parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", 0)));
-        auto res = sol.${methodName}(nums, target);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('nextpermutation') || normTitle.includes('nextpermutation') || normTitle.includes('permutation')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {1, 2, 3};
-        sol.${methodName || 'nextPermutation'}(nums);
-        print_val(nums);
-        cout << endl;
-`;
-    } else if (paramsStr.includes('vector<vector<char>>')) {
-      invocation = `
+      } else if (paramList[0].includes('vector<vector<char>>')) {
+        invocation = `
         vector<vector<char>> grid = parse_matrix_char(raw_input);
         auto res = sol.${methodName}(grid);
         print_val(res);
         cout << endl;
 `;
-    } else if (paramsStr.includes('vector<vector<int>>')) {
-      invocation = `
+      } else if (paramList[0].includes('vector<vector<int>>')) {
+        invocation = `
         vector<vector<int>> mat = parse_matrix_int(raw_input);
-        auto res = sol.${methodName}(mat);
-        print_val(res);
+        ${retType.includes('void') ? `sol.${methodName}(mat); print_val(mat);` : `auto res = sol.${methodName}(mat); print_val(res);`}
         cout << endl;
 `;
-    } else if (paramsStr.includes('vector<int>') && retType.includes('void')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        sol.${methodName}(nums);
-        print_val(nums);
-        cout << endl;
-`;
-    } else if (paramsStr.includes('vector<int>')) {
-      invocation = `
+      } else if (paramList[0].includes('vector<int>')) {
+        invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
-        auto res = sol.${methodName}(nums);
-        print_val(res);
+        ${retType.includes('void') ? `sol.${methodName}(nums); print_val(nums);` : `auto res = sol.${methodName}(nums); print_val(res);`}
         cout << endl;
 `;
-    } else if (paramsStr.includes('string')) {
-      invocation = `
+      } else if (paramList[0].includes('string')) {
+        invocation = `
         string s = parse_string_arg(raw_input);
         auto res = sol.${methodName}(s);
         print_val(res);
         cout << endl;
 `;
-    } else if (paramsStr.includes('int') && !paramsStr.includes(',')) {
-      invocation = `
+      } else if (paramList[0].includes('int')) {
+        invocation = `
         int n = parse_single_int(raw_input, 5);
         auto res = sol.${methodName}(n);
         print_val(res);
         cout << endl;
 `;
-    } else if (methodName) {
-      invocation = `
+      } else {
+        invocation = `
         vector<int> nums = parse_vector_int(raw_input);
         auto res = sol.${methodName}(nums);
         print_val(res);
+        cout << endl;
+`;
+      }
+    } else if (methodName) {
+      invocation = `
+        vector<int> nums = parse_vector_int(raw_input);
+        ${retType.includes('void') ? `sol.${methodName}(nums); print_val(nums);` : `auto res = sol.${methodName}(nums); print_val(res);`}
         cout << endl;
 `;
     } else {

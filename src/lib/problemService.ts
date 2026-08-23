@@ -244,17 +244,27 @@ Context Category: "${category}", Difficulty: "${difficulty}".
 ${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
 ${notes ? `Study Notes: ${notes.slice(0, 1500)}` : ''}
 
-CRITICAL MULTI-ARGUMENT TEST CASE REQUIREMENTS:
-1. If the function takes multiple parameters (e.g. twoSum(nums, target), coin_change(coins, amount), max_area(height, k)):
-   EVERY single item in "testCases" MUST be a single string containing ALL parameters formatted with parameter names.
-   Example: "nums = [2, 7, 11, 15], target = 9"
-   Example: "nums = [3, 2, 4], target = 6"
-   DO NOT put array in Case 1 and target in Case 2! Each testcase MUST contain ALL function arguments in a single string.
-2. Provide AT LEAST 10 diverse, comprehensive test case input strings in "testCases".
-   Include standard sample cases, base cases, negative values, duplicates, large bounds, alternating patterns.
-3. Provide AT LEAST 10 matching expected output strings in "expectedOutputs" corresponding 1-to-1 with "testCases".
-4. Provide realistic starter code templates for C++, Python, Java, JavaScript, Go, Rust.
-5. Provide verified optimal solution implementations for C++, Python, Java, JavaScript.
+CRITICAL SIGNATURE & TEST CASE SPECIFICATIONS:
+1. METHOD SIGNATURE & ARGUMENT PARITY:
+   - Provide standard LeetCode class Solution starter code and optimal solution code in C++, Python, Java, JavaScript, Go, Rust.
+   - The method name and parameter list across ALL starter templates MUST MATCH EXACTLY.
+   - Example (1 argument):
+     C++: void nextPermutation(vector<int>& nums)
+     Python: def nextPermutation(self, nums: List[int]) -> None:
+     Testcase: "nums = [1, 2, 3]" -> Expected: "[1, 3, 2]"
+   - Example (2 arguments):
+     C++: vector<int> twoSum(vector<int>& nums, int target)
+     Python: def twoSum(self, nums: List[int], target: int) -> List[int]:
+     Testcase: "nums = [2, 7, 11, 15], target = 9" -> Expected: "[0, 1]"
+2. MULTI-ARGUMENT TEST CASES:
+   - If the method takes N parameters, EVERY testcase item in "testCases" MUST contain ALL N parameters in that single string.
+   - NEVER put argument 1 in Case 1 and argument 2 in Case 2!
+   - NEVER add phantom or extra parameters (like adding 'target' to nextPermutation or sortColors).
+3. IN-PLACE / VOID METHODS:
+   - For methods returning void (e.g. nextPermutation, sortColors, rotate, setZeroes, moveZeroes), "expectedOutputs" MUST contain the final mutated array/matrix representation.
+4. AT LEAST 10 TEST CASES:
+   - Provide AT LEAST 10 diverse test case inputs in "testCases" and matching 1-to-1 "expectedOutputs".
+   - Include standard cases, edge cases, single-element cases, sorted/reverse-sorted cases, duplicate elements, negative numbers, large bounds.
 
 Return ONLY valid JSON matching this exact structure:
 {
@@ -312,19 +322,18 @@ Return ONLY valid JSON matching this exact structure:
     }
   ],
   "starters": {
-    "cpp": "class Solution { ... };",
-    "python": "class Solution: ...",
-    "java": "class Solution { ... }",
-    "javascript": "var solve = function(...) { ... };",
-    "go": "func solve(...) { ... }",
-    "rust": "impl Solution { ... }",
-    "sql": "-- SQL query"
+    "cpp": "class Solution {\\npublic:\\n    void nextPermutation(vector<int>& nums) {\\n        \\n    }\\n};",
+    "python": "class Solution:\\n    def nextPermutation(self, nums: List[int]) -> None:\\n        pass",
+    "java": "class Solution {\\n    public void nextPermutation(int[] nums) {\\n        \\n    }\\n}",
+    "javascript": "/**\\n * @param {number[]} nums\\n * @return {void} Do not return anything, modify nums in-place instead.\\n */\\nvar nextPermutation = function(nums) {\\n    \\n};",
+    "go": "func nextPermutation(nums []int) {\\n    \\n}",
+    "rust": "impl Solution {\\n    pub fn next_permutation(nums: &mut Vec<i32>) {\\n        \\n    }\\n}"
   },
   "solutions": {
-    "cpp": "class Solution { ... };",
-    "python": "class Solution: ...",
-    "java": "class Solution { ... }",
-    "javascript": "var solve = function(...) { ... };"
+    "cpp": "class Solution {\\npublic:\\n    // Working C++ solution\\n};",
+    "python": "class Solution:\\n    # Working Python solution\\n",
+    "java": "class Solution {\\n    // Working Java solution\\n}",
+    "javascript": "var nextPermutation = function(nums) {\\n    // Working JS solution\\n};"
   }
 }`;
 

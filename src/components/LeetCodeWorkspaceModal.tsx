@@ -973,6 +973,35 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     }
   };
 
+  // LeetCode Standard Global Shortcuts:
+  // - Ctrl + ' (or Cmd + ') -> Run Code
+  // - Ctrl + Enter (or Cmd + Enter) -> Submit Code
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + ' or Cmd + ' -> Run Code
+      if ((e.ctrlKey || e.metaKey) && (e.key === "'" || e.key === '"')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isExecuting) {
+          handleExecute(false);
+        }
+      }
+      // Ctrl + Enter or Cmd + Enter -> Submit Code
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isExecuting) {
+          handleExecute(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [isExecuting, handleExecute, code, language, testInput]);
+
   // AI Review
   const handleAIReview = async () => {
     const user = getCurrentStudent();
@@ -2239,19 +2268,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <button
                   onClick={() => handleExecute(false)}
                   disabled={isExecuting}
-                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Run code against active test case (Ctrl + ')"
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 group"
                 >
                   <Play className="w-3.5 h-3.5 text-emerald-400 fill-current" />
                   <span>{isExecuting ? 'Running...' : 'Run'}</span>
+                  <span className="hidden sm:inline-block ml-1 text-[10px] font-mono font-medium px-1 py-0.5 rounded bg-slate-900/80 text-slate-400 border border-slate-700 group-hover:text-slate-200">
+                    Ctrl+'
+                  </span>
                 </button>
 
                 <button
                   onClick={() => handleExecute(true)}
                   disabled={isExecuting}
-                  className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+                  title="Submit code against all test cases (Ctrl + Enter)"
+                  className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 group"
                 >
                   <CheckCircle className="w-3.5 h-3.5 fill-current" />
                   <span>{isExecuting ? 'Submitting...' : 'Submit'}</span>
+                  <span className="hidden sm:inline-block ml-1 text-[10px] font-mono font-medium px-1 py-0.5 rounded bg-emerald-950/80 text-emerald-200 border border-emerald-500/40">
+                    Ctrl+↵
+                  </span>
                 </button>
 
                 {/* Minimize Console Button to get Full Height Code Screen */}
