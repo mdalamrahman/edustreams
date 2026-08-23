@@ -290,16 +290,43 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return (codingProblem?.gfg && codingProblem.gfg.trim().length > 0) ? codingProblem.gfg : null;
   }, [codingProblem]);
 
-  // YouTube embed URL parser
+  // YouTube embed URL parser (from problem metadata or template)
   const youtubeEmbedUrl = useMemo(() => {
-    const rawUrl = codingProblem?.youtube || codingProblem?.youtubeUrl || '';
+    const rawUrl = codingProblem?.youtube || codingProblem?.youtubeUrl || (problemTemplate as any)?.youtube || '';
     if (!rawUrl) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = rawUrl.match(regExp);
     return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : (rawUrl.startsWith('http') ? rawUrl : null);
-  }, [codingProblem]);
+  }, [codingProblem, problemTemplate]);
 
-  const hasVideoSolution = Boolean(matchingVideo?.stream_url || youtubeEmbedUrl);
+  // Valid matching channel video (must genuinely match the problem title)
+  const validMatchingVideo = useMemo(() => {
+    if (!matchingVideo?.stream_url) return null;
+    const clean = (s: string) => s.replace(/^DSA Lecture \d+:\s*/i, '').replace(/[^\w\s]/gi, ' ').toLowerCase().trim().replace(/\s+/g, ' ');
+    const normTitle = clean(cleanTitle);
+    const normV = clean(matchingVideo.title || '');
+    if (normTitle === normV || (normTitle.length >= 7 && normV.length >= 7 && (normTitle.includes(normV) || normV.includes(normTitle)))) {
+      return matchingVideo;
+    }
+    return null;
+  }, [matchingVideo, cleanTitle]);
+
+  const hasVideoSolution = Boolean(youtubeEmbedUrl || validMatchingVideo?.stream_url);
+
+  // Sync code state whenever problem or language changes
+  useEffect(() => {
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    try {
+      const cached = localStorage.getItem(`edustream_user_code_${slug}_${language}`);
+      if (cached !== null && cached.trim().length > 0) {
+        setCode(cached);
+        return;
+      }
+    } catch {}
+    if (problemTemplate.starters && problemTemplate.starters[language]) {
+      setCode(problemTemplate.starters[language]);
+    }
+  }, [cleanTitle, language, problemTemplate.starters]);
 
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
@@ -1670,36 +1697,25 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             )}
 
             {/* TAB 4: VIDEO LECTURE / YOUTUBE STREAM */}
-            {leftTab === 'video' && (
+            {leftTab === 'video' && hasVideoSolution && (
               <div className="space-y-4 animate-fadeIn">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <div className="font-bold text-slate-100 flex items-center gap-2">
                     <Youtube className="w-4 h-4 text-rose-400" />
-                    <span>{matchingVideo ? 'SDETube Master Channel Stream' : youtubeEmbedUrl ? 'CodeStoryWithMIK / YouTube Video Stream' : 'Video Explanation Stream'}</span>
+                    <span>{youtubeEmbedUrl ? 'Video Solution & Intuition' : 'SDETube Master Channel Stream'}</span>
                   </div>
-                  {matchingVideo && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">
-                      Channel Stream HD
-                    </span>
-                  )}
-                  {!matchingVideo && youtubeEmbedUrl && (
+                  {youtubeEmbedUrl ? (
                     <span className="px-2.5 py-0.5 rounded-full bg-rose-950 border border-rose-700/60 text-rose-300 text-[10px] font-mono font-bold">
                       YouTube Stream
                     </span>
-                  )}
+                  ) : validMatchingVideo?.stream_url ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">
+                      Channel Stream HD
+                    </span>
+                  ) : null}
                 </div>
 
-                {matchingVideo?.stream_url ? (
-                  <div className="rounded-2xl overflow-hidden border border-emerald-500/40 shadow-2xl bg-black aspect-video">
-                    <video
-                      src={matchingVideo.stream_url.startsWith('http') ? matchingVideo.stream_url : `${TELEGRAM_BACKEND_URL}${matchingVideo.stream_url}`}
-                      controls
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                ) : youtubeEmbedUrl ? (
+                {youtubeEmbedUrl ? (
                   <div className="rounded-2xl overflow-hidden border border-rose-500/40 shadow-2xl bg-black aspect-video">
                     <iframe
                       src={`${youtubeEmbedUrl}?autoplay=0&rel=0`}
@@ -1709,28 +1725,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                       allowFullScreen
                     />
                   </div>
-                ) : (
-                  <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4 my-4">
-                    <div className="w-12 h-12 rounded-2xl bg-rose-950/80 border border-rose-800 flex items-center justify-center mx-auto text-rose-300">
-                      <Youtube className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-slate-100">Live Video Explanation</h4>
-                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                        Watch video explanation on YouTube or ask SDETube AI for real-time intuition & solution derivation.
-                      </p>
-                    </div>
-                    <a
-                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(cleanTitle + ' leetcode solution codestorywithmik')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold shadow-lg shadow-rose-900/30 transition-all cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Search on YouTube</span>
-                    </a>
+                ) : validMatchingVideo?.stream_url ? (
+                  <div className="rounded-2xl overflow-hidden border border-emerald-500/40 shadow-2xl bg-black aspect-video">
+                    <video
+                      src={validMatchingVideo.stream_url.startsWith('http') ? validMatchingVideo.stream_url : `${TELEGRAM_BACKEND_URL}${validMatchingVideo.stream_url}`}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
                   </div>
-                )}
+                ) : null}
               </div>
             )}
 

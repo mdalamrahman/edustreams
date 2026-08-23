@@ -1343,9 +1343,8 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         <LeetCodeWorkspaceModal
           problemTitle={sdeFullscreenProblem.name}
           initialLanguage="cpp"
-          matchingVideo={sdeFullscreenVideo || selectedVideo}
-          transcript={videoArtifacts?.transcript || selectedVideo?.telegram_caption}
-          notes={videoArtifacts?.notes}
+          matchingVideo={sdeFullscreenVideo || undefined}
+          transcript={sdeFullscreenVideo?.telegram_caption}
           codingProblem={sdeFullscreenProblem}
           onClose={() => {
             setSdeFullscreenProblem(null);
