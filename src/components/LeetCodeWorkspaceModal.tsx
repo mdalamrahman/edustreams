@@ -1316,17 +1316,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
 
             {/* TAB: Video Lesson */}
-            <button
-              onClick={() => setLeftTab('video')}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                leftTab === 'video'
-                  ? 'bg-rose-950/80 text-rose-200 shadow-sm border border-rose-500/40 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-              }`}
-            >
-              <Youtube className={`w-3.5 h-3.5 ${hasVideoSolution ? 'text-rose-400 animate-pulse' : 'text-rose-400'}`} />
-              <span>Video {hasVideoSolution && '●'}</span>
-            </button>
+            {hasVideoSolution && (
+              <button
+                onClick={() => setLeftTab('video')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  leftTab === 'video'
+                    ? 'bg-rose-950/80 text-rose-200 shadow-sm border border-rose-500/40 font-bold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                <Youtube className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                <span>Video Lesson</span>
+              </button>
+            )}
 
             <button
               onClick={() => setLeftTab('diagram')}

@@ -33,17 +33,39 @@ export interface ProblemTemplate {
 }
 
 // Normalize problem titles into clean slugs
-export const normalizeProblemTitle = (title: string): string => {
-  return title.toLowerCase().replace(/[^a-z0-9]/g, '');
+export const normalizeProblemTitle = (title?: string): string => {
+  return (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 };
 
-export const toSlug = (str: string): string => {
-  return str
-    .replace(/^https?:\/\/leetcode\.com\/problems\//i, '')
-    .replace(/\/.*$/, '')
+export const toSlug = (str?: string): string => {
+  if (!str) return 'algorithm-problem';
+  let s = String(str).trim();
+  
+  // If full URL, extract slug from path
+  if (s.startsWith('http://') || s.startsWith('https://')) {
+    try {
+      const url = new URL(s);
+      const segments = url.pathname.split('/').filter(Boolean);
+      const probIdx = segments.indexOf('problems');
+      if (probIdx !== -1 && segments[probIdx + 1]) {
+        s = segments[probIdx + 1];
+      } else if (segments.length > 0) {
+        s = segments[segments.length - 1];
+      }
+    } catch {
+      s = s.replace(/^https?:\/\/[^/]+\//, '');
+    }
+  }
+
+  const slug = s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+
+  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com') {
+    return 'algorithm-problem';
+  }
+  return slug;
 };
 
 /**

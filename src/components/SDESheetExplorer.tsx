@@ -31,7 +31,8 @@ import {
   Bookmark,
   BookmarkCheck,
   Edit3,
-  Crown
+  Crown,
+  Award
 } from 'lucide-react';
 import { 
   DSAProblem, 
@@ -57,11 +58,12 @@ interface SDESheetExplorerProps {
  * Searches exclusively within the Telegram DSA channel video list ('ch-dsa-01') to find an exact or high-confidence matching lecture.
  * Returns null if no real matching video exists (never falls back to generic or wrong videos).
  */
-export function findMatchingDsaVideo(problemName: string, dsaVideos?: Video[]): Video | null {
+export function findMatchingDsaVideo(problemName?: string, dsaVideos?: Video[]): Video | null {
   if (!dsaVideos || dsaVideos.length === 0 || !problemName) return null;
   
-  const clean = (s: string) => {
-    return s
+  const clean = (s?: string) => {
+    if (!s) return '';
+    return String(s)
       .replace(/^DSA Lecture \d+:\s*/i, '')
       .replace(/\s*\(.*?\)/g, '')
       .replace(/\s*\|.*$/g, '')
@@ -77,7 +79,7 @@ export function findMatchingDsaVideo(problemName: string, dsaVideos?: Video[]): 
 
   // 1. Exact cleaned match or complete substring match
   for (const v of dsaVideos) {
-    const normV = clean(v.title);
+    const normV = clean(v?.title);
     if (normP === normV || (normP.length >= 7 && (normP.includes(normV) || normV.includes(normP)))) {
       return v;
     }
@@ -90,7 +92,7 @@ export function findMatchingDsaVideo(problemName: string, dsaVideos?: Video[]): 
   // 2. All specific key words of problem are in video (and problem has >= 2 key words)
   if (pWords.length >= 2) {
     for (const v of dsaVideos) {
-      const normV = clean(v.title);
+      const normV = clean(v?.title);
       const vWords = new Set(normV.split(' '));
       const allMatch = pWords.every(w => vWords.has(w) || Array.from(vWords).some(vw => (vw.length > 3 && (vw.startsWith(w) || w.startsWith(vw)))));
       if (allMatch) return v;
@@ -113,11 +115,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   userEmail,
   dsaVideos = []
 }) => {
-  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs) | 'mik' (253 Qs)
+  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs) | 'blind75' (76 Qs) | 'mik' (174 Qs)
   const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_ACTIVE_SHEET_KEY) as DSASheetType;
-      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79' || saved === 'mik')) return saved;
+      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79' || saved === 'blind75' || saved === 'mik')) return saved;
     } catch {}
     return 'sde';
   });
@@ -213,13 +215,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   // Compute all unique companies with question counts for the active sheet
   const companyCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    currentSheetProblems.forEach((p) => {
-      p.companies.forEach((c) => {
-        const clean = c.trim();
-        if (clean) {
-          counts[clean] = (counts[clean] || 0) + 1;
-        }
-      });
+    (currentSheetProblems || []).forEach((p) => {
+      if (Array.isArray(p.companies)) {
+        p.companies.forEach((c) => {
+          const clean = (c || '').trim();
+          if (clean) {
+            counts[clean] = (counts[clean] || 0) + 1;
+          }
+        });
+      }
     });
     return counts;
   }, [currentSheetProblems]);
@@ -293,7 +297,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   };
 
   const allCategories = useMemo(() => {
-    return Array.from(new Set(currentSheetProblems.map((p) => p.category)));
+    return Array.from(new Set((currentSheetProblems || []).map((p) => p.category || 'Algorithms')));
   }, [currentSheetProblems]);
 
   // Expand / Collapse Step Accordions
@@ -326,13 +330,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   // Multi-Criteria Filtering
   const filteredProblems = useMemo(() => {
-    return currentSheetProblems.filter((p) => {
-      const q = searchQuery.toLowerCase().trim();
+    return (currentSheetProblems || []).filter((p) => {
+      const q = (searchQuery || '').toLowerCase().trim();
+      const pName = (p.name || '').toLowerCase();
+      const pCat = (p.category || '').toLowerCase();
+      const pSub = (p.subcategory || '').toLowerCase();
+      
       const matchesSearch = !q || (
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
-        p.companies.some((c) => c.toLowerCase().includes(q))
+        pName.includes(q) ||
+        pCat.includes(q) ||
+        pSub.includes(q) ||
+        (Array.isArray(p.companies) && p.companies.some((c) => (c || '').toLowerCase().includes(q)))
       );
 
       const matchesCat = 
@@ -342,7 +350,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
       const matchesCompany = 
         selectedCompany === 'ALL' || 
-        p.companies.some((c) => c.toLowerCase() === selectedCompany.toLowerCase());
+        (Array.isArray(p.companies) && p.companies.some((c) => (c || '').toLowerCase() === (selectedCompany || '').toLowerCase()));
 
       const matchesDifficulty = 
         selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
@@ -353,7 +361,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       let matchesStatus = true;
       if (selectedStatus === 'SOLVED') matchesStatus = isSolved;
       if (selectedStatus === 'UNSOLVED') matchesStatus = !isSolved;
-      if (selectedStatus === 'MUST_DO') matchesStatus = p.rating.includes('Must Do');
+      if (selectedStatus === 'MUST_DO') matchesStatus = Boolean(p.rating && p.rating.includes('Must Do'));
       if (selectedStatus === 'REVISION') matchesStatus = isStarred;
 
       return matchesSearch && matchesCat && matchesCompany && matchesDifficulty && matchesStatus;
@@ -446,14 +454,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn font-sans">
 
-      {/* TOP 4-WAY SHEET SWITCHER TABS */}
+      {/* TOP 5-WAY SHEET SWITCHER TABS */}
       <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 w-full">
           
           {/* TAB 1: SDE Sheet */}
           <button
             onClick={() => handleSwitchSheet('sde')}
-            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === 'sde'
                 ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.02] border border-emerald-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
@@ -469,7 +477,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 2: A2Z DSA Roadmap */}
           <button
             onClick={() => handleSwitchSheet('a2z')}
-            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === 'a2z'
                 ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02] border border-indigo-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
@@ -485,7 +493,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 3: 79 Sheet */}
           <button
             onClick={() => handleSwitchSheet('79')}
-            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === '79'
                 ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
@@ -498,10 +506,26 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             </span>
           </button>
 
-          {/* TAB 4: CodeStoryWithMIK Premium */}
+          {/* TAB 4: Blind 75 Sheet */}
+          <button
+            onClick={() => handleSwitchSheet('blind75')}
+            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+              activeSheet === 'blind75'
+                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02] border border-orange-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <Award className={`w-4 h-4 ${activeSheet === 'blind75' ? 'text-amber-200 animate-bounce' : 'text-orange-400'}`} />
+            <span>Blind 75</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'blind75' ? 'bg-orange-950/80 text-orange-200 border border-orange-400/30' : 'bg-slate-800 text-slate-400'}`}>
+              76 Qs
+            </span>
+          </button>
+
+          {/* TAB 5: CodeStoryWithMIK Premium */}
           <button
             onClick={() => handleSwitchSheet('mik')}
-            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === 'mik'
                 ? 'bg-gradient-to-r from-fuchsia-600 via-pink-600 to-rose-600 text-white shadow-lg shadow-pink-500/20 scale-[1.02] border border-pink-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
@@ -510,7 +534,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
             <Crown className={`w-4 h-4 ${activeSheet === 'mik' ? 'text-amber-300 animate-bounce' : 'text-pink-400'}`} />
             <span>CodeStoryWithMIK</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'mik' ? 'bg-pink-950/80 text-pink-200 border border-pink-400/30' : 'bg-slate-800 text-slate-400'}`}>
-              253 Qs
+              174 Qs
             </span>
           </button>
 
@@ -1258,7 +1282,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                           </span>
                                         </td>
 
-                                        {/* Telegram DSA Channel Video Lecture */}
+                                        {/* Video Lecture (Telegram Channel or YouTube) */}
                                         <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                           <div className="flex items-center space-x-1.5">
                                             {matchingDsaVideo ? (
@@ -1276,6 +1300,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                                 <Play className="w-3 h-3 fill-current text-purple-400" />
                                                 <span>Video</span>
                                               </button>
+                                            ) : hasValidYoutube ? (
+                                              <a
+                                                href={p.youtube}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2.5 py-1 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-700/60 text-rose-300 hover:text-white text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                                title="Watch CodeStoryWithMIK / YouTube Video Story"
+                                              >
+                                                <Youtube className="w-3.5 h-3.5 text-rose-400" />
+                                                <span>YouTube</span>
+                                              </a>
                                             ) : (
                                               <span className="text-slate-600 font-mono text-[11px] px-1">—</span>
                                             )}
@@ -1382,7 +1417,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 ) : (
                   filteredProblems.map((p) => {
                     const isSolved = solvedIds.includes(p.id);
-                    const isMustDo = p.rating.includes('Must Do');
+                    const isMustDo = Boolean(p.rating && p.rating.includes('Must Do'));
                     const isStarred = isProblemStarred(p);
                     const existingNote = getLocalProblemNote(p.slug || p.name);
 
@@ -1443,11 +1478,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                 ? 'text-indigo-300 bg-indigo-500/20 border border-indigo-500/40' 
                                 : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
                             }`}
-                            title={existingNote ? 'View / Edit Personal Cloud Notes' : 'Create Personal Note'}
+                            title={existingNote ? 'View / Edit Notes (.txt)' : 'Add Problem Notes (.txt)'}
                           >
                             <FileText className="w-4 h-4" />
                             {existingNote && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 absolute top-0.5 right-0.5" />
+                              <span className="w-2 h-2 rounded-full bg-indigo-400 absolute top-0.5 right-0.5" />
                             )}
                           </button>
                         </td>
@@ -1462,7 +1497,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                         {/* Title */}
                         <td className="py-3.5 px-4 font-medium">
                           <div className="flex items-center space-x-2">
-                            <span className={`font-bold transition-colors ${
+                            <span className={`font-bold text-sm transition-colors ${
                               isSolved 
                                 ? 'line-through text-slate-500' 
                                 : 'text-slate-100 group-hover:text-indigo-300'
@@ -1491,7 +1526,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                         {/* Companies */}
                         <td className="py-3.5 px-4">
                           <div className="flex flex-wrap gap-1 items-center">
-                            {p.companies.slice(0, 3).map((comp) => (
+                            {(p.companies || []).slice(0, 3).map((comp) => (
                               <span
                                 key={comp}
                                 className="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 text-[11px] border border-slate-700/60"
@@ -1499,7 +1534,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                 {comp}
                               </span>
                             ))}
-                            {p.companies.length > 3 && (
+                            {(p.companies || []).length > 3 && (
                               <span className="text-[10px] text-slate-500 font-mono">
                                 +{p.companies.length - 3}
                               </span>
@@ -1528,8 +1563,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               <span>Code Arena</span>
                             </button>
 
-                            {/* Telegram DSA Channel Lecture Video Button */}
-                            {matchingDsaVideo && (
+                            {/* Telegram DSA Channel or YouTube Lecture Video Button */}
+                            {matchingDsaVideo ? (
                               <button
                                 onClick={() => {
                                   if (onOpenVideo) {
@@ -1543,7 +1578,17 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                               >
                                 <Play className="w-3.5 h-3.5 fill-current text-purple-400" />
                               </button>
-                            )}
+                            ) : hasValidYoutube ? (
+                              <a
+                                href={p.youtube}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-700/60 text-rose-300 hover:text-white transition-all cursor-pointer shadow-sm flex items-center justify-center"
+                                title="Watch CodeStoryWithMIK / YouTube Video Story"
+                              >
+                                <Youtube className="w-3.5 h-3.5 text-rose-400" />
+                              </a>
+                            ) : null}
 
                             {/* LeetCode External Link (Only if available) */}
                             {p.leetcode && p.leetcode.trim() !== '' && (

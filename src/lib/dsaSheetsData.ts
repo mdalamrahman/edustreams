@@ -1,6 +1,7 @@
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
+import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 
-export type DSASheetType = 'sde' | 'a2z' | '79' | 'mik';
+export type DSASheetType = 'sde' | 'a2z' | '79' | 'blind75' | 'mik';
 
 export interface DSAProblem {
   id: number;
@@ -61,21 +62,31 @@ export const DSA_SHEETS_CONFIG: Record<DSASheetType, SheetConfig> = {
     icon: 'zap',
     accentGradient: 'from-amber-600 to-orange-600'
   },
+  blind75: {
+    id: 'blind75',
+    name: "Blind 75 Curated Sheet",
+    shortName: 'Blind 75',
+    totalQuestions: 76,
+    description: '75 Quintessential LeetCode Problems for Top Tech Interviews',
+    icon: 'award',
+    accentGradient: 'from-amber-500 via-orange-500 to-red-500'
+  },
   mik: {
     id: 'mik',
     name: "CodeStoryWithMIK Premium DSA Sheet",
     shortName: 'CodeStoryWithMIK',
-    totalQuestions: 253,
-    description: '253 Curated High-Frequency Problems with In-Depth Video Stories across 21 Topics',
+    totalQuestions: 174,
+    description: '174 High-Frequency Topic-Wise Problems with In-Depth Video Stories across 20 Topics',
     icon: 'crown',
     accentGradient: 'from-fuchsia-600 via-pink-600 to-rose-600'
   }
 };
 
 export function getLeetCodeSlug(problem: DSAProblem): string {
-  if (problem.slug) return problem.slug;
+  if (problem.slug && problem.slug !== 'https' && problem.slug !== 'http') return problem.slug;
   const match = problem.leetcode?.match(/\/problems\/([^/]+)/);
-  return match ? match[1] : problem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (match && match[1]) return match[1];
+  return (problem.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'problem';
 }
 
 export function getGfgUrl(problem: DSAProblem): string {
@@ -15163,6 +15174,7 @@ export const ALL_SHEETS_MAP: Record<DSASheetType, DSAProblem[]> = {
   sde: SDE_SHEET_191_DATA,
   a2z: A2Z_DSA_SHEET_474_DATA,
   79: SDETUBE_79_SHEET_DATA,
+  blind75: BLIND_75_SHEET_DATA,
   mik: CODESTORYWITHMIK_SHEET_DATA
 };
 

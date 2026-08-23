@@ -178,14 +178,30 @@ function saveTopupRequests(list: TopupRequest[]) {
 }
 
 /**
- * Persists a transaction and wallet state directly to Supabase Auth metadata for 100% durable storage.
+ * Persists a transaction and wallet state directly to Supabase Database & Auth metadata for 100% durable storage.
  */
 export async function syncTransactionToSupabase(tx: BillingTransaction, wallet: UserWallet): Promise<void> {
   try {
+    // 1. Direct PostgreSQL Table Insert (if table exists)
+    try {
+      await supabaseAdmin.from('billing_transactions').upsert({
+        id: tx.id,
+        user_id: tx.userId,
+        user_email: tx.userEmail,
+        amount: tx.amount,
+        type: tx.type,
+        category: tx.category,
+        description: tx.description,
+        balance_after: tx.balanceAfter,
+        timestamp: tx.timestamp
+      });
+    } catch {}
+
+    // 2. Direct Auth User Metadata Sync
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
     if (!usersData?.users) return;
 
-    const user = usersData.users.find(u => u.email?.toLowerCase() === wallet.userEmail.toLowerCase());
+    const user = usersData.users.find(u => (u.email || '').toLowerCase() === (wallet.userEmail || '').toLowerCase());
     if (!user) return;
 
     const existingMeta = user.user_metadata || {};
@@ -205,14 +221,28 @@ export async function syncTransactionToSupabase(tx: BillingTransaction, wallet: 
 }
 
 /**
- * Persists top-up request to Supabase Auth metadata for 100% durable storage.
+ * Persists top-up request to Supabase Database & Auth metadata for 100% durable storage.
  */
 export async function syncTopupToSupabase(topup: TopupRequest): Promise<void> {
   try {
+    // 1. Direct PostgreSQL Table Insert
+    try {
+      await supabaseAdmin.from('topup_requests').upsert({
+        id: topup.id,
+        user_id: topup.userId,
+        user_email: topup.userEmail,
+        amount: topup.amount,
+        transaction_id: topup.transactionId,
+        status: topup.status,
+        created_at: topup.createdAt
+      });
+    } catch {}
+
+    // 2. Direct Auth User Metadata Sync
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
     if (!usersData?.users) return;
 
-    const user = usersData.users.find(u => u.email?.toLowerCase() === topup.userEmail.toLowerCase());
+    const user = usersData.users.find(u => (u.email || '').toLowerCase() === (topup.userEmail || '').toLowerCase());
     if (!user) return;
 
     const existingMeta = user.user_metadata || {};
