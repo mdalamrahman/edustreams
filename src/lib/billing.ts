@@ -136,6 +136,8 @@ function saveAllWallets(wallets: Record<string, UserWallet>) {
   } catch {}
 }
 
+import { supabaseAdmin } from './supabase';
+
 export function getAllTransactions(): BillingTransaction[] {
   try {
     const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
@@ -145,9 +147,15 @@ export function getAllTransactions(): BillingTransaction[] {
   }
 }
 
-function saveTransactions(list: BillingTransaction[]) {
+/**
+ * Saves transactions to local cache and syncs directly with Supabase Auth user metadata.
+ */
+function saveTransactions(list: BillingTransaction[], userWallet?: UserWallet) {
   try {
     localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(list.slice(0, 500)));
+    if (list.length > 0 && userWallet) {
+      syncTransactionToSupabase(list[0], userWallet);
+    }
   } catch {}
 }
 
@@ -163,7 +171,93 @@ export function getAllTopupRequests(): TopupRequest[] {
 function saveTopupRequests(list: TopupRequest[]) {
   try {
     localStorage.setItem(TOPUPS_STORAGE_KEY, JSON.stringify(list));
+    if (list.length > 0) {
+      syncTopupToSupabase(list[0]);
+    }
   } catch {}
+}
+
+/**
+ * Persists a transaction and wallet state directly to Supabase Auth metadata for 100% durable storage.
+ */
+export async function syncTransactionToSupabase(tx: BillingTransaction, wallet: UserWallet): Promise<void> {
+  try {
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    if (!usersData?.users) return;
+
+    const user = usersData.users.find(u => u.email?.toLowerCase() === wallet.userEmail.toLowerCase());
+    if (!user) return;
+
+    const existingMeta = user.user_metadata || {};
+    const existingTx: BillingTransaction[] = Array.isArray(existingMeta.billing_transactions) ? existingMeta.billing_transactions : [];
+    const updatedTx = [tx, ...existingTx.filter(t => t.id !== tx.id)].slice(0, 500);
+
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...existingMeta,
+        billing_wallet: wallet,
+        billing_transactions: updatedTx
+      }
+    });
+  } catch (err) {
+    console.warn('[Supabase Transaction Sync Notice]:', err);
+  }
+}
+
+/**
+ * Persists top-up request to Supabase Auth metadata for 100% durable storage.
+ */
+export async function syncTopupToSupabase(topup: TopupRequest): Promise<void> {
+  try {
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    if (!usersData?.users) return;
+
+    const user = usersData.users.find(u => u.email?.toLowerCase() === topup.userEmail.toLowerCase());
+    if (!user) return;
+
+    const existingMeta = user.user_metadata || {};
+    const existingTopups: TopupRequest[] = Array.isArray(existingMeta.billing_topups) ? existingMeta.billing_topups : [];
+    const updatedTopups = [topup, ...existingTopups.filter(t => t.id !== topup.id)];
+
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...existingMeta,
+        billing_topups: updatedTopups
+      }
+    });
+  } catch (err) {
+    console.warn('[Supabase Topup Sync Notice]:', err);
+  }
+}
+
+/**
+ * Fetches durable transactions directly from Supabase for the current user.
+ */
+export async function fetchTransactionsFromSupabase(email?: string): Promise<BillingTransaction[]> {
+  const userEmail = getActiveEmail(email);
+  try {
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    if (!usersData?.users) return getAllTransactions();
+
+    const user = usersData.users.find(u => u.email?.toLowerCase() === userEmail);
+    if (!user) return getAllTransactions();
+
+    const meta = user.user_metadata || {};
+    if (meta.billing_wallet) {
+      const wallets = getAllWallets();
+      wallets[userEmail] = meta.billing_wallet;
+      saveAllWallets(wallets);
+      emitWalletUpdate(meta.billing_wallet);
+    }
+
+    if (Array.isArray(meta.billing_transactions) && meta.billing_transactions.length > 0) {
+      saveTransactions(meta.billing_transactions);
+      return meta.billing_transactions;
+    }
+  } catch (err) {
+    console.warn('[Supabase Transactions Fetch Notice]:', err);
+  }
+  return getAllTransactions();
 }
 
 /**
@@ -198,7 +292,7 @@ export function getVideoAccessRemainingHours(videoId: string, email?: string): n
 const _walletSyncThrottles: Record<string, number> = {};
 
 /**
- * Synchronizes user wallet directly with persistent Database (throttled to at most once per 10s).
+ * Synchronizes user wallet directly with persistent Supabase & Database.
  */
 export async function syncWalletWithDatabase(email?: string): Promise<UserWallet> {
   const userEmail = getActiveEmail(email);
@@ -208,6 +302,30 @@ export async function syncWalletWithDatabase(email?: string): Promise<UserWallet
     return getUserWallet(userEmail);
   }
   _walletSyncThrottles[userEmail] = now;
+
+  // 1. Sync directly from Supabase first
+  try {
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    if (usersData?.users) {
+      const user = usersData.users.find(u => u.email?.toLowerCase() === userEmail);
+      if (user?.user_metadata?.billing_wallet) {
+        const cloudWallet = user.user_metadata.billing_wallet as UserWallet;
+        const wallets = getAllWallets();
+        const prevBal = wallets[userEmail]?.balance;
+        wallets[userEmail] = cloudWallet;
+        saveAllWallets(wallets);
+        if (prevBal !== cloudWallet.balance) {
+          emitWalletUpdate(cloudWallet);
+        }
+        if (Array.isArray(user.user_metadata.billing_transactions)) {
+          localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(user.user_metadata.billing_transactions));
+        }
+        return cloudWallet;
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Wallet Sync Notice]:', err);
+  }
 
   try {
     const res = await fetch(`${BACKEND_URL}/api/billing/wallet?email=${encodeURIComponent(userEmail)}`);
@@ -334,7 +452,7 @@ export function deductCredits(
 
   const allTx = getAllTransactions();
   allTx.unshift(tx);
-  saveTransactions(allTx);
+  saveTransactions(allTx, wallet);
   emitWalletUpdate(wallet);
 
   // Sync with persistent SQLite Database
@@ -435,7 +553,7 @@ export function handleVideoViewBilling(
 
   const allTx = getAllTransactions();
   allTx.unshift(tx);
-  saveTransactions(allTx);
+  saveTransactions(allTx, wallet);
   emitWalletUpdate(wallet);
 
   // Sync with persistent SQLite Database
@@ -505,7 +623,7 @@ export function adminAddCredits(
 
   const allTx = getAllTransactions();
   allTx.unshift(tx);
-  saveTransactions(allTx);
+  saveTransactions(allTx, wallet);
   emitWalletUpdate(wallet);
 
   // Sync to database

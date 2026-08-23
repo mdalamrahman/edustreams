@@ -3525,9 +3525,67 @@ class AdminReviewTopupPayload(BaseModel):
     admin_email: Optional[str] = None
 
 
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+
+
+def sync_transaction_to_supabase(tx: dict, wallet: dict):
+    """Saves transaction and wallet details directly to Supabase Auth metadata for 100% durability."""
+    try:
+        url = f"{SUPABASE_URL}/auth/v1/admin/users"
+        headers = {
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json"
+        }
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            users = res.json().get("users", [])
+            target_email = wallet.get("userEmail", "").strip().lower()
+            matching_user = next((u for u in users if (u.get("email") or "").strip().lower() == target_email), None)
+            if matching_user:
+                uid = matching_user["id"]
+                curr_meta = matching_user.get("user_metadata") or {}
+                curr_txs = curr_meta.get("billing_transactions") or []
+                updated_txs = [tx] + [t for t in curr_txs if t.get("id") != tx.get("id")]
+                updated_txs = updated_txs[:500]
+
+                update_payload = {
+                    "user_metadata": {
+                        **curr_meta,
+                        "billing_wallet": wallet,
+                        "billing_transactions": updated_txs
+                    }
+                }
+                requests.put(f"{SUPABASE_URL}/auth/v1/admin/users/{uid}", headers=headers, json=update_payload, timeout=5)
+    except Exception as e:
+        print(f"[Supabase Transaction Sync Error]: {e}")
+
+
 def load_wallet_from_cloud(email: str) -> Optional[dict]:
-    """Retrieves user wallet from durable Cloudflare R2 storage if local SQLite was reset."""
+    """Retrieves user wallet from durable Supabase Auth metadata or Cloudflare R2 if local SQLite was reset."""
     import re
+    # 1. Check Supabase first
+    try:
+        url = f"{SUPABASE_URL}/auth/v1/admin/users"
+        headers = {
+            "apikey": SUPABASE_SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+            "Content-Type": "application/json"
+        }
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            users = res.json().get("users", [])
+            target_email = (email or "").strip().lower()
+            matching_user = next((u for u in users if (u.get("email") or "").strip().lower() == target_email), None)
+            if matching_user:
+                meta = matching_user.get("user_metadata") or {}
+                if "billing_wallet" in meta and isinstance(meta["billing_wallet"], dict):
+                    return meta["billing_wallet"]
+    except Exception as e:
+        print(f"[Supabase Wallet Load Notice]: {e}")
+
+    # 2. Fallback to Cloudflare R2
     safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "").strip().lower())
     try:
         data = r2_storage.fetch_json(f"wallets/{safe_email}.json")
@@ -3539,8 +3597,23 @@ def load_wallet_from_cloud(email: str) -> Optional[dict]:
 
 
 def save_wallet_to_cloud(wallet: dict):
-    """Saves user wallet to durable Cloudflare R2 storage so data is never lost on server restarts."""
+    """Saves user wallet to durable Supabase Auth metadata and Cloudflare R2."""
     import re
+    # 1. Save to Supabase
+    try:
+        dummy_tx = {
+            "id": f"sync-{int(time.time()*1000)}",
+            "type": "SYNC",
+            "category": "WALLET_SYNC",
+            "description": "Wallet sync",
+            "amount": 0.0,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }
+        sync_transaction_to_supabase(dummy_tx, wallet)
+    except Exception:
+        pass
+
+    # 2. Save to Cloudflare R2
     safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', wallet.get("userEmail", "").strip().lower())
     try:
         r2_storage.upload_json(f"wallets/{safe_email}.json", wallet)
@@ -3840,7 +3913,7 @@ async def submit_topup_endpoint(payload: TopupSubmissionPayload):
 
 @app.get("/api/billing/transactions")
 async def get_user_transactions_endpoint(email: str = "student@edustream.io"):
-    """Fetches user transaction history from database."""
+    """Fetches user transaction history from database and Supabase."""
     import sqlite3
     clean_email = email.strip().lower()
     conn = sqlite3.connect(SQLITE_DB_PATH)
@@ -3868,6 +3941,27 @@ async def get_user_transactions_endpoint(email: str = "student@edustream.io"):
             "balanceAfter": r[7],
             "timestamp": r[8]
         })
+        
+    if not txs:
+        # Check Supabase Auth metadata directly
+        try:
+            url = f"{SUPABASE_URL}/auth/v1/admin/users"
+            headers = {
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Content-Type": "application/json"
+            }
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code == 200:
+                users = res.json().get("users", [])
+                matching_user = next((u for u in users if (u.get("email") or "").strip().lower() == clean_email), None)
+                if matching_user:
+                    supa_txs = matching_user.get("user_metadata", {}).get("billing_transactions", [])
+                    if isinstance(supa_txs, list) and supa_txs:
+                        return {"status": "ok", "transactions": supa_txs}
+        except Exception:
+            pass
+
     return {"status": "ok", "transactions": txs}
 
 
@@ -3979,6 +4073,30 @@ async def get_admin_billing_data_endpoint():
         })
         
     conn.close()
+    
+    # If SQLite is empty (e.g. fresh restart), aggregate from Supabase Auth metadata
+    if not wallets:
+        try:
+            url = f"{SUPABASE_URL}/auth/v1/admin/users"
+            headers = {
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Content-Type": "application/json"
+            }
+            res = requests.get(url, headers=headers, timeout=5)
+            if res.status_code == 200:
+                supa_users = res.json().get("users", [])
+                for u in supa_users:
+                    meta = u.get("user_metadata") or {}
+                    if "billing_wallet" in meta and isinstance(meta["billing_wallet"], dict):
+                        wallets.append(meta["billing_wallet"])
+                    if "billing_transactions" in meta and isinstance(meta["billing_transactions"], list):
+                        txs.extend(meta["billing_transactions"])
+                    if "billing_topups" in meta and isinstance(meta["billing_topups"], list):
+                        topups.extend(meta["billing_topups"])
+        except Exception:
+            pass
+
     return {
         "status": "ok",
         "wallets": wallets,
