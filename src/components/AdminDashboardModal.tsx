@@ -99,13 +99,14 @@ const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
   const activeEmail = (currentUserEmail || 'mdalamrahman4@gmail.com').toLowerCase();
 
   return registered.map((u, idx) => {
-    const isCurrent = u.email.toLowerCase() === activeEmail || (activeEmail.includes('mdalamrahman4') && u.email.includes('mdalamrahman4'));
-    const isSuperAdmin = u.email.includes('mdalamrahman4');
+    const uEmail = (u?.email || '').toLowerCase();
+    const isCurrent = uEmail === activeEmail || (activeEmail.includes('mdalamrahman4') && uEmail.includes('mdalamrahman4'));
+    const isSuperAdmin = uEmail.includes('mdalamrahman4');
 
     return {
       id: u.id || `usr-${idx + 1}`,
-      email: u.email,
-      name: isSuperAdmin ? `${u.name.replace(' (Admin)', '')} (Admin)` : u.name,
+      email: u.email || 'student@edustream.io',
+      name: isSuperAdmin ? `${(u.name || 'Admin').replace(' (Admin)', '')} (Admin)` : (u.name || 'Student'),
       solvedCount: isCurrent ? solved : 0,
       studyHours: isCurrent ? Number((activeMins / 60).toFixed(1)) : 0,
       streakDays: isCurrent ? (solved > 0 || activeMins > 0 ? 1 : 0) : 0,
@@ -238,10 +239,14 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
         if (supaData.users && supaData.users.length > 0) {
           // Merge Supabase users with local registry
           const map = new Map<string, AdminUserStat>();
-          freshUsers.forEach(u => map.set(u.email.toLowerCase(), u));
+          freshUsers.forEach(u => {
+            const key = (u?.email || '').toLowerCase();
+            if (key) map.set(key, u);
+          });
           (supaData.users as AdminUserStat[]).forEach(u => {
-            if (!map.has(u.email.toLowerCase())) {
-              map.set(u.email.toLowerCase(), u);
+            const key = (u?.email || '').toLowerCase();
+            if (key && !map.has(key)) {
+              map.set(key, u);
             }
           });
           setUsersList(Array.from(map.values()));
@@ -277,10 +282,11 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
   // Filtered users
   const filteredUsers = useMemo(() => {
+    const q = (searchQuery || '').toLowerCase();
     return usersList.filter(user => {
-      const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+      const nameMatch = (user?.name || '').toLowerCase().includes(q);
+      const emailMatch = (user?.email || '').toLowerCase().includes(q);
+      if (!nameMatch && !emailMatch) return false;
       if (filterRole === 'online') return user.isOnline;
       if (filterRole === 'active') return user.solvedCount > 0;
       return true;

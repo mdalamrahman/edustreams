@@ -884,7 +884,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         };
 
         setSubmissionAnalytics(analytics);
-        setIsSubmissionVisualizerOpen(true);
+        if (isAllSuccess) {
+          setIsSubmissionVisualizerOpen(true);
+        } else {
+          setIsSubmissionVisualizerOpen(false);
+          setConsoleTab('result');
+          setIsConsoleMinimized(false);
+        }
 
         setSubmissionResult({
           isSubmission: true,
@@ -2398,8 +2404,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Visualizer Trigger Banner */}
-                        {submissionResult.isSubmission && submissionAnalytics && (
+                        {/* Visualizer Trigger Banner (Only shown if all testcases passed / Accepted) */}
+                        {submissionResult.isSubmission && submissionResult.isSuccess && submissionAnalytics && (
                           <button
                             onClick={() => setIsSubmissionVisualizerOpen(true)}
                             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-sky-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/50 text-purple-200 text-xs font-bold flex items-center justify-between transition-all shadow-lg shadow-purple-600/10 group cursor-pointer"
@@ -2414,11 +2420,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           </button>
                         )}
 
-                        {/* If failed in submission or run, show failing testcase input */}
+                        {/* If failed in submission or run, show failing testcase input with option to load and run */}
                         {submissionResult.failedInput && (
                           <div className="space-y-1">
                             <div className="text-[10px] text-amber-400 font-bold uppercase flex items-center justify-between">
                               <span>Failed Test Case Input (Case {(submissionResult.failedCaseIdx ?? 0) + 1}):</span>
+                              <button
+                                onClick={() => {
+                                  if (submissionResult.failedInput) {
+                                    setTestInput(submissionResult.failedInput);
+                                    setConsoleTab('testcase');
+                                    if (typeof submissionResult.failedCaseIdx === 'number') {
+                                      setActiveTestCaseIdx(submissionResult.failedCaseIdx);
+                                    }
+                                  }
+                                }}
+                                className="px-2.5 py-0.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 text-[10px] font-bold font-sans flex items-center gap-1 transition-all cursor-pointer"
+                                title="Load this test case into the Test Cases tab to run and debug"
+                              >
+                                <span>+ Use Testcase to Run</span>
+                              </button>
                             </div>
                             <div className="p-2.5 rounded-xl bg-slate-950 border border-amber-900/40 text-slate-200 font-mono text-xs">
                               {submissionResult.failedInput}

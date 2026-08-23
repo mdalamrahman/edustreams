@@ -4187,6 +4187,93 @@ async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
     return {"status": "ok", "message": f"Topup {status_val} successfully"}
 
 
+# =========================================================================
+# PROBLEM, SUBMISSION, & USER CODE CLOUDFLARE R2 ENDPOINTS
+# =========================================================================
+
+@app.get("/api/problem/{slug}")
+async def get_problem_endpoint(slug: str):
+    """Fetches full problem spec from Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    data = r2_storage.fetch_problem(clean_slug)
+    if data:
+        return {"status": "ok", "problem": data}
+    return JSONResponse(status_code=404, content={"status": "error", "message": "Problem not found in cloud storage"})
+
+
+@app.post("/api/problem/{slug}/upload")
+async def upload_problem_endpoint(slug: str, request: Request):
+    """Uploads problem definition to Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    try:
+        body = await request.json()
+        key = r2_storage.upload_problem(clean_slug, body)
+        return {"status": "ok", "key": key}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.post("/api/problem/{slug}/user-code")
+async def save_user_code_endpoint(slug: str, request: Request):
+    """Saves student user code backup to Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    try:
+        body = await request.json()
+        email = body.get("email", "student@edustream.io").strip().lower()
+        language = body.get("language", "cpp").strip().lower()
+        code = body.get("code", "")
+        safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email)
+        key = f"user_code/{safe_email}_{clean_slug}_{language}.txt"
+        r2_storage.upload_file(key, code.encode("utf-8"), content_type="text/plain; charset=utf-8")
+        return {"status": "ok", "key": key}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.get("/api/problem/{slug}/user-code")
+async def get_user_code_endpoint(slug: str, email: str = "student@edustream.io", language: str = "cpp"):
+    """Fetches student user code backup from Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email.strip().lower())
+    key = f"user_code/{safe_email}_{clean_slug}_{language.strip().lower()}.txt"
+    code_bytes = r2_storage.fetch_file(key)
+    if code_bytes:
+        return {"status": "ok", "code": code_bytes.decode("utf-8", errors="replace")}
+    return {"status": "ok", "code": ""}
+
+
+@app.post("/api/problem/{slug}/submissions")
+async def save_submission_endpoint(slug: str, request: Request):
+    """Saves user code submission to Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    try:
+        body = await request.json()
+        email = body.get("email", "student@edustream.io").strip().lower()
+        submission = body.get("submission", {})
+        safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email)
+        key = f"submissions/{safe_email}_{clean_slug}.json"
+        
+        existing = r2_storage.fetch_json(key) or []
+        if not isinstance(existing, list):
+            existing = []
+        existing = [submission] + [s for s in existing if s.get("id") != submission.get("id")]
+        existing = existing[:50]
+        r2_storage.upload_json(key, existing)
+        return {"status": "ok", "submissions": existing}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.get("/api/problem/{slug}/submissions")
+async def get_submissions_endpoint(slug: str, email: str = "student@edustream.io"):
+    """Fetches user code submissions from Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email.strip().lower())
+    key = f"submissions/{safe_email}_{clean_slug}.json"
+    subs = r2_storage.fetch_json(key) or []
+    return {"status": "ok", "submissions": subs if isinstance(subs, list) else []}
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "7860"))
