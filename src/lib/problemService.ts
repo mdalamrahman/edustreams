@@ -262,9 +262,12 @@ CRITICAL SIGNATURE & TEST CASE SPECIFICATIONS:
    - NEVER add phantom or extra parameters (like adding 'target' to nextPermutation or sortColors).
 3. IN-PLACE / VOID METHODS:
    - For methods returning void (e.g. nextPermutation, sortColors, rotate, setZeroes, moveZeroes), "expectedOutputs" MUST contain the final mutated array/matrix representation.
-4. AT LEAST 10 TEST CASES:
+4. STRICT CONSTRAINT ADHERENCE:
+   - Strictly obey the standard problem constraints (e.g. if 1 <= nums.length <= 100, DO NOT generate empty arrays like "nums = []").
+   - Every single testcase MUST be valid according to the stated problem constraints.
+5. AT LEAST 10 TEST CASES:
    - Provide AT LEAST 10 diverse test case inputs in "testCases" and matching 1-to-1 "expectedOutputs".
-   - Include standard cases, edge cases, single-element cases, sorted/reverse-sorted cases, duplicate elements, negative numbers, large bounds.
+   - Include standard cases, edge cases within constraints, single-element cases, sorted/reverse-sorted cases, duplicate elements, negative numbers, large bounds.
 
 Return ONLY valid JSON matching this exact structure:
 {

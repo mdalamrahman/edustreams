@@ -137,7 +137,7 @@ export function wrapLeetCodeExecutableCode(
     if (lowMethod.includes('nextpermutation') || normTitle.includes('nextpermutation') || (lowMethod.includes('permutation') && paramCount === 1)) {
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {1, 2, 3};
+        if (nums.empty() && raw_input.find('[') == string::npos) nums = {1, 2, 3};
         sol.${methodName || 'nextPermutation'}(nums);
         print_val(nums);
         cout << endl;
@@ -145,7 +145,7 @@ export function wrapLeetCodeExecutableCode(
     } else if (lowMethod.includes('sortcolors') || normTitle.includes('sortcolors') || normTitle.includes('dutchflag') || normTitle.includes('012')) {
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {2, 0, 2, 1, 1, 0};
+        if (nums.empty() && raw_input.find('[') == string::npos) nums = {2, 0, 2, 1, 1, 0};
         sol.${methodName || 'sortColors'}(nums);
         print_val(nums);
         cout << endl;
@@ -153,7 +153,7 @@ export function wrapLeetCodeExecutableCode(
     } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes')) {
       invocation = `
         vector<vector<int>> matrix = parse_matrix_int(raw_input);
-        if (matrix.empty()) matrix = {{1,1,1},{1,0,1},{1,1,1}};
+        if (matrix.empty() && raw_input.find('[') == string::npos) matrix = {{1,1,1},{1,0,1},{1,1,1}};
         sol.${methodName || 'setZeroes'}(matrix);
         print_val(matrix);
         cout << endl;
@@ -169,7 +169,7 @@ export function wrapLeetCodeExecutableCode(
     } else if (lowMethod.includes('twosum') || normTitle.includes('twosum')) {
       invocation = `
         vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty()) nums = {2, 7, 11, 15};
+        if (nums.empty() && raw_input.find('[') == string::npos) nums = {2, 7, 11, 15};
         int target = parse_named_arg_int(raw_input, "target", 9);
         auto res = sol.${methodName || 'twoSum'}(nums, target);
         print_val(res);
