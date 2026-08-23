@@ -199,7 +199,49 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     }
   }
 
-  // Ensure minimum 10 test cases for common patterns
+  // Filter out any completely invalid testcases (like empty array for nextPermutation where 1 <= nums.length)
+  if (problem.testCases && problem.expectedOutputs) {
+    const validPairs: { input: string; output: string }[] = [];
+    const isNextPerm = (problem.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes('nextpermutation');
+    
+    for (let i = 0; i < problem.testCases.length; i++) {
+      const tc = String(problem.testCases[i] || '').trim();
+      const eo = String(problem.expectedOutputs[i] || '').trim();
+      if (!tc) continue;
+      
+      // If Next Permutation has nums = [] or nums = [ ] which violates 1 <= nums.length <= 100, skip it
+      if (isNextPerm && (tc === 'nums = []' || tc === '[]' || tc === 'nums = [ ]')) {
+        continue;
+      }
+      validPairs.push({ input: tc, output: eo });
+    }
+    
+    if (validPairs.length > 0) {
+      problem.testCases = validPairs.map(p => p.input);
+      problem.expectedOutputs = validPairs.map(p => p.output);
+    }
+  }
+
+  // Ensure minimum 10 verified test cases for Next Permutation
+  const normProblemName = (problem.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normProblemName.includes('nextpermutation') && (!problem.testCases || problem.testCases.length < 10)) {
+    const standardNextPermCases = [
+      { input: 'nums = [1, 2, 3]', output: '[1, 3, 2]' },
+      { input: 'nums = [3, 2, 1]', output: '[1, 2, 3]' },
+      { input: 'nums = [1, 1, 5]', output: '[1, 5, 1]' },
+      { input: 'nums = [1, 3, 2]', output: '[2, 1, 3]' },
+      { input: 'nums = [2, 3, 1]', output: '[3, 1, 2]' },
+      { input: 'nums = [1]', output: '[1]' },
+      { input: 'nums = [5, 4, 7, 5, 3, 2]', output: '[5, 5, 2, 3, 4, 7]' },
+      { input: 'nums = [1, 5, 1]', output: '[5, 1, 1]' },
+      { input: 'nums = [2, 1, 2, 2, 2, 2, 2, 1]', output: '[2, 2, 1, 1, 2, 2, 2, 2]' },
+      { input: 'nums = [4, 2, 0, 2, 3, 2, 0]', output: '[4, 2, 0, 3, 0, 2, 2]' }
+    ];
+    problem.testCases = standardNextPermCases.map(c => c.input);
+    problem.expectedOutputs = standardNextPermCases.map(c => c.output);
+  }
+
+  // Ensure minimum 10 test cases for Two Sum
   if (paramNames.includes('nums') && paramNames.includes('target') && (!problem.testCases || problem.testCases.length < 10 || isTwoSum(problem.name))) {
     const standardTwoSumCases = [
       { input: 'nums = [2, 7, 11, 15], target = 9', output: '[0, 1]' },

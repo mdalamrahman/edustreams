@@ -30,7 +30,8 @@ import {
   Youtube,
   Bookmark,
   BookmarkCheck,
-  Edit3
+  Edit3,
+  Crown
 } from 'lucide-react';
 import { 
   DSAProblem, 
@@ -112,11 +113,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   userEmail,
   dsaVideos = []
 }) => {
-  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs)
+  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs) | 'mik' (253 Qs)
   const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_ACTIVE_SHEET_KEY) as DSASheetType;
-      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79')) return saved;
+      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79' || saved === 'mik')) return saved;
     } catch {}
     return 'sde';
   });
@@ -445,21 +446,21 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn font-sans">
 
-      {/* TOP 3-WAY SHEET SWITCHER TABS */}
+      {/* TOP 4-WAY SHEET SWITCHER TABS */}
       <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 w-full">
           
           {/* TAB 1: SDE Sheet */}
           <button
             onClick={() => handleSwitchSheet('sde')}
-            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === 'sde'
                 ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.02] border border-emerald-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
             }`}
           >
             <Rocket className={`w-4 h-4 ${activeSheet === 'sde' ? 'text-white animate-bounce' : 'text-emerald-400'}`} />
-            <span>SDETube's SDE Sheet</span>
+            <span>SDE Sheet</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'sde' ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-400/30' : 'bg-slate-800 text-slate-400'}`}>
               191 Qs
             </span>
@@ -468,14 +469,14 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 2: A2Z DSA Roadmap */}
           <button
             onClick={() => handleSwitchSheet('a2z')}
-            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === 'a2z'
                 ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02] border border-indigo-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
             }`}
           >
             <BookOpen className={`w-4 h-4 ${activeSheet === 'a2z' ? 'text-white animate-pulse' : 'text-indigo-400'}`} />
-            <span>SDETube's A2Z Roadmap</span>
+            <span>A2Z Roadmap</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'a2z' ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-400/30' : 'bg-slate-800 text-slate-400'}`}>
               474 Qs
             </span>
@@ -484,16 +485,32 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 3: 79 Sheet */}
           <button
             onClick={() => handleSwitchSheet('79')}
-            className={`flex items-center justify-center space-x-2.5 px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
               activeSheet === '79'
                 ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-400/40'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
             }`}
           >
             <Zap className={`w-4 h-4 ${activeSheet === '79' ? 'text-white animate-pulse' : 'text-amber-400'}`} />
-            <span>SDETube's 79 Sheet</span>
+            <span>79 Fast-Track</span>
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === '79' ? 'bg-amber-950/80 text-amber-200 border border-amber-400/30' : 'bg-slate-800 text-slate-400'}`}>
               79 Qs
+            </span>
+          </button>
+
+          {/* TAB 4: CodeStoryWithMIK Premium */}
+          <button
+            onClick={() => handleSwitchSheet('mik')}
+            className={`flex items-center justify-center space-x-2 px-3.5 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+              activeSheet === 'mik'
+                ? 'bg-gradient-to-r from-fuchsia-600 via-pink-600 to-rose-600 text-white shadow-lg shadow-pink-500/20 scale-[1.02] border border-pink-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+            }`}
+          >
+            <Crown className={`w-4 h-4 ${activeSheet === 'mik' ? 'text-amber-300 animate-bounce' : 'text-pink-400'}`} />
+            <span>CodeStoryWithMIK</span>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'mik' ? 'bg-pink-950/80 text-pink-200 border border-pink-400/30' : 'bg-slate-800 text-slate-400'}`}>
+              253 Qs
             </span>
           </button>
 
@@ -553,7 +570,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       
       {/* HERO SHOWCASE & PROGRESS BANNER */}
       <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border shadow-2xl relative overflow-hidden ${
-        activeSheet === 'sde' ? 'border-emerald-500/30' : activeSheet === 'a2z' ? 'border-indigo-500/30' : 'border-amber-500/30'
+        activeSheet === 'sde' ? 'border-emerald-500/30' : activeSheet === 'a2z' ? 'border-indigo-500/30' : activeSheet === 'mik' ? 'border-pink-500/30' : 'border-amber-500/30'
       }`}>
         <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
           <Code className="w-80 h-80 text-white" />
@@ -569,7 +586,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
                   : activeSheet === 'a2z'
                     ? 'bg-indigo-950 text-indigo-300 border border-indigo-700/60'
-                    : 'bg-amber-950 text-amber-300 border border-amber-700/60'
+                    : activeSheet === 'mik'
+                      ? 'bg-pink-950 text-pink-300 border border-pink-700/60'
+                      : 'bg-amber-950 text-amber-300 border border-amber-700/60'
               }`}>
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>OFFICIAL CURRICULUM &bull; {activeSheetConfig.totalQuestions} PROBLEMS</span>

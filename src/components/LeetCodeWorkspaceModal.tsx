@@ -43,7 +43,8 @@ import {
   Share2,
   Code2,
   BarChart3,
-  ArrowUpRight
+  ArrowUpRight,
+  Youtube
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -288,6 +289,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const gfgUrl = useMemo(() => {
     return (codingProblem?.gfg && codingProblem.gfg.trim().length > 0) ? codingProblem.gfg : null;
   }, [codingProblem]);
+
+  // YouTube embed URL parser
+  const youtubeEmbedUrl = useMemo(() => {
+    const rawUrl = codingProblem?.youtube || codingProblem?.youtubeUrl || '';
+    if (!rawUrl) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = rawUrl.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : (rawUrl.startsWith('http') ? rawUrl : null);
+  }, [codingProblem]);
+
+  const hasVideoSolution = Boolean(matchingVideo?.stream_url || youtubeEmbedUrl);
 
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
@@ -779,7 +791,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
       } else {
         // ----------------------------------------------------
-        // SUBMISSION MODE: Execute across ALL test cases
+        // SUBMISSION MODE: Ultra-Fast Parallel Execution
         // ----------------------------------------------------
         const allCases = problemTemplate.testCases && problemTemplate.testCases.length > 0 
           ? problemTemplate.testCases 
@@ -788,32 +800,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           ? problemTemplate.expectedOutputs
           : [currentExpectedOutput];
 
-        let passed = 0;
-        let lastResult: CodeExecutionResult = {
-          stdout: '',
-          stderr: '',
-          status: 'SUCCESS',
-          exit_code: 0,
-          execution_time_ms: 0,
-          memory_used_kb: 3420
-        };
-        let failedIdx = -1;
-        let failedIn = '';
-        let failedExp = '';
-        let failedOut = '';
-        let failedErr = '';
-        const caseResults: TestCaseResultItem[] = [];
-
-        for (let i = 0; i < allCases.length; i++) {
-          const caseInput = allCases[i];
+        // Run all test cases concurrently in parallel for lightning-fast results
+        const caseExecutionPromises = allCases.map(async (caseInput, i) => {
           const expectedOut = allExpected[i] || '';
           const caseStart = Date.now();
           const res = await executeCode(code, language, caseInput, cleanTitle);
           const caseLatency = Math.max(2, Date.now() - caseStart);
-          lastResult = res;
-
           const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut);
-          caseResults.push({
+          return {
             caseIndex: i,
             input: caseInput,
             expectedOutput: expectedOut,
@@ -821,17 +815,51 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             passed: casePass,
             runtimeMs: res.execution_time_ms || caseLatency,
             memoryKb: res.memory_used_kb || (3400 + Math.floor(Math.random() * 400)),
-            errorMessage: casePass ? undefined : (res.stderr || undefined)
+            errorMessage: casePass ? undefined : (res.stderr || undefined),
+            rawResult: res
+          };
+        });
+
+        const resolvedCases = await Promise.all(caseExecutionPromises);
+        resolvedCases.sort((a, b) => a.caseIndex - b.caseIndex);
+
+        let passed = 0;
+        let failedIdx = -1;
+        let failedIn = '';
+        let failedExp = '';
+        let failedOut = '';
+        let failedErr = '';
+        const caseResults: TestCaseResultItem[] = [];
+        let lastResult: CodeExecutionResult = resolvedCases[0]?.rawResult || {
+          stdout: '',
+          stderr: '',
+          status: 'SUCCESS',
+          exit_code: 0,
+          execution_time_ms: 0,
+          memory_used_kb: 3420
+        };
+
+        for (const item of resolvedCases) {
+          caseResults.push({
+            caseIndex: item.caseIndex,
+            input: item.input,
+            expectedOutput: item.expectedOutput,
+            actualOutput: item.actualOutput,
+            passed: item.passed,
+            runtimeMs: item.runtimeMs,
+            memoryKb: item.memoryKb,
+            errorMessage: item.errorMessage
           });
 
-          if (casePass) {
+          if (item.passed) {
             passed++;
           } else if (failedIdx === -1) {
-            failedIdx = i;
-            failedIn = caseInput;
-            failedExp = expectedOut;
-            failedOut = res.stdout;
-            failedErr = res.stderr;
+            failedIdx = item.caseIndex;
+            failedIn = item.input;
+            failedExp = item.expectedOutput;
+            failedOut = item.actualOutput;
+            failedErr = item.errorMessage || item.rawResult?.stderr || '';
+            lastResult = item.rawResult;
           }
         }
 
@@ -1287,19 +1315,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <span>Approaches ({problemTemplate.approaches?.length || 1})</span>
             </button>
 
-            {matchingVideo && (
-              <button
-                onClick={() => setLeftTab('video')}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  leftTab === 'video'
-                    ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
-                }`}
-              >
-                <VideoIcon className="w-3.5 h-3.5 text-rose-400" />
-                <span>Video Lesson</span>
-              </button>
-            )}
+            {/* TAB: Video Lesson */}
+            <button
+              onClick={() => setLeftTab('video')}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                leftTab === 'video'
+                  ? 'bg-rose-950/80 text-rose-200 shadow-sm border border-rose-500/40 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
+            >
+              <Youtube className={`w-3.5 h-3.5 ${hasVideoSolution ? 'text-rose-400 animate-pulse' : 'text-rose-400'}`} />
+              <span>Video {hasVideoSolution && '●'}</span>
+            </button>
 
             <button
               onClick={() => setLeftTab('diagram')}
@@ -1640,33 +1667,66 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             )}
 
-            {/* TAB 4: VIDEO LECTURE STREAM */}
+            {/* TAB 4: VIDEO LECTURE / YOUTUBE STREAM */}
             {leftTab === 'video' && (
-              <div className="space-y-4">
+              <div className="space-y-4 animate-fadeIn">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <div className="font-bold text-slate-100 flex items-center gap-2">
-                    <VideoIcon className="w-4 h-4 text-purple-400" />
-                    <span>In-Workspace Video Stream</span>
+                    <Youtube className="w-4 h-4 text-rose-400" />
+                    <span>{matchingVideo ? 'SDETube Master Channel Stream' : youtubeEmbedUrl ? 'CodeStoryWithMIK / YouTube Video Stream' : 'Video Explanation Stream'}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-950 border border-purple-700/60 text-purple-300 text-[10px] font-mono">
-                    Cloud HD Player
-                  </span>
+                  {matchingVideo && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">
+                      Channel Stream HD
+                    </span>
+                  )}
+                  {!matchingVideo && youtubeEmbedUrl && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-rose-950 border border-rose-700/60 text-rose-300 text-[10px] font-mono font-bold">
+                      YouTube Stream
+                    </span>
+                  )}
                 </div>
 
                 {matchingVideo?.stream_url ? (
-                  <div className="rounded-2xl overflow-hidden border border-purple-500/40 shadow-2xl bg-black aspect-video">
+                  <div className="rounded-2xl overflow-hidden border border-emerald-500/40 shadow-2xl bg-black aspect-video">
                     <video
-                      src={matchingVideo.stream_url}
+                      src={matchingVideo.stream_url.startsWith('http') ? matchingVideo.stream_url : `${TELEGRAM_BACKEND_URL}${matchingVideo.stream_url}`}
                       controls
                       autoPlay
                       playsInline
                       className="w-full h-full object-contain"
                     />
                   </div>
+                ) : youtubeEmbedUrl ? (
+                  <div className="rounded-2xl overflow-hidden border border-rose-500/40 shadow-2xl bg-black aspect-video">
+                    <iframe
+                      src={`${youtubeEmbedUrl}?autoplay=0&rel=0`}
+                      title="Video Explanation"
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  </div>
                 ) : (
-                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 text-slate-400">
-                    <VideoIcon className="w-8 h-8 mx-auto text-slate-600" />
-                    <p className="text-xs">No direct video stream attached to this specific problem item.</p>
+                  <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4 my-4">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-950/80 border border-rose-800 flex items-center justify-center mx-auto text-rose-300">
+                      <Youtube className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-100">Live Video Explanation</h4>
+                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                        Watch video explanation on YouTube or ask SDETube AI for real-time intuition & solution derivation.
+                      </p>
+                    </div>
+                    <a
+                      href={`https://www.youtube.com/results?search_query=${encodeURIComponent(cleanTitle + ' leetcode solution codestorywithmik')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold shadow-lg shadow-rose-900/30 transition-all cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Search on YouTube</span>
+                    </a>
                   </div>
                 )}
               </div>

@@ -1,4 +1,6 @@
-export type DSASheetType = 'sde' | 'a2z' | '79';
+import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
+
+export type DSASheetType = 'sde' | 'a2z' | '79' | 'mik';
 
 export interface DSAProblem {
   id: number;
@@ -58,6 +60,15 @@ export const DSA_SHEETS_CONFIG: Record<DSASheetType, SheetConfig> = {
     description: '79 High-Yield Last-Moment Interview Patterns',
     icon: 'zap',
     accentGradient: 'from-amber-600 to-orange-600'
+  },
+  mik: {
+    id: 'mik',
+    name: "CodeStoryWithMIK Premium DSA Sheet",
+    shortName: 'CodeStoryWithMIK',
+    totalQuestions: 253,
+    description: '253 Curated High-Frequency Problems with In-Depth Video Stories across 21 Topics',
+    icon: 'crown',
+    accentGradient: 'from-fuchsia-600 via-pink-600 to-rose-600'
   }
 };
 
@@ -15151,7 +15162,8 @@ export const SDE_SHEET_DATA: DSAProblem[] = SDE_SHEET_191_DATA;
 export const ALL_SHEETS_MAP: Record<DSASheetType, DSAProblem[]> = {
   sde: SDE_SHEET_191_DATA,
   a2z: A2Z_DSA_SHEET_474_DATA,
-  79: SDETUBE_79_SHEET_DATA
+  79: SDETUBE_79_SHEET_DATA,
+  mik: CODESTORYWITHMIK_SHEET_DATA
 };
 
 export function getSheetData(sheetType: DSASheetType): DSAProblem[] {

@@ -43,6 +43,8 @@ import {
   adminAddCredits, 
   getUserWallet, 
   fetchAdminBillingData,
+  getAllTransactions,
+  BillingTransaction,
   TopupRequest, 
   UserWallet 
 } from '../lib/billing';
@@ -140,14 +142,20 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   const [manualSuccessMsg, setManualSuccessMsg] = useState<string | null>(null);
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
+  const [transactionsList, setTransactionsList] = useState<BillingTransaction[]>(() => getAllTransactions());
+
   const refreshTopups = async () => {
     try {
       const data = await fetchAdminBillingData();
       if (data?.topups) {
         setTopupRequests(data.topups);
       }
+      if (data?.transactions) {
+        setTransactionsList(data.transactions);
+      }
     } catch {
       setTopupRequests(getAllTopupRequests());
+      setTransactionsList(getAllTransactions());
     }
   };
 
@@ -1056,6 +1064,82 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Real-time Transactions & Request Usage Ledger */}
+              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 shadow-xl space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-400" />
+                      Platform Requests & Real-time Transactions Ledger
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-300 text-xs font-mono font-bold">
+                      {transactionsList.length} Entries
+                    </span>
+                  </div>
+                  <button
+                    onClick={refreshTopups}
+                    className="flex items-center space-x-1 px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-mono border border-slate-800 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3 text-cyan-400" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-800/80 max-h-[360px] custom-scrollbar">
+                  <table className="w-full text-left text-xs font-mono">
+                    <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px] sticky top-0 z-10 backdrop-blur-md">
+                      <tr>
+                        <th className="py-2.5 px-4">Date & Time</th>
+                        <th className="py-2.5 px-3">Student Email</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-3">Description</th>
+                        <th className="py-2.5 px-3 text-right">Amount (₹)</th>
+                        <th className="py-2.5 px-4 text-right">Balance After</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                      {transactionsList.slice(0, 100).map((tx) => (
+                        <tr key={tx.id} className="hover:bg-slate-900/50 transition-colors">
+                          <td className="py-2 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                            {new Date(tx.timestamp).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-3 text-slate-300 font-bold max-w-[150px] truncate">
+                            {tx.userEmail}
+                          </td>
+                          <td className="py-2 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              tx.type === 'CREDIT'
+                                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60'
+                                : 'bg-slate-900 text-indigo-300 border border-slate-800'
+                            }`}>
+                              {tx.category}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-slate-300 text-[11px] max-w-[240px] truncate" title={tx.description}>
+                            {tx.description}
+                          </td>
+                          <td className={`py-2 px-3 text-right font-black ${
+                            tx.amount > 0 ? 'text-emerald-400' : 'text-slate-300'
+                          }`}>
+                            {tx.amount > 0 ? `+₹${tx.amount.toFixed(2)}` : `-₹${Math.abs(tx.amount).toFixed(2)}`}
+                          </td>
+                          <td className="py-2 px-4 text-right font-mono font-bold text-slate-400">
+                            ₹{tx.balanceAfter.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                      {transactionsList.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-500 italic">
+                            No billing transactions recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
