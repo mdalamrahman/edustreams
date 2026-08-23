@@ -180,6 +180,21 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
     // 2. Record real analytics activity
     recordRealActivity('coding', timeMins, 1, true);
 
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
+      const logs: Array<{ date: string; count: number; problems?: string[] }> = rawLogs ? JSON.parse(rawLogs) : [];
+      const existing = logs.find(l => l.date === today);
+      if (existing) {
+        existing.count = (existing.count || 0) + 1;
+        existing.problems = existing.problems || [];
+        if (!existing.problems.includes(String(identifier))) existing.problems.push(String(identifier));
+      } else {
+        logs.push({ date: today, count: 1, problems: [String(identifier)] });
+      }
+      localStorage.setItem('sdetube_practice_activity_logs', JSON.stringify(logs.slice(-365)));
+    } catch (_) {}
+
     // 3. Dispatch global custom event for instant UI reaction across all components
     window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
       detail: { problemId: matchedId, identifier }

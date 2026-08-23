@@ -1526,6 +1526,154 @@ async def get_user_submissions(slug: str, email: str):
     return {"submissions": []}
 
 
+_LEETCODE_PROFILE_CACHE: dict = {}
+_GITHUB_PROFILE_CACHE: dict = {}
+
+@app.get("/api/leetcode/full-profile/{username}")
+async def get_leetcode_full_profile(username: str):
+    """
+    Fetches full public profile data from LeetCode (allQuestionsCount, matchedUser,
+    profile, submitStats, languageProblemCount, badges, userContestRanking, recentSubmissionList)
+    in a single comprehensive GraphQL round-trip with 15-minute caching.
+    """
+    clean_user = username.strip()
+    if not clean_user:
+        return JSONResponse(status_code=400, content={"error": "Username is required"})
+
+    now = time.time()
+    cache_key = clean_user.lower()
+    if cache_key in _LEETCODE_PROFILE_CACHE:
+        cached_time, cached_data = _LEETCODE_PROFILE_CACHE[cache_key]
+        if now - cached_time < 900:  # 15 minutes TTL
+            return cached_data
+
+    query = """
+    query userFullProfile($username: String!) {
+      allQuestionsCount {
+        difficulty
+        count
+      }
+      matchedUser(username: $username) {
+        username
+        githubUrl
+        twitterUrl
+        linkedinUrl
+        profile {
+          realName
+          websites
+          countryName
+          skillTags
+          reputation
+          ranking
+          starRating
+          aboutMe
+          userAvatar
+        }
+        activeBadge {
+          displayName
+          icon
+        }
+        badges {
+          id
+          name
+          icon
+        }
+        languageProblemCount {
+          languageName
+          problemsSolved
+        }
+        submitStats {
+          acSubmissionNum {
+            difficulty
+            count
+          }
+        }
+      }
+      userContestRanking(username: $username) {
+        attendedContestsCount
+        rating
+        globalRanking
+        totalParticipants
+        topPercentage
+        badge {
+          name
+        }
+      }
+      recentSubmissionList(username: $username, limit: 15) {
+        title
+        titleSlug
+        timestamp
+        statusDisplay
+        lang
+      }
+    }
+    """
+
+    def _fetch_lc():
+        headers = {
+            "Content-Type": "application/json",
+            "Referer": "https://leetcode.com",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
+        resp = requests.post(
+            "https://leetcode.com/graphql",
+            json={"query": query, "variables": {"username": clean_user}},
+            headers=headers,
+            timeout=10
+        )
+        return resp
+
+    try:
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, _fetch_lc)
+        if response.status_code == 200:
+            data = response.json()
+            if "errors" in data and not data.get("data", {}).get("matchedUser"):
+                return JSONResponse(status_code=404, content={"error": "User not found on LeetCode", "details": data["errors"]})
+            res_data = data.get("data", {})
+            _LEETCODE_PROFILE_CACHE[cache_key] = (now, res_data)
+            return res_data
+        else:
+            return JSONResponse(status_code=response.status_code, content={"error": "LeetCode GraphQL error", "status": response.status_code})
+    except Exception as e:
+        print(f"[LeetCode Profile Proxy Error]: {e}")
+        return JSONResponse(status_code=500, content={"error": "Failed to communicate with LeetCode API", "details": str(e)})
+
+
+@app.get("/api/github/profile/{username}")
+async def get_github_profile(username: str):
+    """Fetches public GitHub profile and repo metrics with 15-minute caching."""
+    clean_user = username.strip()
+    if not clean_user:
+        return JSONResponse(status_code=400, content={"error": "Username is required"})
+
+    now = time.time()
+    cache_key = clean_user.lower()
+    if cache_key in _GITHUB_PROFILE_CACHE:
+        cached_time, cached_data = _GITHUB_PROFILE_CACHE[cache_key]
+        if now - cached_time < 900:
+            return cached_data
+
+    def _fetch_gh():
+        headers = {
+            "User-Agent": "SDETube-Dev-Platform",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        resp = requests.get(f"https://api.github.com/users/{clean_user}", headers=headers, timeout=8)
+        return resp
+
+    try:
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, _fetch_gh)
+        if response.status_code == 200:
+            user_data = response.json()
+            _GITHUB_PROFILE_CACHE[cache_key] = (now, user_data)
+            return user_data
+        return JSONResponse(status_code=response.status_code, content={"error": "GitHub user not found"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": "GitHub API communication failed", "details": str(e)})
+
+
 class StoreSolutionRequest(BaseModel):
     language: str
     code: str

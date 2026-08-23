@@ -51,6 +51,7 @@ import { requestMistralQuiz } from './lib/mistral';
 import { handleVideoViewBilling, canAffordAction, deductCredits, syncWalletWithDatabase, PRICING_CONFIG } from './lib/billing';
 import { InsufficientCreditsModal } from './components/InsufficientCreditsModal';
 import { WalletTopupModal } from './components/WalletTopupModal';
+import { UserProfileModal } from './components/UserProfileModal';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -82,6 +83,7 @@ export function App() {
   const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState<boolean>(false);
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 2.0, action: 'Accessing Video Lecture' });
 
@@ -925,6 +927,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         onOpenSqlWorkspace={() => setIsSqlModalOpen(true)}
         onOpenAskAI={() => setIsAskAIOpen(true)}
         onOpenWallet={() => setIsWalletModalOpen(true)}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
@@ -1456,6 +1459,17 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
         initialAmount={50}
+      />
+
+      {/* Comprehensive Developer Profile & 365-Day Heatmap Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        onOpenWallet={() => {
+          setIsProfileModalOpen(false);
+          setIsWalletModalOpen(true);
+        }}
       />
 
     </div>

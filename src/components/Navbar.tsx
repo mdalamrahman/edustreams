@@ -22,7 +22,8 @@ import {
   ArrowRight,
   Check,
   CreditCard,
-  Layers
+  Layers,
+  User
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
@@ -40,6 +41,7 @@ interface NavbarProps {
   onOpenSqlWorkspace?: () => void;
   onOpenAskAI?: () => void;
   onOpenWallet?: () => void;
+  onOpenProfile?: () => void;
   onSignOut: () => void;
 }
 
@@ -53,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSqlWorkspace,
   onOpenAskAI,
   onOpenWallet,
+  onOpenProfile,
   onSignOut,
 }) => {
   const { isMobile } = useDevice();
@@ -304,6 +307,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                     <button
                       onClick={() => {
+                        setIsDropdownOpen(false);
+                        onOpenProfile?.();
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-purple-300 hover:bg-purple-950/50 flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <User className="w-4 h-4 text-purple-400" />
+                      <span>Developer Profile & Heatmap</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         handleAddPasskey();
                         setIsDropdownOpen(false);
                       }}
@@ -494,24 +508,40 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Drawer Footer */}
             {user && (
-              <div className="p-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
-                <div className="flex items-center space-x-2 truncate">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <span className="text-xs font-mono text-slate-300 truncate">{user.email}</span>
-                </div>
-
+              <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
                 <button
                   onClick={() => {
                     setIsDrawerOpen(false);
-                    onSignOut();
+                    onOpenProfile?.();
                   }}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-800 cursor-pointer"
-                  title="Sign Out"
+                  className="w-full p-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-950/70 border border-purple-800/60 text-purple-300 text-xs font-bold flex items-center justify-between cursor-pointer transition-all"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <span className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-purple-400" />
+                    <span>Developer Profile & Stats</span>
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center space-x-2 truncate">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <span className="text-xs font-mono text-slate-300 truncate">{user.email}</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      onSignOut();
+                    }}
+                    className="p-2 rounded-xl bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-800 cursor-pointer"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
 
