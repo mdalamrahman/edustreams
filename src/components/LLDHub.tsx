@@ -277,12 +277,13 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
 
   const filteredProblems = useMemo(() => {
     return LLD_PROBLEMS.filter((p) => {
+      const q = (searchQuery || '').toLowerCase().trim();
       const matchCat = selectedCategory === 'ALL' || p.category === selectedCategory;
       const matchQ =
-        !searchQuery ||
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.companies.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase()));
+        !q ||
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (Array.isArray(p.companies) && p.companies.some((c) => (c || '').toLowerCase().includes(q)));
       return matchCat && matchQ;
     });
   }, [selectedCategory, searchQuery]);

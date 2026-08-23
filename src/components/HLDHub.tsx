@@ -25,7 +25,7 @@ interface HLDHubProps {
 }
 
 export const HLDHub: React.FC<HLDHubProps> = () => {
-  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'practice_canvas' | 'github_reader'>('boss_sheet');
+  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'freeform_canvas' | 'practice_canvas' | 'github_reader'>('boss_sheet');
   const [activeHldProblem, setActiveHldProblem] = useState<HLDProblemSpec | null>(null);
   const [isFreeformHldCanvas, setIsFreeformHldCanvas] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,11 +61,12 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
   };
 
   const filteredHldProblems = HLD_PRACTICE_PROBLEMS.filter((p) => {
+    const q = (searchQuery || '').toLowerCase().trim();
+    if (!q) return true;
     return (
-      !searchQuery ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.companies.some((c) => c.toLowerCase().includes(searchQuery.toLowerCase()))
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q) ||
+      (Array.isArray(p.companies) && p.companies.some((c) => (c || '').toLowerCase().includes(q)))
     );
   });
 
@@ -85,7 +86,7 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
                 System Design Boss Hub
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Scalable Architectures, Caching, CDN, Sharding, Kafka & Drag-and-Drop Canvas</p>
+            <p className="text-xs text-slate-400">Scalable Architectures, Caching, CDN, Sharding, Kafka & Fullscreen Drag-and-Drop Canvas</p>
           </div>
         </div>
 
@@ -97,7 +98,7 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(false);
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'boss_sheet'
                 ? 'bg-teal-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -107,21 +108,46 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
             <span>HLD Boss Sheet</span>
           </button>
 
+          {/* Dedicated HLD Canvas Tab (No Question attached, pure system design whiteboard) */}
           <button
-            onClick={() => setHldSubTab('practice_canvas')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              hldSubTab === 'practice_canvas'
+            onClick={() => {
+              setHldSubTab('freeform_canvas');
+              setActiveHldProblem(null);
+              setIsFreeformHldCanvas(true);
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              hldSubTab === 'freeform_canvas'
                 ? 'bg-teal-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
             }`}
           >
             <LayoutTemplate className="w-4 h-4" />
-            <span>Architecture Canvas</span>
+            <span>HLD Canvas</span>
           </button>
 
           <button
-            onClick={() => setHldSubTab('github_reader')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            onClick={() => {
+              setHldSubTab('practice_canvas');
+              setActiveHldProblem(null);
+              setIsFreeformHldCanvas(false);
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              hldSubTab === 'practice_canvas'
+                ? 'bg-teal-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>HLD Challenges</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setHldSubTab('github_reader');
+              setActiveHldProblem(null);
+              setIsFreeformHldCanvas(false);
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'github_reader'
                 ? 'bg-teal-600 text-white shadow-lg'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -136,6 +162,13 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
       {/* SUB-VIEW 1: HLD BOSS SHEET (REVISION NOTES) */}
       {hldSubTab === 'boss_sheet' && (
         <HLDBossSheet onOpenGithubTopic={handleOpenGithubTopicFromSheet} />
+      )}
+
+      {/* SUB-VIEW 2: DEDICATED BLANK HLD CANVAS (NO QUESTIONS) */}
+      {hldSubTab === 'freeform_canvas' && (
+        <div className="space-y-4 animate-fadeIn">
+          <HLDArchitectureCanvas />
+        </div>
       )}
 
       {/* SUB-VIEW 2: HLD PRACTICE CANVAS & SYSTEM DESIGN PROBLEMS */}

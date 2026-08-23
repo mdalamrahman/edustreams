@@ -26,6 +26,7 @@ import {
   ArrowRight,
   MousePointer,
   Maximize2,
+  Minimize2,
   FileCode,
   Download,
   Info,
@@ -71,8 +72,7 @@ import {
   Timer,
   Building2,
   PenTool,
-  Pencil,
-  Minimize2
+  Pencil
 } from 'lucide-react';
 import { requestMistralChat } from '../lib/mistral';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -339,11 +339,22 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   const [connections, setConnections] = useState<HLDConnection[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isConfirmRevealOpen, setIsConfirmRevealOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFullscreenExcalidraw, setIsFullscreenExcalidraw] = useState(false);
   const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState(false);
   const [isWalletTopupOpen, setIsWalletTopupOpen] = useState(false);
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 1.0, action: 'AI Architecture Review' });
   const [sessionStudioCharged, setSessionStudioCharged] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
   
   // Selection & Dragging
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -687,10 +698,10 @@ Provide an authoritative, highly structured Principal Review with:
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div className={`w-full space-y-4 ${isFullscreen ? 'fixed inset-0 z-[9999] bg-slate-950 p-3 sm:p-4 flex flex-col w-screen h-screen overflow-hidden' : ''}`}>
       
       {/* ── Top Header Toolbar ── */}
-      <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
         
         {/* Left: Problem Title & Back Button */}
         <div className="flex items-center space-x-3">
@@ -743,7 +754,7 @@ Provide an authoritative, highly structured Principal Review with:
           </button>
         </div>
 
-        {/* Right Action Tools: Templates, Reveal Solution, AI Review */}
+        {/* Right Action Tools: Templates, Reveal Solution, Fullscreen, AI Review */}
         <div className="flex items-center gap-2">
           
           {/* Reveal Solution / Reference Architecture Button */}
@@ -790,6 +801,20 @@ Provide an authoritative, highly structured Principal Review with:
               <span className="hidden sm:inline">Fit View</span>
             </button>
           )}
+
+          {/* Fullscreen Toggle Button */}
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className={`px-3 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+              isFullscreen 
+                ? 'bg-teal-950 border-teal-500/60 text-teal-300 hover:bg-teal-900' 
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+            }`}
+            title={isFullscreen ? "Exit Fullscreen (Esc)" : "Enter Fullscreen Canvas"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4 text-teal-400" /> : <Maximize2 className="w-4 h-4 text-cyan-400" />}
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+          </button>
 
           {/* AI Principal Review */}
           <button
@@ -867,11 +892,11 @@ Provide an authoritative, highly structured Principal Review with:
 
       {/* ── INTERACTIVE STUDIO MODE: Drag-and-Drop Node Canvas ── */}
       {studioMode === 'studio' && (
-        <div className="flex flex-col lg:flex-row gap-4 items-start min-h-[720px] relative">
+        <div className={`flex flex-col lg:flex-row gap-4 items-start relative w-full ${isFullscreen ? 'flex-1 min-h-0 h-full' : 'min-h-[720px]'}`}>
           
           {/* ── LEFT: Extensible Component Library Box ── */}
           {isSidebarOpen && (
-            <div className="w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/95 flex flex-col space-y-4 overflow-y-auto max-h-[780px] custom-scrollbar flex-shrink-0 animate-fadeIn">
+            <div className={`w-full lg:w-72 glass-panel p-4 rounded-3xl border border-slate-800/80 bg-slate-950/95 flex flex-col space-y-4 overflow-y-auto custom-scrollbar flex-shrink-0 animate-fadeIn ${isFullscreen ? 'h-full max-h-none' : 'max-h-[780px]'}`}>
               
               {/* Header with "Hide Library" button directly inside the library box */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -951,7 +976,7 @@ Provide an authoritative, highly structured Principal Review with:
               setSelectedNodeId(null);
               setSelectedConnId(null);
             }}
-            className="flex-1 glass-panel rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-2xl min-h-[720px] w-full"
+            className={`flex-1 glass-panel rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-2xl w-full ${isFullscreen ? 'h-full min-h-0' : 'min-h-[720px]'}`}
             style={{
               cursor: isPanning ? 'grabbing' : 'grab'
             }}
