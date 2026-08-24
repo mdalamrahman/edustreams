@@ -1557,6 +1557,24 @@ async def save_problem_driver_code(slug: str, lang: str, req: Request):
     return {"success": False, "slug": clean_slug}
 
 
+@app.delete("/api/problem/{slug}/driver/{lang}")
+async def delete_problem_driver_code(slug: str, lang: str):
+    """Deletes stored driver code for a specific language from Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    clean_lang = lang.lower().strip()
+    res = r2_storage.delete_driver_for_problem(clean_slug, clean_lang)
+    return {"success": res, "slug": clean_slug, "language": clean_lang}
+
+
+@app.delete("/api/problem/{slug}/drivers")
+async def delete_all_problem_drivers(slug: str):
+    """Deletes all stored driver harnesses for a problem from Cloudflare R2."""
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    res = r2_storage.delete_driver_for_problem(clean_slug, None)
+    return {"success": res, "slug": clean_slug}
+
+
+
 
 
 class UserCodePayload(BaseModel):

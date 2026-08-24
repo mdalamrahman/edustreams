@@ -535,6 +535,48 @@ class CloudflareR2Storage:
 
         return None
 
+    def delete_driver_for_problem(self, slug: str, language: Optional[str] = None) -> bool:
+        """
+        Deletes stored driver code for a problem from R2 so it can be cleanly regenerated.
+        """
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        languages = [language.strip().lower()] if language else ["cpp", "python", "javascript", "java", "go", "rust", "sql"]
+
+        # 1. Delete standalone files
+        for lang in languages:
+            keys_to_delete = [f"drivers/{clean_slug}_{lang}.txt", f"drivers/{clean_slug}_{lang}.cpp", f"drivers/{clean_slug}_{lang}.py"]
+            for k in keys_to_delete:
+                if self._boto_client:
+                    try:
+                        self._boto_client.delete_object(Bucket=R2_BUCKET_NAME, Key=k)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        headers = self._get_sigv4_headers("DELETE", k)
+                        url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{k}"
+                        requests.delete(url, headers=headers, timeout=5)
+                    except Exception:
+                        pass
+
+        # 2. Clear driverCode from problem JSON in R2
+        try:
+            problem_data = self.fetch_problem(clean_slug)
+            if problem_data and "driverCode" in problem_data:
+                if language:
+                    clean_lang = language.strip().lower()
+                    if isinstance(problem_data["driverCode"], dict) and clean_lang in problem_data["driverCode"]:
+                        del problem_data["driverCode"][clean_lang]
+                else:
+                    del problem_data["driverCode"]
+                self.upload_problem(clean_slug, problem_data)
+        except Exception:
+            pass
+
+        return True
+
+
 
     def upload_json(self, key: str, data: Any) -> Optional[str]:
         """Uploads arbitrary JSON data to Cloudflare R2 under the specified key."""
