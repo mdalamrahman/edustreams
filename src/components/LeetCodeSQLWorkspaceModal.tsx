@@ -161,12 +161,49 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const [copiedSolution, setCopiedSolution] = useState<boolean>(false);
   const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
 
-  // Submissions history
+  // Submissions history with localStorage & Cloudflare R2 persistence
   const [submissionsList, setSubmissionsList] = useState<{
+    id?: string;
     timestamp: string;
     status: string;
     runtime: string;
-  }[]>([]);
+    code?: string;
+  }[]>(() => {
+    try {
+      const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+      const stored = localStorage.getItem(`edustream_submissions_${slug}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+    try {
+      const stored = localStorage.getItem(`edustream_submissions_${slug}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) setSubmissionsList(parsed);
+      }
+    } catch {}
+
+    const student = getCurrentStudent();
+    const email = student?.email || 'anonymous';
+    fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions?email=${encodeURIComponent(email)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.submissions && Array.isArray(data.submissions) && data.submissions.length > 0) {
+          setSubmissionsList(data.submissions);
+          try {
+            localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(data.submissions));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, [cleanTitle, sqlProblem]);
 
   // Dragging handlers for resizable split pane
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -336,14 +373,34 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
       const isSuccess = result.status === 'ACCEPTED';
 
       if (isSubmission) {
-        setSubmissionsList(prev => [
-          {
-            timestamp: new Date().toLocaleTimeString(),
-            status: isSuccess ? 'Accepted' : result.status === 'SYNTAX_ERROR' ? 'Syntax Error' : 'Wrong Answer',
-            runtime: `${result.executionTimeMs} ms`
-          },
-          ...prev
-        ]);
+        const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+        const newSubItem = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: new Date().toLocaleTimeString(),
+          status: isSuccess ? 'Accepted' : result.status === 'SYNTAX_ERROR' ? 'Syntax Error' : 'Wrong Answer',
+          runtime: `${result.executionTimeMs} ms`,
+          code: code
+        };
+
+        setSubmissionsList(prev => {
+          const updated = [newSubItem, ...prev];
+          try {
+            localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // Sync to Cloudflare R2
+        const student = getCurrentStudent();
+        const email = student?.email || 'anonymous';
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            submission: newSubItem
+          })
+        }).catch(() => {});
 
         if (isSuccess) {
           confetti({

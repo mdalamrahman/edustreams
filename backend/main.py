@@ -1529,72 +1529,65 @@ async def save_user_code(slug: str, payload: UserCodePayload):
 
 
 @app.get("/api/problem/{slug}/user-code")
-async def get_user_code(slug: str, email: str, language: str = "python"):
+async def get_user_code(slug: str, email: str = "anonymous", language: str = "python"):
     """
     Fetches the user's autosaved solution code from Cloudflare R2.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (email or "anonymous").lower())
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "anonymous").lower())
     lang = (language or "python").lower()
     
-    txt_key = f"user_code/{safe_email}/{clean_slug}_{lang}.txt"
+    txt_key = f"user_code/{safe_email}_{clean_slug}_{lang}.txt"
     try:
-        code_txt = r2_storage.get_note(txt_key)
-        return {"code": code_txt or ""}
+        code_bytes = r2_storage.fetch_file(txt_key)
+        if code_bytes:
+            return {"code": code_bytes.decode("utf-8", errors="replace")}
     except Exception:
-        return {"code": ""}
-
-
-class SubmissionPayload(BaseModel):
-    email: str
-    submission: dict
+        pass
+    return {"code": ""}
 
 
 @app.post("/api/problem/{slug}/submissions")
-async def save_user_submission(slug: str, payload: SubmissionPayload):
+async def save_user_submission(slug: str, request: Request):
     """
     Stores a submission record persistently in Cloudflare R2.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (payload.email or "anonymous").lower())
-    sub_key = f"user_submissions/{safe_email}/{clean_slug}.json"
-
     try:
-        existing = []
-        try:
-            raw = r2_storage.get_note(sub_key)
-            if raw:
-                existing = json.loads(raw)
-        except Exception:
-            existing = []
+        body = await request.json()
+        email = (body.get("email") or "anonymous").strip().lower()
+        submission = body.get("submission") or {}
+        safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email)
+        key = f"submissions/{safe_email}_{clean_slug}.json"
 
+        existing = r2_storage.fetch_json(key) or []
         if not isinstance(existing, list):
             existing = []
 
-        existing.insert(0, payload.submission)
+        # Deduplicate and prepend newest submission
+        existing = [submission] + [s for s in existing if s.get("id") != submission.get("id")]
         existing = existing[:50]
-        r2_storage.save_note(sub_key, json.dumps(existing, indent=2))
-        return {"success": True, "count": len(existing)}
+        r2_storage.upload_json(key, existing)
+        return {"status": "ok", "success": True, "submissions": existing, "count": len(existing)}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        print(f"[R2 Submission Save Error for '{clean_slug}']: {e}")
+        return JSONResponse(status_code=500, content={"status": "error", "error": str(e)})
 
 
 @app.get("/api/problem/{slug}/submissions")
-async def get_user_submissions(slug: str, email: str):
+async def get_user_submissions(slug: str, email: str = "anonymous"):
     """
     Fetches submission history for a user on a problem from Cloudflare R2.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (email or "anonymous").lower())
-    sub_key = f"user_submissions/{safe_email}/{clean_slug}.json"
+    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "anonymous").strip().lower())
+    key = f"submissions/{safe_email}_{clean_slug}.json"
 
-    try:
-        raw = r2_storage.get_note(sub_key)
-        if raw:
-            return {"submissions": json.loads(raw)}
-    except Exception:
-        pass
-    return {"submissions": []}
+    subs = r2_storage.fetch_json(key) or []
+    if not subs and safe_email != "anonymous":
+        subs = r2_storage.fetch_json(f"submissions/anonymous_{clean_slug}.json") or []
+    return {"status": "ok", "submissions": subs if isinstance(subs, list) else []}
+
 
 
 _LEETCODE_PROFILE_CACHE: dict = {}
@@ -1988,36 +1981,58 @@ except Exception as e:
             passed_count = round(pass_rate * len(test_cases))
 
     total_count = len(test_cases)
-    # Allow storing if >= 80% pass rate (covers floating point edge cases in output comparison)
-    validation_passed = (passed_count >= max(1, total_count * 0.8))
+    validation_passed = (passed_count >= max(1, total_count * 0.8)) if total_count > 0 else True
 
-    stored = False
-    if validation_passed:
-        meta = {
-            "passedCount": passed_count,
-            "totalCount": total_count,
-            "approachName": req.approachName,
-            "timeComplexity": req.timeComplexity,
-            "spaceComplexity": req.spaceComplexity,
-            "explanation": req.explanation,
-            "storedAt": datetime.utcnow().isoformat() + "Z"
-        }
-        stored = r2_storage.save_solution_to_problem(clean_slug, lang, code, meta)
-        # Also invalidate in-memory problem cache so next fetch picks up the stored solution
-        if stored and clean_slug in _PROBLEM_CACHE:
-            _PROBLEM_CACHE[clean_slug]["solutions"] = _PROBLEM_CACHE[clean_slug].get("solutions", {})
-            _PROBLEM_CACHE[clean_slug]["solutions"][lang] = code
+    meta = {
+        "passedCount": passed_count,
+        "totalCount": total_count,
+        "approachName": req.approachName,
+        "timeComplexity": req.timeComplexity,
+        "spaceComplexity": req.spaceComplexity,
+        "explanation": req.explanation,
+        "storedAt": datetime.utcnow().isoformat() + "Z"
+    }
+
+    # Always persist generated solution in R2 problem JSON
+    stored = r2_storage.save_solution_to_problem(clean_slug, lang, code, meta)
+    if clean_slug in _PROBLEM_CACHE:
+        _PROBLEM_CACHE[clean_slug]["solutions"] = _PROBLEM_CACHE[clean_slug].get("solutions", {})
+        _PROBLEM_CACHE[clean_slug]["solutions"][lang] = code
 
     return {
         "validationPassed": validation_passed,
         "passedCount": passed_count,
         "totalCount": total_count,
-        "stored": stored,
+        "stored": bool(stored),
         "failedCaseIdx": failed_case_idx,
         "failedInput": failed_input,
         "failedOutput": failed_output,
         "failedExpected": failed_expected,
     }
+
+
+@app.get("/api/problem/{slug}/solution/{lang}")
+async def get_stored_solution(slug: str, lang: str):
+    """
+    Fetches the stored reference solution for a problem and language from Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    clean_lang = lang.lower().strip()
+    problem_data = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+    if problem_data and isinstance(problem_data.get("solutions"), dict):
+        sol_code = problem_data["solutions"].get(clean_lang)
+        if sol_code:
+            meta = (problem_data.get("solutionsMeta") or {}).get(clean_lang) or {}
+            return {
+                "status": "ok",
+                "slug": clean_slug,
+                "language": clean_lang,
+                "code": sol_code,
+                "meta": meta,
+                "stored": True
+            }
+    return {"status": "not_found", "slug": clean_slug, "language": clean_lang, "code": None}
+
 
 
 @app.get("/api/image/{image_name:path}")
@@ -4474,36 +4489,7 @@ async def get_user_code_endpoint(slug: str, email: str = "student@edustream.io",
     return {"status": "ok", "code": ""}
 
 
-@app.post("/api/problem/{slug}/submissions")
-async def save_submission_endpoint(slug: str, request: Request):
-    """Saves user code submission to Cloudflare R2."""
-    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
-    try:
-        body = await request.json()
-        email = body.get("email", "student@edustream.io").strip().lower()
-        submission = body.get("submission", {})
-        safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email)
-        key = f"submissions/{safe_email}_{clean_slug}.json"
-        
-        existing = r2_storage.fetch_json(key) or []
-        if not isinstance(existing, list):
-            existing = []
-        existing = [submission] + [s for s in existing if s.get("id") != submission.get("id")]
-        existing = existing[:50]
-        r2_storage.upload_json(key, existing)
-        return {"status": "ok", "submissions": existing}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
-
-@app.get("/api/problem/{slug}/submissions")
-async def get_submissions_endpoint(slug: str, email: str = "student@edustream.io"):
-    """Fetches user code submissions from Cloudflare R2."""
-    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', email.strip().lower())
-    key = f"submissions/{safe_email}_{clean_slug}.json"
-    subs = r2_storage.fetch_json(key) or []
-    return {"status": "ok", "submissions": subs if isinstance(subs, list) else []}
 
 
 if __name__ == "__main__":

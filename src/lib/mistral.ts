@@ -1,3 +1,4 @@
+import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
 
 export const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
@@ -711,19 +712,13 @@ export interface OptimalSolutionResponse {
   fromR2Cache?: boolean;
 }
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
-
-/**
- * Sends a generated solution to the backend for validation against all stored R2 test cases,
- * and stores it in R2 if ≥80% of tests pass.
- */
 export async function validateAndStoreSolution(
   slug: string,
   language: string,
   sol: OptimalSolutionResponse
 ): Promise<OptimalSolutionResponse> {
   try {
-    const resp = await fetch(`${BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution`, {
+    const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -380,13 +380,117 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isReviewing, setIsReviewing] = useState<boolean>(false);
   const [aiReview, setAiReview] = useState<CodeTAReview | null>(null);
 
-  // Solutions tab state
+  // Solutions tab state with robust localStorage & Cloudflare R2 persistence
   const [solutionLang, setSolutionLang] = useState<SupportedLanguage>(language);
-  const [aiGeneratedSolutions, setAiGeneratedSolutions] = useState<Record<string, OptimalSolutionResponse>>({});
+  const [aiGeneratedSolutions, setAiGeneratedSolutions] = useState<Record<string, OptimalSolutionResponse>>(() => {
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const initialMap: Record<string, OptimalSolutionResponse> = {};
+    try {
+      const cached = localStorage.getItem(`edustream_ai_solutions_${slug}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          Object.assign(initialMap, parsed);
+        }
+      }
+    } catch {}
+
+    // Populate from R2 problemTemplate.solutions
+    if (problemTemplate.solutions && typeof problemTemplate.solutions === 'object') {
+      Object.entries(problemTemplate.solutions).forEach(([langKey, solCode]) => {
+        if (solCode && typeof solCode === 'string' && solCode.trim().length > 10 && (!initialMap[langKey] || !initialMap[langKey].code)) {
+          initialMap[langKey] = {
+            code: solCode,
+            explanation: 'Official reference solution persisted in Cloudflare R2.',
+            timeComplexity: 'Optimal',
+            spaceComplexity: 'O(1) Auxiliary',
+            approachName: 'Optimal Reference Approach',
+            stored: true,
+            fromR2Cache: true
+          };
+        }
+      });
+    }
+    return initialMap;
+  });
+
   const [isGeneratingSolution, setIsGeneratingSolution] = useState<boolean>(false);
   const [copiedSolutionCode, setCopiedSolutionCode] = useState<boolean>(false);
   const [appliedSolutionMsg, setAppliedSolutionMsg] = useState<boolean>(false);
   const [isSolutionRevealed, setIsSolutionRevealed] = useState<boolean>(false);
+
+  // Sync solutions from R2 on problem load / language switch
+  useEffect(() => {
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    
+    // 1. Read local storage
+    try {
+      const cached = localStorage.getItem(`edustream_ai_solutions_${slug}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          setAiGeneratedSolutions(prev => ({ ...parsed, ...prev }));
+        }
+      }
+    } catch {}
+
+    // 2. Read problemTemplate.solutions
+    if (problemTemplate.solutions && typeof problemTemplate.solutions === 'object') {
+      setAiGeneratedSolutions(prev => {
+        const updated = { ...prev };
+        let changed = false;
+        Object.entries(problemTemplate.solutions || {}).forEach(([langKey, solCode]) => {
+          if (solCode && typeof solCode === 'string' && solCode.trim().length > 10) {
+            if (!updated[langKey] || !updated[langKey].code) {
+              updated[langKey] = {
+                code: solCode,
+                explanation: 'Official reference solution persisted in Cloudflare R2.',
+                timeComplexity: 'Optimal',
+                spaceComplexity: 'O(1) Auxiliary',
+                approachName: 'Optimal Reference Approach',
+                stored: true,
+                fromR2Cache: true
+              };
+              changed = true;
+            }
+          }
+        });
+        if (changed) {
+          try {
+            localStorage.setItem(`edustream_ai_solutions_${slug}`, JSON.stringify(updated));
+          } catch {}
+        }
+        return changed ? updated : prev;
+      });
+    }
+
+    // 3. Directly poll R2 solution endpoint for active solutionLang
+    fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(solutionLang)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.code && data.stored) {
+          setAiGeneratedSolutions(prev => {
+            const updated = {
+              ...prev,
+              [solutionLang]: {
+                code: data.code,
+                explanation: data.meta?.explanation || 'Official reference solution persisted in Cloudflare R2.',
+                timeComplexity: data.meta?.timeComplexity || 'Optimal',
+                spaceComplexity: data.meta?.spaceComplexity || 'O(1) Auxiliary',
+                approachName: data.meta?.approachName || 'Optimal Reference Approach',
+                stored: true,
+                fromR2Cache: true
+              }
+            };
+            try {
+              localStorage.setItem(`edustream_ai_solutions_${slug}`, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [cleanTitle, problemTemplate.solutions, solutionLang, codingProblem]);
 
   const handleGenerateSolution = async (langToGen: SupportedLanguage = solutionLang) => {
     const user = getCurrentStudent();
@@ -405,14 +509,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       user?.email
     );
 
-    // Derive problem slug for backend validation+storage
-    const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
-    const problemSlug = rawTarget
-      .replace(/^https?:\/\/leetcode\.com\/problems\//i, '')
-      .replace(/\/.*$/, '')
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-|-$/g, '')
-      .toLowerCase();
+    // Derive clean problem slug for backend validation + R2 storage
+    const problemSlug = toSlug(codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle);
 
     setIsGeneratingSolution(true);
     try {
@@ -421,17 +519,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         problemTemplate.description,
         langToGen,
         problemTemplate.starters[langToGen],
-        problemSlug  // pass slug → backend validates + stores in R2
+        problemSlug
       );
       if (sol) {
-        setAiGeneratedSolutions(prev => ({ ...prev, [langToGen]: sol }));
-        // If successfully stored, update problemTemplate.solutions so it loads from R2 next time
-        if (sol.stored) {
-          setProblemTemplate(prev => ({
-            ...prev,
-            solutions: { ...(prev.solutions || {}), [langToGen]: sol.code } as Record<SupportedLanguage, string>
-          }));
-        }
+        setAiGeneratedSolutions(prev => {
+          const updated = { ...prev, [langToGen]: sol };
+          try {
+            localStorage.setItem(`edustream_ai_solutions_${problemSlug}`, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+
+        // Always update problemTemplate.solutions & problem spec in localStorage
+        setProblemTemplate(prev => {
+          const updatedSolutions = { ...(prev.solutions || {}), [langToGen]: sol.code } as Record<SupportedLanguage, string>;
+          const updatedTemplate = { ...prev, solutions: updatedSolutions };
+          try {
+            const cacheKey = `edustream_problem_spec_${problemSlug}`;
+            localStorage.setItem(cacheKey, JSON.stringify(updatedTemplate));
+          } catch {}
+          return updatedTemplate;
+        });
       }
     } catch (e) {
       console.warn('AI Solution Generation Error:', e);
@@ -567,18 +675,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     analytics?: SubmissionAnalyticsData;
   }[]>(() => {
     try {
-      const stored = localStorage.getItem(`edustream_submissions_${toSlug(cleanTitle)}`);
+      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+      const stored = localStorage.getItem(`edustream_submissions_${slug}`);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
     return [];
   });
 
-  // Sync submissions from Cloudflare R2 on mount
+  // Sync submissions from Cloudflare R2 on mount and problem change
   useEffect(() => {
-    const slug = toSlug(cleanTitle);
+    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    
+    // 1. Read local storage
     try {
       const stored = localStorage.getItem(`edustream_submissions_${slug}`);
       if (stored) {
@@ -587,21 +698,34 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       }
     } catch {}
 
+    // 2. Fetch from Cloudflare R2
     const student = getCurrentStudent();
-    if (student?.email) {
-      fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions?email=${encodeURIComponent(student.email)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.submissions && Array.isArray(data.submissions) && data.submissions.length > 0) {
-            setSubmissionsList(data.submissions);
+    const email = student?.email || 'anonymous';
+    fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions?email=${encodeURIComponent(email)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data?.submissions && Array.isArray(data.submissions) && data.submissions.length > 0) {
+          setSubmissionsList(prev => {
+            // Merge & deduplicate by ID
+            const existingIds = new Set(prev.map(s => s.id));
+            const merged = [...prev];
+            data.submissions.forEach((s: any) => {
+              if (s && s.id && !existingIds.has(s.id)) {
+                merged.push(s);
+                existingIds.add(s.id);
+              }
+            });
+            // Sort newest first
+            merged.sort((a, b) => (new Date(b.timestamp).getTime() || 0) - (new Date(a.timestamp).getTime() || 0));
             try {
-              localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(data.submissions));
+              localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(merged));
             } catch {}
-          }
-        })
-        .catch(() => {});
-    }
-  }, [cleanTitle]);
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [cleanTitle, codingProblem]);
 
   // Instant Synchronous Autosave on every keystroke (like LeetCode)
   const handleCodeChange = (newVal: string | undefined) => {
@@ -974,26 +1098,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           analytics: analytics
         };
 
+        const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+
         setSubmissionsList(prev => {
           const updated = [newSubItem, ...prev];
           try {
-            localStorage.setItem(`edustream_submissions_${toSlug(cleanTitle)}`, JSON.stringify(updated));
+            localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(updated));
           } catch {}
           return updated;
         });
 
         // Sync submission to backend Cloudflare R2
         const student = getCurrentStudent();
-        if (student?.email) {
-          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(toSlug(cleanTitle))}/submissions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: student.email,
-              submission: newSubItem
-            })
-          }).catch(() => {});
-        }
+        const email = student?.email || 'anonymous';
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            submission: newSubItem
+          })
+        }).catch(() => {});
 
         if (isAllSuccess) {
           confetti({
