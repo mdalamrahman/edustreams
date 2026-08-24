@@ -1,69 +1,66 @@
-import { CodeExecutionResult } from './types';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 
-export type SupportedLanguage = 'python' | 'java' | 'cpp' | 'sql' | 'go' | 'rust' | 'javascript';
+export type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript' | 'sql' | 'go' | 'rust';
+
+export interface CodeExecutionResult {
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+  execution_time_ms: number;
+  memory_used_kb: number;
+  status: 'SUCCESS' | 'ERROR';
+}
 
 const JUDGE0_LANG_MAP: Record<string, number> = {
   cpp: 54,        // C++ (GCC 9.2.0)
   'c++': 54,
   python: 71,     // Python (3.8.1)
+  py: 71,
   java: 62,       // Java (OpenJDK 13.0.1)
-  javascript: 63, // Node.js (12.14.0)
+  javascript: 63, // JavaScript (Node.js 12.14.0)
   js: 63,
   go: 60,         // Go (1.13.5)
   rust: 73,       // Rust (1.40.0)
-  sql: 82         // SQLite (3.31.1)
+  sql: 82         // SQLite 3.27.2
 };
 
-/**
- * Deep normalizes and compares actual output vs expected output.
- * Handles:
- * - JSON subsets / nested arrays in arbitrary order (e.g. Subsets, Permutations, Combinations)
- * - Boolean true/false vs 1/0
- * - Whitespace differences
- */
-export function compareOutputs(actualStr: string, expectedStr: string): boolean {
-  if (!actualStr || !expectedStr) return false;
-  const aClean = actualStr.trim();
-  const eClean = expectedStr.trim();
-  
-  if (aClean.toLowerCase() === eClean.toLowerCase()) return true;
+export function compareOutputs(actual: any, expected: any): boolean {
+  if (actual === expected) return true;
+  if (actual === null || actual === undefined || expected === null || expected === undefined) {
+    return actual == expected;
+  }
+
+  const cleanAct = String(actual).trim().replace(/\r\n/g, '\n').replace(/\s+$/mg, '');
+  const cleanExp = String(expected).trim().replace(/\r\n/g, '\n').replace(/\s+$/mg, '');
+  if (cleanAct === cleanExp) return true;
 
   try {
-    const aJson = JSON.parse(aClean);
-    const eJson = JSON.parse(eClean);
-    return deepNormalizeAndCompare(aJson, eJson);
-  } catch {
-    // Fallback: whitespace-stripped comparison
-    const aFlat = aClean.replace(/\s+/g, '').toLowerCase();
-    const eFlat = eClean.replace(/\s+/g, '').toLowerCase();
-    return aFlat === eFlat;
-  }
+    const parsedAct = JSON.parse(cleanAct);
+    const parsedExp = JSON.parse(cleanExp);
+    return deepEqual(parsedAct, parsedExp);
+  } catch (_) {}
+
+  // Case insensitive boolean check
+  if ((cleanAct === 'true' && cleanExp === 'True') || (cleanAct === 'false' && cleanExp === 'False')) return true;
+  if ((cleanAct === 'True' && cleanExp === 'true') || (cleanAct === 'False' && cleanExp === 'false')) return true;
+
+  // Unquoted string comparison
+  const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '');
+  if (stripQuotes(cleanAct) === stripQuotes(cleanExp)) return true;
+
+  return false;
 }
 
-function deepNormalizeArray(arr: any[]): any[] {
-  return [...arr]
-    .map(item => Array.isArray(item) ? deepNormalizeArray(item) : item)
-    .sort((x, y) => {
-      if (typeof x === 'number' && typeof y === 'number') return x - y;
-      return JSON.stringify(x).localeCompare(JSON.stringify(y));
-    });
-}
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (a === null || a === undefined || b === null || b === undefined) return a == b;
 
-function deepNormalizeAndCompare(a: any, b: any): boolean {
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
-    const aNorm = a.map(x => (Array.isArray(x) ? deepNormalizeArray(x) : x));
-    const bNorm = b.map(x => (Array.isArray(x) ? deepNormalizeArray(x) : x));
-    
-    // Sort both outer arrays to allow subsets in any order
-    const aSorted = [...aNorm].sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
-    const bSorted = [...bNorm].sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
-    return JSON.stringify(aSorted) === JSON.stringify(bSorted);
-  }
-  
-  if (typeof a === 'boolean' && typeof b === 'boolean') {
-    return a === b;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
   }
 
   if (typeof a === 'number' && typeof b === 'number') {
@@ -74,6 +71,89 @@ function deepNormalizeAndCompare(a: any, b: any): boolean {
 }
 
 /**
+ * Splits parameter list string safely outside angle brackets <...>
+ */
+function splitCppParams(str: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '<') depth++;
+    else if (ch === '>') depth = Math.max(0, depth - 1);
+    else if (ch === ',' && depth === 0) {
+      if (current.trim()) result.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) result.push(current.trim());
+  return result;
+}
+
+/**
+ * Generates dynamic, type-safe C++ argument extractors for ANY function signature.
+ */
+function generateCppParamExtractors(paramList: string[]): { declarations: string[]; callArgs: string; firstArg: string } {
+  const declarations: string[] = [];
+  const argNames: string[] = [];
+
+  paramList.forEach((param, i) => {
+    const trimmed = param.trim();
+    const lastSpaceIdx = trimmed.lastIndexOf(' ');
+    let typePart = lastSpaceIdx > 0 ? trimmed.substring(0, lastSpaceIdx).trim() : trimmed;
+    let namePart = lastSpaceIdx > 0 ? trimmed.substring(lastSpaceIdx + 1).replace(/^[\*&]+/, '').trim() : `arg_${i}`;
+
+    namePart = namePart.replace(/[^a-zA-Z0-9_]/g, '') || `arg_${i}`;
+    const argVar = `arg_${i}`;
+    argNames.push(argVar);
+
+    const cleanType = typePart.replace(/&/g, '').trim();
+
+    if (cleanType.includes('vector<vector<char>>')) {
+      declarations.push(`vector<vector<char>> ${argVar} = parse_matrix_char(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<vector<string>>')) {
+      declarations.push(`vector<vector<string>> ${argVar} = parse_matrix_string(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<vector<int>>') || cleanType.includes('vector<vector<long long>>') || cleanType.includes('vector<vector<long>>')) {
+      declarations.push(`vector<vector<int>> ${argVar} = parse_matrix_int(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<string>')) {
+      declarations.push(`vector<string> ${argVar} = parse_vector_string(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<int>') || cleanType.includes('vector<long long>')) {
+      declarations.push(`vector<int> ${argVar} = parse_vector_int(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<double>') || cleanType.includes('vector<float>')) {
+      declarations.push(`vector<double> ${argVar} = parse_vector_double(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('vector<bool>')) {
+      declarations.push(`vector<bool> ${argVar} = parse_vector_bool(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('TreeNode*') || cleanType.includes('TreeNode *')) {
+      declarations.push(`TreeNode* ${argVar} = parse_tree_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('ListNode*') || cleanType.includes('ListNode *')) {
+      declarations.push(`ListNode* ${argVar} = parse_list_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('Node*') || cleanType.includes('Node *')) {
+      declarations.push(`Node* ${argVar} = parse_graph_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType.includes('string')) {
+      declarations.push(`string ${argVar} = parse_string_arg(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    } else if (cleanType === 'int' || cleanType === 'long' || cleanType === 'long long') {
+      declarations.push(`int ${argVar} = parse_single_int(get_arg_str(raw_input, "${namePart}", ${i}), 0);`);
+    } else if (cleanType === 'double' || cleanType === 'float') {
+      declarations.push(`double ${argVar} = parse_single_double(get_arg_str(raw_input, "${namePart}", ${i}), 0.0);`);
+    } else if (cleanType === 'bool') {
+      declarations.push(`bool ${argVar} = parse_single_bool(get_arg_str(raw_input, "${namePart}", ${i}), false);`);
+    } else if (cleanType === 'char') {
+      declarations.push(`char ${argVar} = parse_single_char(get_arg_str(raw_input, "${namePart}", ${i}), ' ');`);
+    } else {
+      declarations.push(`vector<int> ${argVar} = parse_vector_int(get_arg_str(raw_input, "${namePart}", ${i}));`);
+    }
+  });
+
+  return {
+    declarations,
+    callArgs: argNames.join(', '),
+    firstArg: argNames[0] || ''
+  };
+}
+
+/**
  * Wraps clean LeetCode Solution class with standard DSA headers, ListNode/TreeNode definitions,
  * and dynamic universal driver execution code matching LeetCode's compiler architecture.
  */
@@ -81,15 +161,23 @@ export function wrapLeetCodeExecutableCode(
   userCode: string,
   language: SupportedLanguage,
   testInput: string = '',
-  problemTitle: string = ''
+  problemTitle: string = '',
+  preloadedDriver?: string
 ): string {
   const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanInput = (testInput || '').trim();
 
+  // If a pre-stored Cloudflare R2 driver exists, insert user solution directly
+  if (preloadedDriver && preloadedDriver.includes('// === USER SOLUTION ===')) {
+    return preloadedDriver
+      .replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`)
+      .replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
+  }
+
   // ==========================================
   // 1. C++ (GCC 9+) UNIVERSAL DRIVER
   // ==========================================
-  if (language === 'cpp') {
+  if (language === 'cpp' || (language as any) === 'c++') {
     if (userCode.includes('int main(')) return userCode;
 
     // Detect method name, return type and parameters from user's class Solution
@@ -106,215 +194,26 @@ export function wrapLeetCodeExecutableCode(
       paramsStr = match[3].trim();
     }
 
-    const lowMethod = methodName.toLowerCase();
-
-    // Helper to safely split parameter types outside angle brackets <...>
-    const splitCppParams = (str: string): string[] => {
-      const result: string[] = [];
-      let current = '';
-      let depth = 0;
-      for (let i = 0; i < str.length; i++) {
-        const ch = str[i];
-        if (ch === '<') depth++;
-        else if (ch === '>') depth = Math.max(0, depth - 1);
-        else if (ch === ',' && depth === 0) {
-          if (current.trim()) result.push(current.trim());
-          current = '';
-          continue;
-        }
-        current += ch;
-      }
-      if (current.trim()) result.push(current.trim());
-      return result;
-    };
-
     const paramList = splitCppParams(paramsStr);
-    const paramCount = paramList.length;
+    const { declarations, callArgs, firstArg } = generateCppParamExtractors(paramList);
 
-    // Determine smart invocation tailored to DSA problem domain
     let invocation = '';
-
-    if (lowMethod.includes('nextpermutation') || normTitle.includes('nextpermutation') || (lowMethod.includes('permutation') && paramCount === 1)) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find('[') == string::npos) nums = {1, 2, 3};
-        sol.${methodName || 'nextPermutation'}(nums);
-        print_val(nums);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('sortcolors') || normTitle.includes('sortcolors') || normTitle.includes('dutchflag') || normTitle.includes('012')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find('[') == string::npos) nums = {2, 0, 2, 1, 1, 0};
-        sol.${methodName || 'sortColors'}(nums);
-        print_val(nums);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('setzeroes') || normTitle.includes('setmatrixzeroes')) {
-      invocation = `
-        vector<vector<int>> matrix = parse_matrix_int(raw_input);
-        if (matrix.empty() && raw_input.find('[') == string::npos) matrix = {{1,1,1},{1,0,1},{1,1,1}};
-        sol.${methodName || 'setZeroes'}(matrix);
-        print_val(matrix);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('subsets') || normTitle.includes('subset')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
-        auto res = sol.${methodName || 'subsetsWithDup'}(nums);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('twosum') || normTitle.includes('twosum')) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find('[') == string::npos) nums = {2, 7, 11, 15};
-        int target = parse_named_arg_int(raw_input, "target", 9);
-        auto res = sol.${methodName || 'twoSum'}(nums, target);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('numislands') || normTitle.includes('numberofislands')) {
-      invocation = `
-        vector<vector<char>> grid = parse_matrix_char(raw_input);
-        auto res = sol.${methodName || 'numIslands'}(grid);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('canfinish') || lowMethod.includes('findorder') || normTitle.includes('courseschedule')) {
-      invocation = `
-        int numCourses = parse_named_arg_int(raw_input, "numCourses", 2);
-        vector<vector<int>> prereqs = parse_matrix_int(raw_input);
-        auto res = sol.${methodName || 'canFinish'}(numCourses, prereqs);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (lowMethod.includes('clonegraph') || normTitle.includes('clonegraph')) {
-      invocation = `
-        vector<vector<int>> adj = parse_matrix_int(raw_input);
-        int n = adj.size();
-        vector<Node*> nodes;
-        for (int i = 1; i <= n; ++i) nodes.push_back(new Node(i));
-        for (int i = 0; i < n; ++i) {
-            for (int neighborVal : adj[i]) {
-                if (neighborVal >= 1 && neighborVal <= n) {
-                    nodes[i]->neighbors.push_back(nodes[neighborVal - 1]);
-                }
-            }
-        }
-        Node* first = nodes.empty() ? nullptr : nodes[0];
-        auto res = sol.${methodName || 'cloneGraph'}(first);
-        print_val(res);
-        cout << endl;
-`;
-    } else if (paramCount === 2) {
-      // 2 Parameters
-      if (paramList[0].includes('TreeNode*') && paramList[1].includes('int')) {
+    if (methodName) {
+      if (retType.includes('void')) {
         invocation = `
-        TreeNode* root = parse_tree_node(raw_input);
-        int targetSum = parse_named_arg_int(raw_input, "targetSum", parse_named_arg_int(raw_input, "sum", 22));
-        auto res = sol.${methodName}(root, targetSum);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('ListNode*') && paramList[1].includes('int')) {
-        invocation = `
-        ListNode* head = parse_list_node(raw_input);
-        int n = parse_named_arg_int(raw_input, "n", 1);
-        auto res = sol.${methodName}(head, n);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('int') && paramList[1].includes('vector')) {
-        invocation = `
-        int n = parse_named_arg_int(raw_input, "numCourses", parse_named_arg_int(raw_input, "n", 2));
-        vector<vector<int>> mat = parse_matrix_int(raw_input);
-        auto res = sol.${methodName}(n, mat);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('vector<int>') && paramList[1].includes('int')) {
-        invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        int target = parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", parse_named_arg_int(raw_input, "amount", 0)));
-        auto res = sol.${methodName}(nums, target);
-        print_val(res);
+        ${declarations.join('\n        ')}
+        sol.${methodName}(${callArgs});
+        print_val(${firstArg || 'raw_input'});
         cout << endl;
 `;
       } else {
         invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        int target = parse_named_arg_int(raw_input, "target", parse_named_arg_int(raw_input, "k", 0));
-        auto res = sol.${methodName}(nums, target);
+        ${declarations.join('\n        ')}
+        auto res = sol.${methodName}(${callArgs});
         print_val(res);
         cout << endl;
 `;
       }
-    } else if (paramCount === 1) {
-      // Exactly 1 Parameter
-      if (paramList[0].includes('TreeNode*')) {
-        invocation = `
-        TreeNode* root = parse_tree_node(raw_input);
-        auto res = sol.${methodName}(root);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('ListNode*')) {
-        invocation = `
-        ListNode* head = parse_list_node(raw_input);
-        auto res = sol.${methodName}(head);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('vector<vector<char>>')) {
-        invocation = `
-        vector<vector<char>> grid = parse_matrix_char(raw_input);
-        auto res = sol.${methodName}(grid);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('vector<vector<int>>')) {
-        invocation = `
-        vector<vector<int>> mat = parse_matrix_int(raw_input);
-        ${retType.includes('void') ? `sol.${methodName}(mat); print_val(mat);` : `auto res = sol.${methodName}(mat); print_val(res);`}
-        cout << endl;
-`;
-      } else if (paramList[0].includes('vector<int>')) {
-        invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        if (nums.empty() && raw_input.find("[0]") != string::npos) nums.push_back(0);
-        ${retType.includes('void') ? `sol.${methodName}(nums); print_val(nums);` : `auto res = sol.${methodName}(nums); print_val(res);`}
-        cout << endl;
-`;
-      } else if (paramList[0].includes('string')) {
-        invocation = `
-        string s = parse_string_arg(raw_input);
-        auto res = sol.${methodName}(s);
-        print_val(res);
-        cout << endl;
-`;
-      } else if (paramList[0].includes('int')) {
-        invocation = `
-        int n = parse_single_int(raw_input, 5);
-        auto res = sol.${methodName}(n);
-        print_val(res);
-        cout << endl;
-`;
-      } else {
-        invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        auto res = sol.${methodName}(nums);
-        print_val(res);
-        cout << endl;
-`;
-      }
-    } else if (methodName) {
-      invocation = `
-        vector<int> nums = parse_vector_int(raw_input);
-        ${retType.includes('void') ? `sol.${methodName}(nums); print_val(nums);` : `auto res = sol.${methodName}(nums); print_val(res);`}
-        cout << endl;
-`;
     } else {
       invocation = `
         cout << "Solution executed successfully with test input." << endl;
@@ -486,6 +385,76 @@ inline void print_val(Node* graphNode) {
 }
 
 // Universal Parsing Helpers
+inline vector<string> split_top_level_args(const string& s) {
+    vector<string> args;
+    string cur;
+    int bracket_depth = 0;
+    int brace_depth = 0;
+    bool in_quote = false;
+    char quote_char = 0;
+
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (in_quote) {
+            cur += c;
+            if (c == quote_char && (i == 0 || s[i - 1] != '\\\\')) {
+                in_quote = false;
+            }
+        } else {
+            if (c == '"' || c == '\\'') {
+                in_quote = true;
+                quote_char = c;
+                cur += c;
+            } else if (c == '[') {
+                bracket_depth++;
+                cur += c;
+            } else if (c == ']') {
+                bracket_depth = max(0, bracket_depth - 1);
+                cur += c;
+            } else if (c == '{') {
+                brace_depth++;
+                cur += c;
+            } else if (c == '}') {
+                brace_depth = max(0, brace_depth - 1);
+                cur += c;
+            } else if (c == ',' && bracket_depth == 0 && brace_depth == 0) {
+                if (!cur.empty()) {
+                    args.push_back(cur);
+                    cur.clear();
+                }
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (!cur.empty()) {
+        args.push_back(cur);
+    }
+    return args;
+}
+
+inline string get_arg_str(const string& raw, const string& param_name, size_t index) {
+    if (!param_name.empty()) {
+        size_t pos = raw.find(param_name);
+        if (pos != string::npos) {
+            size_t eq = raw.find('=', pos);
+            if (eq != string::npos) {
+                string after = raw.substr(eq + 1);
+                auto parts = split_top_level_args(after);
+                if (!parts.empty()) return parts[0];
+            }
+        }
+    }
+    auto top_args = split_top_level_args(raw);
+    if (index < top_args.size()) {
+        string seg = top_args[index];
+        size_t eq = seg.find('=');
+        if (eq != string::npos) return seg.substr(eq + 1);
+        return seg;
+    }
+    return raw;
+}
+
 inline vector<int> parse_vector_int(string s) {
     vector<int> res;
     size_t start = s.find('[');
@@ -506,17 +475,20 @@ inline vector<int> parse_vector_int(string s) {
 
 inline vector<vector<int>> parse_matrix_int(string s) {
     vector<vector<int>> res;
-    size_t i = 0;
-    while (i < s.size()) {
+    size_t outer_start = s.find('[');
+    size_t outer_end = s.rfind(']');
+    if (outer_start == string::npos || outer_end == string::npos || outer_start >= outer_end) return res;
+
+    size_t i = outer_start + 1;
+    while (i < outer_end) {
         if (s[i] == '[') {
             size_t close = s.find(']', i);
-            if (close != string::npos && close > i + 1) {
+            if (close != string::npos && close <= outer_end) {
                 string sub = s.substr(i, close - i + 1);
                 auto row = parse_vector_int(sub);
-                if (!row.empty() || sub.find("[]") != string::npos) {
-                    res.push_back(row);
-                }
-                i = close;
+                res.push_back(row);
+                i = close + 1;
+                continue;
             }
         }
         i++;
@@ -526,11 +498,15 @@ inline vector<vector<int>> parse_matrix_int(string s) {
 
 inline vector<vector<char>> parse_matrix_char(string s) {
     vector<vector<char>> res;
-    size_t i = 0;
-    while (i < s.size()) {
+    size_t outer_start = s.find('[');
+    size_t outer_end = s.rfind(']');
+    if (outer_start == string::npos || outer_end == string::npos || outer_start >= outer_end) return res;
+
+    size_t i = outer_start + 1;
+    while (i < outer_end) {
         if (s[i] == '[') {
             size_t close = s.find(']', i);
-            if (close != string::npos && close > i + 1) {
+            if (close != string::npos && close <= outer_end) {
                 string sub = s.substr(i + 1, close - i - 1);
                 vector<char> row;
                 for (char c : sub) {
@@ -538,11 +514,69 @@ inline vector<vector<char>> parse_matrix_char(string s) {
                         row.push_back(c);
                     }
                 }
-                if (!row.empty()) res.push_back(row);
-                i = close;
+                res.push_back(row);
+                i = close + 1;
+                continue;
             }
         }
         i++;
+    }
+    return res;
+}
+
+inline vector<string> parse_vector_string(string s) {
+    vector<string> res;
+    size_t start = s.find('[');
+    size_t end = s.rfind(']');
+    if (start == string::npos || end == string::npos || start >= end) return res;
+    string sub = s.substr(start + 1, end - start - 1);
+    stringstream ss(sub);
+    string token;
+    while (getline(ss, token, ',')) {
+        token.erase(0, token.find_first_not_of(" \\t\\r\\n\\\"\\'"));
+        token.erase(token.find_last_not_of(" \\t\\r\\n\\\"\\'") + 1);
+        if (!token.empty()) res.push_back(token);
+    }
+    return res;
+}
+
+inline vector<vector<string>> parse_matrix_string(string s) {
+    vector<vector<string>> res;
+    size_t outer_start = s.find('[');
+    size_t outer_end = s.rfind(']');
+    if (outer_start == string::npos || outer_end == string::npos || outer_start >= outer_end) return res;
+
+    size_t i = outer_start + 1;
+    while (i < outer_end) {
+        if (s[i] == '[') {
+            size_t close = s.find(']', i);
+            if (close != string::npos && close <= outer_end) {
+                string sub = s.substr(i, close - i + 1);
+                auto row = parse_vector_string(sub);
+                res.push_back(row);
+                i = close + 1;
+                continue;
+            }
+        }
+        i++;
+    }
+    return res;
+}
+
+inline vector<double> parse_vector_double(string s) {
+    vector<double> res;
+    auto strArr = parse_vector_string(s);
+    for (const auto& str : strArr) {
+        try { res.push_back(stod(str)); } catch(...) {}
+    }
+    return res;
+}
+
+inline vector<bool> parse_vector_bool(string s) {
+    vector<bool> res;
+    auto strArr = parse_vector_string(s);
+    for (const auto& str : strArr) {
+        res.push_back(str == "true" || str == "1");
     }
     return res;
 }
@@ -608,17 +642,25 @@ inline ListNode* parse_list_node(string s) {
     return dummy.next;
 }
 
-inline int parse_named_arg_int(string s, string name, int fallback = 0) {
-    size_t pos = s.find(name);
-    if (pos != string::npos) {
-        size_t eq = s.find('=', pos);
-        if (eq != string::npos) {
-            size_t p = s.find_first_of("-0123456789", eq);
-            if (p != string::npos) {
-                try { return stoi(s.substr(p)); } catch(...) {}
+inline Node* parse_graph_node(string s) {
+    auto mat = parse_matrix_int(s);
+    int n = mat.size();
+    if (n == 0) return nullptr;
+    vector<Node*> nodes;
+    for (int i = 1; i <= n; ++i) nodes.push_back(new Node(i));
+    for (int i = 0; i < n; ++i) {
+        for (int neighborVal : mat[i]) {
+            if (neighborVal >= 1 && neighborVal <= n) {
+                nodes[i]->neighbors.push_back(nodes[neighborVal - 1]);
             }
         }
     }
+    return nodes.empty() ? nullptr : nodes[0];
+}
+
+inline int parse_single_int(string s, int fallback = 0) {
+    size_t eq = s.find('=');
+    if (eq != string::npos) s = s.substr(eq + 1);
     size_t p = s.find_first_of("-0123456789");
     if (p != string::npos) {
         try { return stoi(s.substr(p)); } catch(...) {}
@@ -626,19 +668,37 @@ inline int parse_named_arg_int(string s, string name, int fallback = 0) {
     return fallback;
 }
 
-inline int parse_single_int(string s, int fallback = 0) {
-    size_t p = s.find_first_of("-0123456789");
+inline double parse_single_double(string s, double fallback = 0.0) {
+    size_t eq = s.find('=');
+    if (eq != string::npos) s = s.substr(eq + 1);
+    size_t p = s.find_first_of("-0123456789.");
     if (p != string::npos) {
-        try { return stoi(s.substr(p)); } catch(...) {}
+        try { return stod(s.substr(p)); } catch(...) {}
     }
+    return fallback;
+}
+
+inline bool parse_single_bool(string s, bool fallback = false) {
+    size_t eq = s.find('=');
+    if (eq != string::npos) s = s.substr(eq + 1);
+    if (s.find("true") != string::npos || s.find("True") != string::npos || s.find("1") != string::npos) return true;
+    if (s.find("false") != string::npos || s.find("False") != string::npos || s.find("0") != string::npos) return false;
+    return fallback;
+}
+
+inline char parse_single_char(string s, char fallback = ' ') {
+    size_t eq = s.find('=');
+    if (eq != string::npos) s = s.substr(eq + 1);
+    size_t p = s.find_first_not_of(" \\t\\\"\\'");
+    if (p != string::npos) return s[p];
     return fallback;
 }
 
 inline string parse_string_arg(string s) {
     size_t eq = s.find('=');
     if (eq != string::npos) s = s.substr(eq + 1);
-    s.erase(0, s.find_first_not_of(" \\t\\""));
-    s.erase(s.find_last_not_of(" \\t\\"") + 1);
+    s.erase(0, s.find_first_not_of(" \\t\\\"\\'"));
+    s.erase(s.find_last_not_of(" \\t\\\"\\'") + 1);
     return s;
 }
 
@@ -668,7 +728,7 @@ int main() {
   // ==========================================
   // 2. PYTHON 3 UNIVERSAL DRIVER
   // ==========================================
-  if (language === 'python') {
+  if (language === 'python' || (language as any) === 'py') {
     if (userCode.includes('if __name__ ==')) return userCode;
 
     return `import sys
@@ -700,28 +760,57 @@ if __name__ == '__main__':
         sol = Solution()
         raw_input = """${cleanInput || 'nums = [1, 2, 2]'}"""
         
-        args = []
-        matches = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*(\\[.*?\\]|\\{.*?\\}|\\".*?\\"|\\'.*?\\'|-?\\d+\\.?\\d*|True|False|None)', raw_input)
-        if matches:
-            for m in matches:
-                try:
-                    args.append(ast.literal_eval(m))
-                except:
-                    args.append(m)
-        else:
+        def split_args(s):
+            args = []
+            cur = ""
+            b_depth = 0
+            in_q = False
+            q_char = ''
+            for i, c in enumerate(s):
+                if in_q:
+                    cur += c
+                    if c == q_char and (i == 0 or s[i-1] != '\\\\'):
+                        in_q = False
+                else:
+                    if c in ('"', "'"):
+                        in_q = True
+                        q_char = c
+                        cur += c
+                    elif c in ('[', '{', '('):
+                        b_depth += 1
+                        cur += c
+                    elif c in (']', '}', ')'):
+                        b_depth = max(0, b_depth - 1)
+                        cur += c
+                    elif c == ',' and b_depth == 0:
+                        if cur.strip():
+                            args.append(cur.strip())
+                            cur = ""
+                    else:
+                        cur += c
+            if cur.strip():
+                args.append(cur.strip())
+            return args
+
+        parts = split_args(raw_input.strip())
+        parsed_args = []
+        for p in parts:
+            if '=' in p:
+                _, val = p.split('=', 1)
+                p = val.strip()
             try:
-                args.append(ast.literal_eval(raw_input.strip()))
-            except:
-                args.append(raw_input.strip())
-                
+                parsed_args.append(ast.literal_eval(p))
+            except Exception:
+                parsed_args.append(p.strip('"\\''))
+
         methods = [m for m in dir(sol) if not m.startswith('_') and callable(getattr(sol, m))]
         if methods:
             target_method = getattr(sol, methods[0])
-            res = target_method(*args)
+            res = target_method(*parsed_args)
             if res is not None:
                 print(json.dumps(res, separators=(',', ':')))
             else:
-                print(json.dumps(args[0] if args else "Success", separators=(',', ':')))
+                print(json.dumps(parsed_args[0] if parsed_args else "Success", separators=(',', ':')))
         else:
             print("Python Solution verified successfully.")
     except Exception as e:
@@ -734,32 +823,69 @@ if __name__ == '__main__':
   // 3. JAVASCRIPT (NODE.JS) UNIVERSAL DRIVER
   // ==========================================
   if (language === 'javascript' || (language as any) === 'js') {
+    const fnMatch = userCode.match(/(?:var|let|const|function)\s+([a-zA-Z0-9_]+)/);
+    const detectedFnName = fnMatch ? fnMatch[1] : '';
+
     return `// === USER SOLUTION ===
 ${userCode}
 
 // === HIDDEN DRIVER ===
 try {
     const rawInput = \`${cleanInput || 'nums = [1, 2, 2]'}\`;
-    let args = [];
-    const matches = rawInput.match(/[a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*(\\[.*?\\]|\\{.*?\\}|".*?"|'.*?'|-?\\d+\\.?\\d*|true|false|null)/g);
-    if (matches) {
-        args = matches.map(m => {
-            const eq = m.indexOf('=');
-            try { return JSON.parse(m.substring(eq + 1).trim()); } catch(e) { return m.substring(eq + 1).trim(); }
-        });
-    } else {
-        try { args = [JSON.parse(rawInput.trim())]; } catch(e) { args = [rawInput.trim()]; }
+    function splitArgs(s) {
+        const args = [];
+        let cur = '';
+        let bDepth = 0;
+        let inQ = false;
+        let qChar = '';
+        for (let i = 0; i < s.length; i++) {
+            const c = s[i];
+            if (inQ) {
+                cur += c;
+                if (c === qChar && (i === 0 || s[i - 1] !== '\\\\')) inQ = false;
+            } else {
+                if (c === '"' || c === "'") {
+                    inQ = true;
+                    qChar = c;
+                    cur += c;
+                } else if (c === '[' || c === '{' || c === '(') {
+                    bDepth++;
+                    cur += c;
+                } else if (c === ']' || c === '}' || c === ')') {
+                    bDepth = Math.max(0, bDepth - 1);
+                    cur += c;
+                } else if (c === ',' && bDepth === 0) {
+                    if (cur.trim()) { args.push(cur.trim()); cur = ''; }
+                } else {
+                    cur += c;
+                }
+            }
+        }
+        if (cur.trim()) args.push(cur.trim());
+        return args;
     }
+
+    const rawParts = splitArgs(rawInput.trim());
+    const parsedArgs = rawParts.map(p => {
+        let val = p;
+        if (p.includes('=')) {
+            val = p.substring(p.indexOf('=') + 1).trim();
+        }
+        try { return JSON.parse(val); } catch(e) { return val.replace(/^["']|["']$/g, ''); }
+    });
+
     let res;
     if (typeof Solution === 'function') {
         const sol = new Solution();
         const methodNames = Object.getOwnPropertyNames(Solution.prototype).filter(m => m !== 'constructor');
-        if (methodNames.length > 0) res = sol[methodNames[0]](...args);
+        if (methodNames.length > 0) res = sol[methodNames[0]](...parsedArgs);
+    } else if (typeof ${detectedFnName || 'null'} === 'function') {
+        res = ${detectedFnName}(...parsedArgs);
     } else {
         const fnNames = Object.keys(global).filter(k => typeof global[k] === 'function' && !k.startsWith('_'));
-        if (fnNames.length > 0) res = global[fnNames[0]](...args);
+        if (fnNames.length > 0) res = global[fnNames[0]](...parsedArgs);
     }
-    console.log(JSON.stringify(res !== undefined ? res : (args[0] || 'Success')));
+    console.log(JSON.stringify(res !== undefined ? res : (parsedArgs[0] || 'Success')));
 } catch (e) {
     console.error(e.message);
     process.exit(1);
@@ -800,19 +926,16 @@ class Main {
   return userCode;
 }
 
-function raw_input_has_2d(input: string): boolean {
-  return input.includes('[[') && input.includes(']]');
-}
-
 export async function executeCode(
   code: string, 
   language: SupportedLanguage,
   testInput: string = '',
-  problemTitle: string = ''
+  problemTitle: string = '',
+  preloadedDriver?: string
 ): Promise<CodeExecutionResult> {
   const startTime = performance.now();
   const normLang = (language || 'python').toLowerCase() as SupportedLanguage;
-  const executableCode = wrapLeetCodeExecutableCode(code, normLang, testInput, problemTitle);
+  const executableCode = wrapLeetCodeExecutableCode(code, normLang, testInput, problemTitle, preloadedDriver);
 
   // 1. Try Direct Judge0 CE Execution First for authentic compiler stdout/stderr
   try {
@@ -846,7 +969,6 @@ export async function executeCode(
       const combinedDiag = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
       const finalStdout = stdout.trim();
 
-      // Distinguish fatal errors (compilation errors, runtime exceptions, non-zero exit) from warnings
       const isFatalErr = Boolean(
         (data.status && data.status.id > 3) ||
         (data.exit_code && data.exit_code !== 0) ||

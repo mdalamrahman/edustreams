@@ -7,7 +7,7 @@
  */
 
 // Render / Backend base URL (default to relative path in browser for zero-CORS proxying via Vercel/Vite)
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string) || '';
+const BACKEND_URL = (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_URL as string || import.meta.env.VITE_RENDER_BACKEND_URL as string) : '') || '';
 
 // Remove trailing slash if present
 const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : '';

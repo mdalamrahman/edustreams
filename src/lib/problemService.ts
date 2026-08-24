@@ -30,6 +30,7 @@ export interface ProblemTemplate {
   approaches?: ProblemApproach[];
   starters: Record<SupportedLanguage, string>;
   solutions?: Record<SupportedLanguage, string>;
+  driverCode?: Partial<Record<SupportedLanguage, string>>;
 }
 
 // Normalize problem titles into clean slugs
@@ -575,3 +576,30 @@ export async function fetchEnrichedProblem(
 
   return generated;
 }
+
+/**
+ * Fetches pre-generated driver execution harness from Cloudflare R2 or caches it if freshly generated.
+ */
+export async function fetchOrGenerateDriverCode(
+  slugOrTitle: string,
+  language: SupportedLanguage,
+  starterCode?: string
+): Promise<string | null> {
+  const slug = toSlug(slugOrTitle);
+  const lang = (language || 'cpp').toLowerCase();
+
+  // 1. Try fetching from Cloudflare R2 via Backend API
+  try {
+    const url = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data?.driverCode) {
+        return data.driverCode;
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+

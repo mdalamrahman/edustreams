@@ -789,11 +789,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const start = Date.now();
 
     try {
+      const preloadedDriver = problemTemplate?.driverCode?.[language];
+
       if (!isSubmission) {
         // ----------------------------------------------------
         // RUN MODE: Execute the currently active testcase
         // ----------------------------------------------------
-        const result = await executeCode(code, language, testInput, cleanTitle);
+        const result = await executeCode(code, language, testInput, cleanTitle, preloadedDriver);
         const elapsedMs = Date.now() - start;
         setExecutionTime(elapsedMs);
         setExecutionResult(result);
@@ -831,7 +833,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         const caseExecutionPromises = allCases.map(async (caseInput, i) => {
           const expectedOut = allExpected[i] || '';
           const caseStart = Date.now();
-          const res = await executeCode(code, language, caseInput, cleanTitle);
+          const res = await executeCode(code, language, caseInput, cleanTitle, preloadedDriver);
           const caseLatency = Math.max(2, Date.now() - caseStart);
           const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut);
           return {

@@ -454,6 +454,87 @@ def format_problem_data_as_txt(data: dict) -> str:
             print(f"[R2 SaveSolution Error for '{slug}'/{language}]: {e}")
         return False
 
+    def save_driver_to_problem(self, slug: str, language: str, driver_code: str) -> bool:
+        """
+        Stores pre-generated compilation/test harness driver code for a given problem and language in R2.
+        Saves under drivers/{slug}_{language}.txt and inside problems/{slug}.json under driverCode.
+        """
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        clean_lang = language.strip().lower()
+        key_txt = f"drivers/{clean_slug}_{clean_lang}.txt"
+        payload_bytes = driver_code.encode("utf-8")
+
+        # 1. Save standalone driver file in R2
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key_txt, Body=payload_bytes, ContentType="text/plain; charset=utf-8")
+            except Exception as e:
+                print(f"[R2 Driver Upload Boto3 Notice]: {e}")
+        else:
+            try:
+                headers = self._get_sigv4_headers("PUT", key_txt, payload_bytes)
+                headers["Content-Type"] = "text/plain; charset=utf-8"
+                url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key_txt}"
+                requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            except Exception as e:
+                print(f"[R2 Driver Upload SigV4 Notice]: {e}")
+
+        # 2. Merge into problem JSON in R2
+        try:
+            problem_data = self.fetch_problem(clean_slug)
+            if problem_data:
+                if "driverCode" not in problem_data or not isinstance(problem_data["driverCode"], dict):
+                    problem_data["driverCode"] = {}
+                problem_data["driverCode"][clean_lang] = driver_code
+                self.upload_problem(clean_slug, problem_data)
+        except Exception:
+            pass
+
+        return True
+
+    def fetch_driver_for_problem(self, slug: str, language: str) -> Optional[str]:
+        """
+        Fetches pre-generated driver code for a problem and language from R2.
+        Checks drivers/{slug}_{language}.txt and problems/{slug}.json driverCode field.
+        """
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        clean_lang = language.strip().lower()
+
+        # 1. Try fetching standalone driver file
+        keys_to_try = [f"drivers/{clean_slug}_{clean_lang}.txt", f"drivers/{clean_slug}_{clean_lang}.cpp", f"drivers/{clean_slug}_{clean_lang}.py"]
+        if self._boto_client:
+            for k in keys_to_try:
+                try:
+                    resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=k)
+                    return resp["Body"].read().decode("utf-8")
+                except Exception:
+                    continue
+
+        for k in keys_to_try:
+            try:
+                headers = self._get_sigv4_headers("GET", k)
+                url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{k}"
+                resp = requests.get(url, headers=headers, timeout=5)
+                if resp.status_code == 200 and resp.text:
+                    return resp.text
+            except Exception:
+                continue
+
+        # 2. Check problem JSON
+        try:
+            problem_data = self.fetch_problem(clean_slug)
+            if problem_data and isinstance(problem_data.get("driverCode"), dict):
+                driver = problem_data["driverCode"].get(clean_lang)
+                if driver:
+                    return driver
+        except Exception:
+            pass
+
+        return None
+
+
     def upload_json(self, key: str, data: Any) -> Optional[str]:
         """Uploads arbitrary JSON data to Cloudflare R2 under the specified key."""
         clean_key = key.lstrip('/')

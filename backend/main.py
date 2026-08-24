@@ -1433,6 +1433,77 @@ async def get_problem_testcases_txt(slug: str):
     return PlainTextResponse("\n".join(txt_lines))
 
 
+@app.get("/api/problem/{slug}/driver/{lang}")
+async def get_problem_driver_code(slug: str, lang: str):
+    """
+    Fetches pre-generated driver execution harness for a given problem and language from R2.
+    If not present in R2, generates it on the fly and saves to R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    clean_lang = lang.lower().strip()
+
+    # 1. Check R2 storage
+    driver = r2_storage.fetch_driver_for_problem(clean_slug, clean_lang)
+    if driver:
+        return {"slug": clean_slug, "language": clean_lang, "driverCode": driver, "source": "r2"}
+
+    # 2. If not in R2, fetch problem spec to construct driver
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+    starters = (problem or {}).get("starters", {})
+    starter_code = starters.get(clean_lang) or starters.get("cpp") or ""
+    problem_name = (problem or {}).get("name", clean_slug)
+
+    # 3. Generate driver code using AI if needed
+    try:
+        prompt = f"""You are a Lead Compiler & Test Harness Engineer for LeetCode.
+Generate a complete, production-ready, type-safe execution driver code in {clean_lang.upper()} for problem "{problem_name}" ({clean_slug}).
+Starter code:
+{starter_code}
+
+The driver code must:
+1. Parse standard LeetCode input strings (including matrix formats, named arguments like 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4', arrays, strings, tree/list nodes).
+2. Instantiate Solution and invoke the solution method with correctly typed arguments.
+3. Print the result in JSON format to stdout.
+4. Handle exceptions safely.
+Return ONLY raw executable code containing '// === USER SOLUTION ===' placeholder and '// === HIDDEN DRIVER ===' main entry point, no markdown fences."""
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}]},
+            timeout=15
+        )
+        if resp.status_code == 200:
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            content = re.sub(r'^```[a-zA-Z]*\n', '', content)
+            content = re.sub(r'\n```$', '', content).strip()
+            if content:
+                r2_storage.save_driver_to_problem(clean_slug, clean_lang, content)
+                return {"slug": clean_slug, "language": clean_lang, "driverCode": content, "source": "generated_and_saved_to_r2"}
+    except Exception as e:
+        print(f"[Driver Gen Notice for '{clean_slug}']: {e}")
+
+    return {"slug": clean_slug, "language": clean_lang, "driverCode": None, "source": "none"}
+
+
+@app.post("/api/problem/{slug}/driver/{lang}")
+async def save_problem_driver_code(slug: str, lang: str, req: Request):
+    """
+    Stores pre-generated driver code into Cloudflare R2 for instant compiler harness lookups.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    clean_lang = lang.lower().strip()
+    try:
+        body = await req.json()
+        driver_code = body.get("driverCode") or body.get("code") or ""
+        if driver_code:
+            r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
+            return {"success": True, "slug": clean_slug, "language": clean_lang, "stored_in_r2": True}
+    except Exception as e:
+        print(f"[Save Driver Route Error]: {e}")
+    return {"success": False, "slug": clean_slug}
+
+
+
 class UserCodePayload(BaseModel):
     email: str
     language: str
