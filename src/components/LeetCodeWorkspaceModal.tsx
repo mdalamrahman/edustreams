@@ -230,7 +230,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           setActiveTestCaseIdx(0);
           setTestInput(enriched.testCases[0]);
         }
+
+        // Prefetch & generate type-safe driver harness asynchronously
+        fetchOrGenerateDriverCode(currentSlug, language, enriched.starters?.[language], enriched.testCases?.[0]).then(drv => {
+          if (drv && !isCancelled) {
+            setProblemTemplate(prev => ({
+              ...prev,
+              driverCode: { ...(prev.driverCode || {}), [language]: drv } as Record<SupportedLanguage, string>
+            }));
+          }
+        }).catch(() => {});
       }
+
     }).catch(() => {
       if (!isCancelled) setIsLoadingEnriched(false);
     });
@@ -916,7 +927,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       let preloadedDriver = problemTemplate?.driverCode?.[language];
       if (!preloadedDriver) {
         const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
-        const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, problemTemplate.starters?.[language]);
+        const sampleCase = testInput || problemTemplate?.testCases?.[0] || '';
+        const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, problemTemplate.starters?.[language], sampleCase);
         if (fetchedDriver) {
           preloadedDriver = fetchedDriver;
           setProblemTemplate(prev => ({

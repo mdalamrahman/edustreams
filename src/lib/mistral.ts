@@ -955,7 +955,93 @@ export async function requestMistralChat(messages: Array<{ role: string; content
     console.warn('[Groq Chat Notice]:', e);
   }
 
-  return { content: 'Unable to reach AI evaluation engine at this moment.' };
+  return { content: 'No response generated.' };
 }
+
+/**
+ * Uses Mistral Large AI to generate a complete, custom, type-safe execution driver harness
+ * tailored specifically to the function signature (including 2D matrix, graph, trees, linked lists, etc.)
+ * and sample test inputs for any problem.
+ */
+export async function requestAIDriverGeneration(
+  problemTitle: string,
+  language: string,
+  starterCode: string,
+  sampleTestInput?: string,
+  slug?: string
+): Promise<string | null> {
+  const normLang = (language || 'cpp').toLowerCase();
+  const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  const prompt = `You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
+Generate a complete, robust, type-safe execution driver harness in ${normLang.toUpperCase()} for the problem: "${problemTitle}" (${cleanSlug}).
+
+Function signature / starter code:
+\`\`\`${normLang}
+${starterCode}
+\`\`\`
+
+Sample test input:
+\`\`\`
+${sampleTestInput || ''}
+\`\`\`
+
+Requirements:
+1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> for C++).
+2. Define standard structs if needed (TreeNode, ListNode, Node).
+3. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3'.
+   - CRITICAL: When splitting named arguments at commas, track bracket depth '[' ']' and brace depth '{' '}' so you NEVER split on commas inside nested arrays or matrices.
+4. CRITICAL: Place ONLY the single placeholder comment line:
+// === USER SOLUTION ===
+DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
+5. In the main entry point (below '// === HIDDEN DRIVER ==='):
+   - Read the raw input string variable: string raw_input = R"RAW(${sampleTestInput || ''})RAW"; (or equivalent in other languages).
+   - Parse each argument matching the exact parameter types and names of the method.
+   - Instantiate Solution sol;
+   - Call sol.<methodName>(...) with the parsed arguments.
+   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]) to stdout.
+   - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
+6. Handle runtime exceptions gracefully.
+
+Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown code block fences.`;
+
+
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      let content = data.choices[0]?.message?.content?.trim() || '';
+      content = content.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+      if (content && content.length > 50) {
+        // Save to R2 via backend
+        try {
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/driver/${encodeURIComponent(normLang)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverCode: content })
+          }).catch(() => {});
+        } catch (_) {}
+
+        return content;
+      }
+    }
+  } catch (e) {
+    console.warn('[AI Driver Generation Error]:', e);
+  }
+  return null;
+}
+
 
 

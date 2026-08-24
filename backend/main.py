@@ -1459,19 +1459,25 @@ Driver Requirements:
 1. Include all necessary standard library headers (e.g., <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> in C++).
 2. Define standard structs if needed (TreeNode, ListNode, Node).
 3. Implement a complete, type-safe argument parsing system that handles:
-   - Named parameters: 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4'
-   - Matrices / 2D vectors: '[[1,3],[2,2],[3,1]]'
-   - 1D vectors / arrays: '[1,2,3]'
+   - Named parameters: 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4' or 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3'
+   - CRITICAL: When splitting named arguments at commas, track bracket depth `[` `]` and brace depth `{{` `}}` so you NEVER split on commas inside nested arrays or matrices.
+   - Matrices / 2D vectors: '[[1,3],[2,2],[3,1]]' -> vector<vector<int>>
+   - 1D vectors / arrays: '[1,2,3]' -> vector<int>
    - Scalars: numbers, strings, bools
-4. Place placeholder comment '// === USER SOLUTION ===' where the user's Solution class will be inserted.
-5. In the main entry point:
-   - Instantiate Solution and invoke the target method matching the starter signature with exact typed arguments.
+4. CRITICAL: Place ONLY the single placeholder comment line:
+// === USER SOLUTION ===
+DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
+5. In the main entry point (below '// === HIDDEN DRIVER ==='):
    - Read the raw input string variable: `string raw_input = R"RAW({sample_tc})RAW";` (or equivalent for other languages).
-   - Parse and pass the arguments into the Solution method.
-   - Print the return value in JSON format to stdout.
-6. Catch and report runtime exceptions safely.
+   - Parse each argument matching the exact types and names of the method parameters.
+   - Instantiate Solution sol;
+   - Call sol.<methodName>(...) with the parsed arguments.
+   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]) to stdout.
+   - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
+6. Catch and report runtime exceptions safely to stderr and exit with non-zero code.
 
 Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown fences."""
+
 
     try:
         resp = requests.post(

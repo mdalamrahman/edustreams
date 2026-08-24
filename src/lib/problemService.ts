@@ -1,6 +1,6 @@
 import { SupportedLanguage } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
-import { MISTRAL_API_KEY } from './mistral';
+import { MISTRAL_API_KEY, requestAIDriverGeneration } from './mistral';
 
 export interface ProblemApproach {
   id: string;
@@ -578,28 +578,64 @@ export async function fetchEnrichedProblem(
 }
 
 /**
- * Fetches pre-generated driver execution harness from Cloudflare R2 or caches it if freshly generated.
+ * Fetches pre-generated driver execution harness from Cloudflare R2 or dynamically generates
+ * an authentic type-safe driver with Mistral AI and caches it in localStorage + R2.
  */
 export async function fetchOrGenerateDriverCode(
   slugOrTitle: string,
   language: SupportedLanguage,
-  starterCode?: string
+  starterCode?: string,
+  sampleTestInput?: string
 ): Promise<string | null> {
   const slug = toSlug(slugOrTitle);
-  const lang = (language || 'cpp').toLowerCase();
+  const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+  const localKey = `edustream_driver_${slug}_${lang}`;
 
-  // 1. Try fetching from Cloudflare R2 via Backend API
+  // 1. Check local browser storage cache
+  try {
+    const cached = localStorage.getItem(localKey);
+    if (cached && (cached.includes('// === USER SOLUTION ===') || cached.includes('# === USER SOLUTION ==='))) {
+      return cached;
+    }
+  } catch (_) {}
+
+  // 2. Try fetching from Cloudflare R2 via Backend API
   try {
     const url = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (resp.ok) {
       const data = await resp.json();
-      if (data?.driverCode) {
+      if (data?.driverCode && (data.driverCode.includes('// === USER SOLUTION ===') || data.driverCode.includes('# === USER SOLUTION ==='))) {
+        try {
+          localStorage.setItem(localKey, data.driverCode);
+        } catch (_) {}
         return data.driverCode;
       }
     }
   } catch (_) {}
 
+  // 3. If R2 does not have it, dynamically generate with Mistral AI directly on the client
+  if (starterCode) {
+    try {
+      const aiDriver = await requestAIDriverGeneration(slugOrTitle, lang, starterCode, sampleTestInput || '', slug);
+      if (aiDriver && (aiDriver.includes('// === USER SOLUTION ===') || aiDriver.includes('# === USER SOLUTION ==='))) {
+        try {
+          localStorage.setItem(localKey, aiDriver);
+          // Persist to Cloudflare R2 in the background
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverCode: aiDriver })
+          }).catch(() => {});
+        } catch (_) {}
+        return aiDriver;
+      }
+    } catch (err) {
+      console.warn(`[Client Driver Gen notice for '${slug}' ${lang}]:`, err);
+    }
+  }
+
   return null;
 }
+
 

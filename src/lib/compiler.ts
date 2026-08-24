@@ -109,7 +109,7 @@ function generateCppParamExtractors(paramList: string[]): { declarations: string
     const argVar = `arg_${i}`;
     argNames.push(argVar);
 
-    const cleanType = typePart.replace(/&/g, '').trim();
+    const cleanType = typePart.replace(/&/g, '').replace(/\bconst\b/g, '').replace(/>\s+>/g, '>>').trim();
 
     if (cleanType.includes('vector<vector<char>>')) {
       declarations.push(`vector<vector<char>> ${argVar} = parse_matrix_char(get_arg_str(raw_input, "${namePart}", ${i}));`);
@@ -167,12 +167,41 @@ export function wrapLeetCodeExecutableCode(
   const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanInput = (testInput || '').trim();
 
-  // If a pre-stored Cloudflare R2 driver exists, insert user solution directly
-  if (preloadedDriver && preloadedDriver.includes('// === USER SOLUTION ===')) {
-    return preloadedDriver
-      .replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`)
-      .replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
+  // If a pre-stored Cloudflare R2 / AI driver exists, insert user solution directly
+  if (preloadedDriver && (preloadedDriver.includes('// === USER SOLUTION ===') || preloadedDriver.includes('# === USER SOLUTION ==='))) {
+    let replaced = preloadedDriver;
+    if (replaced.includes('// === USER SOLUTION ===')) {
+      if (replaced.includes('// === END USER SOLUTION ===')) {
+        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?\/\/\s*===\s*END USER SOLUTION\s*===/, `// === USER SOLUTION ===\n${userCode}\n// === END USER SOLUTION ===`);
+      } else if (replaced.includes('// === HIDDEN DRIVER ===')) {
+        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
+      } else if (replaced.includes('int main(') || replaced.includes('int main (')) {
+        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=int main)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
+      } else {
+        replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`);
+      }
+    } else if (replaced.includes('# === USER SOLUTION ===')) {
+      if (replaced.includes('# === END USER SOLUTION ===')) {
+        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userCode}\n# === END USER SOLUTION ===`);
+      } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
+        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
+      } else if (replaced.includes("if __name__ ==")) {
+        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=if __name__ ==)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
+      } else {
+        replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}`);
+      }
+    }
+
+    if (replaced.includes('R"RAW(')) {
+      replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
+    } else if (replaced.includes('raw_input = """')) {
+      replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${cleanInput}"""`);
+    } else if (replaced.includes('const rawInput = `')) {
+      replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${cleanInput}\`;`);
+    }
+    return replaced;
   }
+
 
   // ==========================================
   // 1. C++ (GCC 9+) UNIVERSAL DRIVER
@@ -181,8 +210,12 @@ export function wrapLeetCodeExecutableCode(
     if (userCode.includes('int main(')) return userCode;
 
     // Detect method name, return type and parameters from user's class Solution
-    const methodRegex = /([a-zA-Z0-9_<>,:\s\*]+)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
-    const match = userCode.match(methodRegex);
+    const cleanUserCode = userCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+    const classSolMatch = cleanUserCode.match(/class\s+Solution[\s\S]*?\{([\s\S]*)\};?/);
+    const bodyToSearch = classSolMatch ? classSolMatch[1] : cleanUserCode;
+
+    const methodRegex = /([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
+    const match = bodyToSearch.match(methodRegex);
 
     let methodName = '';
     let retType = '';
@@ -219,6 +252,7 @@ export function wrapLeetCodeExecutableCode(
         cout << "Solution executed successfully with test input." << endl;
 `;
     }
+
 
     return `// SDETube Universal LeetCode C++ Test Harness
 #include <iostream>
