@@ -1433,11 +1433,70 @@ async def get_problem_testcases_txt(slug: str):
     return PlainTextResponse("\n".join(txt_lines))
 
 
+def generate_ai_driver_for_problem(clean_slug: str, lang: str, problem_data: dict) -> Optional[str]:
+    """Generates an authentic, type-safe execution harness for any coding problem using Mistral Large."""
+    clean_lang = lang.lower().strip()
+    name = problem_data.get("name", clean_slug)
+    starters = problem_data.get("starters", {})
+    starter_code = starters.get(clean_lang) or starters.get("cpp") or ""
+    tcs = problem_data.get("testCases", [])
+    sample_tc = tcs[0] if tcs else ""
+
+    prompt = f"""You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
+Generate a complete, robust, type-safe execution driver code in {clean_lang.upper()} for the problem: "{name}" ({clean_slug}).
+
+Function signature / starter code:
+```{clean_lang}
+{starter_code}
+```
+
+Sample test input:
+```
+{sample_tc}
+```
+
+Driver Requirements:
+1. Include all necessary standard library headers (e.g., <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> in C++).
+2. Define standard structs if needed (TreeNode, ListNode, Node).
+3. Implement a complete, type-safe argument parsing system that handles:
+   - Named parameters: 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4'
+   - Matrices / 2D vectors: '[[1,3],[2,2],[3,1]]'
+   - 1D vectors / arrays: '[1,2,3]'
+   - Scalars: numbers, strings, bools
+4. Place placeholder comment '// === USER SOLUTION ===' where the user's Solution class will be inserted.
+5. In the main entry point:
+   - Instantiate Solution and invoke the target method matching the starter signature with exact typed arguments.
+   - Read the raw input string variable: `string raw_input = R"RAW({sample_tc})RAW";` (or equivalent for other languages).
+   - Parse and pass the arguments into the Solution method.
+   - Print the return value in JSON format to stdout.
+6. Catch and report runtime exceptions safely.
+
+Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown fences."""
+
+    try:
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
+            timeout=25
+        )
+        if resp.status_code == 200:
+            content = resp.json()["choices"][0]["message"]["content"].strip()
+            content = re.sub(r'^```[a-zA-Z]*\n', '', content)
+            content = re.sub(r'\n```$', '', content).strip()
+            if content and len(content) > 50:
+                r2_storage.save_driver_to_problem(clean_slug, clean_lang, content)
+                return content
+    except Exception as e:
+        print(f"[Mistral Driver Gen Error for '{clean_slug}' {clean_lang}]: {e}")
+    return None
+
+
 @app.get("/api/problem/{slug}/driver/{lang}")
 async def get_problem_driver_code(slug: str, lang: str):
     """
     Fetches pre-generated driver execution harness for a given problem and language from R2.
-    If not present in R2, generates it on the fly and saves to R2.
+    If not present in R2, generates it on the fly using Mistral AI and saves to R2.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     clean_lang = lang.lower().strip()
@@ -1447,42 +1506,31 @@ async def get_problem_driver_code(slug: str, lang: str):
     if driver:
         return {"slug": clean_slug, "language": clean_lang, "driverCode": driver, "source": "r2"}
 
-    # 2. If not in R2, fetch problem spec to construct driver
+    # 2. Fetch problem spec
     problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
-    starters = (problem or {}).get("starters", {})
-    starter_code = starters.get(clean_lang) or starters.get("cpp") or ""
-    problem_name = (problem or {}).get("name", clean_slug)
+    if not problem:
+        # Fallback search
+        problem = _PROBLEM_CACHE.get(clean_slug.replace("-", ""))
 
-    # 3. Generate driver code using AI if needed
-    try:
-        prompt = f"""You are a Lead Compiler & Test Harness Engineer for LeetCode.
-Generate a complete, production-ready, type-safe execution driver code in {clean_lang.upper()} for problem "{problem_name}" ({clean_slug}).
-Starter code:
-{starter_code}
-
-The driver code must:
-1. Parse standard LeetCode input strings (including matrix formats, named arguments like 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4', arrays, strings, tree/list nodes).
-2. Instantiate Solution and invoke the solution method with correctly typed arguments.
-3. Print the result in JSON format to stdout.
-4. Handle exceptions safely.
-Return ONLY raw executable code containing '// === USER SOLUTION ===' placeholder and '// === HIDDEN DRIVER ===' main entry point, no markdown fences."""
-        resp = requests.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}]},
-            timeout=15
-        )
-        if resp.status_code == 200:
-            content = resp.json()["choices"][0]["message"]["content"].strip()
-            content = re.sub(r'^```[a-zA-Z]*\n', '', content)
-            content = re.sub(r'\n```$', '', content).strip()
-            if content:
-                r2_storage.save_driver_to_problem(clean_slug, clean_lang, content)
-                return {"slug": clean_slug, "language": clean_lang, "driverCode": content, "source": "generated_and_saved_to_r2"}
-    except Exception as e:
-        print(f"[Driver Gen Notice for '{clean_slug}']: {e}")
+    generated = generate_ai_driver_for_problem(clean_slug, clean_lang, problem or {})
+    if generated:
+        return {"slug": clean_slug, "language": clean_lang, "driverCode": generated, "source": "generated_and_saved_to_r2"}
 
     return {"slug": clean_slug, "language": clean_lang, "driverCode": None, "source": "none"}
+
+
+@app.post("/api/problem/{slug}/generate-drivers")
+async def generate_all_drivers_for_problem(slug: str):
+    """
+    Batch generates driver harnesses for all supported languages using Mistral Large and stores them to R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+    results = {}
+    for l in ["cpp", "python", "javascript", "java"]:
+        res = generate_ai_driver_for_problem(clean_slug, l, problem)
+        results[l] = bool(res)
+    return {"slug": clean_slug, "generated": results}
 
 
 @app.post("/api/problem/{slug}/driver/{lang}")
@@ -1501,6 +1549,7 @@ async def save_problem_driver_code(slug: str, lang: str, req: Request):
     except Exception as e:
         print(f"[Save Driver Route Error]: {e}")
     return {"success": False, "slug": clean_slug}
+
 
 
 

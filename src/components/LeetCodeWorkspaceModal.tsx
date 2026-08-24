@@ -48,7 +48,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { fetchEnrichedProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug } from '../lib/problemService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -913,7 +913,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const start = Date.now();
 
     try {
-      const preloadedDriver = problemTemplate?.driverCode?.[language];
+      let preloadedDriver = problemTemplate?.driverCode?.[language];
+      if (!preloadedDriver) {
+        const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+        const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, problemTemplate.starters?.[language]);
+        if (fetchedDriver) {
+          preloadedDriver = fetchedDriver;
+          setProblemTemplate(prev => ({
+            ...prev,
+            driverCode: { ...(prev.driverCode || {}), [language]: fetchedDriver } as Record<SupportedLanguage, string>
+          }));
+        }
+      }
 
       if (!isSubmission) {
         // ----------------------------------------------------

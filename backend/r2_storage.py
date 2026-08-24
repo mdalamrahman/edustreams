@@ -23,6 +23,63 @@ def _get_signature_key(key: str, date_stamp: str, region_name: str, service_name
     k_signing = _sign(k_service, 'aws4_request')
     return k_signing
 
+def format_problem_data_as_txt(data: dict) -> str:
+    """Formats full problem definition including official solutions, testcases, and complexity into clean TXT."""
+    if not isinstance(data, dict):
+        return str(data)
+    
+    title = data.get("name") or "Problem"
+    cat = data.get("category") or "Algorithms"
+    diff = data.get("difficulty") or "Medium"
+    desc = data.get("description") or ""
+    constraints = data.get("constraints") or []
+    tcs = data.get("testCases") or []
+    eos = data.get("expectedOutputs") or []
+    solutions = data.get("solutions") or {}
+    approaches = data.get("approaches") or []
+
+    lines = [
+        f"=== PROBLEM: {title} ===",
+        f"CATEGORY: {cat}",
+        f"DIFFICULTY: {diff}",
+        "",
+        "=== DESCRIPTION ===",
+        desc,
+        "",
+        "=== CONSTRAINTS ===",
+        *(f"- {c}" for c in constraints),
+        "",
+        f"=== TESTCASES ({len(tcs)}) ===",
+    ]
+
+    for idx, tc in enumerate(tcs):
+        eo = eos[idx] if idx < len(eos) else ""
+        lines.append(f"--- CASE {idx + 1} ---")
+        lines.append(f"INPUT: {tc}")
+        lines.append(f"EXPECTED: {eo}")
+        lines.append("")
+
+    if solutions and isinstance(solutions, dict):
+        lines.append("=== OFFICIAL REFERENCE SOLUTIONS ===")
+        for lang, code in solutions.items():
+            if code and str(code).strip():
+                lines.append(f"--- LANGUAGE: {str(lang).upper()} ---")
+                lines.append(str(code).strip())
+                lines.append("")
+
+    if approaches and isinstance(approaches, list):
+        lines.append("=== APPROACHES & COMPLEXITY ===")
+        for i, app in enumerate(approaches):
+            if isinstance(app, dict):
+                lines.append(f"--- APPROACH {i + 1}: {app.get('name', 'Approach')} ---")
+                lines.append(f"TIME COMPLEXITY: {app.get('timeComplexity', 'O(N)')}")
+                lines.append(f"SPACE COMPLEXITY: {app.get('spaceComplexity', 'O(1)')}")
+                lines.append(f"DESCRIPTION: {app.get('description', '')}")
+                lines.append("")
+
+    return "\n".join(lines)
+
+
 class CloudflareR2Storage:
     """
     Single Responsibility Principle (SRP) Object Storage Manager:
@@ -179,62 +236,6 @@ class CloudflareR2Storage:
             pass
 
         return None
-
-def format_problem_data_as_txt(data: dict) -> str:
-    """Formats full problem definition including official solutions, testcases, and complexity into clean TXT."""
-    if not isinstance(data, dict):
-        return str(data)
-    
-    title = data.get("name") or "Problem"
-    cat = data.get("category") or "Algorithms"
-    diff = data.get("difficulty") or "Medium"
-    desc = data.get("description") or ""
-    constraints = data.get("constraints") or []
-    tcs = data.get("testCases") or []
-    eos = data.get("expectedOutputs") or []
-    solutions = data.get("solutions") or {}
-    approaches = data.get("approaches") or []
-
-    lines = [
-        f"=== PROBLEM: {title} ===",
-        f"CATEGORY: {cat}",
-        f"DIFFICULTY: {diff}",
-        "",
-        "=== DESCRIPTION ===",
-        desc,
-        "",
-        "=== CONSTRAINTS ===",
-        *(f"- {c}" for c in constraints),
-        "",
-        f"=== TESTCASES ({len(tcs)}) ===",
-    ]
-
-    for idx, tc in enumerate(tcs):
-        eo = eos[idx] if idx < len(eos) else ""
-        lines.append(f"--- CASE {idx + 1} ---")
-        lines.append(f"INPUT: {tc}")
-        lines.append(f"EXPECTED: {eo}")
-        lines.append("")
-
-    if solutions and isinstance(solutions, dict):
-        lines.append("=== OFFICIAL REFERENCE SOLUTIONS ===")
-        for lang, code in solutions.items():
-            if code and str(code).strip():
-                lines.append(f"--- LANGUAGE: {str(lang).upper()} ---")
-                lines.append(str(code).strip())
-                lines.append("")
-
-    if approaches and isinstance(approaches, list):
-        lines.append("=== APPROACHES & COMPLEXITY ===")
-        for i, app in enumerate(approaches):
-            if isinstance(app, dict):
-                lines.append(f"--- APPROACH {i + 1}: {app.get('name', 'Approach')} ---")
-                lines.append(f"TIME COMPLEXITY: {app.get('timeComplexity', 'O(N)')}")
-                lines.append(f"SPACE COMPLEXITY: {app.get('spaceComplexity', 'O(1)')}")
-                lines.append(f"DESCRIPTION: {app.get('description', '')}")
-                lines.append("")
-
-    return "\n".join(lines)
 
 
     def upload_problem(self, slug: str, data: Any) -> Optional[str]:
