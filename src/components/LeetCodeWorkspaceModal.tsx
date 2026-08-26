@@ -1159,6 +1159,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             origin: { y: 0.6 }
           });
           markProblemSolved(codingProblem?.id || codingProblem?.name || cleanTitle, Math.max(1, Math.round(elapsedMs / 60000)));
+
+          // Persist validated solution to Cloudflare R2
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/save-solution`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language, solution: code })
+          }).catch(() => {});
         }
 
         if (onCodeExecuted) {

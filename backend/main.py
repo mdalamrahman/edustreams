@@ -1684,6 +1684,39 @@ CRITICAL RULES:
     }
 
 
+@app.post("/api/problem/{slug}/save-solution")
+async def save_validated_solution(slug: str, req: Request):
+    """
+    Saves a validated user solution directly into Cloudflare R2 solutions for the problem.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    try:
+        body = await req.json()
+        language = (body.get("language") or "cpp").lower().strip()
+        solution = body.get("solution") or body.get("code") or ""
+        if not solution:
+            return {"success": False, "error": "No solution provided"}
+        
+        # Fetch existing problem from R2 or cache
+        problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+        if not problem:
+            problem = {"id": clean_slug, "slug": clean_slug, "name": clean_slug}
+        
+        if "solutions" not in problem or not isinstance(problem["solutions"], dict):
+            problem["solutions"] = {}
+        
+        problem["solutions"][language] = solution
+        _PROBLEM_CACHE[clean_slug] = problem
+        
+        r2_storage.upload_problem(clean_slug, problem)
+        print(f"[Cloudflare R2 Solution Saved]: '{clean_slug}' in '{language}' ({len(solution)} chars)")
+        return {"success": True, "slug": clean_slug, "language": language, "saved_to_r2": True}
+    except Exception as e:
+        print(f"[Save Solution Route Error for '{clean_slug}']: {e}")
+        return {"success": False, "error": str(e)}
+
+
+
 
 @app.post("/api/problem/{slug}/driver/{lang}")
 async def save_problem_driver_code(slug: str, lang: str, req: Request):

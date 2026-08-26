@@ -167,39 +167,58 @@ export function wrapLeetCodeExecutableCode(
   const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanInput = (testInput || '').trim();
 
-  // If a pre-stored Cloudflare R2 / AI driver exists, insert user solution directly
+  // If a pre-stored Cloudflare R2 / AI driver exists, check for method signature alignment
   if (preloadedDriver && (preloadedDriver.includes('// === USER SOLUTION ===') || preloadedDriver.includes('# === USER SOLUTION ==='))) {
-    let replaced = preloadedDriver;
-    if (replaced.includes('// === USER SOLUTION ===')) {
-      if (replaced.includes('// === END USER SOLUTION ===')) {
-        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?\/\/\s*===\s*END USER SOLUTION\s*===/, `// === USER SOLUTION ===\n${userCode}\n// === END USER SOLUTION ===`);
-      } else if (replaced.includes('// === HIDDEN DRIVER ===')) {
-        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
-      } else if (replaced.includes('int main(') || replaced.includes('int main (')) {
-        replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=int main)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
-      } else {
-        replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`);
-      }
-    } else if (replaced.includes('# === USER SOLUTION ===')) {
-      if (replaced.includes('# === END USER SOLUTION ===')) {
-        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userCode}\n# === END USER SOLUTION ===`);
-      } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
-        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
-      } else if (replaced.includes("if __name__ ==")) {
-        replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=if __name__ ==)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
-      } else {
-        replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}`);
-      }
+    // Detect the primary method name in user code
+    let userMethodName = '';
+    if (language === 'cpp' || (language as any) === 'c++') {
+      const m = userCode.match(/(?:int|void|bool|vector<[^>]+>|string|double|long long|auto)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      if (m) userMethodName = m[1];
+    } else if (language === 'python' || (language as any) === 'py') {
+      const m = userCode.match(/def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      if (m && m[1] !== '__init__') userMethodName = m[1];
+    } else if (language === 'javascript' || (language as any) === 'js') {
+      const m = userCode.match(/(?:var|let|const|function)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:function|\()|function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      if (m) userMethodName = m[1] || m[2];
     }
 
-    if (replaced.includes('R"RAW(')) {
-      replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
-    } else if (replaced.includes('raw_input = """')) {
-      replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${cleanInput}"""`);
-    } else if (replaced.includes('const rawInput = `')) {
-      replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${cleanInput}\`;`);
+    // If user defined a method name, verify that the preloaded driver doesn't call an entirely different method
+    const isMethodMismatch = userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`);
+    if (isMethodMismatch) {
+      console.warn(`[SDETube Compiler] Preloaded driver mismatch (User defined '${userMethodName}'). Falling back to dynamic universal harness.`);
+    } else {
+      let replaced = preloadedDriver;
+      if (replaced.includes('// === USER SOLUTION ===')) {
+        if (replaced.includes('// === END USER SOLUTION ===')) {
+          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?\/\/\s*===\s*END USER SOLUTION\s*===/, `// === USER SOLUTION ===\n${userCode}\n// === END USER SOLUTION ===`);
+        } else if (replaced.includes('// === HIDDEN DRIVER ===')) {
+          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
+        } else if (replaced.includes('int main(') || replaced.includes('int main (')) {
+          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=int main)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
+        } else {
+          replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`);
+        }
+      } else if (replaced.includes('# === USER SOLUTION ===')) {
+        if (replaced.includes('# === END USER SOLUTION ===')) {
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userCode}\n# === END USER SOLUTION ===`);
+        } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
+        } else if (replaced.includes("if __name__ ==")) {
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=if __name__ ==)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
+        } else {
+          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}`);
+        }
+      }
+
+      if (replaced.includes('R"RAW(')) {
+        replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
+      } else if (replaced.includes('raw_input = """')) {
+        replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${cleanInput}"""`);
+      } else if (replaced.includes('const rawInput = `')) {
+        replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${cleanInput}\`;`);
+      }
+      return replaced;
     }
-    return replaced;
   }
 
 
