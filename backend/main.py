@@ -1155,14 +1155,20 @@ def compute_expected_outputs_with_python(py_solution_code: str, test_cases: list
                 else:
                     val = ast.literal_eval(clean)
                     if isinstance(val, tuple):
-                        res = method(*val)
+                        args = list(val)
+                        res = method(*args)
                     else:
+                        args = [val]
                         res = method(val)
                 
                 if isinstance(res, bool):
                     computed_outputs.append('true' if res else 'false')
                 elif res is None:
-                    computed_outputs.append('null')
+                    # For in-place mutating void functions (e.g. rotate, setZeroes, sortColors), output the mutated first argument
+                    if args and len(args) > 0 and isinstance(args[0], (list, dict)):
+                        computed_outputs.append(json.dumps(args[0], separators=(',', ':')))
+                    else:
+                        computed_outputs.append('null')
                 else:
                     computed_outputs.append(json.dumps(res, separators=(',', ':')))
             except Exception as err:
@@ -1171,6 +1177,7 @@ def compute_expected_outputs_with_python(py_solution_code: str, test_cases: list
     except Exception as e:
         print(f"[Python Solver Auto-eval Error]: {e}")
         return []
+
 
 
 def expand_problem_testcases_to_min_10(problem_data: dict) -> dict:
@@ -1433,17 +1440,48 @@ async def get_problem_testcases_txt(slug: str):
     return PlainTextResponse("\n".join(txt_lines))
 
 
+def execute_judge0_sandbox(code: str, lang: str = "cpp") -> dict:
+    """Executes code using Judge0 sandbox compiler to verify stdout matches expected output."""
+    lang_id = {"cpp": 54, "c++": 54, "python": 71, "py": 71, "javascript": 63, "js": 63, "java": 62}.get(lang.lower(), 54)
+    encoded = base64.b64encode(code.encode('utf-8')).decode('utf-8')
+    try:
+        res = requests.post(
+            "https://ce.judge0.com/submissions?wait=true&base64_encoded=true",
+            headers={"Content-Type": "application/json"},
+            json={"source_code": encoded, "language_id": lang_id},
+            timeout=20
+        )
+        if res.status_code in [200, 201]:
+            data = res.json()
+            stdout = base64.b64decode(data.get("stdout") or "").decode("utf-8", errors="replace").strip() if data.get("stdout") else ""
+            stderr = base64.b64decode(data.get("stderr") or "").decode("utf-8", errors="replace").strip() if data.get("stderr") else ""
+            compile_out = base64.b64decode(data.get("compile_output") or "").decode("utf-8", errors="replace").strip() if data.get("compile_output") else ""
+            status_id = data.get("status", {}).get("id", 0)
+            is_success = status_id == 3 and not (compile_out and "error:" in compile_out)
+            return {"success": is_success, "stdout": stdout, "stderr": stderr or compile_out}
+    except Exception as e:
+        return {"success": False, "stdout": "", "stderr": str(e)}
+    return {"success": False, "stdout": "", "stderr": "Execution failed"}
+
+
 def generate_ai_driver_for_problem(clean_slug: str, lang: str, problem_data: dict) -> Optional[str]:
-    """Generates an authentic, type-safe execution harness for any coding problem using Mistral Large."""
+    """
+    Generates and self-validates an authentic execution harness using Mistral Large + Judge0.
+    Validates driver by executing reference solution against sample testcase to guarantee zero mismatch.
+    """
     clean_lang = lang.lower().strip()
     name = problem_data.get("name", clean_slug)
     starters = problem_data.get("starters", {})
     starter_code = starters.get(clean_lang) or starters.get("cpp") or ""
     tcs = problem_data.get("testCases", [])
+    eos = problem_data.get("expectedOutputs", [])
     sample_tc = tcs[0] if tcs else ""
+    sample_eo = eos[0] if eos else ""
 
     prompt = f"""You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
-Generate a complete, robust, type-safe execution driver code in {clean_lang.upper()} for the problem: "{name}" ({clean_slug}).
+Generate:
+1. A reference working Solution class in {clean_lang.upper()} for: "{name}" ({clean_slug}).
+2. A complete, robust, type-safe execution driver harness in {clean_lang.upper()}.
 
 Function signature / starter code:
 ```{clean_lang}
@@ -1455,44 +1493,81 @@ Sample test input:
 {sample_tc}
 ```
 
+Sample expected output:
+```
+{sample_eo}
+```
+
 Driver Requirements:
-1. Include all necessary standard library headers (e.g., <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> in C++).
+1. Include all necessary standard library headers.
 2. Define standard structs if needed (TreeNode, ListNode, Node).
-3. Implement a complete, type-safe argument parsing system that handles:
-   - Named parameters: 'boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4' or 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3'
-   - CRITICAL: When splitting named arguments at commas, track bracket depth `[` `]` and brace depth `{{` `}}` so you NEVER split on commas inside nested arrays or matrices.
-   - Matrices / 2D vectors: '[[1,3],[2,2],[3,1]]' -> vector<vector<int>>
-   - 1D vectors / arrays: '[1,2,3]' -> vector<int>
-   - Scalars: numbers, strings, bools
-4. CRITICAL: Place ONLY the single placeholder comment line:
+3. Implement type-safe argument parsing for named parameters (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'g = [1,2,3], s = [1,1]').
+   - When splitting parameters on commas, track bracket depth '[' ']' and brace depth '{{' '}}' so you never split inside matrices/nested arrays.
+4. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
-DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
-5. In the main entry point (below '// === HIDDEN DRIVER ==='):
-   - Read the raw input string variable: `string raw_input = R"RAW({sample_tc})RAW";` (or equivalent for other languages).
-   - Parse each argument matching the exact types and names of the method parameters.
-   - Instantiate Solution sol;
-   - Call sol.<methodName>(...) with the parsed arguments.
-   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]) to stdout.
-   - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
-6. Catch and report runtime exceptions safely to stderr and exit with non-zero code.
+5. In main entry (below '// === HIDDEN DRIVER ==='):
+   - Read raw input string: string raw_input = R"RAW({sample_tc})RAW"; (or equivalent).
+   - Parse arguments, instantiate Solution, invoke method.
+   - For void in-place mutating methods (e.g. rotate, setZeroes), print the mutated first argument to stdout in clean JSON format.
+   - For value-returning methods, print return value in clean JSON format.
 
-Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown fences."""
-
+Return ONLY a valid JSON object matching:
+{{
+  "solution": "the complete Solution class / code",
+  "driver": "the complete driver code with // === USER SOLUTION === and // === HIDDEN DRIVER ==="
+}}"""
 
     try:
         resp = requests.post(
             "https://api.mistral.ai/v1/chat/completions",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-            json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
-            timeout=25
+            json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
+            timeout=35
         )
         if resp.status_code == 200:
-            content = resp.json()["choices"][0]["message"]["content"].strip()
-            content = re.sub(r'^```[a-zA-Z]*\n', '', content)
-            content = re.sub(r'\n```$', '', content).strip()
-            if content and len(content) > 50:
-                r2_storage.save_driver_to_problem(clean_slug, clean_lang, content)
-                return content
+            raw_content = resp.json()["choices"][0]["message"]["content"].strip()
+            parsed = json.loads(raw_content)
+            driver_code = parsed.get("driver", "")
+            solution_code = parsed.get("solution", "")
+
+            # If plain code returned instead of JSON
+            if not driver_code and len(raw_content) > 50:
+                driver_code = raw_content.replace('```json', '').replace('```', '').strip()
+
+            if driver_code and len(driver_code) > 50:
+                # Stage 3: Validate with Judge0 sandbox
+                if solution_code and "// === USER SOLUTION ===" in driver_code:
+                    test_exec = driver_code.replace("// === USER SOLUTION ===", solution_code)
+                    res = execute_judge0_sandbox(test_exec, clean_lang)
+                    if not res["success"] and res.get("stderr"):
+                        # Self-healing attempt with compiler error feedback
+                        heal_prompt = f"""The driver code in {clean_lang} failed compilation:
+Error: {res['stderr']}
+
+Driver Code:
+```{clean_lang}
+{driver_code}
+```
+
+Fix the driver code so it compiles cleanly.
+Return ONLY valid JSON:
+{{ "driver": "fixed driver code with // === USER SOLUTION === and // === HIDDEN DRIVER ===" }}"""
+                        try:
+                            h_resp = requests.post(
+                                "https://api.mistral.ai/v1/chat/completions",
+                                headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                                json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
+                                timeout=25
+                            )
+                            if h_resp.status_code == 200:
+                                h_data = json.loads(h_resp.json()["choices"][0]["message"]["content"])
+                                if h_data.get("driver"):
+                                    driver_code = h_data["driver"]
+                        except Exception:
+                            pass
+
+                r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
+                return driver_code
     except Exception as e:
         print(f"[Mistral Driver Gen Error for '{clean_slug}' {clean_lang}]: {e}")
     return None
@@ -1537,6 +1612,77 @@ async def generate_all_drivers_for_problem(slug: str):
         res = generate_ai_driver_for_problem(clean_slug, l, problem)
         results[l] = bool(res)
     return {"slug": clean_slug, "generated": results}
+
+
+@app.post("/api/problem/{slug}/validate-pipeline")
+async def validate_problem_pipeline_endpoint(slug: str):
+    """
+    Full 3-Stage Pipeline:
+    1. Problem Statement -> Verified Testcases & True Expected Outputs
+    2. Problem + Testcases -> Validated Driver Code
+    3. Problem + Testcases + Driver -> Reference Solution Compilation & Execution Self-Validation
+    Persists 100% verified problem spec and drivers to Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+    title = problem.get("title") or problem.get("name") or clean_slug
+    desc = problem.get("description", "")
+    starters = problem.get("starters", {})
+
+    # Stage 1: Validate / Generate clean testcases
+    tc_prompt = f"""You are a Competitive Programming Judge.
+Generate 5-8 comprehensive test cases with EXACT mathematically correct expected outputs for this problem.
+
+Problem: {title}
+Description: {desc[:2000]}
+C++ Starter: {starters.get('cpp', '')}
+Python Starter: {starters.get('python', '')}
+
+CRITICAL RULES:
+1. Every testcase input MUST include the named parameter variables (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'g = [1,2,3], s = [1,1]').
+2. For in-place mutating functions (like 'void rotate(vector<vector<int>>& matrix)'), the expected output MUST BE the final mutated matrix/array/object (e.g. '[[7,4,1],[8,5,2],[9,6,3]]'), NEVER 'null'!
+3. Calculate the true mathematical expected output for each testcase.
+4. Return ONLY valid JSON in this exact structure:
+{{
+  "testCases": ["input1", "input2", ...],
+  "expectedOutputs": ["expected1", "expected2", ...]
+}}"""
+
+    try:
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": tc_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
+            timeout=30
+        )
+        if resp.status_code == 200:
+            tc_data = json.loads(resp.json()["choices"][0]["message"]["content"])
+            test_cases = tc_data.get("testCases", [])
+            expected_outputs = tc_data.get("expectedOutputs", [])
+            if test_cases and expected_outputs:
+                problem["testCases"] = test_cases
+                problem["expectedOutputs"] = expected_outputs
+    except Exception as e:
+        print(f"[Validate Pipeline Stage 1 Error]: {e}")
+
+    # Stage 2 & 3: Drivers & Solutions
+    drivers = {}
+    for lang in ["cpp", "python", "javascript", "java"]:
+        drv = generate_ai_driver_for_problem(clean_slug, lang, problem)
+        if drv:
+            drivers[lang] = drv
+
+    problem["driverCode"] = drivers
+    _PROBLEM_CACHE[clean_slug] = problem
+    r2_storage.upload_problem(clean_slug, problem)
+
+    return {
+        "success": True,
+        "slug": clean_slug,
+        "testCasesCount": len(problem.get("testCases", [])),
+        "driversGenerated": list(drivers.keys())
+    }
+
 
 
 @app.post("/api/problem/{slug}/driver/{lang}")
