@@ -1794,11 +1794,16 @@ async def validate_and_store_solution_endpoint(slug: str, req: Request):
                     exec_code = cand_code
                 
                 # Replace raw_input string literal
-                if 'raw_input = ' in exec_code:
+                if lang == "cpp":
                     exec_code = re.sub(r'raw_input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({tc})RAW";', exec_code, flags=re.DOTALL)
-                    exec_code = re.sub(r'raw_input\s*=\s*r""".*?""";?', f'raw_input = r"""{tc}"""', exec_code, flags=re.DOTALL)
-                    exec_code = re.sub(r'const\s+raw_input\s*=\s*`.*?`;', f'const raw_input = `{tc}`;', exec_code, flags=re.DOTALL)
-                    exec_code = re.sub(r'String\s+raw_input\s*=\s*""".*?""";', f'String raw_input = """{tc}""";', exec_code, flags=re.DOTALL)
+                elif lang == "python":
+                    exec_code = re.sub(r'raw_input\s*=\s*""".*?"""', f'raw_input = """{tc}"""', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_input\s*=\s*r""".*?"""', f'raw_input = r"""{tc}"""', exec_code, flags=re.DOTALL)
+                elif lang == "javascript":
+                    exec_code = re.sub(r'raw_input\s*=\s*`.*?`;', f'raw_input = `{tc}`;', exec_code, flags=re.DOTALL)
+                elif lang == "java":
+                    exec_code = re.sub(r'raw_input\s*=\s*".*?";', f'raw_input = "{tc}";', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_input\s*=\s*""".*?""";', f'raw_input = """{tc}""";', exec_code, flags=re.DOTALL)
                 
                 res = execute_judge0_sandbox(exec_code, lang)
                 stdout = (res.get("stdout") or "").strip().replace(" ", "").lower()
@@ -3470,30 +3475,20 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                         except Exception:
                             ffmpeg_exe = "ffmpeg"
 
-                        print(f"[EduStream Background STT] Pipe start: streaming {total_chunks} parts for '{clean_title}' (msg #{msg_id}, {doc_size / (1024*1024):.1f} MB)...")
-
-                        ffmpeg_cmd = [
-                            ffmpeg_exe, "-y",
-                            "-i", "pipe:0", "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k", "-f", "mp3", "pipe:1"
-                        ]
-                        process = await asyncio.create_subprocess_exec(
-                            *ffmpeg_cmd,
-                            stdin=asyncio.subprocess.PIPE,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.DEVNULL
-                        )
-
+                        import tempfile
+                        temp_vid_path = None
+                        temp_aud_path = None
+                        audio_bytes = b""
                         bytes_streamed = 0
                         chunk_index = 0
 
-                        async def _feed_ffmpeg():
-                            nonlocal bytes_streamed, chunk_index
-                            try:
+                        try:
+                            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_vid:
+                                temp_vid_path = temp_vid.name
                                 async for chunk in client.iter_download(
                                     doc, offset=0, request_size=chunk_size, dc_id=getattr(doc, 'dc_id', None)
                                 ):
-                                    process.stdin.write(chunk)
-                                    await process.stdin.drain()
+                                    temp_vid.write(chunk)
                                     bytes_streamed += len(chunk)
                                     chunk_index += 1
                                     pct = min(75.0, round((chunk_index / total_chunks) * 75, 1))
@@ -3509,14 +3504,33 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                     }
                                     if bytes_streamed >= stream_target_bytes:
                                         break
-                            except Exception as feed_err:
-                                print(f"[EduStream STT Feed Notice]: {feed_err}")
-                            finally:
-                                process.stdin.close()
 
-                        feed_task = asyncio.create_task(_feed_ffmpeg())
-                        audio_bytes, _ = await process.communicate()
-                        await feed_task
+                            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_aud:
+                                temp_aud_path = temp_aud.name
+
+                            ffmpeg_cmd = [
+                                ffmpeg_exe, "-y",
+                                "-i", temp_vid_path,
+                                "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k",
+                                "-f", "mp3", temp_aud_path
+                            ]
+                            conv_proc = await asyncio.create_subprocess_exec(
+                                *ffmpeg_cmd,
+                                stdout=asyncio.subprocess.DEVNULL,
+                                stderr=asyncio.subprocess.DEVNULL
+                            )
+                            await conv_proc.communicate()
+
+                            if os.path.exists(temp_aud_path):
+                                with open(temp_aud_path, "rb") as af:
+                                    audio_bytes = af.read()
+                        finally:
+                            if temp_vid_path and os.path.exists(temp_vid_path):
+                                try: os.unlink(temp_vid_path)
+                                except Exception: pass
+                            if temp_aud_path and os.path.exists(temp_aud_path):
+                                try: os.unlink(temp_aud_path)
+                                except Exception: pass
 
                         audio_mb = len(audio_bytes) / (1024 * 1024)
                         video_mb = bytes_streamed / (1024 * 1024)
