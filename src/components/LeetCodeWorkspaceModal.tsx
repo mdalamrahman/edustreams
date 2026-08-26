@@ -44,7 +44,9 @@ import {
   Code2,
   BarChart3,
   ArrowUpRight,
-  Youtube
+  Youtube,
+  Wand2,
+  AlertTriangle
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -59,8 +61,10 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
 import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
+import { ReportTestCaseModal } from './ReportTestCaseModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
+
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
   if (!raw) return '';
@@ -291,6 +295,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   const [submissionAnalytics, setSubmissionAnalytics] = useState<SubmissionAnalyticsData | null>(null);
   const [isSubmissionVisualizerOpen, setIsSubmissionVisualizerOpen] = useState<boolean>(false);
+  
+  // AI Test Case Verification and Repair Modal State
+  const [isReportTestCaseOpen, setIsReportTestCaseOpen] = useState<boolean>(false);
+  const [reportTestCaseIdx, setReportTestCaseIdx] = useState<number>(0);
+
   
   // Direct LeetCode & GeeksforGeeks links (Only if explicitly present)
   const lcUrl = useMemo(() => {
@@ -2534,7 +2543,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 {consoleTab === 'testcase' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 overflow-x-auto pb-1 max-w-[80%] no-scrollbar">
+                      <div className="flex items-center space-x-2 overflow-x-auto pb-1 max-w-[70%] no-scrollbar">
                         {(problemTemplate.testCases || []).map((tc, idx) => (
                           <button
                             key={idx}
@@ -2553,9 +2562,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         ))}
                       </div>
 
-                      <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap ml-2">
-                        {problemTemplate.testCases?.length || 0} Cases
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setReportTestCaseIdx(activeTestCaseIdx);
+                            setIsReportTestCaseOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-600/50 text-amber-300 hover:text-amber-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                          title="Report or fix incorrect testcase with AI"
+                        >
+                          <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Report / Fix with AI</span>
+                        </button>
+
+                        <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap">
+                          {problemTemplate.testCases?.length || 0} Cases
+                        </span>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -2621,6 +2644,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           </div>
                         </div>
 
+                        {/* If failed, show quick AI report banner */}
+                        {!submissionResult.isSuccess && (
+                          <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-2 text-amber-300">
+                              <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                              <span className="text-[11px] font-medium">Suspect this testcase or expected output is wrong?</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setReportTestCaseIdx(submissionResult?.failedCaseIdx ?? activeTestCaseIdx);
+                                setIsReportTestCaseOpen(true);
+                              }}
+                              className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
+                            >
+                              <Wand2 className="w-3 h-3" />
+                              <span>Verify & Fix with AI</span>
+                            </button>
+                          </div>
+                        )}
+
                         {/* Visualizer Trigger Banner (Only shown if all testcases passed / Accepted) */}
                         {submissionResult.isSubmission && submissionResult.isSuccess && submissionAnalytics && (
                           <button
@@ -2636,6 +2679,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                             </span>
                           </button>
                         )}
+
 
                         {/* If failed in submission or run, show failing testcase input with option to load and run */}
                         {submissionResult.failedInput && (
@@ -2903,11 +2947,51 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 setIsRightAskAiOpen(true);
                 setAiInputText(prompt);
               }}
+              onReportTestCase={(caseIdx) => {
+                setReportTestCaseIdx(caseIdx);
+                setIsReportTestCaseOpen(true);
+              }}
             />
           </div>
         </div>
       )}
 
+
+      {/* AI Testcase Inspector & Repair Modal */}
+      <ReportTestCaseModal
+        isOpen={isReportTestCaseOpen}
+        onClose={() => setIsReportTestCaseOpen(false)}
+        problemTitle={cleanTitle}
+        problemSlug={toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle)}
+        problemStatement={problemTemplate.description}
+        methodSignature={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
+        testCaseIndex={reportTestCaseIdx}
+        currentInput={problemTemplate.testCases?.[reportTestCaseIdx] || testInput}
+        currentExpectedOutput={problemTemplate.expectedOutputs?.[reportTestCaseIdx]}
+        userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
+        language={language}
+        onApplyCorrection={(correctedInput, correctedExpected) => {
+          setProblemTemplate(prev => {
+            const updatedCases = [...(prev.testCases || [])];
+            const updatedExp = [...(prev.expectedOutputs || [])];
+            updatedCases[reportTestCaseIdx] = correctedInput;
+            if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected;
+            
+            const next = { ...prev, testCases: updatedCases, expectedOutputs: updatedExp };
+            try {
+              const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+              localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+
+          if (reportTestCaseIdx === activeTestCaseIdx) {
+            setTestInput(correctedInput);
+          }
+        }}
+      />
+
     </div>
   );
 };
+

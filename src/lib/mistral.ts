@@ -1043,5 +1043,146 @@ Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// ==
   return null;
 }
 
+export interface TestCaseVerificationPayload {
+  slug?: string;
+  problemTitle: string;
+  problemStatement: string;
+  methodSignature?: string;
+  currentInput: string;
+  currentExpectedOutput?: string;
+  userActualOutput?: string;
+  userNote?: string;
+  language?: string;
+}
+
+export interface TestCaseVerificationResult {
+  isIncorrect: boolean;
+  verdict: 'INCORRECT_EXPECTED' | 'MALFORMED_INPUT' | 'INVALID_CONSTRAINT' | 'ALREADY_CORRECT';
+  analysis: string;
+  correctedInput: string;
+  correctedExpectedOutput: string;
+  explanation: string;
+  suggestedAction: string;
+}
+
+/**
+ * Inspects a reported testcase using Mistral Large AI.
+ * Determines if the input or expected output is incorrect, and generates the true mathematically correct testcase.
+ */
+export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPayload): Promise<TestCaseVerificationResult> {
+  const { slug, problemTitle, problemStatement, methodSignature, currentInput, currentExpectedOutput, userActualOutput, userNote, language } = payload;
+  const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').trim();
+
+  // 1. Try Backend FastAPI route
+  try {
+    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.isIncorrect === 'boolean') {
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn('[Backend Verify TestCase notice, falling back to direct Mistral API]:', e);
+  }
+
+  // 2. Direct Mistral Large AI Fallback
+  const prompt = `You are an elite Competitive Programming Judge and Algorithm Specialist.
+A user is reporting a potentially incorrect testcase for the coding problem "${problemTitle}".
+
+PROBLEM STATEMENT:
+${problemStatement.slice(0, 4000)}
+
+METHOD SIGNATURE / CONTEXT:
+${methodSignature || 'N/A'}
+
+REPORTED TESTCASE INPUT:
+\`\`\`
+${currentInput}
+\`\`\`
+
+CURRENT EXPECTED OUTPUT (IN TEST SUITE):
+\`\`\`
+${currentExpectedOutput || '(None provided)'}
+\`\`\`
+
+STUDENT'S ACTUAL EXECUTION OUTPUT:
+\`\`\`
+${userActualOutput || '(Not executed)'}
+\`\`\`
+
+STUDENT'S REPORT NOTE / SUSPICION:
+${userNote || '(No specific note, please perform full mathematical & algorithmic validation)'}
+
+TASK:
+1. Carefully trace the problem's specifications, rules, constraints, and 0-based/1-based indexing.
+2. Step through the input "${currentInput}" against the problem statement.
+3. Compute the TRUE, mathematically and algorithmically accurate expected output for this exact input.
+4. Check if the input format itself has syntax errors (e.g. mismatched brackets, wrong variable names).
+5. Compare the true expected output with the test suite's current expected output "${currentExpectedOutput}".
+6. Determine if the testcase is incorrect or already valid.
+
+Respond ONLY with a valid JSON object matching this schema without markdown code fences:
+{
+  "isIncorrect": boolean,
+  "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "ALREADY_CORRECT",
+  "analysis": "Brief step-by-step trace of the logic on this input",
+  "correctedInput": "The clean, valid, formatted input string",
+  "correctedExpectedOutput": "The exact true expected output (e.g. 'true', 'false', '42', '[0, 1]', '[[1,2]]', '\"abc\"')",
+  "explanation": "Clear explanation of why it was wrong or why it is already correct",
+  "suggestedAction": "Summary of recommended action (e.g. 'Update expected output to true' or 'Keep current testcase')"
+}`;
+
+  try {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${MISTRAL_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'mistral-large-latest',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const rawContent = data.choices[0]?.message?.content?.trim() || '{}';
+      const parsed = JSON.parse(rawContent);
+      return {
+        isIncorrect: Boolean(parsed.isIncorrect),
+        verdict: parsed.verdict || (parsed.isIncorrect ? 'INCORRECT_EXPECTED' : 'ALREADY_CORRECT'),
+        analysis: parsed.analysis || 'Testcase analyzed by Mistral Large AI.',
+        correctedInput: parsed.correctedInput || currentInput,
+        correctedExpectedOutput: parsed.correctedExpectedOutput || currentExpectedOutput || '',
+        explanation: parsed.explanation || (parsed.isIncorrect ? 'Discrepancy detected in testcase.' : 'Testcase is mathematically correct.'),
+        suggestedAction: parsed.suggestedAction || (parsed.isIncorrect ? 'Apply AI correction' : 'Testcase verified')
+      };
+    }
+  } catch (err: any) {
+    console.error('[Mistral Direct Verify TestCase Error]:', err);
+  }
+
+  // Safe fallback if network fails
+  return {
+    isIncorrect: false,
+    verdict: 'ALREADY_CORRECT',
+    analysis: 'Could not connect to AI service. Please verify input formatting manually.',
+    correctedInput: currentInput,
+    correctedExpectedOutput: currentExpectedOutput || '',
+    explanation: 'AI verification could not be completed at this time.',
+    suggestedAction: 'Try again in a moment'
+  };
+}
+
+
 
 

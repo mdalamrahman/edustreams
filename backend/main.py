@@ -1574,6 +1574,145 @@ async def delete_all_problem_drivers(slug: str):
     return {"success": res, "slug": clean_slug}
 
 
+class VerifyTestCasePayload(BaseModel):
+    problemTitle: str
+    problemStatement: str
+    methodSignature: Optional[str] = ""
+    currentInput: str
+    currentExpectedOutput: Optional[str] = ""
+    userActualOutput: Optional[str] = ""
+    userNote: Optional[str] = ""
+    language: Optional[str] = "cpp"
+
+
+class CorrectTestCasePayload(BaseModel):
+    testCaseIndex: int
+    correctedInput: str
+    correctedExpectedOutput: Optional[str] = ""
+
+
+@app.post("/api/problem/{slug}/verify-testcase")
+async def verify_problem_testcase(slug: str, payload: VerifyTestCasePayload):
+    """
+    Validates a reported testcase against the problem statement using Mistral Large AI.
+    Calculates true mathematical output and detects malformed inputs/expected outputs.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    prompt = f"""You are an elite Competitive Programming Judge and Algorithm Specialist.
+A user is reporting a potentially incorrect testcase for the coding problem "{payload.problemTitle}".
+
+PROBLEM STATEMENT:
+{payload.problemStatement[:4000]}
+
+METHOD SIGNATURE / CONTEXT:
+{payload.methodSignature or 'N/A'}
+
+REPORTED TESTCASE INPUT:
+```
+{payload.currentInput}
+```
+
+CURRENT EXPECTED OUTPUT (IN TEST SUITE):
+```
+{payload.currentExpectedOutput or '(None provided)'}
+```
+
+STUDENT'S ACTUAL EXECUTION OUTPUT:
+```
+{payload.userActualOutput or '(Not executed)'}
+```
+
+STUDENT'S REPORT NOTE / SUSPICION:
+{payload.userNote or '(No specific note, please perform full mathematical & algorithmic validation)'}
+
+TASK:
+1. Carefully trace the problem's specifications, rules, constraints, and 0-based/1-based indexing.
+2. Step through the input "{payload.currentInput}" against the problem statement.
+3. Compute the TRUE, mathematically and algorithmically accurate expected output for this exact input.
+4. Check if the input format itself has syntax errors (e.g. mismatched brackets, wrong variable names).
+5. Compare the true expected output with the test suite's current expected output "{payload.currentExpectedOutput}".
+6. Determine if the testcase is incorrect or already valid.
+
+Respond ONLY with a valid JSON object matching this schema without markdown code fences:
+{{
+  "isIncorrect": boolean,
+  "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "ALREADY_CORRECT",
+  "analysis": "Brief step-by-step trace of the logic on this input",
+  "correctedInput": "The clean, valid, formatted input string",
+  "correctedExpectedOutput": "The exact true expected output (e.g. 'true', 'false', '42', '[0, 1]', '[[1,2]]', '\"abc\"')",
+  "explanation": "Clear explanation of why it was wrong or why it is already correct",
+  "suggestedAction": "Summary of recommended action (e.g. 'Update expected output to true' or 'Keep current testcase')"
+}}"""
+
+    try:
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={
+                "model": "mistral-large-latest",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"}
+            },
+            timeout=25
+        )
+        if resp.status_code == 200:
+            raw = resp.json()["choices"][0]["message"]["content"].strip()
+            data = json.loads(raw)
+            return data
+    except Exception as e:
+        print(f"[Verify TestCase AI Error]: {e}")
+
+    return {
+        "isIncorrect": False,
+        "verdict": "ALREADY_CORRECT",
+        "analysis": "AI validation unavailable at this moment.",
+        "correctedInput": payload.currentInput,
+        "correctedExpectedOutput": payload.currentExpectedOutput or "",
+        "explanation": "Could not complete automated verification.",
+        "suggestedAction": "Keep current testcase"
+    }
+
+
+@app.post("/api/problem/{slug}/correct-testcase")
+async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCasePayload):
+    """
+    Applies the AI-verified testcase correction to the problem definition in Cloudflare R2 and memory cache.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+
+    idx = payload.testCaseIndex
+    testcases = problem.get("testCases") or []
+    expected_outputs = problem.get("expectedOutputs") or []
+
+    if isinstance(testcases, list):
+        if idx < len(testcases):
+            testcases[idx] = payload.correctedInput
+        else:
+            testcases.append(payload.correctedInput)
+        problem["testCases"] = testcases
+
+    if payload.correctedExpectedOutput:
+        if not isinstance(expected_outputs, list):
+            expected_outputs = []
+        if idx < len(expected_outputs):
+            expected_outputs[idx] = payload.correctedExpectedOutput
+        else:
+            expected_outputs.append(payload.correctedExpectedOutput)
+        problem["expectedOutputs"] = expected_outputs
+
+    # Invalidate stale drivers so they regenerate with the new testcase
+    r2_storage.delete_driver_for_problem(clean_slug, None)
+
+    # Save updated problem in R2 and cache
+    _PROBLEM_CACHE[clean_slug] = problem
+    r2_storage.upload_problem(clean_slug, problem)
+
+    return {"success": True, "slug": clean_slug, "testCases": testcases, "expectedOutputs": expected_outputs}
+
+
+
 
 
 

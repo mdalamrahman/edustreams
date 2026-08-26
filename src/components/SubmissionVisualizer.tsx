@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   CheckCircle2, XCircle, Clock, Cpu, BarChart3, TrendingUp, 
   Layers, Sparkles, ChevronRight, Zap, Award, Info, Code2, 
-  Check, ArrowUpRight, Flame, ShieldCheck, PieChart, Activity
+  Check, ArrowUpRight, Flame, ShieldCheck, PieChart, Activity,
+  Wand2
 } from 'lucide-react';
 import { SupportedLanguage } from '../lib/compiler';
 import { FormattedChatText } from './FormattedChatText';
@@ -51,14 +52,17 @@ interface SubmissionVisualizerProps {
   onClose?: () => void;
   onRetry?: () => void;
   onAskAi?: (prompt: string) => void;
+  onReportTestCase?: (caseIndex: number) => void;
 }
 
 export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
   data,
   onClose,
   onRetry,
-  onAskAi
+  onAskAi,
+  onReportTestCase
 }) => {
+
   const [activeTab, setActiveTab] = useState<'overview' | 'complexity' | 'testcases' | 'optimization'>('overview');
   const [selectedCaseIdx, setSelectedCaseIdx] = useState<number>(
     data.failedCase ? data.failedCase.caseIndex : 0
@@ -616,10 +620,23 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                       {selectedCase.passed ? 'PASSED' : 'FAILED'}
                     </span>
                   </div>
-                  <div className="text-xs font-mono text-slate-400">
-                    Latency: <strong className="text-slate-200">{selectedCase.runtimeMs} ms</strong>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-xs font-mono text-slate-400">
+                      Latency: <strong className="text-slate-200">{selectedCase.runtimeMs} ms</strong>
+                    </div>
+                    {onReportTestCase && (
+                      <button
+                        onClick={() => onReportTestCase(selectedCaseIdx)}
+                        className="px-2.5 py-1 rounded-xl bg-amber-950/50 hover:bg-amber-900/70 border border-amber-600/50 text-amber-300 hover:text-amber-200 text-[10px] font-bold font-sans flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                        title="Report or fix incorrect testcase with AI"
+                      >
+                        <Wand2 className="w-3 h-3 text-amber-400" />
+                        <span>Report / Fix with AI</span>
+                      </button>
+                    )}
                   </div>
                 </div>
+
 
                 {/* Input block */}
                 <div>
