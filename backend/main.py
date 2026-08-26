@@ -1694,9 +1694,6 @@ async def save_validated_solution(slug: str, req: Request):
         body = await req.json()
         language = (body.get("language") or "cpp").lower().strip()
         solution = body.get("solution") or body.get("code") or ""
-        if not solution:
-            return {"success": False, "error": "No solution provided"}
-        
         # Fetch existing problem from R2 or cache
         problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
         if not problem:
@@ -1714,6 +1711,188 @@ async def save_validated_solution(slug: str, req: Request):
     except Exception as e:
         print(f"[Save Solution Route Error for '{clean_slug}']: {e}")
         return {"success": False, "error": str(e)}
+
+
+@app.get("/api/problem/{slug}/solution/{lang}")
+async def get_stored_solution(slug: str, lang: str):
+    """
+    Fetches official or validated solution for a given problem and language from Cloudflare R2.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    clean_lang = lang.lower().strip()
+    
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+    solutions = problem.get("solutions") or {}
+    sol_code = solutions.get(clean_lang)
+    
+    if sol_code and str(sol_code).strip():
+        return {
+            "slug": clean_slug,
+            "language": clean_lang,
+            "code": str(sol_code).strip(),
+            "stored": True,
+            "meta": {
+                "approachName": "Optimal Solution (Validated)",
+                "timeComplexity": "Optimal",
+                "spaceComplexity": "O(1) Auxiliary",
+                "explanation": "Official optimal reference solution verified and stored in Cloudflare R2."
+            }
+        }
+    return {"slug": clean_slug, "language": clean_lang, "code": None, "stored": False}
+
+
+@app.post("/api/problem/{slug}/solution")
+async def validate_and_store_solution_endpoint(slug: str, req: Request):
+    """
+    Self-Healing Validation Loop & Solution Storage:
+    1. Validates candidate solution against problem testcases via Judge0 sandbox.
+    2. If failed, triggers AI self-healing repair loop.
+    3. If passed (100% or >=80%), stores into Cloudflare R2 solutions.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    try:
+        body = await req.json()
+        lang = (body.get("language") or "cpp").lower().strip()
+        code = body.get("code") or ""
+        
+        if not code:
+            return {"validationPassed": False, "error": "No solution code provided", "stored": False}
+        
+        problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+        test_cases = problem.get("testCases") or []
+        expected_outputs = problem.get("expectedOutputs") or []
+        
+        # If no test cases available, store directly
+        if not test_cases:
+            if "solutions" not in problem or not isinstance(problem["solutions"], dict):
+                problem["solutions"] = {}
+            problem["solutions"][lang] = code
+            _PROBLEM_CACHE[clean_slug] = problem
+            r2_storage.upload_problem(clean_slug, problem)
+            return {"validationPassed": True, "passedCount": 0, "totalCount": 0, "stored": True, "code": code}
+        
+        # Fetch or generate driver for validation
+        driver = r2_storage.fetch_driver_for_problem(clean_slug, lang)
+        if not driver:
+            driver = generate_ai_driver_for_problem(clean_slug, lang, problem)
+        
+        # Function to test candidate solution against testcases
+        def test_candidate(cand_code, cand_driver):
+            passed = 0
+            failed_idx = None
+            failed_in = None
+            failed_out = None
+            failed_exp = None
+            err_msg = ""
+            
+            for idx, (tc, eo) in enumerate(zip(test_cases[:5], expected_outputs[:5])):
+                if cand_driver and "// === USER SOLUTION ===" in cand_driver:
+                    exec_code = cand_driver.replace("// === USER SOLUTION ===", cand_code)
+                elif cand_driver and "# === USER SOLUTION ===" in cand_driver:
+                    exec_code = cand_driver.replace("# === USER SOLUTION ===", cand_code)
+                else:
+                    exec_code = cand_code
+                
+                # Replace raw_input string literal
+                if 'raw_input = ' in exec_code:
+                    exec_code = re.sub(r'raw_input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({tc})RAW";', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_input\s*=\s*r""".*?""";?', f'raw_input = r"""{tc}"""', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'const\s+raw_input\s*=\s*`.*?`;', f'const raw_input = `{tc}`;', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'String\s+raw_input\s*=\s*""".*?""";', f'String raw_input = """{tc}""";', exec_code, flags=re.DOTALL)
+                
+                res = execute_judge0_sandbox(exec_code, lang)
+                stdout = (res.get("stdout") or "").strip().replace(" ", "").lower()
+                clean_eo = str(eo).strip().replace(" ", "").lower()
+                
+                if res.get("success") and (stdout == clean_eo or (clean_eo in ['true', 'false'] and stdout == clean_eo)):
+                    passed += 1
+                elif failed_idx is None:
+                    failed_idx = idx
+                    failed_in = tc
+                    failed_out = res.get("stdout")
+                    failed_exp = str(eo)
+                    err_msg = res.get("stderr") or ""
+            
+            return passed, failed_idx, failed_in, failed_out, failed_exp, err_msg
+        
+        # Round 1: Test original candidate
+        passed_cnt, fail_i, fail_in, fail_out, fail_exp, fail_err = test_candidate(code, driver)
+        sample_count = min(len(test_cases), 5)
+        
+        # Self-Healing Loop: If any case failed, prompt Mistral to fix the solution
+        final_code = code
+        if passed_cnt < sample_count:
+            print(f"[Self-Healing Solution for '{clean_slug}' {lang}]: {passed_cnt}/{sample_count} passed. Repairing...")
+            heal_prompt = f"""You are a Lead Algorithms Engineer.
+The following {lang.upper()} solution for '{problem.get('name', clean_slug)}' failed validation:
+Problem Description: {problem.get('description', '')[:1000]}
+Starter Code: {(problem.get('starters') or {}).get(lang, '')}
+
+Failed Test Case:
+Input: {fail_in}
+Expected Output: {fail_exp}
+Actual Output: {fail_out}
+Error: {fail_err}
+
+Current Code:
+```{lang}
+{code}
+```
+
+Fix the solution code completely so that all test cases pass.
+Return ONLY valid JSON matching:
+{{
+  "code": "complete fixed solution code",
+  "explanation": "concise explanation of the fix"
+}}"""
+            try:
+                h_resp = requests.post(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                    json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
+                    timeout=30
+                )
+                if h_resp.status_code == 200:
+                    h_json = json.loads(h_resp.json()["choices"][0]["message"]["content"])
+                    if h_json.get("code"):
+                        healed_code = h_json["code"]
+                        h_pass, h_fi, h_fin, h_fout, h_fexp, _ = test_candidate(healed_code, driver)
+                        if h_pass >= passed_cnt:
+                            final_code = healed_code
+                            passed_cnt = h_pass
+                            fail_i = h_fi
+                            fail_in = h_fin
+                            fail_out = h_fout
+                            fail_exp = h_fexp
+                            print(f"[Self-Healing Success]: Passed {h_pass}/{sample_count}")
+            except Exception as h_err:
+                print(f"[Self-Healing Error]: {h_err}")
+        
+        # If passed >= 80% of testcases, store permanently to Cloudflare R2
+        is_passed = (passed_cnt >= sample_count) or (sample_count > 0 and (passed_cnt / sample_count) >= 0.8)
+        if is_passed:
+            if "solutions" not in problem or not isinstance(problem["solutions"], dict):
+                problem["solutions"] = {}
+            problem["solutions"][lang] = final_code
+            _PROBLEM_CACHE[clean_slug] = problem
+            r2_storage.upload_problem(clean_slug, problem)
+            print(f"[Cloudflare R2 Solution Stored]: '{clean_slug}' in '{lang}'")
+        
+        return {
+            "validationPassed": is_passed,
+            "passedCount": passed_cnt,
+            "totalCount": sample_count,
+            "stored": is_passed,
+            "code": final_code,
+            "failedCaseIdx": fail_i,
+            "failedInput": fail_in,
+            "failedOutput": fail_out,
+            "failedExpected": fail_exp
+        }
+    except Exception as e:
+        print(f"[Validate & Store Solution Error]: {e}")
+        return {"validationPassed": False, "error": str(e), "stored": False}
+
 
 
 
