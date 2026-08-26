@@ -223,7 +223,20 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   const numParams = paramNames.length;
   const tcs = problem.testCases || [];
 
-  if (numParams >= 2 && tcs.length > 0) {
+  // 1. Single parameter questions (e.g. grid = [...], nums = [...], s = "...")
+  if (numParams === 1 && paramNames[0] && tcs.length > 0) {
+    const pName = paramNames[0];
+    problem.testCases = tcs.map(tc => {
+      const str = String(tc).trim();
+      if (!str.includes('=')) {
+        return `${pName} = ${str}`;
+      }
+      return str;
+    });
+  }
+
+  // 2. Multi-parameter questions: Ensure parameters are never split across separate array items
+  else if (numParams >= 2 && tcs.length > 0) {
     // Check if testcases are split across lines
     const isBroken = tcs.some(tc => {
       const str = String(tc).trim();
@@ -664,6 +677,22 @@ export async function fetchEnrichedProblem(
   const slug = toSlug(slugOrTitle);
   const cacheKey = `edustream_problem_spec_${slug}`;
 
+  const applyOverride = (p: ProblemTemplate): ProblemTemplate => {
+    try {
+      const overrideStr = localStorage.getItem(`edustream_testcase_override_${slug}`);
+      if (overrideStr) {
+        const overrideObj = JSON.parse(overrideStr);
+        if (overrideObj && Array.isArray(overrideObj.testCases) && overrideObj.testCases.length > 0) {
+          p.testCases = overrideObj.testCases;
+          if (Array.isArray(overrideObj.expectedOutputs)) {
+            p.expectedOutputs = overrideObj.expectedOutputs;
+          }
+        }
+      }
+    } catch (_) {}
+    return p;
+  };
+
   // 1. Check local spec cache
   try {
     const cached = localStorage.getItem(cacheKey);
@@ -671,7 +700,7 @@ export async function fetchEnrichedProblem(
       let parsed = JSON.parse(cached) as ProblemTemplate;
       parsed = repairAndHardenProblem(parsed);
       if (isProblemValidAndAuthentic(parsed)) {
-        return parsed;
+        return applyOverride(parsed);
       }
     }
   } catch (_) {}
@@ -690,7 +719,7 @@ export async function fetchEnrichedProblem(
             localStorage.setItem(cacheKey, JSON.stringify(problemObj));
             localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
           } catch (_) {}
-          return problemObj;
+          return applyOverride(problemObj);
         }
       }
     }
@@ -712,7 +741,7 @@ export async function fetchEnrichedProblem(
           body: JSON.stringify(lcData)
         }).catch(() => {});
       } catch (_) {}
-      return lcData;
+      return applyOverride(lcData);
     }
   } catch (err) {
     console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
@@ -726,7 +755,7 @@ export async function fetchEnrichedProblem(
     localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(generated));
   } catch (_) {}
 
-  return generated;
+  return applyOverride(generated);
 }
 
 /**

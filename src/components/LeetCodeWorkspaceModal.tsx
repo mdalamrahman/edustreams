@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames } from '../lib/problemService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -213,6 +213,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       notes
     ).then((enriched) => {
       if (!isCancelled && enriched) {
+        // Check for local testcase override
+        try {
+          const overrideStr = localStorage.getItem(`edustream_testcase_override_${targetSlug}`);
+          if (overrideStr) {
+            const overrideObj = JSON.parse(overrideStr);
+            if (overrideObj && Array.isArray(overrideObj.testCases) && overrideObj.testCases.length > 0) {
+              enriched.testCases = overrideObj.testCases;
+              if (Array.isArray(overrideObj.expectedOutputs)) {
+                enriched.expectedOutputs = overrideObj.expectedOutputs;
+              }
+            }
+          }
+        } catch {}
+
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
 
@@ -2979,22 +2993,32 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
         language={language}
         onApplyCorrection={(correctedInput, correctedExpected) => {
+          let finalInput = (correctedInput || '').trim();
+          const pNames = extractParamNames(problemTemplate.starters, problemTemplate.examples);
+          if (pNames.length === 1 && !finalInput.includes('=')) {
+            finalInput = `${pNames[0]} = ${finalInput}`;
+          }
+
           setProblemTemplate(prev => {
             const updatedCases = [...(prev.testCases || [])];
             const updatedExp = [...(prev.expectedOutputs || [])];
-            updatedCases[reportTestCaseIdx] = correctedInput;
-            if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected;
+            updatedCases[reportTestCaseIdx] = finalInput;
+            if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected.trim();
             
             const next = { ...prev, testCases: updatedCases, expectedOutputs: updatedExp };
             try {
               const slug = currentProblemSlug;
               localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
+              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
+              // Invalidate stale driver cache so resilient driver is generated/used
+              const langs = ['cpp', 'python', 'javascript', 'java', 'go', 'rust'];
+              langs.forEach(l => localStorage.removeItem(`edustream_driver_${slug}_${l}`));
             } catch {}
             return next;
           });
 
           if (reportTestCaseIdx === activeTestCaseIdx) {
-            setTestInput(correctedInput);
+            setTestInput(finalInput);
           }
         }}
       />

@@ -154,6 +154,38 @@ function generateCppParamExtractors(paramList: string[]): { declarations: string
 }
 
 /**
+ * Extracts parameter names from user solution code for any supported language.
+ */
+export function extractParamNamesFromCode(code: string, language: SupportedLanguage): string[] {
+  const clean = (code || '').replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').replace(/#.*/g, '');
+  const norm = (language || 'cpp').toLowerCase();
+  
+  if (norm.includes('cpp') || norm.includes('c++') || norm.includes('java')) {
+    const publicSectionMatch = clean.match(/public:\s*([\s\S]*)/);
+    const searchSection = publicSectionMatch ? publicSectionMatch[1] : clean;
+    const m = searchSection.match(/(?:public\s+|static\s+|inline\s+|virtual\s+)*[a-zA-Z0-9_<>,:\[\]\s\*]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/);
+    if (m && m[2]) {
+      return splitCppParams(m[2]).map(p => {
+        const tokens = p.trim().replace(/[&*]/g, ' ').split(/\s+/).filter(Boolean);
+        return tokens[tokens.length - 1];
+      }).filter(Boolean);
+    }
+  } else if (norm.includes('python') || norm.includes('py')) {
+    const m = clean.match(/def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(\s*(?:self\s*,\s*)?([^)]*)\)/);
+    if (m && m[1]) {
+      return m[1].split(',').map(p => p.trim().split(':')[0].trim()).filter(p => p && p !== 'self');
+    }
+  } else if (norm.includes('javascript') || norm.includes('js')) {
+    const m = clean.match(/(?:var|let|const|function)\s+[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*(?:function\s*\(|\(\s*)([^)]*)\)|function\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(([^)]*)\)/);
+    if (m) {
+      const rawParams = m[1] || m[2] || '';
+      return rawParams.split(',').map(p => p.trim().replace(/[()]/g, '')).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+/**
  * Wraps clean LeetCode Solution class with standard DSA headers, ListNode/TreeNode definitions,
  * and dynamic universal driver execution code matching LeetCode's compiler architecture.
  */
@@ -167,12 +199,31 @@ export function wrapLeetCodeExecutableCode(
   const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanInput = (testInput || '').trim();
 
+  // Auto-normalize input: if input lacks '=' assignment, auto-prefix with parameter name if single param
+  let effectiveInput = cleanInput;
+  if (effectiveInput && !effectiveInput.includes('=')) {
+    let paramName = '';
+    if (preloadedDriver) {
+      const pMatch = preloadedDriver.match(/(?:get_arg_str\([^,]+,\s*"|raw_input\.find\(")([a-zA-Z_][a-zA-Z0-9_]*)\s*=/);
+      if (pMatch) paramName = pMatch[1];
+    }
+    if (!paramName) {
+      const pNames = extractParamNamesFromCode(userCode, language);
+      if (pNames.length === 1) paramName = pNames[0];
+    }
+    if (paramName) {
+      effectiveInput = `${paramName} = ${effectiveInput}`;
+    }
+  }
+
   // If a pre-stored Cloudflare R2 / AI driver exists, check for method signature alignment
   if (preloadedDriver && (preloadedDriver.includes('// === USER SOLUTION ===') || preloadedDriver.includes('# === USER SOLUTION ==='))) {
     // Detect the primary method name in user code
     let userMethodName = '';
     if (language === 'cpp' || (language as any) === 'c++') {
-      const m = userCode.match(/(?:int|void|bool|vector<[^>]+>|string|double|long long|auto)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
+      const publicSectionMatch = userCode.match(/public:\s*([\s\S]*)/);
+      const searchCode = publicSectionMatch ? publicSectionMatch[1] : userCode;
+      const m = searchCode.match(/(?:int|void|bool|vector<[^>]+>|string|double|long long|auto)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
       if (m) userMethodName = m[1];
     } else if (language === 'python' || (language as any) === 'py') {
       const m = userCode.match(/def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
@@ -188,6 +239,12 @@ export function wrapLeetCodeExecutableCode(
       console.warn(`[SDETube Compiler] Preloaded driver mismatch (User defined '${userMethodName}'). Falling back to dynamic universal harness.`);
     } else {
       let replaced = preloadedDriver;
+
+      // Clean rigid checks that fail on raw inputs
+      if (replaced.includes('Error: Missing') || replaced.includes('error: missing')) {
+        replaced = replaced.replace(/if\s*\([^)]*find\([^)]*\)\s*==\s*(?:string::npos|-1)[^)]*\)\s*\{\s*(?:cerr|cout|print)[^;]*;\s*return\s+1;\s*\}/g, '');
+      }
+
       if (replaced.includes('// === USER SOLUTION ===')) {
         if (replaced.includes('// === END USER SOLUTION ===')) {
           replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?\/\/\s*===\s*END USER SOLUTION\s*===/, `// === USER SOLUTION ===\n${userCode}\n// === END USER SOLUTION ===`);
@@ -211,11 +268,11 @@ export function wrapLeetCodeExecutableCode(
       }
 
       if (replaced.includes('R"RAW(')) {
-        replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${cleanInput})RAW"`);
+        replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${effectiveInput})RAW"`);
       } else if (replaced.includes('raw_input = """')) {
-        replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${cleanInput}"""`);
+        replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${effectiveInput}"""`);
       } else if (replaced.includes('const rawInput = `')) {
-        replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${cleanInput}\`;`);
+        replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${effectiveInput}\`;`);
       }
       return replaced;
     }
@@ -228,13 +285,16 @@ export function wrapLeetCodeExecutableCode(
   if (language === 'cpp' || (language as any) === 'c++') {
     if (userCode.includes('int main(')) return userCode;
 
-    // Detect method name, return type and parameters from user's class Solution
+    // Detect method name, return type and parameters from user's class Solution (prioritize public: section)
     const cleanUserCode = userCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
     const classSolMatch = cleanUserCode.match(/class\s+Solution[\s\S]*?\{([\s\S]*)\};?/);
     const bodyToSearch = classSolMatch ? classSolMatch[1] : cleanUserCode;
 
-    const methodRegex = /([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
-    const match = bodyToSearch.match(methodRegex);
+    const publicSectionMatch = bodyToSearch.match(/public:\s*([\s\S]*)/);
+    const searchSection = publicSectionMatch ? publicSectionMatch[1] : bodyToSearch;
+
+    const methodRegex = /(?:inline\s+|virtual\s+|static\s+)*([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
+    const match = searchSection.match(methodRegex);
 
     let methodName = '';
     let retType = '';

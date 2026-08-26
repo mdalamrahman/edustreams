@@ -976,8 +976,20 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
     tcs = problem_data.get("testCases") or []
     eos = problem_data.get("expectedOutputs") or []
 
-    # If we have 2 or more parameters:
-    if num_params >= 2 and tcs:
+    # 1. Single parameter questions (e.g. grid = [...], nums = [...], s = "...")
+    if num_params == 1 and param_names and tcs:
+        p_name = param_names[0]
+        fixed_tcs = []
+        for tc in tcs:
+            tc_str = str(tc).strip()
+            if '=' not in tc_str:
+                fixed_tcs.append(f"{p_name} = {tc_str}")
+            else:
+                fixed_tcs.append(tc_str)
+        problem_data["testCases"] = fixed_tcs
+
+    # 2. Multi-parameter questions: Ensure parameters are never split across separate array items
+    elif num_params >= 2 and tcs:
         is_broken = False
         for tc in tcs:
             tc_str = str(tc).strip()
@@ -1529,8 +1541,9 @@ Sample expected output:
 Driver Requirements:
 1. Include all necessary standard library headers.
 2. Define standard structs if needed (TreeNode, ListNode, Node).
-3. Implement type-safe argument parsing for named parameters (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'g = [1,2,3], s = [1,1]').
+3. Implement type-safe argument parsing for named parameters (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'grid = [["1","0"],["0","1"]]' or 'g = [1,2,3], s = [1,1]').
    - When splitting parameters on commas, track bracket depth '[' ']' and brace depth '{{' '}}' so you never split inside matrices/nested arrays.
+   - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string as the value for that parameter!
 4. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
 5. In main entry (below '// === HIDDEN DRIVER ==='):
@@ -2099,30 +2112,38 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
     testcases = problem.get("testCases") or []
     expected_outputs = problem.get("expectedOutputs") or []
 
+    corrected_in = (payload.correctedInput or "").strip()
+    param_names = extract_function_param_names(problem.get("starters") or {}, problem.get("examples") or [])
+    if len(param_names) == 1 and '=' not in corrected_in and corrected_in:
+        corrected_in = f"{param_names[0]} = {corrected_in}"
+
     if isinstance(testcases, list):
         if idx < len(testcases):
-            testcases[idx] = payload.correctedInput
+            testcases[idx] = corrected_in
         else:
-            testcases.append(payload.correctedInput)
+            testcases.append(corrected_in)
         problem["testCases"] = testcases
 
     if payload.correctedExpectedOutput:
         if not isinstance(expected_outputs, list):
             expected_outputs = []
         if idx < len(expected_outputs):
-            expected_outputs[idx] = payload.correctedExpectedOutput
+            expected_outputs[idx] = payload.correctedExpectedOutput.strip()
         else:
-            expected_outputs.append(payload.correctedExpectedOutput)
+            expected_outputs.append(payload.correctedExpectedOutput.strip())
         problem["expectedOutputs"] = expected_outputs
 
-    # Invalidate stale drivers so they regenerate with the new testcase
+    # Sanitize and harden testcases
+    problem = sanitize_and_harden_testcases(problem)
+
+    # Invalidate stale drivers so they regenerate with resilient parsing
     r2_storage.delete_driver_for_problem(clean_slug, None)
 
     # Save updated problem in R2 and cache
     _PROBLEM_CACHE[clean_slug] = problem
     r2_storage.upload_problem(clean_slug, problem)
 
-    return {"success": True, "slug": clean_slug, "testCases": testcases, "expectedOutputs": expected_outputs}
+    return {"success": True, "slug": clean_slug, "testCases": problem.get("testCases"), "expectedOutputs": problem.get("expectedOutputs")}
 
 
 

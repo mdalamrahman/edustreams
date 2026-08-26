@@ -986,12 +986,12 @@ Sample test input:
 ${sampleTestInput || ''}
 \`\`\`
 
-Requirements:
 1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> for C++).
 2. Define standard structs if needed (TreeNode, ListNode, Node).
-3. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3'.
+3. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.
    - CRITICAL: When splitting named arguments at commas, track bracket depth '[' ']' and brace depth '{' '}' so you NEVER split on commas inside nested arrays or matrices.
-4. CRITICAL: Place ONLY the single placeholder comment line:
+   - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string directly as the value for that parameter!
+4. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
 DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
 5. In the main entry point (below '// === HIDDEN DRIVER ==='):
