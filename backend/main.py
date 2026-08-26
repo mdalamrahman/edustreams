@@ -1298,34 +1298,62 @@ async def get_problem_route(slug: str, refresh: bool = False):
     LeetCode GraphQL / Mistral AI, expands to min 10 testcases, persists
     permanently into Cloudflare R2 as both .json and .txt, and returns.
     """
-    clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
-    clean_slug = re.sub(r'/.*$', '', clean_slug)
-    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+    # Clean URL or title into standard slug
+    raw_slug = slug.strip()
+    if "leetcode.com/problems/" in raw_slug.lower():
+        m = re.search(r'leetcode\.com/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
+        if m:
+            raw_slug = m.group(1)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
 
     if not refresh:
         # 1. In-memory problem cache (<1ms)
         if clean_slug in _PROBLEM_CACHE:
             cached = _PROBLEM_CACHE[clean_slug]
-            if cached.get("name") and cached.get("description") and len(cached.get("testCases", [])) >= 10:
+            desc = cached.get("description", "")
+            name = cached.get("name", "")
+            is_corrupt_cache = (
+                "Given the problem constraints for **" in desc or
+                "httpsleetcodecom" in desc or
+                "httpsleetcodecom" in json.dumps(cached.get("starters", {})) or
+                name.startswith("http://") or name.startswith("https://") or
+                len(desc.strip()) < 30
+            )
+            if not is_corrupt_cache and len(cached.get("testCases", [])) >= 10:
                 return cached
 
         # 2. Cloudflare R2 Storage (fastest object storage)
         try:
             problem_data = r2_storage.fetch_problem(clean_slug)
             if problem_data and problem_data.get("name") and problem_data.get("description"):
-                problem_data = sanitize_and_harden_testcases(problem_data)
-                if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
-                    problem_data = expand_problem_testcases_to_min_10(problem_data)
-                    try:
-                        r2_storage.upload_problem(clean_slug, problem_data)
-                    except Exception as e:
-                        print(f"[R2 testcase update notice for '{clean_slug}']: {e}")
-                _PROBLEM_CACHE[clean_slug] = problem_data
-                return problem_data
+                desc = problem_data.get("description", "")
+                name = problem_data.get("name", "")
+                starters_str = json.dumps(problem_data.get("starters", {}))
+                drivers_str = json.dumps(problem_data.get("driverCode", {}))
+                is_corrupted = (
+                    "Given the problem constraints for **" in desc or
+                    "httpsleetcodecom" in desc or
+                    "httpsleetcodecom" in starters_str or
+                    "httpsleetcodecom" in drivers_str or
+                    name.startswith("http://") or name.startswith("https://") or
+                    len(desc.strip()) < 30
+                )
+                if not is_corrupted:
+                    problem_data = sanitize_and_harden_testcases(problem_data)
+                    if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
+                        problem_data = expand_problem_testcases_to_min_10(problem_data)
+                        try:
+                            r2_storage.upload_problem(clean_slug, problem_data)
+                        except Exception as e:
+                            print(f"[R2 testcase update notice for '{clean_slug}']: {e}")
+                    _PROBLEM_CACHE[clean_slug] = problem_data
+                    return problem_data
+                else:
+                    print(f"[R2 Problem Notice] Found corrupted placeholder problem for '{clean_slug}'. Refetching from LeetCode GraphQL...")
         except Exception as e:
             print(f"[R2 fetch notice for '{clean_slug}']: {e}")
 
-    # 3. If not in Cloudflare R2, query LeetCode GraphQL API
+    # 3. If not in Cloudflare R2 or corrupted, query LeetCode GraphQL API directly
     lc_data = fetch_leetcode_graphql(clean_slug)
     if lc_data and lc_data.get("name") and lc_data.get("description"):
         lc_data = sanitize_and_harden_testcases(lc_data)
@@ -1571,6 +1599,28 @@ Return ONLY valid JSON:
     except Exception as e:
         print(f"[Mistral Driver Gen Error for '{clean_slug}' {clean_lang}]: {e}")
     return None
+
+
+@app.get("/api/leetcode/{slug}")
+async def fetch_leetcode_problem(slug: str):
+    """
+    Fetches REAL authentic problem data from LeetCode's public GraphQL API.
+    Returns the official problem statement, starter code, examples, constraints, and test cases.
+    """
+    raw_slug = slug.strip()
+    if "leetcode.com/problems/" in raw_slug.lower():
+        m = re.search(r'leetcode\.com/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
+        if m:
+            raw_slug = m.group(1)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
+
+    data = fetch_leetcode_graphql(clean_slug)
+    if data and data.get("name") and data.get("description"):
+        _PROBLEM_CACHE[clean_slug] = data
+        return data
+
+    return JSONResponse(status_code=404, content={"error": f"Problem '{clean_slug}' not found on LeetCode", "slug": clean_slug})
+
 
 
 @app.get("/api/problem/{slug}/driver/{lang}")
@@ -5014,14 +5064,6 @@ async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
 # PROBLEM, SUBMISSION, & USER CODE CLOUDFLARE R2 ENDPOINTS
 # =========================================================================
 
-@app.get("/api/problem/{slug}")
-async def get_problem_endpoint(slug: str):
-    """Fetches full problem spec from Cloudflare R2."""
-    clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
-    data = r2_storage.fetch_problem(clean_slug)
-    if data:
-        return {"status": "ok", "problem": data}
-    return JSONResponse(status_code=404, content={"status": "error", "message": "Problem not found in cloud storage"})
 
 
 @app.post("/api/problem/{slug}/upload")

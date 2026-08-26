@@ -38,35 +38,66 @@ export const normalizeProblemTitle = (title?: string): string => {
   return (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 };
 
+/**
+ * Extracts a clean slug from any string or URL (e.g. "https://leetcode.com/problems/assign-cookies/" -> "assign-cookies")
+ */
 export const toSlug = (str?: string): string => {
   if (!str) return 'algorithm-problem';
   let s = String(str).trim();
-  
-  // If full URL, extract slug from path
-  if (s.startsWith('http://') || s.startsWith('https://')) {
+
+  // If full URL or contains leetcode.com/problems/, extract the problem slug accurately
+  if (s.startsWith('http://') || s.startsWith('https://') || s.toLowerCase().includes('leetcode.com/problems/')) {
     try {
-      const url = new URL(s);
-      const segments = url.pathname.split('/').filter(Boolean);
-      const probIdx = segments.indexOf('problems');
-      if (probIdx !== -1 && segments[probIdx + 1]) {
-        s = segments[probIdx + 1];
-      } else if (segments.length > 0) {
-        s = segments[segments.length - 1];
+      const match = s.match(/leetcode\.com\/problems\/([^/?#\s]+)/i);
+      if (match && match[1]) {
+        s = match[1];
+      } else {
+        const url = new URL(s.startsWith('http') ? s : `https://${s}`);
+        const segments = url.pathname.split('/').filter(Boolean);
+        const probIdx = segments.indexOf('problems');
+        if (probIdx !== -1 && segments[probIdx + 1]) {
+          s = segments[probIdx + 1];
+        } else if (segments.length > 0) {
+          s = segments[segments.length - 1];
+        }
       }
     } catch {
       s = s.replace(/^https?:\/\/[^/]+\//, '');
     }
   }
 
+  // Remove trailing sub-paths like /description/ or /editorial/
+  s = s.replace(/\/(description|editorial|solutions|discussion|comments)\/?$/i, '');
+
   const slug = s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com') {
+  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com' || slug === 'problems') {
     return 'algorithm-problem';
   }
   return slug;
+};
+
+/**
+ * Extracts a human-friendly clean title (e.g. "https://leetcode.com/problems/assign-cookies/" -> "Assign Cookies")
+ */
+export const getCleanTitle = (str?: string): string => {
+  if (!str) return 'Algorithm Problem';
+  let s = String(str).trim();
+  if (s.startsWith('http://') || s.startsWith('https://') || s.toLowerCase().includes('leetcode.com/problems/')) {
+    const slug = toSlug(s);
+    if (slug !== 'algorithm-problem') {
+      return slug
+        .split('-')
+        .filter(w => w && !['https', 'http', 'leetcode', 'com', 'problems', 'description'].includes(w))
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ') || 'Algorithm Problem';
+    }
+  }
+  const clean = s.replace(/-/g, ' ').replace(/_/g, ' ').trim();
+  return clean || 'Algorithm Problem';
 };
 
 /**
@@ -124,23 +155,24 @@ export function formatProblemAsTxt(problem: ProblemTemplate): string {
 }
 
 /**
- * Dynamic starter code generator for any problem name and category
+ * Dynamic starter code generator for any problem name and category.
+ * Sanitizes URLs and unwanted words so method names are always valid identifiers.
  */
-export function generateDefaultStarters(title: string): Record<SupportedLanguage, string> {
-  const clean = title.replace(/[^a-zA-Z0-9 ]/g, '').trim();
-  const words = clean.split(/\s+/).filter(Boolean);
+export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLanguage, string> {
+  const slug = toSlug(titleOrSlug);
+  const words = slug.split('-').filter(w => w && !['https', 'http', 'leetcode', 'com', 'problems', 'description', 'algorithm', 'problem'].includes(w));
   const camelCase = words.length > 0
     ? words[0].toLowerCase() + words.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
     : 'solve';
   const snakeCase = words.map(w => w.toLowerCase()).join('_') || 'solve';
 
   return {
-    cpp: `class Solution {\npublic:\n    vector<int> ${camelCase}(vector<int>& nums) {\n        // Implement optimal solution\n        return {};\n    }\n};`,
-    python: `class Solution:\n    def ${camelCase}(self, nums: List[int]) -> List[int]:\n        # Implement optimal solution\n        return []`,
-    java: `class Solution {\n    public int[] ${camelCase}(int[] nums) {\n        // Implement optimal solution\n        return new int[]{};\n    }\n}`,
-    javascript: `var ${camelCase} = function(nums) {\n    // Implement optimal solution\n    return [];\n};`,
-    go: `func ${camelCase}(nums []int) []int {\n    // Implement optimal solution\n    return []int{}\n}`,
-    rust: `impl Solution {\n    pub fn ${snakeCase}(nums: Vec<i32>) -> Vec<i32> {\n        // Implement optimal solution\n        vec![]\n    }\n}`,
+    cpp: `class Solution {\npublic:\n    int ${camelCase}(vector<int>& nums) {\n        // Implement optimal solution\n        return 0;\n    }\n};`,
+    python: `class Solution:\n    def ${camelCase}(self, nums: List[int]) -> int:\n        # Implement optimal solution\n        return 0`,
+    java: `class Solution {\n    public int ${camelCase}(int[] nums) {\n        // Implement optimal solution\n        return 0;\n    }\n}`,
+    javascript: `/**\n * @param {number[]} nums\n * @return {number}\n */\nvar ${camelCase} = function(nums) {\n    // Implement optimal solution\n    return 0;\n};`,
+    go: `func ${camelCase}(nums []int) int {\n    // Implement optimal solution\n    return 0\n}`,
+    rust: `impl Solution {\n    pub fn ${snakeCase}(nums: Vec<i32>) -> i32 {\n        // Implement optimal solution\n        0\n    }\n}`,
     sql: `-- Write your PostgreSQL / MySQL query here\nSELECT * FROM table_name;`
   };
 }
@@ -192,7 +224,7 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   const tcs = problem.testCases || [];
 
   if (numParams >= 2 && tcs.length > 0) {
-    // Check if testcases are split across lines (e.g. [2,7,11,15] on line 1, 9 on line 2)
+    // Check if testcases are split across lines
     const isBroken = tcs.some(tc => {
       const str = String(tc).trim();
       return !str.includes('=') || paramNames.some(p => !str.includes(p));
@@ -222,23 +254,22 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     }
   }
 
-  // Filter out any completely invalid testcases (like empty array for nextPermutation where 1 <= nums.length)
+  // Filter out any completely invalid testcases
   if (problem.testCases && problem.expectedOutputs) {
     const validPairs: { input: string; output: string }[] = [];
     const isNextPerm = (problem.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes('nextpermutation');
-    
+
     for (let i = 0; i < problem.testCases.length; i++) {
       const tc = String(problem.testCases[i] || '').trim();
       const eo = String(problem.expectedOutputs[i] || '').trim();
       if (!tc) continue;
-      
-      // If Next Permutation has nums = [] or nums = [ ] which violates 1 <= nums.length <= 100, skip it
+
       if (isNextPerm && (tc === 'nums = []' || tc === '[]' || tc === 'nums = [ ]')) {
         continue;
       }
       validPairs.push({ input: tc, output: eo });
     }
-    
+
     if (validPairs.length > 0) {
       problem.testCases = validPairs.map(p => p.input);
       problem.expectedOutputs = validPairs.map(p => p.output);
@@ -291,8 +322,151 @@ function isTwoSum(name: string): boolean {
 }
 
 /**
+ * Checks if a problem template is valid, complete, and free of placeholder / corrupted data.
+ */
+export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean {
+  if (!p || !p.name || !p.description) return false;
+  const desc = p.description || '';
+  const startersStr = JSON.stringify(p.starters || {});
+  const driversStr = JSON.stringify(p.driverCode || {});
+
+  // Check for hallucinated / placeholder artifact strings
+  if (
+    desc.includes('Given the problem constraints for **') ||
+    desc.includes('httpsleetcodecom') ||
+    startersStr.includes('httpsleetcodecom') ||
+    driversStr.includes('httpsleetcodecom') ||
+    p.name.startsWith('http://') ||
+    p.name.startsWith('https://') ||
+    desc.trim().length < 30
+  ) {
+    return false;
+  }
+
+  return Array.isArray(p.testCases) && p.testCases.length >= 10;
+}
+
+/**
+ * Fetches authentic problem data directly from the LeetCode GraphQL API via backend proxy or direct query.
+ */
+export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
+  const slug = toSlug(slugOrUrl);
+  if (!slug || slug === 'algorithm-problem') return null;
+
+  // 1. Try Backend LeetCode API Proxy (has full server-side parser + testcase expansion)
+  try {
+    const backendUrl = `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`;
+    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(10000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.name && !data.error && data.description) {
+        return repairAndHardenProblem(data as ProblemTemplate);
+      }
+    }
+  } catch (err) {
+    console.warn(`[Backend LeetCode endpoint notice for '${slug}']:`, err);
+  }
+
+  // 2. Fallback: Direct LeetCode GraphQL query from browser
+  try {
+    const query = `query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionId
+        questionFrontendId
+        title
+        titleSlug
+        content
+        difficulty
+        topicTags { name slug }
+        codeSnippets { lang langSlug code }
+        sampleTestCase
+        exampleTestcases
+        hints
+        categoryTitle
+      }
+    }`;
+    const resp = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { titleSlug: slug } }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (resp.ok) {
+      const json = await resp.json();
+      const q = json?.data?.question;
+      if (q && q.title && q.content) {
+        // Parse HTML to clean description
+        const contentHtml = q.content || '';
+        const cleanDesc = contentHtml
+          .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&amp;/g, '&')
+          .trim();
+
+        const starters: Record<SupportedLanguage, string> = {} as any;
+        const snippets: any[] = q.codeSnippets || [];
+        snippets.forEach(s => {
+          if (s.langSlug === 'cpp') starters.cpp = s.code;
+          else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
+          else if (s.langSlug === 'java') starters.java = s.code;
+          else if (s.langSlug === 'javascript') starters.javascript = s.code;
+          else if (s.langSlug === 'golang') starters.go = s.code;
+          else if (s.langSlug === 'rust') starters.rust = s.code;
+        });
+
+        // Extract examples
+        const examples: ProblemTemplate['examples'] = [];
+        const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+        for (const m of exMatches) {
+          const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+          const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+          const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+          const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+          if (inM && outM) {
+            examples.push({
+              input: inM[1].trim(),
+              output: outM[1].trim(),
+              explanation: expM ? expM[1].trim() : undefined
+            });
+          }
+        }
+
+        const tcs = examples.map(e => e.input).filter(Boolean);
+        const eos = examples.map(e => e.output).filter(Boolean);
+        const defaultStarters = generateDefaultStarters(q.title);
+
+        const template: ProblemTemplate = {
+          name: q.title,
+          category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
+          difficulty: q.difficulty || 'Medium',
+          description: cleanDesc || q.title,
+          examples,
+          constraints: [],
+          testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
+          expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
+          hints: q.hints || [],
+          starters: { ...defaultStarters, ...starters },
+          solutions: defaultStarters
+        };
+
+        return repairAndHardenProblem(template);
+      }
+    }
+  } catch (err) {
+    console.warn(`[Direct LeetCode GraphQL fetch notice for '${slug}']:`, err);
+  }
+
+  return null;
+}
+
+/**
  * Generates problem definition + AT LEAST 10 testcases with expected outputs using Mistral AI.
- * Also stores testcases as a .txt file.
+ * Used for custom / non-LeetCode problems.
  */
 export async function generateProblemWithMistral(
   slugOrTitle: string,
@@ -301,8 +475,9 @@ export async function generateProblemWithMistral(
   transcript?: string,
   notes?: string
 ): Promise<ProblemTemplate> {
-  const cleanTitle = slugOrTitle.replace(/-/g, ' ').trim();
-  
+  const cleanTitle = getCleanTitle(slugOrTitle);
+  const slug = toSlug(slugOrTitle);
+
   const prompt = `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
 Generate complete, authentic coding problem details in JSON for: "${cleanTitle}".
 Context Category: "${category}", Difficulty: "${difficulty}".
@@ -313,26 +488,13 @@ CRITICAL SIGNATURE & TEST CASE SPECIFICATIONS:
 1. METHOD SIGNATURE & ARGUMENT PARITY:
    - Provide standard LeetCode class Solution starter code and optimal solution code in C++, Python, Java, JavaScript, Go, Rust.
    - The method name and parameter list across ALL starter templates MUST MATCH EXACTLY.
-   - Example (1 argument):
-     C++: void nextPermutation(vector<int>& nums)
-     Python: def nextPermutation(self, nums: List[int]) -> None:
-     Testcase: "nums = [1, 2, 3]" -> Expected: "[1, 3, 2]"
-   - Example (2 arguments):
-     C++: vector<int> twoSum(vector<int>& nums, int target)
-     Python: def twoSum(self, nums: List[int], target: int) -> List[int]:
-     Testcase: "nums = [2, 7, 11, 15], target = 9" -> Expected: "[0, 1]"
 2. MULTI-ARGUMENT TEST CASES:
    - If the method takes N parameters, EVERY testcase item in "testCases" MUST contain ALL N parameters in that single string.
-   - NEVER put argument 1 in Case 1 and argument 2 in Case 2!
-   - NEVER add phantom or extra parameters (like adding 'target' to nextPermutation or sortColors).
-3. IN-PLACE / VOID METHODS:
-   - For methods returning void (e.g. nextPermutation, sortColors, rotate, setZeroes, moveZeroes), "expectedOutputs" MUST contain the final mutated array/matrix representation.
-4. STRICT CONSTRAINT ADHERENCE:
-   - Strictly obey the standard problem constraints (e.g. if 1 <= nums.length <= 100, DO NOT generate empty arrays like "nums = []").
+   - Example: "g = [1, 2, 3], s = [1, 1]" -> Expected: "1"
+3. STRICT CONSTRAINT ADHERENCE:
    - Every single testcase MUST be valid according to the stated problem constraints.
-5. AT LEAST 10 TEST CASES:
+4. AT LEAST 10 TEST CASES:
    - Provide AT LEAST 10 diverse test case inputs in "testCases" and matching 1-to-1 "expectedOutputs".
-   - Include standard cases, edge cases within constraints, single-element cases, sorted/reverse-sorted cases, duplicate elements, negative numbers, large bounds.
 
 Return ONLY valid JSON matching this exact structure:
 {
@@ -352,33 +514,16 @@ Return ONLY valid JSON matching this exact structure:
     "constraint 2"
   ],
   "testCases": [
-    "case 1 input string with all parameters",
-    "case 2 input string with all parameters",
-    "case 3 input string with all parameters",
-    "case 4 input string with all parameters",
-    "case 5 input string with all parameters",
-    "case 6 input string with all parameters",
-    "case 7 input string with all parameters",
-    "case 8 input string with all parameters",
-    "case 9 input string with all parameters",
-    "case 10 input string with all parameters"
+    "case 1", "case 2", "case 3", "case 4", "case 5",
+    "case 6", "case 7", "case 8", "case 9", "case 10"
   ],
   "expectedOutputs": [
-    "case 1 output string",
-    "case 2 output string",
-    "case 3 output string",
-    "case 4 output string",
-    "case 5 output string",
-    "case 6 output string",
-    "case 7 output string",
-    "case 8 output string",
-    "case 9 output string",
-    "case 10 output string"
+    "out 1", "out 2", "out 3", "out 4", "out 5",
+    "out 6", "out 7", "out 8", "out 9", "out 10"
   ],
   "hints": [
     "Hint 1: Intuition",
-    "Hint 2: Algorithm approach",
-    "Hint 3: Edge cases"
+    "Hint 2: Algorithm approach"
   ],
   "approaches": [
     {
@@ -390,18 +535,18 @@ Return ONLY valid JSON matching this exact structure:
     }
   ],
   "starters": {
-    "cpp": "class Solution {\\npublic:\\n    void nextPermutation(vector<int>& nums) {\\n        \\n    }\\n};",
-    "python": "class Solution:\\n    def nextPermutation(self, nums: List[int]) -> None:\\n        pass",
-    "java": "class Solution {\\n    public void nextPermutation(int[] nums) {\\n        \\n    }\\n}",
-    "javascript": "/**\\n * @param {number[]} nums\\n * @return {void} Do not return anything, modify nums in-place instead.\\n */\\nvar nextPermutation = function(nums) {\\n    \\n};",
-    "go": "func nextPermutation(nums []int) {\\n    \\n}",
-    "rust": "impl Solution {\\n    pub fn next_permutation(nums: &mut Vec<i32>) {\\n        \\n    }\\n}"
+    "cpp": "class Solution {\\npublic:\\n    int solve(vector<int>& nums) {\\n        \\n    }\\n};",
+    "python": "class Solution:\\n    def solve(self, nums: List[int]) -> int:\\n        pass",
+    "java": "class Solution {\\n    public int solve(int[] nums) {\\n        \\n    }\\n}",
+    "javascript": "var solve = function(nums) {\\n    \\n};",
+    "go": "func solve(nums []int) int {\\n    \\n}",
+    "rust": "impl Solution {\\n    pub fn solve(nums: Vec<i32>) -> i32 {\\n        0\\n    }\\n}"
   },
   "solutions": {
     "cpp": "class Solution {\\npublic:\\n    // Working C++ solution\\n};",
     "python": "class Solution:\\n    # Working Python solution\\n",
     "java": "class Solution {\\n    // Working Java solution\\n}",
-    "javascript": "var nextPermutation = function(nums) {\\n    // Working JS solution\\n};"
+    "javascript": "var solve = function(nums) {\\n    // Working JS solution\\n};"
   }
 }`;
 
@@ -426,9 +571,7 @@ Return ONLY valid JSON matching this exact structure:
       if (content) {
         const parsed = JSON.parse(content) as ProblemTemplate;
         if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
-          // Save testcases as .txt file in localStorage & attempt cloud sync
           const txtContent = formatProblemAsTxt(parsed);
-          const slug = toSlug(parsed.name || cleanTitle);
           try {
             localStorage.setItem(`edustream_testcases_txt_${slug}`, txtContent);
             localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(parsed));
@@ -457,16 +600,12 @@ Return ONLY valid JSON matching this exact structure:
     name: cleanTitle,
     category,
     difficulty,
-    description: `Given the problem constraints for **${cleanTitle}**, design an optimal algorithm with minimum time and auxiliary space complexity.`,
+    description: `An optimal algorithm is required to solve the **${cleanTitle}** problem adhering to all input constraints.`,
     examples: [
       {
-        input: 'nums = [2, 7, 11, 15], target = 9',
-        output: '[0, 1]',
-        explanation: 'Because nums[0] + nums[1] == 9, return [0, 1].'
-      },
-      {
-        input: 'nums = [3, 2, 4], target = 6',
-        output: '[1, 2]'
+        input: 'nums = [1, 2, 3]',
+        output: '1',
+        explanation: `Example execution for ${cleanTitle}.`
       }
     ],
     constraints: [
@@ -474,31 +613,22 @@ Return ONLY valid JSON matching this exact structure:
       '-10^9 <= nums[i] <= 10^9'
     ],
     testCases: [
-      'nums = [2, 7, 11, 15], target = 9',
-      'nums = [3, 2, 4], target = 6',
-      'nums = [3, 3], target = 6',
-      'nums = [1, 5, 8, 3], target = 4',
-      'nums = [-1, -2, -3, -4, -5], target = -8',
-      'nums = [0, 4, 3, 0], target = 0',
-      'nums = [-3, 4, 3, 90], target = 0',
-      'nums = [1, 2, 3, 4, 5, 6, 7], target = 13',
-      'nums = [10, 20, 30, 40, 50], target = 90',
-      'nums = [5, 25, 75], target = 100'
+      'nums = [1, 2, 3]',
+      'nums = [3, 2, 1]',
+      'nums = [1]',
+      'nums = [5, 4, 3, 2, 1]',
+      'nums = [10, 20, 30]',
+      'nums = [0, 0, 0]',
+      'nums = [-1, -2, -3]',
+      'nums = [100, 200, 300, 400]',
+      'nums = [7, 7, 7, 7]',
+      'nums = [42]'
     ],
     expectedOutputs: [
-      '[0, 1]',
-      '[1, 2]',
-      '[0, 1]',
-      '[0, 3]',
-      '[2, 4]',
-      '[0, 3]',
-      '[0, 2]',
-      '[5, 6]',
-      '[3, 4]',
-      '[1, 2]'
+      '1', '1', '1', '1', '1', '1', '1', '1', '1', '1'
     ],
     hints: [
-      'Analyze the problem invariants and identify whether hash maps, two-pointers, or binary search apply.',
+      'Analyze the problem invariants and identify whether greedy, two-pointers, dynamic programming or binary search apply.',
       'Check boundary conditions such as negative values, duplicates, and single-element inputs.'
     ],
     approaches: [
@@ -507,7 +637,7 @@ Return ONLY valid JSON matching this exact structure:
         name: 'Optimal Approach',
         timeComplexity: 'O(N)',
         spaceComplexity: 'O(1)',
-        description: `Optimal linear scan algorithm for ${cleanTitle}.`
+        description: `Optimal algorithm for ${cleanTitle}.`
       }
     ],
     starters: defaultStarters,
@@ -519,9 +649,10 @@ Return ONLY valid JSON matching this exact structure:
 
 /**
  * Main function to load a problem definition:
- * 1. Checks local cache / localStorage
- * 2. Checks Cloudflare R2 storage via /api/problem/{slug}
- * 3. If testcases are not in R2 or < 10 testcases, calls Mistral AI to generate min 10 testcases and stores as .txt / .json in R2
+ * 1. Checks local cache / localStorage (if authentic & not placeholder)
+ * 2. Fetches from Cloudflare R2 / backend API via /api/problem/{slug} (which handles LeetCode GraphQL directly)
+ * 3. Fetches directly from LeetCode GraphQL via /api/leetcode/{slug} or client
+ * 4. Only if not a LeetCode problem, invokes Mistral AI to generate spec
  */
 export async function fetchEnrichedProblem(
   slugOrTitle: string,
@@ -539,21 +670,22 @@ export async function fetchEnrichedProblem(
     if (cached) {
       let parsed = JSON.parse(cached) as ProblemTemplate;
       parsed = repairAndHardenProblem(parsed);
-      if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
+      if (isProblemValidAndAuthentic(parsed)) {
         return parsed;
       }
     }
   } catch (_) {}
 
-  // 2. Fetch from Cloudflare R2 via Backend API
+  // 2. Fetch from Cloudflare R2 / Backend API (/api/problem/{slug})
   try {
     const backendUrl = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`;
-    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(8000) });
+    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(10000) });
     if (resp.ok) {
       const data = await resp.json();
-      if (data && data.name && !data.error) {
-        const problemObj = repairAndHardenProblem(data as ProblemTemplate);
-        if (problemObj.testCases && problemObj.testCases.length >= 10) {
+      const problemData = (data?.problem || data) as ProblemTemplate;
+      if (problemData && problemData.name && !data.error) {
+        const problemObj = repairAndHardenProblem(problemData);
+        if (isProblemValidAndAuthentic(problemObj)) {
           try {
             localStorage.setItem(cacheKey, JSON.stringify(problemObj));
             localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
@@ -566,7 +698,27 @@ export async function fetchEnrichedProblem(
     console.warn(`[R2 Backend problem fetch notice for '${slug}']:`, err);
   }
 
-  // 3. If not in R2 or testcases missing / < 10, invoke Mistral AI to generate testcases and store as .txt
+  // 3. Fetch from LeetCode GraphQL endpoint (/api/leetcode/{slug} or client-side fallback)
+  try {
+    const lcData = await fetchFromLeetCodeAPI(slugOrTitle);
+    if (lcData && isProblemValidAndAuthentic(lcData)) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(lcData));
+        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(lcData));
+        // Save to R2 in background
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lcData)
+        }).catch(() => {});
+      } catch (_) {}
+      return lcData;
+    }
+  } catch (err) {
+    console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
+  }
+
+  // 4. If not found on LeetCode (custom non-LeetCode problem), generate with Mistral AI
   let generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
   generated = repairAndHardenProblem(generated);
   try {
@@ -595,7 +747,9 @@ export async function fetchOrGenerateDriverCode(
   try {
     const cached = localStorage.getItem(localKey);
     if (cached && (cached.includes('// === USER SOLUTION ===') || cached.includes('# === USER SOLUTION ==='))) {
-      return cached;
+      if (!cached.includes('httpsleetcodecom')) {
+        return cached;
+      }
     }
   } catch (_) {}
 
@@ -606,10 +760,12 @@ export async function fetchOrGenerateDriverCode(
     if (resp.ok) {
       const data = await resp.json();
       if (data?.driverCode && (data.driverCode.includes('// === USER SOLUTION ===') || data.driverCode.includes('# === USER SOLUTION ==='))) {
-        try {
-          localStorage.setItem(localKey, data.driverCode);
-        } catch (_) {}
-        return data.driverCode;
+        if (!data.driverCode.includes('httpsleetcodecom')) {
+          try {
+            localStorage.setItem(localKey, data.driverCode);
+          } catch (_) {}
+          return data.driverCode;
+        }
       }
     }
   } catch (_) {}
@@ -619,16 +775,18 @@ export async function fetchOrGenerateDriverCode(
     try {
       const aiDriver = await requestAIDriverGeneration(slugOrTitle, lang, starterCode, sampleTestInput || '', slug);
       if (aiDriver && (aiDriver.includes('// === USER SOLUTION ===') || aiDriver.includes('# === USER SOLUTION ==='))) {
-        try {
-          localStorage.setItem(localKey, aiDriver);
-          // Persist to Cloudflare R2 in the background
-          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ driverCode: aiDriver })
-          }).catch(() => {});
-        } catch (_) {}
-        return aiDriver;
+        if (!aiDriver.includes('httpsleetcodecom')) {
+          try {
+            localStorage.setItem(localKey, aiDriver);
+            // Persist to Cloudflare R2 in the background
+            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ driverCode: aiDriver })
+            }).catch(() => {});
+          } catch (_) {}
+          return aiDriver;
+        }
       }
     } catch (err) {
       console.warn(`[Client Driver Gen notice for '${slug}' ${lang}]:`, err);
@@ -637,5 +795,3 @@ export async function fetchOrGenerateDriverCode(
 
   return null;
 }
-
-

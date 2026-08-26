@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle } from '../lib/problemService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
@@ -169,10 +169,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   // Clean title & problem template
   const cleanTitle = useMemo(() => {
-    return (problemTitle || codingProblem?.title || 'Algorithm Challenge')
-      .replace(/\.(mp4|mkv)$/i, '')
-      .replace(/_/g, ' ');
+    return getCleanTitle(codingProblem?.name || codingProblem?.title || problemTitle || codingProblem?.leetcode || 'Algorithm Challenge');
   }, [problemTitle, codingProblem]);
+
+  const currentProblemSlug = useMemo(() => {
+    return toSlug(codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || codingProblem?.title || cleanTitle);
+  }, [codingProblem, cleanTitle]);
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
@@ -181,27 +183,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       name: cleanTitle,
       category: codingProblem?.category || 'Algorithms',
       difficulty: (codingProblem?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
-      description: `Loading **${cleanTitle}** challenge from Cloud Storage...`,
+      description: `Loading **${cleanTitle}** problem description...`,
       examples: [],
       constraints: [],
-      testCases: ['nums = [2, 7, 11, 15], target = 9'],
-      expectedOutputs: ['[0, 1]'],
+      testCases: ['nums = [1, 2, 3]'],
+      expectedOutputs: ['0'],
       hints: [],
       approaches: [],
-      starters: generateDefaultStarters(cleanTitle),
-      solutions: generateDefaultStarters(cleanTitle)
+      starters: generateDefaultStarters(currentProblemSlug),
+      solutions: generateDefaultStarters(currentProblemSlug)
     };
   });
 
   const [isLoadingEnriched, setIsLoadingEnriched] = useState<boolean>(true);
 
-  // Fetch enriched LeetCode problem description, examples, constraints & starter code from Cloudflare R2
+  // Fetch enriched LeetCode problem description, examples, constraints & starter code from Cloudflare R2 / LeetCode GraphQL
   useEffect(() => {
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
     const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
-    const currentSlug = toSlug(rawTarget);
+    const targetSlug = currentProblemSlug;
 
     fetchEnrichedProblem(
       rawTarget,
@@ -216,7 +218,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
         // Check if user already has saved code in browser cache for this problem & language
         try {
-          const cached = localStorage.getItem(`edustream_user_code_${currentSlug}_${language}`);
+          const cached = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
           if (cached !== null && cached.trim().length > 0) {
             setCode(cached);
             if (enriched.testCases && enriched.testCases.length > 0) {
@@ -236,7 +238,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
 
         // Prefetch & generate type-safe driver harness asynchronously
-        fetchOrGenerateDriverCode(currentSlug, language, enriched.starters?.[language], enriched.testCases?.[0]).then(drv => {
+        fetchOrGenerateDriverCode(targetSlug, language, enriched.starters?.[language], enriched.testCases?.[0]).then(drv => {
           if (drv && !isCancelled) {
             setProblemTemplate(prev => ({
               ...prev,
@@ -245,7 +247,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         }).catch(() => {});
       }
-
     }).catch(() => {
       if (!isCancelled) setIsLoadingEnriched(false);
     });
@@ -253,7 +254,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [cleanTitle, codingProblem, effectiveTranscript, notes, language, initialCode]);
+  }, [currentProblemSlug, codingProblem, cleanTitle, effectiveTranscript, notes, language, initialCode]);
 
   // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
@@ -266,7 +267,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [code, setCode] = useState<string>(() => {
     if (initialCode && initialCode.trim().length > 10) return initialCode;
     try {
-      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+      const slug = currentProblemSlug;
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${initialLanguage}`);
       if (cached !== null && cached.trim().length > 0) return cached;
     } catch {}
@@ -335,7 +336,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Sync code state whenever problem or language changes
   useEffect(() => {
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     try {
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${language}`);
       if (cached !== null && cached.trim().length > 0) {
@@ -346,18 +347,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     if (problemTemplate.starters && problemTemplate.starters[language]) {
       setCode(problemTemplate.starters[language]);
     }
-  }, [cleanTitle, language, problemTemplate.starters]);
+  }, [currentProblemSlug, language, problemTemplate.starters]);
 
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
-    return getLocalProblemNote(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    return getLocalProblemNote(currentProblemSlug);
   });
   const [isSavingModalNotes, setIsSavingModalNotes] = useState(false);
   const [modalNotesSavedStatus, setModalNotesSavedStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
 
   const handleSaveModalNotes = async () => {
     setIsSavingModalNotes(true);
-    const slug = codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const slug = currentProblemSlug;
     const student = getCurrentStudent();
     const res = await saveProblemNote(slug, codingProblem?.name || cleanTitle, modalNotesContent, student?.email);
     setIsSavingModalNotes(false);
@@ -366,7 +367,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   };
 
   const handleDownloadModalNotes = () => {
-    const slug = codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const slug = currentProblemSlug;
     downloadProblemNotesAsTxt(slug, codingProblem?.name || cleanTitle, modalNotesContent);
   };
   
@@ -403,7 +404,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // Solutions tab state with robust localStorage & Cloudflare R2 persistence
   const [solutionLang, setSolutionLang] = useState<SupportedLanguage>(language);
   const [aiGeneratedSolutions, setAiGeneratedSolutions] = useState<Record<string, OptimalSolutionResponse>>(() => {
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     const initialMap: Record<string, OptimalSolutionResponse> = {};
     try {
       const cached = localStorage.getItem(`edustream_ai_solutions_${slug}`);
@@ -441,7 +442,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Sync solutions from R2 on problem load / language switch
   useEffect(() => {
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     
     // 1. Read local storage
     try {
@@ -695,7 +696,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     analytics?: SubmissionAnalyticsData;
   }[]>(() => {
     try {
-      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+      const slug = currentProblemSlug;
       const stored = localStorage.getItem(`edustream_submissions_${slug}`);
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -707,7 +708,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Sync submissions from Cloudflare R2 on mount and problem change
   useEffect(() => {
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     
     // 1. Read local storage
     try {
@@ -745,13 +746,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
       })
       .catch(() => {});
-  }, [cleanTitle, codingProblem]);
+  }, [currentProblemSlug]);
 
   // Instant Synchronous Autosave on every keystroke (like LeetCode)
   const handleCodeChange = (newVal: string | undefined) => {
     const nextCode = newVal ?? '';
     setCode(nextCode);
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     try {
       localStorage.setItem(`edustream_user_code_${slug}_${language}`, nextCode);
       setCodeSaveStatus('saved');
@@ -763,7 +764,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     if (window.confirm('Reset code to default template? Any unsaved edits for this language will be discarded.')) {
       const starter = problemTemplate.starters[language] || problemTemplate.starters.cpp || '';
       setCode(starter);
-      const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+      const slug = currentProblemSlug;
       try {
         localStorage.removeItem(`edustream_user_code_${slug}_${language}`);
         setCodeSaveStatus('idle');
@@ -774,7 +775,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // Update starter code or load from cache when language changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     try {
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${newLang}`);
       if (cached !== null && cached.trim().length > 0) {
@@ -794,7 +795,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // Sync user code directly to Cloudflare R2 as a .txt file (deducts ₹0.05)
   const handleSyncCodeToCloud = async () => {
     setCodeSaveStatus('idle');
-    const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const slug = currentProblemSlug;
     const student = getCurrentStudent();
 
     if (!canAffordAction(PRICING_CONFIG.CLOUD_CODE_SAVE, student?.email)) {
@@ -935,7 +936,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     try {
       let preloadedDriver = problemTemplate?.driverCode?.[language];
       if (!preloadedDriver) {
-        const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+        const slug = currentProblemSlug;
         const sampleCase = testInput || problemTemplate?.testCases?.[0] || '';
         const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, problemTemplate.starters?.[language], sampleCase);
         if (fetchedDriver) {
@@ -1130,7 +1131,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           analytics: analytics
         };
 
-        const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+        const slug = currentProblemSlug;
 
         setSubmissionsList(prev => {
           const updated = [newSubItem, ...prev];
@@ -2969,7 +2970,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         isOpen={isReportTestCaseOpen}
         onClose={() => setIsReportTestCaseOpen(false)}
         problemTitle={cleanTitle}
-        problemSlug={toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle)}
+        problemSlug={currentProblemSlug}
         problemStatement={problemTemplate.description}
         methodSignature={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
         testCaseIndex={reportTestCaseIdx}
@@ -2986,7 +2987,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             
             const next = { ...prev, testCases: updatedCases, expectedOutputs: updatedExp };
             try {
-              const slug = toSlug(codingProblem?.slug || codingProblem?.name || cleanTitle);
+              const slug = currentProblemSlug;
               localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
             } catch {}
             return next;
