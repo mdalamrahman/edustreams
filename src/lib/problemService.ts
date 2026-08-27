@@ -326,6 +326,27 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     problem.expectedOutputs = standardTwoSumCases.map(c => c.output);
   }
 
+  // Ensure minimum 10 verified test cases for Subsets (Problem 49 / Subsets)
+  if (normProblemName.includes('subsets') || normProblemName.includes('subsets1') || normProblemName.includes('powerset') || normProblemName === 'subsets') {
+    const standardSubsetsCases = [
+      { input: 'nums = [1, 2, 3]', output: '[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]' },
+      { input: 'nums = [0]', output: '[[], [0]]' },
+      { input: 'nums = [1, 2]', output: '[[], [1], [2], [1, 2]]' },
+      { input: 'nums = [3]', output: '[[], [3]]' },
+      { input: 'nums = [9, 0]', output: '[[], [9], [0], [9, 0]]' },
+      { input: 'nums = [-1, 0, 1]', output: '[[], [-1], [0], [-1, 0], [1], [-1, 1], [0, 1], [-1, 0, 1]]' },
+      { input: 'nums = [1, 2, 3, 4]', output: '[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3], [4], [1, 4], [2, 4], [1, 2, 4], [3, 4], [1, 3, 4], [2, 3, 4], [1, 2, 3, 4]]' },
+      { input: 'nums = [-10, 10]', output: '[[], [-10], [10], [-10, 10]]' },
+      { input: 'nums = [4, 1, 0]', output: '[[], [4], [1], [4, 1], [0], [4, 0], [1, 0], [4, 1, 0]]' },
+      { input: 'nums = []', output: '[[]]' },
+      { input: 'nums = [5, 6, 7]', output: '[[], [5], [6], [5, 6], [7], [5, 7], [6, 7], [5, 6, 7]]' }
+    ];
+    if (!problem.testCases || problem.testCases.length < 10) {
+      problem.testCases = standardSubsetsCases.map(c => c.input);
+      problem.expectedOutputs = standardSubsetsCases.map(c => c.output);
+    }
+  }
+
   return problem;
 }
 

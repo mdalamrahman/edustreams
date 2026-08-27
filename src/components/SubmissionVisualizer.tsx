@@ -648,9 +648,17 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
 
                 {/* Expected output block */}
                 <div>
-                  <div className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Expected Output:</div>
+                  <div className="text-[10px] text-indigo-400 font-bold uppercase mb-1 flex items-center justify-between">
+                    <span>Expected Output:</span>
+                    {selectedCase.passed && (
+                      <span className="text-[10px] text-emerald-400 font-mono normal-case font-medium flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span>Output Matched</span>
+                      </span>
+                    )}
+                  </div>
                   <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-indigo-300 whitespace-pre-wrap">
-                    {selectedCase.expectedOutput}
+                    {selectedCase.passed ? (selectedCase.actualOutput || selectedCase.expectedOutput) : selectedCase.expectedOutput}
                   </div>
                 </div>
 

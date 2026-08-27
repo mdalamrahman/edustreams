@@ -46,7 +46,8 @@ import {
   ArrowUpRight,
   Youtube,
   Wand2,
-  AlertTriangle
+  AlertTriangle,
+  Zap
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -1350,8 +1351,109 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
 
   return (
-    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
+    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden relative ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
       
+      {/* ========================================================================= */}
+      {/* 0. FULL PAGE PROBLEM GENERATION & CLOUD SYNC OVERLAY                      */}
+      {/* ========================================================================= */}
+      {isLoadingEnriched && (
+        <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-center animate-fadeIn select-none overflow-hidden">
+          {/* Ambient Glowing Blobs */}
+          <div className="absolute w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none -top-32 -left-32 animate-pulse" />
+          <div className="absolute w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-3xl pointer-events-none -bottom-32 -right-32 animate-pulse" />
+          
+          {/* Top Close Button so user can easily cancel and exit */}
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer z-20 shadow-lg"
+            title="Close and return"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="relative max-w-lg w-full bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl flex flex-col items-center space-y-5 sm:space-y-6">
+            
+            {/* Animated Center Orb & Pulsing Icons */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-xl shadow-indigo-500/25 animate-pulse">
+                <Code2 className="w-10 h-10 text-white animate-bounce" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-slate-900 border-2 border-indigo-500 flex items-center justify-center shadow-md">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+              </div>
+            </div>
+
+            {/* Problem Title & Category Badges */}
+            <div className="space-y-2 text-center w-full">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs font-mono">
+                <span className={`w-2 h-2 rounded-full ${
+                  difficulty === 'Easy' ? 'bg-emerald-400' : difficulty === 'Hard' ? 'bg-rose-400' : 'bg-amber-400'
+                } animate-ping`} />
+                <span className="text-slate-300 font-bold">{codingProblem?.category || 'Algorithm'}</span>
+                <span className="text-slate-500">•</span>
+                <span className={
+                  difficulty === 'Easy' ? 'text-emerald-400' : difficulty === 'Hard' ? 'text-rose-400' : 'text-amber-400'
+                }>{difficulty}</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate px-2">
+                {cleanTitle}
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
+                Synthesizing problem constraints, type-safe execution drivers, and 10+ verified test cases...
+              </p>
+            </div>
+
+            {/* Animated Multi-Step Pipeline Indicator */}
+            <div className="w-full space-y-2.5 bg-slate-950/70 border border-slate-800/70 rounded-2xl p-4 text-left font-mono text-xs">
+              <div className="flex items-center justify-between text-slate-300">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/60 flex items-center justify-center">
+                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                  </div>
+                  <span className="truncate">Authentic LeetCode Specification</span>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-bold ml-2">READY</span>
+              </div>
+
+              <div className="flex items-center justify-between text-slate-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-purple-500/20 border border-purple-500/60 flex items-center justify-center">
+                    <Cloud className="w-2.5 h-2.5 text-purple-400 animate-spin" />
+                  </div>
+                  <span className="truncate">Multi-argument Test Suite & Drivers</span>
+                </div>
+                <span className="text-[10px] text-purple-400 animate-pulse font-bold ml-2">PROCESSING</span>
+              </div>
+
+              <div className="flex items-center justify-between text-slate-400">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
+                    <Zap className="w-2.5 h-2.5 text-slate-500" />
+                  </div>
+                  <span className="truncate">Monaco IDE Sandbox & Compiler</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold ml-2">MOUNTING</span>
+              </div>
+            </div>
+
+            {/* Progress Bar Shimmer */}
+            <div className="w-full space-y-1.5">
+              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden relative">
+                <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 w-full animate-pulse rounded-full" />
+              </div>
+              <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Cloud AI Acceleration</span>
+                </span>
+                <span>Sub-second Latency</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 1. TOP NAVBAR                                                             */}
       {/* ========================================================================= */}
@@ -2747,9 +2849,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {/* Expected Output Box */}
                         {(submissionResult.failedExpected || currentExpectedOutput) && (
                           <div className="space-y-1">
-                            <div className="text-[10px] text-indigo-400 font-bold uppercase">Expected Output:</div>
+                            <div className="text-[10px] text-indigo-400 font-bold uppercase flex items-center justify-between">
+                              <span>Expected Output:</span>
+                              {submissionResult.isSuccess && (
+                                <span className="text-[10px] text-emerald-400 font-mono normal-case font-medium flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span>Output Matched</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-indigo-300 font-mono text-xs">
-                              {submissionResult.failedExpected || currentExpectedOutput}
+                              {submissionResult.isSuccess
+                                ? (executionResult?.stdout || currentExpectedOutput)
+                                : (submissionResult.failedExpected || currentExpectedOutput)}
                             </div>
                           </div>
                         )}

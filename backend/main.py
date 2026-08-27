@@ -1022,6 +1022,25 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
                     problem_data["testCases"] = ex_tcs
                     problem_data["expectedOutputs"] = ex_eos
 
+    # 3. Problem-specific standard case curation (Subsets, Next Permutation, Two Sum)
+    clean_name = (problem_data.get("name") or "").lower().replace("-", "").replace(" ", "")
+    if "subsets" in clean_name and (not tcs or len(tcs) < 10):
+        standard_subsets = [
+            ("nums = [1, 2, 3]", "[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]"),
+            ("nums = [0]", "[[], [0]]"),
+            ("nums = [1, 2]", "[[], [1], [2], [1, 2]]"),
+            ("nums = [3]", "[[], [3]]"),
+            ("nums = [9, 0]", "[[], [9], [0], [9, 0]]"),
+            ("nums = [-1, 0, 1]", "[[], [-1], [0], [-1, 0], [1], [-1, 1], [0, 1], [-1, 0, 1]]"),
+            ("nums = [1, 2, 3, 4]", "[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3], [4], [1, 4], [2, 4], [1, 2, 4], [3, 4], [1, 3, 4], [2, 3, 4], [1, 2, 3, 4]]"),
+            ("nums = [-10, 10]", "[[], [-10], [10], [-10, 10]]"),
+            ("nums = [4, 1, 0]", "[[], [4], [1], [4, 1], [0], [4, 0], [1, 0], [4, 1, 0]]"),
+            ("nums = []", "[[]]"),
+            ("nums = [5, 6, 7]", "[[], [5], [6], [5, 6], [7], [5, 7], [6, 7], [5, 6, 7]]"),
+        ]
+        problem_data["testCases"] = [c[0] for c in standard_subsets]
+        problem_data["expectedOutputs"] = [c[1] for c in standard_subsets]
+
     return problem_data
 
 
@@ -1442,6 +1461,21 @@ async def upload_problem_route(slug: str, req: Request):
     except Exception as e:
         print(f"[Upload Problem Notice]: {e}")
         return {"success": True, "slug": clean_slug, "cached": True}
+
+
+@app.delete("/api/problem/{slug}")
+async def delete_problem_route(slug: str):
+    """
+    Deletes problem definition, testcases, solutions, and all drivers from R2 and in-memory cache.
+    Allows clean regeneration of authentic problem templates.
+    """
+    clean_slug = re.sub(r'^https?://leetcode\.com/problems/', '', slug, flags=re.IGNORECASE)
+    clean_slug = re.sub(r'/.*$', '', clean_slug)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+
+    _PROBLEM_CACHE.pop(clean_slug, None)
+    success = r2_storage.delete_problem_completely(clean_slug)
+    return {"success": success, "slug": clean_slug, "message": f"Completely purged '{clean_slug}' from R2"}
 
 
 @app.get("/api/problem/{slug}/testcases.txt")

@@ -24,6 +24,65 @@ const JUDGE0_LANG_MAP: Record<string, number> = {
   sql: 82         // SQLite 3.27.2
 };
 
+/**
+ * Canonicalizes complex nested data structures so that order-independent collections
+ * (e.g. Subsets, Permutations, 3Sum, Group Anagrams, Combination Sum)
+ * match regardless of subset ordering or element permutations.
+ */
+export function canonicalizeData(val: any, isInner: boolean = false): any {
+  if (val === null || val === undefined) return val;
+  if (typeof val === 'number') {
+    return Math.abs(val) < 1e-9 ? 0 : Number(val.toFixed(6));
+  }
+  if (typeof val === 'boolean' || typeof val === 'string') {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    const isArrayOfArrays = val.length > 0 && val.every(item => Array.isArray(item));
+    const isArrayOfPrimitives = val.length > 0 && val.every(item => typeof item === 'number' || typeof item === 'string');
+
+    if (isArrayOfArrays) {
+      const canonRows = val.map(row => {
+        if (Array.isArray(row)) {
+          const rowCopy = row.map(x => canonicalizeData(x, true));
+          if (rowCopy.every(elem => typeof elem === 'number' || typeof elem === 'string')) {
+            rowCopy.sort((a, b) => {
+              if (typeof a === 'number' && typeof b === 'number') return a - b;
+              return String(a).localeCompare(String(b));
+            });
+          }
+          return rowCopy;
+        }
+        return canonicalizeData(row, true);
+      });
+
+      canonRows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      return canonRows;
+    }
+
+    if (isArrayOfPrimitives && isInner) {
+      const copy = val.map(x => canonicalizeData(x, true));
+      copy.sort((a, b) => {
+        if (typeof a === 'number' && typeof b === 'number') return a - b;
+        return String(a).localeCompare(String(b));
+      });
+      return copy;
+    }
+
+    return val.map(x => canonicalizeData(x, isInner));
+  }
+
+  if (typeof val === 'object') {
+    const sortedObj: Record<string, any> = {};
+    Object.keys(val).sort().forEach(k => {
+      sortedObj[k] = canonicalizeData(val[k], isInner);
+    });
+    return sortedObj;
+  }
+
+  return val;
+}
+
 export function compareOutputs(actual: any, expected: any): boolean {
   if (actual === expected) return true;
   if (actual === null || actual === undefined || expected === null || expected === undefined) {
@@ -37,12 +96,26 @@ export function compareOutputs(actual: any, expected: any): boolean {
   try {
     const parsedAct = JSON.parse(cleanAct);
     const parsedExp = JSON.parse(cleanExp);
-    return deepEqual(parsedAct, parsedExp);
+
+    // 1. Direct JSON comparison
+    if (deepEqual(parsedAct, parsedExp)) return true;
+
+    // 2. Canonicalized order-independent comparison (for Subsets, 3Sum, Group Anagrams, Permutations, etc.)
+    const canonAct = canonicalizeData(parsedAct);
+    const canonExp = canonicalizeData(parsedExp);
+    if (deepEqual(canonAct, canonExp)) return true;
+
+    // 3. Multiset fallback for 1D arrays (e.g. array of strings / IP addresses)
+    if (Array.isArray(parsedAct) && Array.isArray(parsedExp) && parsedAct.length === parsedExp.length) {
+      const sortAct = [...parsedAct].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      const sortExp = [...parsedExp].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+      if (deepEqual(sortAct, sortExp)) return true;
+    }
   } catch (_) {}
 
   // Case insensitive boolean check
-  if ((cleanAct === 'true' && cleanExp === 'True') || (cleanAct === 'false' && cleanExp === 'False')) return true;
-  if ((cleanAct === 'True' && cleanExp === 'true') || (cleanAct === 'False' && cleanExp === 'false')) return true;
+  if ((cleanAct.toLowerCase() === 'true' && cleanExp.toLowerCase() === 'true') ||
+      (cleanAct.toLowerCase() === 'false' && cleanExp.toLowerCase() === 'false')) return true;
 
   // Unquoted string comparison
   const stripQuotes = (s: string) => s.replace(/^["']|["']$/g, '');
@@ -154,6 +227,54 @@ function generateCppParamExtractors(paramList: string[]): { declarations: string
 }
 
 /**
+ * Accurately finds the primary entrypoint method in C++ Solution class,
+ * avoiding helper methods like dfs/bfs/backtrack/util.
+ */
+function findBestCppMethod(
+  searchSection: string,
+  problemTitle?: string
+): { methodName: string; retType: string; paramsStr: string } | null {
+  const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const methodGlobalRegex = /(?:inline\s+|virtual\s+|static\s+)*([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/g;
+
+  const matches: Array<{ methodName: string; retType: string; paramsStr: string }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = methodGlobalRegex.exec(searchSection)) !== null) {
+    const retType = m[1].trim();
+    const methodName = m[2].trim();
+    const paramsStr = m[3].trim();
+    if (methodName === 'Solution' || methodName.startsWith('~') || retType.includes('class') || retType.includes('struct')) {
+      continue;
+    }
+    matches.push({ methodName, retType, paramsStr });
+  }
+
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+
+  const helperNames = new Set(['dfs', 'bfs', 'backtrack', 'helper', 'solve', 'recur', 'recursion', 'util', 'calc', 'calculate', 'check', 'isvalid', 'valid']);
+
+  // 1. Match problem title if possible (e.g. subsets -> subsets, numIslands -> numIslands)
+  if (normTitle) {
+    const titleMatch = matches.find(cand => {
+      const candNorm = cand.methodName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return candNorm === normTitle || normTitle.includes(candNorm) || candNorm.includes(normTitle);
+    });
+    if (titleMatch) return titleMatch;
+  }
+
+  // 2. Prefer non-void method not in helper names
+  const nonVoidNonHelper = matches.filter(cand => !cand.retType.includes('void') && !helperNames.has(cand.methodName.toLowerCase()));
+  if (nonVoidNonHelper.length > 0) return nonVoidNonHelper[0];
+
+  // 3. Prefer method not in helper names
+  const nonHelper = matches.filter(cand => !helperNames.has(cand.methodName.toLowerCase()));
+  if (nonHelper.length > 0) return nonHelper[0];
+
+  return matches[0];
+}
+
+/**
  * Extracts parameter names from user solution code for any supported language.
  */
 export function extractParamNamesFromCode(code: string, language: SupportedLanguage): string[] {
@@ -163,9 +284,9 @@ export function extractParamNamesFromCode(code: string, language: SupportedLangu
   if (norm.includes('cpp') || norm.includes('c++') || norm.includes('java')) {
     const publicSectionMatch = clean.match(/public:\s*([\s\S]*)/);
     const searchSection = publicSectionMatch ? publicSectionMatch[1] : clean;
-    const m = searchSection.match(/(?:public\s+|static\s+|inline\s+|virtual\s+)*[a-zA-Z0-9_<>,:\[\]\s\*]+\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/);
-    if (m && m[2]) {
-      return splitCppParams(m[2]).map(p => {
+    const best = findBestCppMethod(searchSection);
+    if (best && best.paramsStr) {
+      return splitCppParams(best.paramsStr).map(p => {
         const tokens = p.trim().replace(/[&*]/g, ' ').split(/\s+/).filter(Boolean);
         return tokens[tokens.length - 1];
       }).filter(Boolean);
@@ -223,8 +344,8 @@ export function wrapLeetCodeExecutableCode(
     if (language === 'cpp' || (language as any) === 'c++') {
       const publicSectionMatch = userCode.match(/public:\s*([\s\S]*)/);
       const searchCode = publicSectionMatch ? publicSectionMatch[1] : userCode;
-      const m = searchCode.match(/(?:int|void|bool|vector<[^>]+>|string|double|long long|auto)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
-      if (m) userMethodName = m[1];
+      const best = findBestCppMethod(searchCode, problemTitle);
+      if (best) userMethodName = best.methodName;
     } else if (language === 'python' || (language as any) === 'py') {
       const m = userCode.match(/def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/);
       if (m && m[1] !== '__init__') userMethodName = m[1];
@@ -290,17 +411,16 @@ export function wrapLeetCodeExecutableCode(
     const publicSectionMatch = bodyToSearch.match(/public:\s*([\s\S]*)/);
     const searchSection = publicSectionMatch ? publicSectionMatch[1] : bodyToSearch;
 
-    const methodRegex = /(?:inline\s+|virtual\s+|static\s+)*([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/;
-    const match = searchSection.match(methodRegex);
+    const bestMethod = findBestCppMethod(searchSection, problemTitle);
 
     let methodName = '';
     let retType = '';
     let paramsStr = '';
 
-    if (match) {
-      retType = match[1].trim();
-      methodName = match[2].trim();
-      paramsStr = match[3].trim();
+    if (bestMethod) {
+      retType = bestMethod.retType;
+      methodName = bestMethod.methodName;
+      paramsStr = bestMethod.paramsStr;
     }
 
     const paramList = splitCppParams(paramsStr);
@@ -913,18 +1033,50 @@ if __name__ == '__main__':
             except Exception:
                 parsed_args.append(p.strip('"\\''))
 
-        methods = [m for m in dir(sol) if not m.startswith('_') and callable(getattr(sol, m))]
-        if methods:
-            target_method = getattr(sol, methods[0])
+        user_code_str = """${userCode.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"')}"""
+        user_methods = re.findall(r'def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', user_code_str)
+        user_methods = [m for m in user_methods if not m.startswith('_')]
+
+        helpers = {'dfs', 'bfs', 'backtrack', 'helper', 'solve', 'recur', 'recursion', 'util', 'calculate', 'check', 'isvalid', 'valid'}
+        norm_title = "${normTitle}"
+        target_method_name = None
+
+        if norm_title:
+            for m in user_methods:
+                cand_norm = re.sub(r'[^a-z0-9]', '', m.lower())
+                if cand_norm == norm_title or norm_title in cand_norm or cand_norm in norm_title:
+                    target_method_name = m
+                    break
+
+        if not target_method_name:
+            for m in user_methods:
+                if m.lower() not in helpers:
+                    target_method_name = m
+                    break
+
+        if not target_method_name and user_methods:
+            target_method_name = user_methods[0]
+
+        if target_method_name and hasattr(sol, target_method_name):
+            target_method = getattr(sol, target_method_name)
             res = target_method(*parsed_args)
             if res is not None:
                 print(json.dumps(res, separators=(',', ':')))
             else:
                 print(json.dumps(parsed_args[0] if parsed_args else "Success", separators=(',', ':')))
         else:
-            print("Python Solution verified successfully.")
+            methods = [m for m in dir(sol) if not m.startswith('_') and callable(getattr(sol, m))]
+            if methods:
+                target_method = getattr(sol, methods[0])
+                res = target_method(*parsed_args)
+                if res is not None:
+                    print(json.dumps(res, separators=(',', ':')))
+                else:
+                    print(json.dumps(parsed_args[0] if parsed_args else "Success", separators=(',', ':')))
+            else:
+                print("Python Solution verified successfully.")
     except Exception as e:
-        sys.stderr.write(f"Runtime Error: {e}\\n")
+        sys.stderr.write(f"Runtime Error: {e}\n")
         sys.exit(1)
 `;
   }
