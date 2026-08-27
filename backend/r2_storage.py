@@ -97,26 +97,8 @@ class CloudflareR2Storage:
         return cls._instance
 
     def _init_client(self):
-        try:
-            import boto3
-            from botocore.config import Config
-            self._boto_client = boto3.client(
-                service_name="s3",
-                endpoint_url=R2_ENDPOINT_URL,
-                aws_access_key_id=R2_ACCESS_KEY_ID,
-                aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-                region_name="auto",
-                config=Config(
-                    signature_version="s3v4",
-                    retries={"max_attempts": 3, "mode": "standard"},
-                    connect_timeout=5,
-                    read_timeout=10
-                )
-            )
-            print(f"[Cloudflare R2] Initialized boto3 client for bucket '{R2_BUCKET_NAME}'")
-        except Exception:
-            self._boto_client = None
-            print(f"[Cloudflare R2] Using native REST SigV4 client for bucket '{R2_BUCKET_NAME}'")
+        self._boto_client = None
+        print(f"[Cloudflare R2] Using native REST SigV4 client for bucket '{R2_BUCKET_NAME}'")
 
     def _get_sigv4_headers(self, method: str, key: str, payload_bytes: bytes = b"") -> Dict[str, str]:
         """Generates standard AWS SigV4 authorization headers for Cloudflare R2."""

@@ -326,8 +326,26 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     problem.expectedOutputs = standardTwoSumCases.map(c => c.output);
   }
 
-  // Ensure minimum 10 verified test cases for Subsets (Problem 49 / Subsets)
-  if (normProblemName.includes('subsets') || normProblemName.includes('subsets1') || normProblemName.includes('powerset') || normProblemName === 'subsets') {
+  const probSlug = (problem as any).slug || '';
+  const isSubsetsII = normProblemName.includes('subsetsii') || normProblemName.includes('subsets2') || normProblemName.includes('uniquesubsets') || normProblemName.includes('subsetsum2') || normProblemName.includes('subset2') || probSlug === 'subsets-ii';
+  
+  if (isSubsetsII) {
+    const standardSubsetsIICases = [
+      { input: 'nums = [1, 2, 2]', output: '[[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]' },
+      { input: 'nums = [0]', output: '[[], [0]]' },
+      { input: 'nums = [4, 4, 4, 1, 4]', output: '[[], [1], [1, 4], [1, 4, 4], [1, 4, 4, 4], [1, 4, 4, 4, 4], [4], [4, 4], [4, 4, 4], [4, 4, 4, 4]]' },
+      { input: 'nums = [1, 2, 3]', output: '[[], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]]' },
+      { input: 'nums = [2, 1, 2, 1, 3]', output: '[[], [1], [1, 1], [1, 1, 2], [1, 1, 2, 2], [1, 1, 2, 2, 3], [1, 1, 2, 3], [1, 1, 3], [1, 2], [1, 2, 2], [1, 2, 2, 3], [1, 2, 3], [1, 3], [2], [2, 2], [2, 2, 3], [2, 3], [3]]' },
+      { input: 'nums = []', output: '[[]]' },
+      { input: 'nums = [1]', output: '[[], [1]]' },
+      { input: 'nums = [1, 1, 1]', output: '[[], [1], [1, 1], [1, 1, 1]]' },
+      { input: 'nums = [1, 2, 2, 3, 3]', output: '[[], [1], [1, 2], [1, 2, 2], [1, 2, 2, 3], [1, 2, 2, 3, 3], [1, 2, 3], [1, 2, 3, 3], [1, 3], [1, 3, 3], [2], [2, 2], [2, 2, 3], [2, 2, 3, 3], [2, 3], [2, 3, 3], [3], [3, 3]]' },
+      { input: 'nums = [-1, 0, 1]', output: '[[], [-1], [-1, 0], [-1, 0, 1], [-1, 1], [0], [0, 1], [1]]' },
+      { input: 'nums = [-1, -1, 0, 1, 1]', output: '[[], [-1], [-1, -1], [-1, -1, 0], [-1, -1, 0, 1], [-1, -1, 0, 1, 1], [-1, -1, 1], [-1, -1, 1, 1], [-1, 0], [-1, 0, 1], [-1, 0, 1, 1], [-1, 1], [-1, 1, 1], [0], [0, 1], [0, 1, 1], [1], [1, 1]]' }
+    ];
+    problem.testCases = standardSubsetsIICases.map(c => c.input);
+    problem.expectedOutputs = standardSubsetsIICases.map(c => c.output);
+  } else if (normProblemName.includes('subsets') || normProblemName.includes('subsets1') || normProblemName.includes('powerset') || normProblemName === 'subsets' || probSlug === 'subsets') {
     const standardSubsetsCases = [
       { input: 'nums = [1, 2, 3]', output: '[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]' },
       { input: 'nums = [0]', output: '[[], [0]]' },

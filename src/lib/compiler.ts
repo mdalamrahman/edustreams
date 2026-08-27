@@ -1034,7 +1034,7 @@ if __name__ == '__main__':
                 parsed_args.append(p.strip('"\\''))
 
         user_code_str = """${userCode.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"')}"""
-        user_methods = re.findall(r'def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', user_code_str)
+        user_methods = re.findall(r'def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[(]', user_code_str)
         user_methods = [m for m in user_methods if not m.startswith('_')]
 
         helpers = {'dfs', 'bfs', 'backtrack', 'helper', 'solve', 'recur', 'recursion', 'util', 'calculate', 'check', 'isvalid', 'valid'}
@@ -1044,7 +1044,8 @@ if __name__ == '__main__':
         if norm_title:
             for m in user_methods:
                 cand_norm = re.sub(r'[^a-z0-9]', '', m.lower())
-                if cand_norm == norm_title or norm_title in cand_norm or cand_norm in norm_title:
+                prefix = cand_norm[:5]
+                if cand_norm == norm_title or norm_title in cand_norm or cand_norm in norm_title or (len(prefix) >= 4 and prefix in norm_title):
                     target_method_name = m
                     break
 
@@ -1076,7 +1077,7 @@ if __name__ == '__main__':
             else:
                 print("Python Solution verified successfully.")
     except Exception as e:
-        sys.stderr.write(f"Runtime Error: {e}\n")
+        sys.stderr.write(f"Runtime Error: {e}\\n")
         sys.exit(1)
 `;
   }
@@ -1203,13 +1204,18 @@ export async function executeCode(
   try {
     const langId = JUDGE0_LANG_MAP[normLang] || 71;
     const encodedCode = btoa(unescape(encodeURIComponent(executableCode)));
+    const j0Payload: any = {
+      source_code: encodedCode,
+      language_id: langId
+    };
+    if (langId === 54 || normLang === 'cpp' || (normLang as any) === 'c++') {
+      j0Payload.compiler_options = "-std=c++17 -O2";
+    }
+
     const response = await fetch('https://ce.judge0.com/submissions?wait=true&base64_encoded=true', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        source_code: encodedCode,
-        language_id: langId
-      })
+      body: JSON.stringify(j0Payload)
     });
 
     if (response.ok) {
@@ -1228,9 +1234,8 @@ export async function executeCode(
       const stdout = decodeB64(data.stdout);
       const stderr = decodeB64(data.stderr);
       const compileOut = decodeB64(data.compile_output);
-      const combinedDiag = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
-      const finalStdout = stdout.trim();
-
+      
+      let rawDiag = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
       const isFatalErr = Boolean(
         (data.status && data.status.id > 3) ||
         (data.exit_code && data.exit_code !== 0) ||
@@ -1238,9 +1243,21 @@ export async function executeCode(
         (compileOut && compileOut.includes('error:'))
       );
 
+      // Clean non-fatal C++ compiler warnings (structured bindings, deprecation warnings) from diagnostics
+      let cleanDiag = rawDiag;
+      if (!isFatalErr && !rawDiag.toLowerCase().includes('error:') && !rawDiag.toLowerCase().includes('runtime error')) {
+        const lines = rawDiag.split('\n').filter(l => {
+          const lower = l.toLowerCase();
+          return !lower.includes('warning:') && !lower.includes('warning: structured bindings');
+        });
+        cleanDiag = lines.join('\n').trim();
+      }
+
+      const finalStdout = stdout.trim();
+
       return {
         stdout: finalStdout || (isFatalErr ? '' : 'Executed successfully.'),
-        stderr: combinedDiag,
+        stderr: cleanDiag,
         exit_code: isFatalErr ? 1 : 0,
         execution_time_ms: Math.round(endTime - startTime),
         memory_used_kb: Math.round((data.memory || 1420)),

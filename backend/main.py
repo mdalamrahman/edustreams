@@ -1022,9 +1022,27 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
                     problem_data["testCases"] = ex_tcs
                     problem_data["expectedOutputs"] = ex_eos
 
-    # 3. Problem-specific standard case curation (Subsets, Next Permutation, Two Sum)
-    clean_name = (problem_data.get("name") or "").lower().replace("-", "").replace(" ", "")
-    if "subsets" in clean_name and (not tcs or len(tcs) < 10):
+    # 3. Problem-specific standard case curation (Subsets II vs Subsets I, Next Permutation, Two Sum)
+    clean_name = (problem_data.get("name") or "").lower().replace("-", "").replace(" ", "").replace("_", "")
+    is_subsets_ii = "subsetsii" in clean_name or "subsets2" in clean_name or "uniquesubsets" in clean_name or "subsetsum2" in clean_name or clean_slug in ("subsets-ii", "subset-ii-unique-subsets", "subset-sums-ii")
+
+    if is_subsets_ii:
+        standard_subsets_ii = [
+            ("nums = [1, 2, 2]", "[[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]"),
+            ("nums = [0]", "[[], [0]]"),
+            ("nums = [4, 4, 4, 1, 4]", "[[], [1], [1, 4], [1, 4, 4], [1, 4, 4, 4], [1, 4, 4, 4, 4], [4], [4, 4], [4, 4, 4], [4, 4, 4, 4]]"),
+            ("nums = [1, 2, 3]", "[[], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]]"),
+            ("nums = [2, 1, 2, 1, 3]", "[[], [1], [1, 1], [1, 1, 2], [1, 1, 2, 2], [1, 1, 2, 2, 3], [1, 1, 2, 3], [1, 1, 3], [1, 2], [1, 2, 2], [1, 2, 2, 3], [1, 2, 3], [1, 3], [2], [2, 2], [2, 2, 3], [2, 3], [3]]"),
+            ("nums = []", "[[]]"),
+            ("nums = [1]", "[[], [1]]"),
+            ("nums = [1, 1, 1]", "[[], [1], [1, 1], [1, 1, 1]]"),
+            ("nums = [1, 2, 2, 3, 3]", "[[], [1], [1, 2], [1, 2, 2], [1, 2, 2, 3], [1, 2, 2, 3, 3], [1, 2, 3], [1, 2, 3, 3], [1, 3], [1, 3, 3], [2], [2, 2], [2, 2, 3], [2, 2, 3, 3], [2, 3], [2, 3, 3], [3], [3, 3]]"),
+            ("nums = [-1, 0, 1]", "[[], [-1], [-1, 0], [-1, 0, 1], [-1, 1], [0], [0, 1], [1]]"),
+            ("nums = [-1, -1, 0, 1, 1]", "[[], [-1], [-1, -1], [-1, -1, 0], [-1, -1, 0, 1], [-1, -1, 0, 1, 1], [-1, -1, 1], [-1, -1, 1, 1], [-1, 0], [-1, 0, 1], [-1, 0, 1, 1], [-1, 1], [-1, 1, 1], [0], [0, 1], [0, 1, 1], [1], [1, 1]]"),
+        ]
+        problem_data["testCases"] = [c[0] for c in standard_subsets_ii]
+        problem_data["expectedOutputs"] = [c[1] for c in standard_subsets_ii]
+    elif "subsets" in clean_name or "powerset" in clean_name or clean_slug in ("subsets", "subsets-i", "subset-sums"):
         standard_subsets = [
             ("nums = [1, 2, 3]", "[[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]"),
             ("nums = [0]", "[[], [0]]"),
@@ -1519,10 +1537,14 @@ def execute_judge0_sandbox(code: str, lang: str = "cpp") -> dict:
     lang_id = {"cpp": 54, "c++": 54, "python": 71, "py": 71, "javascript": 63, "js": 63, "java": 62}.get(lang.lower(), 54)
     encoded = base64.b64encode(code.encode('utf-8')).decode('utf-8')
     try:
+        payload = {"source_code": encoded, "language_id": lang_id}
+        if lang_id in (54, 76, 105):
+            payload["compiler_options"] = "-std=c++17 -O2"
+
         res = requests.post(
             "https://ce.judge0.com/submissions?wait=true&base64_encoded=true",
             headers={"Content-Type": "application/json"},
-            json={"source_code": encoded, "language_id": lang_id},
+            json=payload,
             timeout=20
         )
         if res.status_code in [200, 201]:
@@ -1532,7 +1554,14 @@ def execute_judge0_sandbox(code: str, lang: str = "cpp") -> dict:
             compile_out = base64.b64decode(data.get("compile_output") or "").decode("utf-8", errors="replace").strip() if data.get("compile_output") else ""
             status_id = data.get("status", {}).get("id", 0)
             is_success = status_id == 3 and not (compile_out and "error:" in compile_out)
-            return {"success": is_success, "stdout": stdout, "stderr": stderr or compile_out}
+            raw_diag = (stderr + ("\n" + compile_out if compile_out else "")).strip()
+            
+            # Filter non-fatal compiler warnings from diagnostic output if execution succeeded
+            if is_success and raw_diag and "error:" not in raw_diag.lower() and "runtime error" not in raw_diag.lower():
+                lines = [l for l in raw_diag.splitlines() if not l.strip().startswith("warning:") and "warning: structured bindings" not in l]
+                raw_diag = "\n".join(lines).strip()
+
+            return {"success": is_success, "stdout": stdout, "stderr": raw_diag}
     except Exception as e:
         return {"success": False, "stdout": "", "stderr": str(e)}
     return {"success": False, "stdout": "", "stderr": "Execution failed"}
@@ -2630,9 +2659,12 @@ except Exception as e:
             try:
                 encoded_code = base64.b64encode(code.encode("utf-8")).decode("utf-8")
                 encoded_stdin = base64.b64encode(tc_str.encode("utf-8")).decode("utf-8")
+                j0_payload = {"source_code": encoded_code, "language_id": lang_id, "stdin": encoded_stdin}
+                if lang_id in (54, 76, 105):
+                    j0_payload["compiler_options"] = "-std=c++17 -O2"
                 j0_resp = requests.post(
                     "https://ce.judge0.com/submissions?wait=true&base64_encoded=true",
-                    json={"source_code": encoded_code, "language_id": lang_id, "stdin": encoded_stdin},
+                    json=j0_payload,
                     timeout=12
                 )
                 if j0_resp.status_code in [200, 201]:
@@ -3982,6 +4014,9 @@ async def compile_code(req: CodeCompileRequest):
             "language_id": lang_id,
             "stdin": encoded_stdin
         }
+        if lang_id in (54, 76, 105):
+            payload["compiler_options"] = "-std=c++17 -O2"
+
         resp = requests.post(
             "https://ce.judge0.com/submissions?wait=true&base64_encoded=true",
             json=payload,
@@ -4002,9 +4037,16 @@ async def compile_code(req: CodeCompileRequest):
             stderr = decode_b64(data.get("stderr"))
             compile_output = decode_b64(data.get("compile_output"))
             status_desc = data.get("status", {}).get("description", "Executed")
+            status_id = data.get("status", {}).get("id", 0)
 
             final_stdout = stdout.strip() if stdout else ""
             final_stderr = (stderr + "\n" + compile_output).strip() if (stderr or compile_output) else ""
+
+            # Filter non-fatal compiler warnings
+            is_error = status_id > 3 or "error:" in final_stderr.lower() or "runtime error" in final_stderr.lower() or "exception" in final_stderr.lower()
+            if not is_error and final_stderr:
+                lines = [l for l in final_stderr.splitlines() if not l.strip().startswith("warning:") and "warning: structured bindings" not in l]
+                final_stderr = "\n".join(lines).strip()
 
             if not final_stdout and not final_stderr:
                 final_stdout = f"Program finished with status: {status_desc}."
@@ -4012,7 +4054,7 @@ async def compile_code(req: CodeCompileRequest):
             return {
                 "stdout": final_stdout,
                 "stderr": final_stderr,
-                "exitCode": 0 if status_desc in ["Accepted", "Executed"] and not final_stderr else 1,
+                "exitCode": 0 if not is_error else 1,
                 "memory": int(float(data.get("memory") or 1200)),
                 "execution_time": float(data.get("time") or 0.02),
                 "status": status_desc
