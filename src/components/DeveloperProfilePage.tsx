@@ -598,317 +598,138 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════
-            RIGHT MAIN COLUMN: 3 DISTINCT SECTION VIEWS
+            RIGHT MAIN COLUMN — PLATFORM-SPECIFIC VIEWS
         ═══════════════════════════════════════════════════════════ */}
         <div className="flex-1 min-w-0 space-y-6 w-full">
-          
-          {/* ── METRIC HERO ROW: SOLVED DONUT + BADGES & CONTEST RATING ── */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-            {/* Solved Problems Breakdown Card (5 cols) */}
-            <div className="md:col-span-5 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col justify-between space-y-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>
-                    {profileMode === 'sdetube' ? 'SDETube Solved'
-                      : profileMode === 'leetcode' ? 'LeetCode Solved'
-                      : profileMode === 'github' ? 'GitHub Repos'
-                      : profileMode === 'gfg' ? 'GFG Solved'
-                      : profileMode === 'codeforces' ? 'Codeforces Solved'
-                      : 'Combined Solved'}
-                  </span>
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">
-                  Beats 88.6%
-                </span>
-              </div>
 
-              {/* Center Donut / Solved Hero */}
-              <div className="flex items-center justify-center py-2">
-                <div className={`relative w-36 h-36 rounded-full p-2 shadow-xl flex items-center justify-center ${
-                    profileMode === 'sdetube' ? 'bg-gradient-to-tr from-violet-500 via-purple-500 to-indigo-500'
-                    : profileMode === 'leetcode' ? 'bg-gradient-to-tr from-amber-500 via-orange-400 to-yellow-400'
-                    : profileMode === 'github' ? 'bg-gradient-to-tr from-slate-500 via-zinc-500 to-cyan-500'
-                    : profileMode === 'gfg' ? 'bg-gradient-to-tr from-emerald-500 via-green-500 to-teal-400'
-                    : profileMode === 'codeforces' ? 'bg-gradient-to-tr from-sky-500 via-blue-500 to-indigo-500'
-                    : 'bg-gradient-to-tr from-emerald-500 via-amber-400 to-rose-500'
-                  }`}>
-                  <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-white font-mono">
-                      {profileMode === 'sdetube' ? totalSdetubeSolved
-                        : profileMode === 'leetcode' ? leetcodeSolved
-                        : profileMode === 'github' ? (githubData?.public_repos ?? '—')
-                        : profileMode === 'gfg' ? (gfgData?.total_problems_solved ?? '—')
-                        : profileMode === 'codeforces' ? (codeforcesData?.total_problems_solved ?? '—')
-                        : combinedSolved}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                      {profileMode === 'github' ? 'repos' : profileMode === 'combined' ? 'all platforms' : 'solved'}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          {/* ────────────────────────────────────────────────────────
+              COMBINED + SDETUBE VIEW
+          ──────────────────────────────────────────────────────── */}
+          {(profileMode === 'combined' || profileMode === 'sdetube') && (<>
 
-              {/* Difficulty Breakdown Bars */}
-              <div className="space-y-2.5">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-emerald-400 font-bold">Easy</span>
-                    <span className="text-slate-300">{easySolved} <span className="text-slate-500">/ 850</span></span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                    <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${Math.min(100, (easySolved / 850) * 100)}%` }} />
-                  </div>
+            {/* Metric Hero Row */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+              {/* Solved Donut */}
+              <div className="md:col-span-5 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col justify-between space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{profileMode === 'sdetube' ? 'SDETube Solved' : 'Combined Solved'}</span>
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">Beats 88.6%</span>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-amber-400 font-bold">Medium</span>
-                    <span className="text-slate-300">{medSolved} <span className="text-slate-500">/ 1,820</span></span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                    <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${Math.min(100, (medSolved / 1820) * 100)}%` }} />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-rose-400 font-bold">Hard</span>
-                    <span className="text-slate-300">{hardSolved} <span className="text-slate-500">/ 750</span></span>
-                  </div>
-                  <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                    <div className="bg-rose-500 h-2 rounded-full" style={{ width: `${Math.min(100, (hardSolved / 750) * 100)}%` }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Badges & Milestones & Contest Ranking Card (7 cols) */}
-            <div className="md:col-span-7 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4">
-              
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Medal className="w-4 h-4 text-purple-400" />
-                  <span>
-                    {profileMode === 'sdetube' ? 'SDETube Milestones'
-                      : profileMode === 'leetcode' ? 'LeetCode Official Badges'
-                      : profileMode === 'github' ? 'GitHub Contributions'
-                      : profileMode === 'gfg' ? 'GFG Achievements'
-                      : profileMode === 'codeforces' ? 'Codeforces Titles'
-                      : 'Omnichannel Badges'}
-                  </span>
-                </h3>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {badges.filter(b => b.unlocked).length} Unlocked
-                </span>
-              </div>
-
-              {/* Badges Grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-                {badges.slice(0, 8).map((badge) => (
-                  <button
-                    key={badge.id}
-                    onClick={() => setSelectedBadge(badge)}
-                    className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-between gap-1 transition-all cursor-pointer group shadow-md ${
-                      badge.unlocked
-                        ? `${badge.accentBg} hover:scale-105`
-                        : 'bg-slate-950/60 border-slate-800/80 opacity-50 hover:opacity-75'
-                    }`}
-                    title={`${badge.name}: ${badge.description}`}
-                  >
-                    <div className={`p-2 rounded-xl bg-slate-950 border border-slate-800 ${badge.color}`}>
-                      {badge.unlocked ? <Trophy className="w-4 h-4" /> : <Lock className="w-4 h-4 text-slate-600" />}
+                <div className="flex items-center justify-center py-2">
+                  <div className={`relative w-36 h-36 rounded-full p-2 shadow-xl flex items-center justify-center ${profileMode === 'sdetube' ? 'bg-gradient-to-tr from-violet-500 via-purple-500 to-indigo-500' : 'bg-gradient-to-tr from-emerald-500 via-amber-400 to-rose-500'}`}>
+                    <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
+                      <span className="text-3xl font-black text-white font-mono">{profileMode === 'sdetube' ? totalSdetubeSolved : combinedSolved}</span>
+                      <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">{profileMode === 'sdetube' ? 'sheet solved' : 'all platforms'}</span>
                     </div>
-                    <p className={`text-[10px] font-bold truncate w-full ${badge.unlocked ? 'text-slate-200' : 'text-slate-500'}`}>
-                      {badge.name}
-                    </p>
-                    <p className="text-[9px] font-mono text-slate-500">
-                      {badge.progress}/{badge.target}
-                    </p>
-                  </button>
-                ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {[
+                    { label: 'Easy', val: easySolved, total: 850, color: 'bg-emerald-500', text: 'text-emerald-400' },
+                    { label: 'Medium', val: medSolved, total: 1820, color: 'bg-amber-500', text: 'text-amber-400' },
+                    { label: 'Hard', val: hardSolved, total: 750, color: 'bg-rose-500', text: 'text-rose-400' }
+                  ].map(r => (
+                    <div key={r.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <span className={`${r.text} font-bold`}>{r.label}</span>
+                        <span className="text-slate-300">{r.val} <span className="text-slate-500">/ {r.total.toLocaleString()}</span></span>
+                      </div>
+                      <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                        <div className={`${r.color} h-2 rounded-full`} style={{ width: `${Math.min(100, (r.val / r.total) * 100)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Contest / Platform Metrics Pill Row */}
-              {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'leetcode') && (
+              {/* SDETube Badges */}
+              <div className="md:col-span-7 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col justify-between space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Medal className="w-4 h-4 text-purple-400" />
+                    <span>{profileMode === 'sdetube' ? 'SDETube Milestones' : 'Omnichannel Badges'}</span>
+                  </h3>
+                  <span className="text-[10px] text-slate-500 font-mono">{badges.filter(b => b.unlocked).length} Unlocked</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                  {badges.slice(0, 8).map((badge) => (
+                    <button
+                      key={badge.id}
+                      onClick={() => setSelectedBadge(badge)}
+                      className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-between gap-1 transition-all cursor-pointer group shadow-md ${badge.unlocked ? `${badge.accentBg} hover:scale-105` : 'bg-slate-950/60 border-slate-800/80 opacity-50 hover:opacity-75'}`}
+                      title={`${badge.name}: ${badge.description}`}
+                    >
+                      <div className={`p-2 rounded-xl bg-slate-950 border border-slate-800 ${badge.color}`}>
+                        {badge.unlocked ? <Trophy className="w-4 h-4" /> : <Lock className="w-4 h-4 text-slate-600" />}
+                      </div>
+                      <p className={`text-[10px] font-bold truncate w-full ${badge.unlocked ? 'text-slate-200' : 'text-slate-500'}`}>{badge.name}</p>
+                      <p className="text-[9px] font-mono text-slate-500">{badge.progress}/{badge.target}</p>
+                    </button>
+                  ))}
+                </div>
                 <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-950 to-orange-950/30 border border-amber-500/20 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-amber-400" />
                     <div>
                       <p className="text-[10px] text-slate-400 font-mono uppercase">LC Contest Rating</p>
-                      <p className="text-base font-black text-amber-300 font-mono">
-                        {leetcodeData?.userContestRanking ? Math.round(leetcodeData.userContestRanking.rating) : '1,684'}
-                      </p>
+                      <p className="text-base font-black text-amber-300 font-mono">{leetcodeData?.userContestRanking ? Math.round(leetcodeData.userContestRanking.rating) : '—'}</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Global Contest Rank</p>
-                    <p className="text-base font-black text-white font-mono">
-                      {leetcodeData?.userContestRanking?.globalRanking ? `#${leetcodeData.userContestRanking.globalRanking.toLocaleString()}` : '#48,209'}
-                    </p>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">GFG Score</p>
+                    <p className="text-base font-black text-emerald-300 font-mono">{gfgData?.coding_score ?? '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Top Percentage</p>
-                    <p className="text-base font-black text-emerald-400 font-mono">
-                      {leetcodeData?.userContestRanking?.topPercentage ? `${leetcodeData.userContestRanking.topPercentage}%` : '18.4%'}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* GFG Platform Metrics */}
-              {profileMode === 'gfg' && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-950 to-green-950/30 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-emerald-400" />
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-mono uppercase">Coding Score</p>
-                      <p className="text-base font-black text-emerald-300 font-mono">{gfgData?.coding_score ?? '—'}</p>
-                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">CF Rating</p>
+                    <p className="text-base font-black text-sky-300 font-mono">{codeforcesData?.rating ?? '—'}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Institute Rank</p>
-                    <p className="text-base font-black text-white font-mono">{gfgData?.institute_rank ? `#${gfgData.institute_rank}` : '—'}</p>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">GH Repos</p>
+                    <p className="text-base font-black text-cyan-300 font-mono">{githubData?.public_repos ?? '—'}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Longest Streak</p>
-                    <p className="text-base font-black text-amber-400 font-mono">{gfgData?.longest_streak ?? '—'} days</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Monthly Score</p>
-                    <p className="text-base font-black text-emerald-300 font-mono">{gfgData?.monthly_score ?? '—'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Codeforces Platform Metrics */}
-              {profileMode === 'codeforces' && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-950/30 via-slate-950 to-blue-950/30 border border-sky-500/20 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-sky-400" />
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-mono uppercase">CF Rating</p>
-                      <p className="text-base font-black text-sky-300 font-mono">{codeforcesData?.rating ?? '—'}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Rank</p>
-                    <p className="text-base font-black text-white font-mono capitalize">{codeforcesData?.rank ?? '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Max Rating</p>
-                    <p className="text-base font-black text-sky-300 font-mono">{codeforcesData?.maxRating ?? '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Max Rank</p>
-                    <p className="text-base font-black text-amber-400 font-mono capitalize">{codeforcesData?.maxRank ?? '—'}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* GitHub Platform Metrics */}
-              {profileMode === 'github' && githubData && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-800/60 via-slate-950 to-zinc-900/60 border border-slate-600/30 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Github className="w-4 h-4 text-cyan-400" />
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-mono uppercase">Public Repos</p>
-                      <p className="text-base font-black text-cyan-300 font-mono">{githubData.public_repos}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Followers</p>
-                    <p className="text-base font-black text-white font-mono">{githubData.followers}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Following</p>
-                    <p className="text-base font-black text-slate-300 font-mono">{githubData.following}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Gists</p>
-                    <p className="text-base font-black text-slate-300 font-mono">{githubData.public_gists}</p>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-          </div>
-
-          {/* ── SECTION: SDETUBE VERIFIED COURSE COMPLETION CERTIFICATES (≥90%) ── */}
-          {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'gfg') && (
-            <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <Award className="w-5 h-5 text-amber-400" />
-                    <span>Official SDETube Course Completion Certificates</span>
-                    <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">
-                      90% REQUIREMENT
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Earn accredited, cryptographic certificates of mastery by solving ≥90% of curriculum lectures and live code exercises.
-                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Tracks List Grid */}
+            {/* SDETube Certificates */}
+            <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" />
+                  <span>Official SDETube Course Completion Certificates</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">90% REQUIREMENT</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">Earn accredited certificates by completing ≥90% of curriculum exercises.</p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {tracks.map((track) => (
-                  <div
-                    key={track.trackId}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
-                      track.isEligible
-                        ? 'bg-slate-950/90 border-amber-500/50 shadow-lg shadow-amber-500/5'
-                        : 'bg-slate-950/60 border-slate-800/80'
-                    }`}
-                  >
+                  <div key={track.trackId} className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 ${track.isEligible ? 'bg-slate-950/90 border-amber-500/50 shadow-lg shadow-amber-500/5' : 'bg-slate-950/60 border-slate-800/80'}`}>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-[10px] text-indigo-400 font-bold uppercase tracking-wider">
-                          {track.category}
-                        </span>
-                        <span className={`font-mono text-xs font-bold ${track.isEligible ? 'text-amber-300' : 'text-slate-400'}`}>
-                          {track.percentage}% Completed
-                        </span>
+                        <span className="font-mono text-[10px] text-indigo-400 font-bold uppercase tracking-wider">{track.category}</span>
+                        <span className={`font-mono text-xs font-bold ${track.isEligible ? 'text-amber-300' : 'text-slate-400'}`}>{track.percentage}% Completed</span>
                       </div>
-
                       <h4 className="text-sm font-bold text-slate-100">{track.title}</h4>
                       <p className="text-xs text-slate-400 line-clamp-2">{track.description}</p>
                     </div>
-
                     <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-500 ${
-                          track.isEligible ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-indigo-600'
-                        }`}
-                        style={{ width: `${track.percentage}%` }}
-                      />
+                      <div className={`h-2 rounded-full ${track.isEligible ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-indigo-600'}`} style={{ width: `${track.percentage}%` }} />
                     </div>
-
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-[11px] font-mono text-slate-500">
-                        {track.solvedItems} / {track.totalItems} solved
-                      </span>
-
+                      <span className="text-[11px] font-mono text-slate-500">{track.solvedItems} / {track.totalItems} solved</span>
                       {track.isEligible ? (
-                        <button
-                          onClick={() => handleOpenCert(track)}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-500/20"
-                        >
-                          <Award className="w-3.5 h-3.5" />
-                          <span>View Verified Certificate</span>
+                        <button onClick={() => handleOpenCert(track)} className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-md">
+                          <Award className="w-3.5 h-3.5" /><span>View Certificate</span>
                         </button>
                       ) : (
-                        <button
-                          onClick={() => handleOpenCert(track)}
-                          className="px-3 py-1 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                          title="Preview Certificate"
-                        >
-                          <span>Preview Certificate</span>
-                          <Eye className="w-3 h-3" />
+                        <button onClick={() => handleOpenCert(track)} className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold cursor-pointer flex items-center gap-1">
+                          <span>Preview</span><Eye className="w-3 h-3" />
                         </button>
                       )}
                     </div>
@@ -916,233 +737,571 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 ))}
               </div>
             </div>
-          )}
 
-          {/* ── SECTION: 365-DAY SUBMISSION HEATMAP ── */}
-          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400" />
-                  <span>
-                    {profileMode === 'sdetube'
-                      ? `${heatmap.totalSubmissions || totalSdetubeSolved} SDETube submissions in past year`
-                      : profileMode === 'leetcode'
-                      ? `${leetcodeSolved} LeetCode submissions in past year`
-                      : profileMode === 'github'
-                      ? `${githubData?.public_repos ?? 0} GitHub public repos`
-                      : profileMode === 'gfg'
-                      ? `${gfgData?.total_problems_solved ?? 0} GFG problems solved`
-                      : profileMode === 'codeforces'
-                      ? `${codeforcesData?.total_problems_solved ?? 0} Codeforces problems solved`
-                      : `${heatmap.totalSubmissions + leetcodeSolved + gfgSolved + cfSolved} combined submissions in past year`}
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
-                {[2026, 2025].map((yr) => (
-                  <button
-                    key={yr}
-                    onClick={() => setSelectedYear(yr)}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      selectedYear === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {yr}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 52-Week Heatmap Calendar */}
-            <div className="overflow-x-auto pb-2 custom-scrollbar">
-              <div className="inline-flex flex-col gap-1.5 min-w-[760px] p-2 bg-slate-950/80 rounded-2xl border border-slate-800/80">
-                <div className="flex justify-between px-2 text-[10px] text-slate-500 font-mono">
-                  {monthLabels.map((m) => (
-                    <span key={m}>{m}</span>
-                  ))}
-                </div>
-
-                <div className="flex gap-1">
-                  {weeks.map((week, wIdx) => (
-                    <div key={wIdx} className="flex flex-col gap-1">
-                      {week.map((day) => {
-                        const levelClasses = [
-                          'bg-slate-900 border border-slate-800/60',
-                          'bg-emerald-950/80 border border-emerald-800/70',
-                          'bg-emerald-700 border border-emerald-600',
-                          'bg-emerald-500 border border-emerald-400',
-                          'bg-emerald-400 border border-emerald-300 shadow-sm shadow-emerald-400/60'
-                        ];
-                        return (
-                          <div
-                            key={day.date}
-                            className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
-                            title={`${day.date}: ${day.count} submissions`}
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── SECTION: SDETUBE BILLING & TRANSACTION HISTORY LEDGER ── */}
-          {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'leetcode') && (
+            {/* SDETube Heatmap */}
             <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-              
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-400" />
+                    <span>{profileMode === 'sdetube' ? `${heatmap.totalSubmissions || totalSdetubeSolved} SDETube submissions in past year` : `${heatmap.totalSubmissions + leetcodeSolved + gfgSolved + cfSolved} combined submissions in past year`}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong></p>
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+                  {[2026, 2025].map((yr) => (
+                    <button key={yr} onClick={() => setSelectedYear(yr)} className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${selectedYear === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>{yr}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="overflow-x-auto pb-2 custom-scrollbar">
+                <div className="inline-flex flex-col gap-1.5 min-w-[760px] p-2 bg-slate-950/80 rounded-2xl border border-slate-800/80">
+                  <div className="flex justify-between px-2 text-[10px] text-slate-500 font-mono">
+                    {monthLabels.map((m) => <span key={m}>{m}</span>)}
+                  </div>
+                  <div className="flex gap-1">
+                    {weeks.map((week, wIdx) => (
+                      <div key={wIdx} className="flex flex-col gap-1">
+                        {week.map((day) => {
+                          const lv = ['bg-slate-900 border border-slate-800/60','bg-emerald-950/80 border border-emerald-800/70','bg-emerald-700 border border-emerald-600','bg-emerald-500 border border-emerald-400','bg-emerald-400 border border-emerald-300 shadow-sm shadow-emerald-400/60'];
+                          return <div key={day.date} className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${lv[day.level]}`} title={`${day.date}: ${day.count} submissions`} />;
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Billing */}
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-400">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-700/50 text-emerald-400"><CreditCard className="w-4 h-4" /></div>
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-slate-100 flex items-center gap-2">
-                      <span>SDETube Wallet & Billing Transaction History</span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">
-                        ₹{wallet.balance.toFixed(2)} Balance
-                      </span>
+                      <span>SDETube Wallet & Billing</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold">₹{wallet.balance.toFixed(2)} Balance</span>
                     </h3>
-                    <p className="text-[11px] text-slate-400">Live ledger of top-ups, daily login credits, AI queries & video access fees</p>
+                    <p className="text-[11px] text-slate-400">Live ledger of top-ups, credits, AI & video fees</p>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-                  <button
-                    onClick={() => setBillingFilter('all')}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      billingFilter === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    All ({transactions.length})
-                  </button>
-                  <button
-                    onClick={() => setBillingFilter('credits')}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      billingFilter === 'credits' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-300'
-                    }`}
-                  >
-                    Credits
-                  </button>
-                  <button
-                    onClick={() => setBillingFilter('debits')}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      billingFilter === 'debits' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-rose-300'
-                    }`}
-                  >
-                    Debits
-                  </button>
+                  {(['all','credits','debits'] as const).map((f) => (
+                    <button key={f} onClick={() => setBillingFilter(f)} className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${billingFilter === f ? (f==='credits'?'bg-emerald-600':f==='debits'?'bg-rose-600':'bg-indigo-600') + ' text-white' : 'text-slate-400 hover:text-white'}`}>
+                      {f === 'all' ? `All (${transactions.length})` : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              {/* Transactions Ledger Table */}
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
                 {filteredTransactions.length === 0 ? (
-                  <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-500">
-                    No billing transactions recorded yet.
-                  </div>
-                ) : (
-                  filteredTransactions.map((tx) => {
-                    const isCredit = tx.amount > 0 || tx.type === 'CREDIT';
-                    return (
-                      <div
-                        key={tx.id}
-                        className="p-3 rounded-2xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 flex items-center justify-between text-xs transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`p-2 rounded-xl border ${isCredit ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-                            {isCredit ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-200 truncate">{tx.description}</p>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                              {new Date(tx.timestamp).toLocaleString()} • {tx.category}
-                            </p>
-                          </div>
+                  <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-500">No billing transactions recorded yet.</div>
+                ) : filteredTransactions.map((tx) => {
+                  const isCredit = tx.amount > 0 || tx.type === 'CREDIT';
+                  return (
+                    <div key={tx.id} className="p-3 rounded-2xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 flex items-center justify-between text-xs transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2 rounded-xl border ${isCredit ? 'bg-emerald-950 text-emerald-400 border-emerald-800' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                          {isCredit ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                         </div>
-
-                        <div className="text-right flex-shrink-0">
-                          <span className={`font-mono font-black text-xs ${isCredit ? 'text-emerald-400' : 'text-slate-300'}`}>
-                            {isCredit ? `+₹${Math.abs(tx.amount).toFixed(2)}` : `-₹${Math.abs(tx.amount).toFixed(2)}`}
-                          </span>
-                          <p className="text-[10px] text-slate-500 font-mono">Bal: ₹{tx.balanceAfter.toFixed(2)}</p>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-200 truncate">{tx.description}</p>
+                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{new Date(tx.timestamp).toLocaleString()} • {tx.category}</p>
                         </div>
                       </div>
-                    );
-                  })
-                )}
+                      <div className="text-right flex-shrink-0">
+                        <span className={`font-mono font-black text-xs ${isCredit ? 'text-emerald-400' : 'text-slate-300'}`}>{isCredit ? `+₹${Math.abs(tx.amount).toFixed(2)}` : `-₹${Math.abs(tx.amount).toFixed(2)}`}</span>
+                        <p className="text-[10px] text-slate-500 font-mono">Bal: ₹{tx.balanceAfter.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>{/* end billing */}
+
+
+            {/* SDETube Recent Submissions */}
+            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
+              <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                <ShieldCheck className="w-4 h-4 text-purple-400" />
+                <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">SDETube Recent Submissions</h3>
+              </div>
+              <div className="space-y-2">
+                {localSubmissions.slice(0, 15).map((sub, idx) => {
+                  const diffColor = sub.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : sub.difficulty === 'Medium' ? 'bg-amber-950 text-amber-300 border-amber-800' : 'bg-rose-950 text-rose-300 border-rose-800';
+                  return (
+                    <div key={sub.id || idx} className="p-3.5 rounded-2xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 hover:border-violet-700/40 flex items-center justify-between gap-3 transition-all group shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-200 truncate group-hover:text-violet-300 transition-colors">{sub.title}</p>
+                          <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">{sub.category} • {sub.timeFormatted}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${diffColor}`}>{sub.difficulty}</span>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-violet-300 font-mono text-[10px] font-bold border border-slate-800 hidden sm:inline">{sub.language}</span>
+                        {onOpenProblem && (
+                          <button onClick={() => onOpenProblem(sub.slug || sub.title)} className="px-3 py-1 rounded-xl bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white border border-violet-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1">
+                            <span>Practice</span><ArrowRight className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>)}
+
+          {/* ────────────────────────────────────────────────────────
+              LEETCODE VIEW
+          ──────────────────────────────────────────────────────── */}
+          {profileMode === 'leetcode' && (<>
+            {!formLcUsername ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 border-dashed flex flex-col items-center justify-center gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-700/50"><Code2 className="w-8 h-8 text-amber-400" /></div>
+                <div>
+                  <h3 className="text-base font-black text-white">Connect LeetCode</h3>
+                  <p className="text-xs text-slate-400 mt-1">Add your LeetCode username in Edit Profile to see your stats.</p>
+                </div>
+                <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-black cursor-pointer flex items-center gap-2 shadow-lg shadow-amber-900/30">
+                  <Edit3 className="w-3.5 h-3.5" /><span>Edit Profile</span>
+                </button>
+              </div>
+            ) : isLoadingLC ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col items-center gap-4">
+                <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                <p className="text-xs text-slate-400 font-mono">Fetching LeetCode data for <strong className="text-amber-300">@{formLcUsername}</strong>…</p>
+              </div>
+            ) : (<>
+
+              {/* LC: Solved Stats + Contest */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                {/* Solved Donut */}
+                <div className="md:col-span-5 p-6 rounded-3xl bg-gradient-to-b from-amber-950/20 to-slate-900 border border-amber-500/20 shadow-2xl flex flex-col justify-between space-y-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Code2 className="w-4 h-4" /><span>LeetCode Solved</span>
+                    </h3>
+                    {leetcodeData?.matchedUser?.activeBadge && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-bold font-mono">{leetcodeData.matchedUser.activeBadge.displayName}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center py-2">
+                    <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-amber-500 via-orange-400 to-yellow-400 p-2 shadow-xl flex items-center justify-center">
+                      <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
+                        <span className="text-3xl font-black text-white font-mono">{leetcodeSolved}</span>
+                        <span className="text-[10px] text-slate-400 font-mono uppercase">solved</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    {[
+                      { label: 'Easy', val: leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count ?? 0, total: (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Easy')?.count ?? 870), color: 'bg-emerald-500', text: 'text-emerald-400' },
+                      { label: 'Medium', val: leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count ?? 0, total: (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Medium')?.count ?? 1826), color: 'bg-amber-500', text: 'text-amber-400' },
+                      { label: 'Hard', val: leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count ?? 0, total: (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Hard')?.count ?? 802), color: 'bg-rose-500', text: 'text-rose-400' }
+                    ].map(r => (
+                      <div key={r.label} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className={`${r.text} font-bold`}>{r.label}</span>
+                          <span className="text-slate-300">{r.val} <span className="text-slate-500">/ {r.total.toLocaleString()}</span></span>
+                        </div>
+                        <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                          <div className={`${r.color} h-2 rounded-full`} style={{ width: `${Math.min(100, r.total > 0 ? (r.val / r.total) * 100 : 0)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Contest + Profile Stats */}
+                <div className="md:col-span-7 p-6 rounded-3xl bg-gradient-to-b from-amber-950/10 to-slate-900 border border-amber-500/20 shadow-2xl space-y-4">
+                  <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4" /><span>Contest & Rankings</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Contest Rating', val: leetcodeData?.userContestRanking ? Math.round(leetcodeData.userContestRanking.rating) : '—', color: 'text-amber-300' },
+                      { label: 'Global Rank', val: leetcodeData?.userContestRanking?.globalRanking ? `#${leetcodeData.userContestRanking.globalRanking.toLocaleString()}` : '—', color: 'text-white' },
+                      { label: 'Top %', val: leetcodeData?.userContestRanking?.topPercentage ? `${leetcodeData.userContestRanking.topPercentage.toFixed(2)}%` : '—', color: 'text-emerald-300' },
+                      { label: 'Contests', val: leetcodeData?.userContestRanking?.attendedContestsCount ?? '—', color: 'text-amber-300' },
+                      { label: 'Profile Rank', val: leetcodeData?.matchedUser?.profile?.ranking ? `#${leetcodeData.matchedUser.profile.ranking.toLocaleString()}` : '—', color: 'text-white' },
+                      { label: 'Reputation', val: leetcodeData?.matchedUser?.profile?.reputation ?? '—', color: 'text-amber-300' }
+                    ].map(s => (
+                      <div key={s.label} className="p-3 rounded-2xl bg-slate-950/80 border border-amber-500/10">
+                        <p className="text-[10px] text-slate-500 font-mono uppercase">{s.label}</p>
+                        <p className={`text-base font-black font-mono ${s.color}`}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Language Breakdown */}
+                  {leetcodeData?.matchedUser?.languageProblemCount && leetcodeData.matchedUser.languageProblemCount.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-slate-800">
+                      <p className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">Languages Used</p>
+                      {leetcodeData.matchedUser.languageProblemCount.slice(0, 5).map(lang => (
+                        <div key={lang.languageName} className="flex items-center gap-2 text-xs font-mono">
+                          <span className="text-slate-300 font-bold w-20 flex-shrink-0">{lang.languageName}</span>
+                          <div className="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (lang.problemsSolved / Math.max(1, leetcodeSolved)) * 100)}%` }} />
+                          </div>
+                          <span className="text-slate-400 w-12 text-right">{lang.problemsSolved}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-            </div>
-          )}
+              {/* LC Official Badges */}
+              {leetcodeData?.matchedUser?.badges && leetcodeData.matchedUser.badges.length > 0 && (
+                <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/20 shadow-xl space-y-3">
+                  <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Medal className="w-4 h-4" /><span>LeetCode Official Badges</span>
+                    <span className="text-slate-500 font-mono normal-case ml-auto">{leetcodeData.matchedUser.badges.length} earned</span>
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {leetcodeData.matchedUser.badges.map(b => (
+                      <div key={b.id} className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-amber-950/20 border border-amber-700/30 text-center w-20">
+                        <img src={b.icon} alt={b.name} className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <p className="text-[10px] text-amber-200 font-bold leading-tight">{b.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* ── SECTION: RECENT SUBMISSIONS & SOLVED PROBLEMS ── */}
-          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Code2 className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                  Recent Submissions & Solved Problems
+              {/* LC Recent AC Submissions */}
+              {leetcodeData?.recentSubmissionList && leetcodeData.recentSubmissionList.length > 0 && (
+                <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/20 shadow-xl space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <Code2 className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">Recent LeetCode Submissions</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {leetcodeData.recentSubmissionList.slice(0, 12).map((sub, idx) => {
+                      const isAC = sub.statusDisplay === 'Accepted';
+                      return (
+                        <div key={idx} className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs transition-all hover:scale-[1.01] ${isAC ? 'bg-emerald-950/20 border-emerald-800/40' : 'bg-slate-950/60 border-slate-800'}`}>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isAC ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                            <p className={`font-bold truncate ${isAC ? 'text-slate-200' : 'text-slate-400'}`}>{sub.title}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isAC ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-rose-950 text-rose-300 border-rose-800'}`}>{sub.statusDisplay}</span>
+                            <span className="px-2 py-0.5 rounded-md bg-slate-900 text-amber-300 font-mono text-[10px] border border-slate-800 hidden sm:inline">{sub.lang}</span>
+                            <span className="text-[10px] text-slate-500 font-mono hidden md:inline">{new Date(parseInt(sub.timestamp) * 1000).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>)}
+          </>)}
+
+          {/* ────────────────────────────────────────────────────────
+              GITHUB VIEW
+          ──────────────────────────────────────────────────────── */}
+          {profileMode === 'github' && (<>
+            {!formGhUsername ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 border-dashed flex flex-col items-center justify-center gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700"><Github className="w-8 h-8 text-cyan-400" /></div>
+                <div>
+                  <h3 className="text-base font-black text-white">Connect GitHub</h3>
+                  <p className="text-xs text-slate-400 mt-1">Add your GitHub username in Edit Profile to see your stats.</p>
+                </div>
+                <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-slate-600 to-zinc-600 text-white text-xs font-black cursor-pointer flex items-center gap-2 shadow-lg border border-slate-500">
+                  <Edit3 className="w-3.5 h-3.5" /><span>Edit Profile</span>
+                </button>
+              </div>
+            ) : isLoadingGH ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col items-center gap-4">
+                <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+                <p className="text-xs text-slate-400 font-mono">Fetching GitHub data for <strong className="text-cyan-300">@{formGhUsername}</strong>…</p>
+              </div>
+            ) : githubData ? (<>
+
+              {/* GH Profile Hero */}
+              <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-800/40 via-slate-900 to-zinc-900/40 border border-slate-600/40 shadow-2xl space-y-5">
+                <div className="flex items-start gap-5">
+                  <img src={githubData.avatar_url} alt="GitHub Avatar" className="w-20 h-20 rounded-2xl border-2 border-cyan-500/40 shadow-xl object-cover" />
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-black text-white">{githubData.name || githubData.login}</h2>
+                    <a href={githubData.html_url} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 font-mono hover:text-cyan-300 flex items-center gap-1 w-fit">
+                      <Github className="w-3 h-3" /><span>github.com/{githubData.login}</span><ExternalLink className="w-3 h-3" />
+                    </a>
+                    {githubData.bio && <p className="text-xs text-slate-300 mt-2 leading-relaxed">{githubData.bio}</p>}
+                    <div className="flex flex-wrap gap-3 mt-3 text-xs text-slate-400">
+                      {githubData.company && <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{githubData.company}</span>}
+                      {githubData.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{githubData.location}</span>}
+                      {githubData.blog && <a href={githubData.blog} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300"><ExternalLink className="w-3 h-3" />{githubData.blog.replace(/https?:\/\//, '').slice(0, 30)}</a>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* GH Stats Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Public Repos', val: githubData.public_repos, color: 'text-cyan-300', icon: <FolderGit2 className="w-4 h-4 text-cyan-400" /> },
+                    { label: 'Followers', val: githubData.followers, color: 'text-white', icon: <User className="w-4 h-4 text-slate-400" /> },
+                    { label: 'Following', val: githubData.following, color: 'text-slate-300', icon: <User className="w-4 h-4 text-slate-400" /> },
+                    { label: 'Public Gists', val: githubData.public_gists, color: 'text-cyan-300', icon: <BookOpen className="w-4 h-4 text-cyan-400" /> }
+                  ].map(s => (
+                    <div key={s.label} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-700/50 flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">{s.icon}<p className="text-[10px] text-slate-500 font-mono uppercase">{s.label}</p></div>
+                      <p className={`text-2xl font-black font-mono ${s.color}`}>{s.val}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-slate-800/60 text-xs text-slate-500 font-mono">
+                  Member since <strong className="text-slate-300">{new Date(githubData.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>
+                </div>
+              </div>
+
+              {/* GH CTA */}
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-700/40 shadow-xl flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-white">View Full GitHub Profile</p>
+                  <p className="text-xs text-slate-400 mt-0.5">See all repositories, contributions, and pinned projects.</p>
+                </div>
+                <a href={githubData.html_url} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl bg-gradient-to-r from-slate-600 to-zinc-600 border border-slate-500 text-white text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md flex-shrink-0">
+                  <Github className="w-3.5 h-3.5" /><span>Open GitHub</span><ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </>) : (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center">
+                <p className="text-xs text-slate-500">Could not load GitHub data. Check username in Edit Profile.</p>
+              </div>
+            )}
+          </>)}
+
+          {/* ────────────────────────────────────────────────────────
+              GEEKSFORGEEKS VIEW
+          ──────────────────────────────────────────────────────── */}
+          {profileMode === 'gfg' && (<>
+            {!formGfgUsername ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 border-dashed flex flex-col items-center justify-center gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-700/50"><Award className="w-8 h-8 text-emerald-400" /></div>
+                <div>
+                  <h3 className="text-base font-black text-white">Connect GeeksforGeeks</h3>
+                  <p className="text-xs text-slate-400 mt-1">Add your GFG username in Edit Profile to see your stats.</p>
+                </div>
+                <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-black cursor-pointer flex items-center gap-2 shadow-lg shadow-emerald-900/30">
+                  <Edit3 className="w-3.5 h-3.5" /><span>Edit Profile</span>
+                </button>
+              </div>
+            ) : isLoadingGFG ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col items-center gap-4">
+                <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <p className="text-xs text-slate-400 font-mono">Fetching GFG data for <strong className="text-emerald-300">@{formGfgUsername}</strong>…</p>
+              </div>
+            ) : gfgData ? (<>
+
+              {/* GFG Hero */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                {/* Solved donut */}
+                <div className="md:col-span-5 p-6 rounded-3xl bg-gradient-to-b from-emerald-950/20 to-slate-900 border border-emerald-500/20 shadow-2xl flex flex-col justify-between space-y-5">
+                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Award className="w-4 h-4" /><span>GFG Problems Solved</span>
+                  </h3>
+                  <div className="flex items-center justify-center py-2">
+                    <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-emerald-500 via-green-500 to-teal-400 p-2 shadow-xl flex items-center justify-center">
+                      <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
+                        <span className="text-3xl font-black text-white font-mono">{gfgData.total_problems_solved}</span>
+                        <span className="text-[10px] text-slate-400 font-mono uppercase">solved</span>
+                      </div>
+                    </div>
+                  </div>
+                  {gfgData.difficulty && (
+                    <div className="space-y-2">
+                      {([
+                        { label: 'School', val: gfgData.difficulty.school ?? 0, color: 'bg-sky-500', text: 'text-sky-400' },
+                        { label: 'Basic', val: gfgData.difficulty.basic ?? 0, color: 'bg-teal-500', text: 'text-teal-400' },
+                        { label: 'Easy', val: gfgData.difficulty.easy ?? 0, color: 'bg-emerald-500', text: 'text-emerald-400' },
+                        { label: 'Medium', val: gfgData.difficulty.medium ?? 0, color: 'bg-amber-500', text: 'text-amber-400' },
+                        { label: 'Hard', val: gfgData.difficulty.hard ?? 0, color: 'bg-rose-500', text: 'text-rose-400' }
+                      ] as { label: string; val: number; color: string; text: string }[]).map(r => (
+                        <div key={r.label} className="flex items-center gap-2 text-xs font-mono">
+                          <span className={`${r.text} font-bold w-14 flex-shrink-0`}>{r.label}</span>
+                          <div className="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                            <div className={`${r.color} h-1.5 rounded-full`} style={{ width: `${Math.min(100, gfgData.total_problems_solved > 0 ? (r.val / gfgData.total_problems_solved) * 100 : 0)}%` }} />
+                          </div>
+                          <span className="text-slate-400 w-6 text-right">{r.val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* GFG Stats */}
+                <div className="md:col-span-7 p-6 rounded-3xl bg-gradient-to-b from-emerald-950/10 to-slate-900 border border-emerald-500/20 shadow-2xl space-y-4">
+                  <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <BarChart3 className="w-4 h-4" /><span>GFG Score & Rankings</span>
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Coding Score', val: gfgData.coding_score, color: 'text-emerald-300' },
+                      { label: 'Monthly Score', val: gfgData.monthly_score, color: 'text-teal-300' },
+                      { label: 'Institute Rank', val: gfgData.institute_rank ? `#${gfgData.institute_rank}` : '—', color: 'text-white' },
+                      { label: 'Overall Score', val: gfgData.overall_score, color: 'text-emerald-300' },
+                      { label: 'Longest Streak', val: `${gfgData.longest_streak} days`, color: 'text-amber-300' },
+                      { label: 'Current Streak', val: `${gfgData.current_streak} days`, color: 'text-emerald-300' }
+                    ].map(s => (
+                      <div key={s.label} className="p-3 rounded-2xl bg-slate-950/80 border border-emerald-500/10">
+                        <p className="text-[10px] text-slate-500 font-mono uppercase">{s.label}</p>
+                        <p className={`text-base font-black font-mono ${s.color}`}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {(gfgData.organization || gfgData.institute) && (
+                    <div className="pt-2 border-t border-slate-800/60 space-y-1">
+                      {gfgData.organization && <p className="text-xs text-slate-400"><span className="text-slate-500">Organization: </span><strong className="text-slate-200">{gfgData.organization}</strong></p>}
+                      {gfgData.institute && <p className="text-xs text-slate-400"><span className="text-slate-500">Institute: </span><strong className="text-slate-200">{gfgData.institute}</strong></p>}
+                    </div>
+                  )}
+                  <a href={`https://www.geeksforgeeks.org/user/${formGfgUsername}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-emerald-950/30 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-950/60 transition-all text-xs font-bold cursor-pointer">
+                    <ExternalLink className="w-3.5 h-3.5" /><span>View GFG Profile</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* SDETube Certificates (also shown in GFG tab) */}
+              <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-400" /><span>SDETube Certificates</span>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">90% REQUIREMENT</span>
                 </h3>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {localSubmissions.slice(0, 15).map((sub, idx) => {
-                const diffColor = sub.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : sub.difficulty === 'Medium' ? 'bg-amber-950 text-amber-300 border-amber-800' : 'bg-rose-950 text-rose-300 border-rose-800';
-                return (
-                  <div
-                    key={sub.id || idx}
-                    className="p-3.5 rounded-2xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 transition-all group shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {tracks.filter(t => t.isEligible).slice(0, 4).map((track) => (
+                    <div key={track.trackId} className="p-4 rounded-2xl border bg-slate-950/90 border-amber-500/50 shadow-lg flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-200 truncate group-hover:text-purple-300 transition-colors">
-                          {sub.title}
-                        </p>
-                        <p className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
-                          {sub.category} • {sub.timeFormatted}
-                        </p>
+                        <p className="text-xs font-bold text-slate-100 truncate">{track.title}</p>
+                        <p className="text-[10px] font-mono text-amber-300">{track.percentage}% complete</p>
+                      </div>
+                      <button onClick={() => handleOpenCert(track)} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex-shrink-0 cursor-pointer">Certificate</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>) : (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center">
+                <p className="text-xs text-slate-500">Could not load GFG data. Check username in Edit Profile.</p>
+              </div>
+            )}
+          </>)}
+
+          {/* ────────────────────────────────────────────────────────
+              CODEFORCES VIEW
+          ──────────────────────────────────────────────────────── */}
+          {profileMode === 'codeforces' && (<>
+            {!formCfHandle ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 border-dashed flex flex-col items-center justify-center gap-4 text-center">
+                <div className="p-4 rounded-2xl bg-sky-950/40 border border-sky-700/50"><Zap className="w-8 h-8 text-sky-400" /></div>
+                <div>
+                  <h3 className="text-base font-black text-white">Connect Codeforces</h3>
+                  <p className="text-xs text-slate-400 mt-1">Add your Codeforces handle in Edit Profile to see your stats.</p>
+                </div>
+                <button onClick={() => setIsEditModalOpen(true)} className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-black cursor-pointer flex items-center gap-2 shadow-lg shadow-sky-900/30">
+                  <Edit3 className="w-3.5 h-3.5" /><span>Edit Profile</span>
+                </button>
+              </div>
+            ) : isLoadingCF ? (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 flex flex-col items-center gap-4">
+                <div className="w-8 h-8 rounded-full border-2 border-sky-500 border-t-transparent animate-spin" />
+                <p className="text-xs text-slate-400 font-mono">Fetching Codeforces data for <strong className="text-sky-300">{formCfHandle}</strong>…</p>
+              </div>
+            ) : codeforcesData ? (<>
+
+              {/* CF Hero */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                {/* Rating Donut */}
+                <div className="md:col-span-5 p-6 rounded-3xl bg-gradient-to-b from-sky-950/20 to-slate-900 border border-sky-500/20 shadow-2xl flex flex-col justify-between space-y-5">
+                  <h3 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-4 h-4" /><span>Codeforces Solved</span>
+                  </h3>
+                  <div className="flex items-center justify-center py-2">
+                    <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-sky-500 via-blue-500 to-indigo-500 p-2 shadow-xl flex items-center justify-center">
+                      <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
+                        <span className="text-3xl font-black text-white font-mono">{codeforcesData.total_problems_solved}</span>
+                        <span className="text-[10px] text-slate-400 font-mono uppercase">solved</span>
                       </div>
                     </div>
+                  </div>
+                  {codeforcesData.difficulty_breakdown && (
+                    <div className="space-y-2">
+                      {([
+                        { label: 'Easy', val: codeforcesData.difficulty_breakdown.easy, color: 'bg-emerald-500', text: 'text-emerald-400' },
+                        { label: 'Medium', val: codeforcesData.difficulty_breakdown.medium, color: 'bg-amber-500', text: 'text-amber-400' },
+                        { label: 'Hard', val: codeforcesData.difficulty_breakdown.hard, color: 'bg-rose-500', text: 'text-rose-400' }
+                      ] as { label: string; val: number; color: string; text: string }[]).map(r => (
+                        <div key={r.label} className="flex items-center gap-2 text-xs font-mono">
+                          <span className={`${r.text} font-bold w-14 flex-shrink-0`}>{r.label}</span>
+                          <div className="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                            <div className={`${r.color} h-1.5 rounded-full`} style={{ width: `${Math.min(100, codeforcesData.total_problems_solved > 0 ? (r.val / codeforcesData.total_problems_solved) * 100 : 0)}%` }} />
+                          </div>
+                          <span className="text-slate-400 w-6 text-right">{r.val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-                    <div className="flex items-center gap-2.5 flex-shrink-0">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${diffColor}`}>
-                        {sub.difficulty}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-900 text-indigo-300 font-mono text-[10px] font-bold border border-slate-800 hidden sm:inline">
-                        {sub.language}
-                      </span>
+                {/* CF Stats */}
+                <div className="md:col-span-7 p-6 rounded-3xl bg-gradient-to-b from-sky-950/10 to-slate-900 border border-sky-500/20 shadow-2xl space-y-4">
+                  <h3 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4" /><span>Rating & Rank</span>
+                  </h3>
 
-                      {onOpenProblem && (
-                        <button
-                          onClick={() => onOpenProblem(sub.slug || sub.title)}
-                          className="px-3 py-1 rounded-xl bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                          title="Open in LeetCode Workspace Arena"
-                        >
-                          <span>Practice</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      )}
+                  {/* Rating card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-sky-950/40 to-blue-950/40 border border-sky-500/30 flex items-center gap-4">
+                    {codeforcesData.avatar && <img src={codeforcesData.avatar} alt={codeforcesData.handle} className="w-14 h-14 rounded-xl border border-sky-500/30 object-cover" />}
+                    <div>
+                      <p className="text-base font-black text-white">{codeforcesData.firstName ?? ''} {codeforcesData.lastName ?? ''}</p>
+                      <p className="text-xs text-sky-400 font-mono">@{codeforcesData.handle}</p>
+                      <p className="text-xs text-sky-300 font-bold capitalize mt-0.5">{codeforcesData.rank}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-        </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Current Rating', val: codeforcesData.rating, color: 'text-sky-300' },
+                      { label: 'Max Rating', val: codeforcesData.maxRating, color: 'text-sky-300' },
+                      { label: 'Current Rank', val: codeforcesData.rank, color: 'text-white capitalize' },
+                      { label: 'Max Rank', val: codeforcesData.maxRank, color: 'text-amber-300 capitalize' },
+                      { label: 'Contribution', val: codeforcesData.contribution, color: codeforcesData.contribution >= 0 ? 'text-emerald-300' : 'text-rose-300' },
+                      { label: 'Friend of', val: codeforcesData.friendOfCount, color: 'text-white' }
+                    ].map(s => (
+                      <div key={s.label} className="p-3 rounded-2xl bg-slate-950/80 border border-sky-500/10">
+                        <p className="text-[10px] text-slate-500 font-mono uppercase">{s.label}</p>
+                        <p className={`text-base font-black font-mono ${s.color}`}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <a href={`https://codeforces.com/profile/${codeforcesData.handle}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-sky-950/30 border border-sky-700/40 text-sky-300 hover:bg-sky-950/60 transition-all text-xs font-bold cursor-pointer">
+                    <ExternalLink className="w-3.5 h-3.5" /><span>View Codeforces Profile</span>
+                  </a>
+                </div>
+              </div>
+            </>) : (
+              <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center">
+                <p className="text-xs text-slate-500">Could not load Codeforces data. Check handle in Edit Profile.</p>
+              </div>
+            )}
+          </>)}
 
-      </div>
+        </div>{/* end right column */}
 
-      {/* ── EDIT PROFILE MODAL ── */}
+      </div>{/* end flex row */}
+
+
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
           <div className="relative w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-4">
