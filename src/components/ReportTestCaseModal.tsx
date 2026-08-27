@@ -89,8 +89,21 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
 
   const handleApply = async () => {
     if (!aiResult) return;
-    const finalInput = aiResult.correctedInput || currentInput;
-    const finalExpected = aiResult.correctedExpectedOutput || currentExpectedOutput || '';
+    let finalInput = (aiResult.correctedInput || currentInput || '').trim();
+    const finalExpected = (aiResult.correctedExpectedOutput || currentExpectedOutput || '').trim();
+
+    // Deterministic fallback: If input lacks '=', auto-prefix parameter name
+    if (!finalInput.includes('=')) {
+      let pName = 'grid';
+      const m = (methodSignature || '').match(/(?:int|void|bool|vector<[^>]+>|string|double|List<[^>]+>)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(?:self\s*,\s*)?(?:const\s+)?[a-zA-Z0-9_<>,:\[\]\s\*&]+?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/);
+      if (m && m[2]) {
+        pName = m[2];
+      } else {
+        const simpleMatch = (methodSignature || '').match(/\(\s*(?:self\s*,\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[:\)]/);
+        if (simpleMatch && simpleMatch[1]) pName = simpleMatch[1];
+      }
+      finalInput = `${pName} = ${finalInput}`;
+    }
 
     // 1. Sync to backend R2
     try {

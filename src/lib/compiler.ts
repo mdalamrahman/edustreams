@@ -234,16 +234,13 @@ export function wrapLeetCodeExecutableCode(
     }
 
     // If user defined a method name, verify that the preloaded driver doesn't call an entirely different method
-    const isMethodMismatch = userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`);
-    if (isMethodMismatch) {
-      console.warn(`[SDETube Compiler] Preloaded driver mismatch (User defined '${userMethodName}'). Falling back to dynamic universal harness.`);
+    const isMethodMismatch = Boolean(userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`));
+    const hasFatalMissingCheck = preloadedDriver.includes('Error: Missing') || preloadedDriver.includes('error: missing');
+
+    if (isMethodMismatch || hasFatalMissingCheck) {
+      console.warn(`[SDETube Compiler] Preloaded driver issue (mismatch=${isMethodMismatch}, fatalMissingCheck=${hasFatalMissingCheck}). Falling back to dynamic universal harness.`);
     } else {
       let replaced = preloadedDriver;
-
-      // Clean rigid checks that fail on raw inputs
-      if (replaced.includes('Error: Missing') || replaced.includes('error: missing')) {
-        replaced = replaced.replace(/if\s*\([^)]*find\([^)]*\)\s*==\s*(?:string::npos|-1)[^)]*\)\s*\{\s*(?:cerr|cout|print)[^;]*;\s*return\s+1;\s*\}/g, '');
-      }
 
       if (replaced.includes('// === USER SOLUTION ===')) {
         if (replaced.includes('// === END USER SOLUTION ===')) {

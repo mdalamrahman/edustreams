@@ -776,8 +776,10 @@ export async function fetchOrGenerateDriverCode(
   try {
     const cached = localStorage.getItem(localKey);
     if (cached && (cached.includes('// === USER SOLUTION ===') || cached.includes('# === USER SOLUTION ==='))) {
-      if (!cached.includes('httpsleetcodecom')) {
+      if (!cached.includes('httpsleetcodecom') && !cached.includes('Error: Missing') && !cached.includes('error: missing')) {
         return cached;
+      } else {
+        localStorage.removeItem(localKey);
       }
     }
   } catch (_) {}
@@ -789,7 +791,7 @@ export async function fetchOrGenerateDriverCode(
     if (resp.ok) {
       const data = await resp.json();
       if (data?.driverCode && (data.driverCode.includes('// === USER SOLUTION ===') || data.driverCode.includes('# === USER SOLUTION ==='))) {
-        if (!data.driverCode.includes('httpsleetcodecom')) {
+        if (!data.driverCode.includes('httpsleetcodecom') && !data.driverCode.includes('Error: Missing') && !data.driverCode.includes('error: missing')) {
           try {
             localStorage.setItem(localKey, data.driverCode);
           } catch (_) {}
