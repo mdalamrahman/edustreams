@@ -158,14 +158,38 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   <p className="text-xs text-slate-400 mt-1 font-mono">Global Daily Challenge &bull; {lcPotd.date}</p>
                 </div>
 
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      const dynamicProblem: SDEProblem = {
+                        id: 8888,
+                        sheetType: 'sde',
+                        category: (lcPotd.topicTags && lcPotd.topicTags[0]) || 'Daily Challenge',
+                        name: lcPotd.title,
+                        difficulty: (lcPotd.difficulty as any) || 'Medium',
+                        rating: '5.0 / 5',
+                        leetcode: lcPotd.url,
+                        gfg: `https://www.geeksforgeeks.org/problems/${lcPotd.titleSlug}/1`,
+                        companies: ['Google', 'Meta', 'Amazon'],
+                        slug: lcPotd.titleSlug
+                      };
+                      onSolveSdeProblem(dynamicProblem);
+                      onClose();
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <Code className="w-4 h-4" />
+                    <span>Solve in SDETube IDE</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
                   <a
                     href={lcPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className="p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-300 transition-all cursor-pointer"
+                    title="Open on LeetCode"
                   >
-                    <span>Solve Challenge Online</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
 

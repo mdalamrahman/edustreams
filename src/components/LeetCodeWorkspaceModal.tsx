@@ -1351,7 +1351,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
 
   return (
-    <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden relative ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
+    <div className={`fixed inset-0 z-[100] w-screen h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
       
       {/* ========================================================================= */}
       {/* 0. FULL PAGE PROBLEM GENERATION & CLOUD SYNC OVERLAY                      */}

@@ -39,7 +39,7 @@ import { LLDHub } from './components/LLDHub';
 import { HLDHub } from './components/HLDHub';
 import { POTDModal } from './components/POTDModal';
 import { DashboardLandingPage } from './components/DashboardLandingPage';
-import { SDEProblem, SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA } from './lib/sdeSheetData';
+import { SDEProblem, DSAProblem, SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_474_DATA, SDETUBE_79_SHEET_DATA, BLIND_75_SHEET_DATA, CODESTORYWITHMIK_SHEET_DATA } from './lib/dsaSheetsData';
 import { useDevice } from './lib/device';
 import { supabase, MOCK_CHANNELS, MOCK_VIDEOS } from './lib/supabase';
 import { getCurrentStudent, signOutStudent, checkAndAutoLogin } from './lib/auth';
@@ -137,13 +137,37 @@ export function App() {
     const handleHashSync = () => {
       const hash = window.location.hash || '#/dashboard';
       if (hash.startsWith('#/problem/')) {
-        const pIdStr = hash.replace('#/problem/', '');
-        const allProbs = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
-        const found = allProbs.find((p) => 
+        const pIdStr = hash.replace('#/problem/', '').trim();
+        const allProbs: DSAProblem[] = [
+          ...SDE_SHEET_191_DATA,
+          ...A2Z_DSA_SHEET_474_DATA,
+          ...SDETUBE_79_SHEET_DATA,
+          ...BLIND_75_SHEET_DATA,
+          ...CODESTORYWITHMIK_SHEET_DATA
+        ];
+        let found = allProbs.find((p) => 
           p.id.toString() === pIdStr || 
           p.slug === pIdStr ||
+          (p.slug && pIdStr.toLowerCase() === p.slug.toLowerCase()) ||
           p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === pIdStr.toLowerCase().replace(/[^a-z0-9]/g, '')
         );
+
+        if (!found && pIdStr) {
+          const cleanName = pIdStr.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          found = {
+            id: 9999,
+            sheetType: 'sde',
+            category: 'Algorithms',
+            name: cleanName,
+            difficulty: 'Medium',
+            rating: '5.0 / 5',
+            leetcode: `https://leetcode.com/problems/${pIdStr}/`,
+            gfg: `https://www.geeksforgeeks.org/problems/${pIdStr}/1`,
+            companies: ['Google', 'Amazon', 'Microsoft', 'Meta'],
+            slug: pIdStr
+          };
+        }
+
         if (found) {
           setSdeFullscreenProblem(found);
           const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
@@ -158,7 +182,9 @@ export function App() {
         }
       } else {
         setSdeFullscreenProblem(null);
-        if (hash.startsWith('#/dashboard')) {
+        if (hash === '#/potd') {
+          setIsPotdModalOpen(true);
+        } else if (hash.startsWith('#/dashboard')) {
           setActiveTab('dashboard');
         } else if (hash.startsWith('#/channel/')) {
           const chId = hash.replace('#/channel/', '');
@@ -712,7 +738,7 @@ export function App() {
     }
   };
 
-  const handleOpenCodingFullscreen = (problem: SDEProblem) => {
+  const handleOpenCodingFullscreen = (problem: SDEProblem | DSAProblem) => {
     if (isMobile) {
       setShowMobileGating(true);
       return;
@@ -723,10 +749,12 @@ export function App() {
     const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
     const matched = findMatchingDsaVideo(problem.name, dsaVideos);
 
+    const targetSlug = problem.slug || problem.id;
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);
-    if (window.location.hash !== `#/problem/${problem.id}`) {
-      window.history.pushState(null, '', `#/problem/${problem.id}`);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (window.location.hash !== `#/problem/${targetSlug}`) {
+      window.history.pushState(null, '', `#/problem/${targetSlug}`);
     }
   };
 
@@ -1347,7 +1375,13 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           <DeveloperProfilePage
             user={user}
             onOpenProblem={(pNameOrSlug) => {
-              const allProbs = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
+              const allProbs = [
+                ...SDE_SHEET_191_DATA,
+                ...A2Z_DSA_SHEET_474_DATA,
+                ...SDETUBE_79_SHEET_DATA,
+                ...BLIND_75_SHEET_DATA,
+                ...CODESTORYWITHMIK_SHEET_DATA
+              ];
               const match = allProbs.find(p => p.name.toLowerCase() === pNameOrSlug.toLowerCase() || p.slug === pNameOrSlug) || allProbs[0];
               handleOpenCodingFullscreen(match);
             }}
