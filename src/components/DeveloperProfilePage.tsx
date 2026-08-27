@@ -74,7 +74,7 @@ interface DeveloperProfilePageProps {
   onNavigateToTab?: (tab: any) => void;
 }
 
-export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode_github';
+export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode' | 'github' | 'gfg' | 'codeforces';
 
 export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   user,
@@ -210,19 +210,19 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
   const easySolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
-    : profileMode === 'leetcode_github'
+    : profileMode === 'leetcode'
     ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count || 62)
     : Math.round(combinedSolved * 0.42);
 
   const medSolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
-    : profileMode === 'leetcode_github'
+    : profileMode === 'leetcode'
     ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count || 74)
     : Math.round(combinedSolved * 0.48);
 
   const hardSolved = profileMode === 'sdetube'
     ? Math.max(0, totalSdetubeSolved - easySolved - medSolved)
-    : profileMode === 'leetcode_github'
+    : profileMode === 'leetcode'
     ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count || 12)
     : Math.max(0, combinedSolved - easySolved - medSolved);
 
@@ -257,72 +257,133 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   return (
     <div className="w-full max-w-[1340px] mx-auto space-y-6 animate-fadeIn pb-20">
       
-      {/* ── TOP SECTION SELECTOR (3 MODES) ── */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-4">
-        
-        {/* Left: 3-Way Mode Switcher */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800">
-          
+      {/* ── TOP SECTION SELECTOR (6 MODES) ── */}
+      <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden">
+
+        {/* Tab Bar — row 1: label + actions */}
+        <div className="px-4 sm:px-5 pt-4 pb-3 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600">
+              <Globe className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-white">Developer Profile</p>
+              <p className="text-[10px] text-slate-500 font-mono">Select platform view</p>
+            </div>
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2">
+
+          <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-purple-400" />
+              <span>Edit Profile</span>
+            </button>
+
+            {onOpenWallet && (
+              <button
+                onClick={onOpenWallet}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-950 border border-emerald-600/60 text-emerald-300 text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                title="Click to recharge wallet via UPI"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>₹{wallet.balance.toFixed(2)}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Bar — row 2: platform tabs */}
+        <div className="px-3 pb-3 pt-2 flex flex-wrap gap-1.5">
+
+          {/* Combined */}
           <button
             onClick={() => setProfileMode('combined')}
-            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               profileMode === 'combined'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-purple-900/40 scale-[1.02]'
+                : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-700/50'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Combined (SDETube + LeetCode + GitHub)</span>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>All Combined</span>
           </button>
 
+          {/* SDETube */}
           <button
             onClick={() => setProfileMode('sdetube')}
-            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               profileMode === 'sdetube'
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-900/40 scale-[1.02]'
+                : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-700/50'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
-            <span>SDETube Alone</span>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>SDETube</span>
           </button>
 
+          <div className="w-px bg-slate-700/60 self-stretch mx-0.5" />
+
+          {/* LeetCode */}
           <button
-            onClick={() => setProfileMode('leetcode_github')}
-            className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              profileMode === 'leetcode_github'
-                ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/30'
-                : 'text-slate-400 hover:text-slate-200'
+            onClick={() => setProfileMode('leetcode')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              profileMode === 'leetcode'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-900/40 scale-[1.02]'
+                : 'bg-slate-800/60 text-slate-400 hover:text-amber-300 hover:bg-slate-800 border border-slate-700/50'
             }`}
           >
-            <Code2 className="w-3.5 h-3.5 text-amber-300" />
-            <span>LeetCode + GitHub</span>
+            <Code2 className="w-3.5 h-3.5" />
+            <span>LeetCode</span>
+            {isLoadingLC && <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping" />}
+          </button>
+
+          {/* GitHub */}
+          <button
+            onClick={() => setProfileMode('github')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              profileMode === 'github'
+                ? 'bg-gradient-to-r from-slate-600 to-zinc-600 text-white shadow-lg shadow-slate-900/40 scale-[1.02] border border-slate-500'
+                : 'bg-slate-800/60 text-slate-400 hover:text-cyan-300 hover:bg-slate-800 border border-slate-700/50'
+            }`}
+          >
+            <Github className="w-3.5 h-3.5" />
+            <span>GitHub</span>
+            {isLoadingGH && <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping" />}
+          </button>
+
+          {/* GFG */}
+          <button
+            onClick={() => setProfileMode('gfg')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              profileMode === 'gfg'
+                ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-900/40 scale-[1.02]'
+                : 'bg-slate-800/60 text-slate-400 hover:text-emerald-300 hover:bg-slate-800 border border-slate-700/50'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>GeeksforGeeks</span>
+            {isLoadingGFG && <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />}
+          </button>
+
+          {/* Codeforces */}
+          <button
+            onClick={() => setProfileMode('codeforces')}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              profileMode === 'codeforces'
+                ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-lg shadow-sky-900/40 scale-[1.02]'
+                : 'bg-slate-800/60 text-slate-400 hover:text-sky-300 hover:bg-slate-800 border border-slate-700/50'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Codeforces</span>
+            {isLoadingCF && <span className="w-1.5 h-1.5 rounded-full bg-sky-300 animate-ping" />}
           </button>
 
         </div>
-
-        {/* Right: Profile Actions & Live Wallet Balance */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-          >
-            <Edit3 className="w-3.5 h-3.5 text-purple-400" />
-            <span>Edit Profile</span>
-          </button>
-
-          {onOpenWallet && (
-            <button
-              onClick={onOpenWallet}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-950 border border-emerald-600/60 text-emerald-300 text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-              title="Click to recharge wallet via UPI"
-            >
-              <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-              <span>₹{wallet.balance.toFixed(2)}</span>
-            </button>
-          )}
-        </div>
-
       </div>
 
       {/* ── 2-COLUMN LEETCODE-INSPIRED MAIN GRID ── */}
@@ -550,7 +611,12 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   <span>
-                    {profileMode === 'sdetube' ? 'SDETube Solved' : profileMode === 'leetcode_github' ? 'LeetCode Solved' : 'Combined Solved'}
+                    {profileMode === 'sdetube' ? 'SDETube Solved'
+                      : profileMode === 'leetcode' ? 'LeetCode Solved'
+                      : profileMode === 'github' ? 'GitHub Repos'
+                      : profileMode === 'gfg' ? 'GFG Solved'
+                      : profileMode === 'codeforces' ? 'Codeforces Solved'
+                      : 'Combined Solved'}
                   </span>
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">
@@ -560,13 +626,25 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
               {/* Center Donut / Solved Hero */}
               <div className="flex items-center justify-center py-2">
-                <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-emerald-500 via-amber-400 to-rose-500 p-2 shadow-xl flex items-center justify-center">
+                <div className={`relative w-36 h-36 rounded-full p-2 shadow-xl flex items-center justify-center ${
+                    profileMode === 'sdetube' ? 'bg-gradient-to-tr from-violet-500 via-purple-500 to-indigo-500'
+                    : profileMode === 'leetcode' ? 'bg-gradient-to-tr from-amber-500 via-orange-400 to-yellow-400'
+                    : profileMode === 'github' ? 'bg-gradient-to-tr from-slate-500 via-zinc-500 to-cyan-500'
+                    : profileMode === 'gfg' ? 'bg-gradient-to-tr from-emerald-500 via-green-500 to-teal-400'
+                    : profileMode === 'codeforces' ? 'bg-gradient-to-tr from-sky-500 via-blue-500 to-indigo-500'
+                    : 'bg-gradient-to-tr from-emerald-500 via-amber-400 to-rose-500'
+                  }`}>
                   <div className="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center text-center">
                     <span className="text-3xl font-black text-white font-mono">
-                      {profileMode === 'sdetube' ? totalSdetubeSolved : profileMode === 'leetcode_github' ? leetcodeSolved : combinedSolved}
+                      {profileMode === 'sdetube' ? totalSdetubeSolved
+                        : profileMode === 'leetcode' ? leetcodeSolved
+                        : profileMode === 'github' ? (githubData?.public_repos ?? '—')
+                        : profileMode === 'gfg' ? (gfgData?.total_problems_solved ?? '—')
+                        : profileMode === 'codeforces' ? (codeforcesData?.total_problems_solved ?? '—')
+                        : combinedSolved}
                     </span>
                     <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                      / {profileMode === 'sdetube' ? '500+ Sheet' : '3,420 Solved'}
+                      {profileMode === 'github' ? 'repos' : profileMode === 'combined' ? 'all platforms' : 'solved'}
                     </span>
                   </div>
                 </div>
@@ -613,7 +691,12 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Medal className="w-4 h-4 text-purple-400" />
                   <span>
-                    {profileMode === 'sdetube' ? 'SDETube Milestones' : profileMode === 'leetcode_github' ? 'LeetCode Official Badges' : 'Omnichannel Badges'}
+                    {profileMode === 'sdetube' ? 'SDETube Milestones'
+                      : profileMode === 'leetcode' ? 'LeetCode Official Badges'
+                      : profileMode === 'github' ? 'GitHub Contributions'
+                      : profileMode === 'gfg' ? 'GFG Achievements'
+                      : profileMode === 'codeforces' ? 'Codeforces Titles'
+                      : 'Omnichannel Badges'}
                   </span>
                 </h3>
                 <span className="text-[10px] text-slate-500 font-mono">
@@ -647,39 +730,114 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 ))}
               </div>
 
-              {/* Contest Metrics Pill Row */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-950 to-indigo-950/40 border border-purple-500/30 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-400" />
+              {/* Contest / Platform Metrics Pill Row */}
+              {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'leetcode') && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/30 via-slate-950 to-orange-950/30 border border-amber-500/20 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-mono uppercase">LC Contest Rating</p>
+                      <p className="text-base font-black text-amber-300 font-mono">
+                        {leetcodeData?.userContestRanking ? Math.round(leetcodeData.userContestRanking.rating) : '1,684'}
+                      </p>
+                    </div>
+                  </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-mono uppercase">Contest Rating</p>
-                    <p className="text-base font-black text-amber-300 font-mono">
-                      {leetcodeData?.userContestRanking ? Math.round(leetcodeData.userContestRanking.rating) : '1,684'}
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Global Contest Rank</p>
+                    <p className="text-base font-black text-white font-mono">
+                      {leetcodeData?.userContestRanking?.globalRanking ? `#${leetcodeData.userContestRanking.globalRanking.toLocaleString()}` : '#48,209'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Top Percentage</p>
+                    <p className="text-base font-black text-emerald-400 font-mono">
+                      {leetcodeData?.userContestRanking?.topPercentage ? `${leetcodeData.userContestRanking.topPercentage}%` : '18.4%'}
                     </p>
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <p className="text-[10px] text-slate-400 font-mono uppercase">Global Contest Rank</p>
-                  <p className="text-base font-black text-white font-mono">
-                    {leetcodeData?.userContestRanking?.globalRanking ? `#${leetcodeData.userContestRanking.globalRanking.toLocaleString()}` : '#48,209'}
-                  </p>
+              {/* GFG Platform Metrics */}
+              {profileMode === 'gfg' && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/30 via-slate-950 to-green-950/30 border border-emerald-500/20 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-emerald-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-mono uppercase">Coding Score</p>
+                      <p className="text-base font-black text-emerald-300 font-mono">{gfgData?.coding_score ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Institute Rank</p>
+                    <p className="text-base font-black text-white font-mono">{gfgData?.institute_rank ? `#${gfgData.institute_rank}` : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Longest Streak</p>
+                    <p className="text-base font-black text-amber-400 font-mono">{gfgData?.longest_streak ?? '—'} days</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Monthly Score</p>
+                    <p className="text-base font-black text-emerald-300 font-mono">{gfgData?.monthly_score ?? '—'}</p>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <p className="text-[10px] text-slate-400 font-mono uppercase">Top Percentage</p>
-                  <p className="text-base font-black text-emerald-400 font-mono">
-                    {leetcodeData?.userContestRanking?.topPercentage ? `${leetcodeData.userContestRanking.topPercentage}%` : '18.4%'}
-                  </p>
+              {/* Codeforces Platform Metrics */}
+              {profileMode === 'codeforces' && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-sky-950/30 via-slate-950 to-blue-950/30 border border-sky-500/20 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-sky-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-mono uppercase">CF Rating</p>
+                      <p className="text-base font-black text-sky-300 font-mono">{codeforcesData?.rating ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Rank</p>
+                    <p className="text-base font-black text-white font-mono capitalize">{codeforcesData?.rank ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Max Rating</p>
+                    <p className="text-base font-black text-sky-300 font-mono">{codeforcesData?.maxRating ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Max Rank</p>
+                    <p className="text-base font-black text-amber-400 font-mono capitalize">{codeforcesData?.maxRank ?? '—'}</p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* GitHub Platform Metrics */}
+              {profileMode === 'github' && githubData && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-800/60 via-slate-950 to-zinc-900/60 border border-slate-600/30 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Github className="w-4 h-4 text-cyan-400" />
+                    <div>
+                      <p className="text-[10px] text-slate-400 font-mono uppercase">Public Repos</p>
+                      <p className="text-base font-black text-cyan-300 font-mono">{githubData.public_repos}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Followers</p>
+                    <p className="text-base font-black text-white font-mono">{githubData.followers}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Following</p>
+                    <p className="text-base font-black text-slate-300 font-mono">{githubData.following}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-mono uppercase">Gists</p>
+                    <p className="text-base font-black text-slate-300 font-mono">{githubData.public_gists}</p>
+                  </div>
+                </div>
+              )}
 
             </div>
 
           </div>
 
           {/* ── SECTION: SDETUBE VERIFIED COURSE COMPLETION CERTIFICATES (≥90%) ── */}
-          {(profileMode === 'combined' || profileMode === 'sdetube') && (
+          {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'gfg') && (
             <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 shadow-2xl space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -769,9 +927,15 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   <span>
                     {profileMode === 'sdetube'
                       ? `${heatmap.totalSubmissions || totalSdetubeSolved} SDETube submissions in past year`
-                      : profileMode === 'leetcode_github'
+                      : profileMode === 'leetcode'
                       ? `${leetcodeSolved} LeetCode submissions in past year`
-                      : `${heatmap.totalSubmissions + leetcodeSolved} combined submissions in past year`}
+                      : profileMode === 'github'
+                      ? `${githubData?.public_repos ?? 0} GitHub public repos`
+                      : profileMode === 'gfg'
+                      ? `${gfgData?.total_problems_solved ?? 0} GFG problems solved`
+                      : profileMode === 'codeforces'
+                      ? `${codeforcesData?.total_problems_solved ?? 0} Codeforces problems solved`
+                      : `${heatmap.totalSubmissions + leetcodeSolved + gfgSolved + cfSolved} combined submissions in past year`}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400">
@@ -830,7 +994,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
           </div>
 
           {/* ── SECTION: SDETUBE BILLING & TRANSACTION HISTORY LEDGER ── */}
-          {(profileMode === 'combined' || profileMode === 'sdetube') && (
+          {(profileMode === 'combined' || profileMode === 'sdetube' || profileMode === 'leetcode') && (
             <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
               
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
