@@ -23,11 +23,13 @@ import {
   Check,
   CreditCard,
   Layers,
-  User
+  User,
+  CheckCircle2
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
+import { isPotdSolvedToday } from '../lib/analytics';
 
 interface NavbarProps {
   activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings';
@@ -102,6 +104,19 @@ export const Navbar: React.FC<NavbarProps> = ({
       setPasskeyNotice(null);
     }, 6000);
   };
+
+  const [isPotdSolved, setIsPotdSolved] = useState<boolean>(() => isPotdSolvedToday());
+
+  useEffect(() => {
+    const checkPotd = () => setIsPotdSolved(isPotdSolvedToday());
+    checkPotd();
+    window.addEventListener('sdetube_potd_solved', checkPotd);
+    window.addEventListener('sdetube_problem_solved', checkPotd);
+    return () => {
+      window.removeEventListener('sdetube_potd_solved', checkPotd);
+      window.removeEventListener('sdetube_problem_solved', checkPotd);
+    };
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -265,11 +280,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenPotd && (
               <button
                 onClick={onOpenPotd}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all shadow-sm cursor-pointer group"
-                title="Open Today's Problem of the Day"
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group ${
+                  isPotdSolved
+                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-emerald-500/10'
+                    : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border-amber-500/40 text-amber-300 hover:text-amber-200'
+                }`}
+                title={isPotdSolved ? "Today's POTD Solved! Click to review" : "Open Today's Problem of the Day"}
               >
-                <Flame className="w-3.5 h-3.5 fill-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
-                <span>POTD</span>
+                {isPotdSolved ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20 group-hover:scale-110 transition-transform" />
+                ) : (
+                  <Flame className="w-3.5 h-3.5 fill-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
+                )}
+                <span>{isPotdSolved ? 'POTD Solved ✓' : 'POTD'}</span>
               </button>
             )}
 

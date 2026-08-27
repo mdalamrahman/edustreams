@@ -1174,7 +1174,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             spread: 90,
             origin: { y: 0.6 }
           });
-          markProblemSolved(codingProblem?.id || codingProblem?.name || cleanTitle, Math.max(1, Math.round(elapsedMs / 60000)));
+          markProblemSolved(
+            codingProblem?.id || codingProblem?.name || cleanTitle,
+            Math.max(1, Math.round(elapsedMs / 60000)),
+            currentProblemSlug || codingProblem?.slug || cleanTitle
+          );
 
           // Persist validated solution to Cloudflare R2
           fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/save-solution`, {
@@ -3104,6 +3108,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         currentExpectedOutput={problemTemplate.expectedOutputs?.[reportTestCaseIdx]}
         userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
         language={language}
+        userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
+        onResubmit={() => {
+          setIsReportTestCaseOpen(false);
+          handleExecute(true);
+        }}
         onApplyCorrection={(correctedInput, correctedExpected) => {
           let finalInput = (correctedInput || '').trim();
           const pNames = extractParamNames(problemTemplate.starters, problemTemplate.examples);

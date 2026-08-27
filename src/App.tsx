@@ -431,7 +431,8 @@ export function App() {
 
     if (correct) {
       const target = sdeFullscreenProblem?.id || sdeFullscreenProblem?.name || selectedVideo?.title || 'Problem';
-      markProblemSolved(target, mins);
+      const targetSlug = sdeFullscreenProblem?.slug || sdeFullscreenProblem?.leetcode || sdeFullscreenProblem?.name;
+      markProblemSolved(target, mins, targetSlug);
       setTotalSolved((prev) => prev + 1);
       setCorrectAttempts((prev) => prev + 1);
     } else {

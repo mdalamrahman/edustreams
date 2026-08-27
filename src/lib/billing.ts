@@ -53,7 +53,8 @@ export type BillingActionType =
   | 'HLD_STUDIO_DRAW'
   | 'ANALYTICS_REFRESH'
   | 'UPI_TOPUP'
-  | 'ADMIN_MANUAL_GRANT';
+  | 'ADMIN_MANUAL_GRANT'
+  | 'BUG_BOUNTY';
 
 export interface BillingTransaction {
   id: string;
@@ -702,6 +703,58 @@ export function adminAddCredits(
   }).catch((e) => console.warn('[Admin Adjust DB Notice]:', e));
 
   return wallet;
+}
+
+/**
+ * Automatically credits bounty reward (e.g. ₹1.00 for verified testcase issue reports)
+ * to user wallet and syncs atomically with SQLite and cloud.
+ */
+export function creditUserReward(
+  amount: number = 1.00,
+  description: string = '🎉 Verified Issue Bounty: ₹1.00 credited for finding and resolving testcase issue',
+  email?: string
+): { success: boolean; newBalance: number; wallet: UserWallet } {
+  const userEmail = getActiveEmail(email);
+  const wallets = getAllWallets();
+  let wallet = wallets[userEmail] || getUserWallet(userEmail);
+
+  const newBalance = Math.round((wallet.balance + amount) * 10000) / 10000;
+  wallet.balance = newBalance;
+  wallet.updatedAt = new Date().toISOString();
+
+  wallets[userEmail] = wallet;
+  saveAllWallets(wallets);
+
+  const tx: BillingTransaction = {
+    id: `tx-bounty-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    userId: wallet.userId,
+    userEmail,
+    amount,
+    type: 'CREDIT',
+    category: 'BUG_BOUNTY',
+    description,
+    balanceAfter: newBalance,
+    timestamp: new Date().toISOString()
+  };
+
+  const allTx = getAllTransactions();
+  allTx.unshift(tx);
+  saveTransactions(allTx, wallet);
+  emitWalletUpdate(wallet);
+
+  // Sync to database
+  fetch(`${BACKEND_URL}/api/billing/credit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: userEmail,
+      amount,
+      category: 'BUG_BOUNTY',
+      description
+    })
+  }).catch((e) => console.warn('[Credit Reward DB Notice]:', e));
+
+  return { success: true, newBalance, wallet };
 }
 
 /**

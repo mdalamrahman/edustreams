@@ -1,4 +1,6 @@
 import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug } from './dsaSheetsData';
+import { BLIND_75_SHEET_DATA } from './blind75SheetData';
+import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 
 export interface DailyActivityItem {
@@ -135,74 +137,185 @@ export function recordRealActivity(
 }
 
 /**
- * Marks any DSA problem as solved across all sheets and updates analytics in real time.
+ * Checks if a problem slug or name is marked as solved across all local sheets.
  */
-export function markProblemSolved(identifier: string | number, timeMins: number = 5): boolean {
+export function isProblemSlugSolved(slugOrName?: string): boolean {
+  if (!slugOrName || typeof window === 'undefined') return false;
+  const clean = String(slugOrName).toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!clean) return false;
+  try {
+    const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
+    const slugs: string[] = rawSlugs ? JSON.parse(rawSlugs) : [];
+    if (slugs.includes(clean)) return true;
+
+    const rawNames = localStorage.getItem('sdetube_solved_names');
+    const names: string[] = rawNames ? JSON.parse(rawNames) : [];
+    if (names.includes(clean)) return true;
+  } catch {}
+  return false;
+}
+
+/**
+ * Checks if today's Problem of the Day (Curated or Global LeetCode) has been solved.
+ */
+export function isPotdSolvedToday(): boolean {
+  if (typeof window === 'undefined') return false;
+  const today = new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem(`sdetube_potd_solved_${today}`) === 'true') return true;
+  if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
+  if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
+
+  // Check today's SDE POTD seed
+  try {
+    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
+    const sdePotd = SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    if (sdePotd) {
+      const sdeSaved = localStorage.getItem('sdetube_dsa_sheet_solved_sde') || localStorage.getItem('sdetube_sde_sheet_solved_ids');
+      const list: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
+      if (list.includes(sdePotd.id)) return true;
+      if (isProblemSlugSolved(sdePotd.slug || sdePotd.name)) return true;
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Marks any DSA problem as solved across all sheets, auto-ticks POTD if applicable,
+ * and updates analytics and activity heatmaps in real time.
+ */
+export function markProblemSolved(identifier: string | number, timeMins: number = 5, problemSlug?: string): boolean {
   if (typeof window === 'undefined') return false;
 
-  let matchedId: number | null = null;
   const strId = String(identifier).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanSlug = problemSlug ? String(problemSlug).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
-  if (typeof identifier === 'number' && identifier > 0) {
-    matchedId = identifier;
-  } else {
-    // Search across all sheets to match problem by title or slug
-    const allProblems = [...SDE_SHEET_191_DATA, ...A2Z_DSA_SHEET_473_DATA, ...SDETUBE_79_SHEET_DATA];
-    const match = allProblems.find(p => {
-      const pName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const pSlug = (p.slug || getLeetCodeSlug(p)).toLowerCase().replace(/[^a-z0-9]/g, '');
-      return pName === strId || pSlug === strId || pName.includes(strId) || strId.includes(pName);
-    });
-    if (match) {
-      matchedId = match.id;
-    }
-  }
+  // 1. Search across ALL 5 DSA Sheets (SDE, A2Z, Striver 79, Blind 75, CodeStoryWithMIK)
+  const allProblems = [
+    ...SDE_SHEET_191_DATA,
+    ...A2Z_DSA_SHEET_473_DATA,
+    ...SDETUBE_79_SHEET_DATA,
+    ...BLIND_75_SHEET_DATA,
+    ...CODESTORYWITHMIK_SHEET_DATA
+  ];
 
-  if (matchedId !== null) {
-    // 1. Update all sheet solved storage keys
-    const sheetKeys = [
-      'sdetube_sde_sheet_solved_ids',
-      'sdetube_dsa_solved_sde',
-      'sdetube_dsa_solved_a2z',
-      'sdetube_dsa_solved_79',
-      'sdestream_solved_problems'
-    ];
+  const matchedProblems = allProblems.filter(p => {
+    const pName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pSlug = (p.slug || getLeetCodeSlug(p)).toLowerCase().replace(/[^a-z0-9]/g, '');
+    return (
+      (typeof identifier === 'number' && p.id === identifier) ||
+      pName === strId ||
+      pSlug === strId ||
+      (cleanSlug && pSlug === cleanSlug) ||
+      (strId && pName.includes(strId)) ||
+      (strId && strId.includes(pName))
+    );
+  });
 
-    sheetKeys.forEach(k => {
-      try {
-        const raw = localStorage.getItem(k);
-        const set = new Set<number>(raw ? JSON.parse(raw) : []);
-        set.add(matchedId!);
-        localStorage.setItem(k, JSON.stringify(Array.from(set)));
-      } catch {}
-    });
+  const matchedId = matchedProblems.length > 0 ? matchedProblems[0].id : (typeof identifier === 'number' && identifier > 0 ? identifier : null);
 
-    // 2. Record real analytics activity
-    recordRealActivity('coding', timeMins, 1, true);
+  // 2. Update all sheet solved storage keys (both per-sheet and legacy keys)
+  const sheetKeys = [
+    'sdetube_sde_sheet_solved_ids',
+    'sdetube_dsa_solved_sde',
+    'sdetube_dsa_solved_a2z',
+    'sdetube_dsa_solved_79',
+    'sdetube_dsa_sheet_solved_sde',
+    'sdetube_dsa_sheet_solved_a2z',
+    'sdetube_dsa_sheet_solved_79',
+    'sdetube_dsa_sheet_solved_blind75',
+    'sdetube_dsa_sheet_solved_mik',
+    'sdetube_dsa_sheet_solved_codestorywithmik',
+    'sdestream_solved_problems'
+  ];
 
+  // Specific sheet type mapping for each matched problem
+  matchedProblems.forEach(p => {
+    const specificKey = `sdetube_dsa_sheet_solved_${p.sheetType}`;
+    if (!sheetKeys.includes(specificKey)) sheetKeys.push(specificKey);
+  });
+
+  sheetKeys.forEach(k => {
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
-      const logs: Array<{ date: string; count: number; problems?: string[] }> = rawLogs ? JSON.parse(rawLogs) : [];
-      const existing = logs.find(l => l.date === today);
-      if (existing) {
-        existing.count = (existing.count || 0) + 1;
-        existing.problems = existing.problems || [];
-        if (!existing.problems.includes(String(identifier))) existing.problems.push(String(identifier));
-      } else {
-        logs.push({ date: today, count: 1, problems: [String(identifier)] });
-      }
-      localStorage.setItem('sdetube_practice_activity_logs', JSON.stringify(logs.slice(-365)));
-    } catch (_) {}
+      const raw = localStorage.getItem(k);
+      const set = new Set<number>(raw ? JSON.parse(raw) : []);
+      if (matchedId !== null) set.add(matchedId);
+      matchedProblems.forEach(p => set.add(p.id));
+      localStorage.setItem(k, JSON.stringify(Array.from(set)));
+    } catch {}
+  });
 
-    // 3. Dispatch global custom event for instant UI reaction across all components
-    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
-      detail: { problemId: matchedId, identifier }
-    }));
+  // 3. Persist solved slug and name for cross-sheet & cross-platform instant ticking
+  try {
+    const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
+    const slugs = new Set<string>(rawSlugs ? JSON.parse(rawSlugs) : []);
+    if (cleanSlug) slugs.add(cleanSlug);
+    if (strId) slugs.add(strId);
+    matchedProblems.forEach(p => {
+      if (p.slug) slugs.add(p.slug.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      slugs.add(p.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    });
+    localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(slugs)));
 
-    return true;
+    const rawNames = localStorage.getItem('sdetube_solved_names');
+    const names = new Set<string>(rawNames ? JSON.parse(rawNames) : []);
+    if (strId) names.add(strId);
+    if (cleanSlug) names.add(cleanSlug);
+    matchedProblems.forEach(p => names.add(p.name.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    localStorage.setItem('sdetube_solved_names', JSON.stringify(Array.from(names)));
+  } catch {}
+
+  // 4. POTD Solved Detection: Auto-tick POTD if today's challenge is solved
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
+    const sdePotd = SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    const potdName = (sdePotd?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const potdSlug = (sdePotd?.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const isSdePotd = (
+      strId === potdName ||
+      strId === potdSlug ||
+      cleanSlug === potdSlug ||
+      (typeof identifier === 'number' && identifier === sdePotd?.id) ||
+      matchedProblems.some(p => p.id === sdePotd?.id || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === potdName)
+    );
+
+    const isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');
+
+    if (isSdePotd || isLcPotd || strId === 'potd') {
+      localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+      if (isSdePotd) localStorage.setItem(`sdetube_potd_sdetube_solved_${today}`, 'true');
+      if (isLcPotd) localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+      window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { date: today, problemId: matchedId } }));
+    }
+  } catch (err) {
+    console.warn('[POTD Auto-Check Notice]:', err);
   }
-  return false;
+
+  // 5. Record real analytics activity
+  recordRealActivity('coding', timeMins, 1, true);
+
+  try {
+    const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
+    const logs: Array<{ date: string; count: number; problems?: string[] }> = rawLogs ? JSON.parse(rawLogs) : [];
+    const existing = logs.find(l => l.date === today);
+    const probLabel = cleanSlug || String(identifier);
+    if (existing) {
+      existing.count = (existing.count || 0) + 1;
+      existing.problems = existing.problems || [];
+      if (!existing.problems.includes(probLabel)) existing.problems.push(probLabel);
+    } else {
+      logs.push({ date: today, count: 1, problems: [probLabel] });
+    }
+    localStorage.setItem('sdetube_practice_activity_logs', JSON.stringify(logs.slice(-365)));
+  } catch (_) {}
+
+  // 6. Dispatch global custom events for instant UI reaction across all components
+  window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
+    detail: { problemId: matchedId, identifier, slug: cleanSlug }
+  }));
+
+  return true;
 }
 
 /**

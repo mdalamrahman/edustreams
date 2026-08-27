@@ -2081,6 +2081,8 @@ class CorrectTestCasePayload(BaseModel):
     testCaseIndex: int
     correctedInput: str
     correctedExpectedOutput: Optional[str] = ""
+    email: Optional[str] = "student@edustream.io"
+    problemTitle: Optional[str] = ""
 
 
 @app.post("/api/problem/{slug}/verify-testcase")
@@ -2199,6 +2201,7 @@ Respond ONLY with a valid JSON object matching this schema without markdown code
 async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCasePayload):
     """
     Applies the AI-verified testcase correction to the problem definition in Cloudflare R2 and memory cache.
+    Auto-credits ₹1.00 Bug Bounty Reward to the user's wallet.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
@@ -2238,7 +2241,36 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
     _PROBLEM_CACHE[clean_slug] = problem
     r2_storage.upload_problem(clean_slug, problem)
 
-    return {"success": True, "slug": clean_slug, "testCases": problem.get("testCases"), "expectedOutputs": problem.get("expectedOutputs")}
+    # Auto-credit ₹1.00 bounty to user's wallet if email provided
+    credited = False
+    new_balance = None
+    if payload.email:
+        try:
+            prob_title = payload.problemTitle or problem.get("name") or clean_slug
+            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and resolving testcase issue in {prob_title}"
+            credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
+            credited = credit_res.get("success", False)
+            new_balance = credit_res.get("newBalance")
+        except Exception as e:
+            print(f"[Credit Bounty Error]: {e}")
+
+    message = (
+        "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue."
+        if credited
+        else "Your reported issue was found correct! It has been resolved. Please resubmit to resolve the issue."
+    )
+
+    return {
+        "success": True,
+        "slug": clean_slug,
+        "issueFound": True,
+        "credited": credited,
+        "creditedAmount": 1.0 if credited else 0.0,
+        "newBalance": new_balance,
+        "message": message,
+        "testCases": problem.get("testCases"),
+        "expectedOutputs": problem.get("expectedOutputs")
+    }
 
 
 
@@ -4739,6 +4771,50 @@ async def get_wallet_endpoint(email: str = "student@edustream.io"):
     """Fetches or initializes the persistent user wallet from database."""
     wallet = get_or_create_wallet_db(email)
     return {"status": "ok", "wallet": wallet}
+
+
+class CreditCreditsPayload(BaseModel):
+    email: str = "student@edustream.io"
+    amount: float = 1.0
+    category: str = "BUG_BOUNTY"
+    description: str = "🎉 Verified Issue Report Bounty"
+
+
+def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "🎉 Verified Issue Report Bounty") -> dict:
+    """Atomically credits funds to user wallet in SQLite database and syncs to Cloudflare R2."""
+    import sqlite3
+    clean_email = (email or "student@edustream.io").lower().strip()
+    wallet = get_or_create_wallet_db(clean_email)
+    new_balance = round(wallet["balance"] + amount, 4)
+    tx_id = f"tx-bounty-{int(time.time()*1000)}-{random.randint(100, 999)}"
+    
+    conn = sqlite3.connect(SQLITE_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE user_wallets 
+        SET balance = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE user_email = ?
+    """, (new_balance, wallet["userEmail"]))
+    
+    cursor.execute("""
+        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (tx_id, wallet["userId"], wallet["userEmail"], amount, "CREDIT", category, description, new_balance))
+    
+    conn.commit()
+    conn.close()
+    
+    wallet["balance"] = new_balance
+    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+    save_wallet_to_cloud(wallet)
+    return {"success": True, "newBalance": new_balance, "wallet": wallet, "txId": tx_id}
+
+
+@app.post("/api/billing/credit")
+async def credit_credits_endpoint(payload: CreditCreditsPayload):
+    """Atomically credits funds to user wallet in database and records transaction."""
+    res = credit_user_wallet_db(payload.email, payload.amount, payload.category, payload.description)
+    return res
 
 
 @app.post("/api/billing/deduct")

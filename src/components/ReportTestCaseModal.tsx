@@ -12,13 +12,17 @@ import {
   MessageSquare,
   Wand2,
   Code2,
-  Check
+  Check,
+  Coins,
+  Play
 } from 'lucide-react';
 import {
   verifyAndCorrectTestCaseAI,
   TestCaseVerificationResult
 } from '../lib/mistral';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { creditUserReward } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
 
 interface ReportTestCaseModalProps {
   isOpen: boolean;
@@ -32,7 +36,9 @@ interface ReportTestCaseModalProps {
   currentExpectedOutput?: string;
   userActualOutput?: string;
   language?: string;
+  userEmail?: string;
   onApplyCorrection: (correctedInput: string, correctedExpectedOutput: string) => void;
+  onResubmit?: () => void;
 }
 
 export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
@@ -47,18 +53,26 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   currentExpectedOutput,
   userActualOutput,
   language,
-  onApplyCorrection
+  userEmail,
+  onApplyCorrection,
+  onResubmit
 }) => {
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [aiResult, setAiResult] = useState<TestCaseVerificationResult | null>(null);
-  const [appliedSuccess, setAppliedSuccess] = useState(false);
+  const [resolvedStatus, setResolvedStatus] = useState<{
+    autoResolved: boolean;
+    credited: boolean;
+    creditedAmount: number;
+    newBalance: number | null;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setAiResult(null);
       setUserNote('');
-      setAppliedSuccess(false);
+      setResolvedStatus(null);
     }
   }, [isOpen, testCaseIndex, currentInput]);
 
@@ -67,6 +81,8 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   const handleRunVerification = async () => {
     setIsVerifying(true);
     setAiResult(null);
+    setResolvedStatus(null);
+
     try {
       const result = await verifyAndCorrectTestCaseAI({
         slug: problemSlug,
@@ -79,7 +95,70 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
         userNote: userNote.trim(),
         language: language || 'cpp'
       });
+
       setAiResult(result);
+
+      // If an issue was detected, automatically auto-resolve on backend & credit ₹1 to user
+      if (result.isIncorrect) {
+        let finalInput = (result.correctedInput || currentInput || '').trim();
+        const finalExpected = (result.correctedExpectedOutput || currentExpectedOutput || '').trim();
+
+        // Deterministic fallback: If input lacks '=', auto-prefix parameter name
+        if (!finalInput.includes('=')) {
+          let pName = 'grid';
+          const m = (methodSignature || '').match(/(?:int|void|bool|vector<[^>]+>|string|double|List<[^>]+>)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(?:self\s*,\s*)?(?:const\s+)?[a-zA-Z0-9_<>,:\[\]\s\*&]+?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/);
+          if (m && m[2]) {
+            pName = m[2];
+          } else {
+            const simpleMatch = (methodSignature || '').match(/\(\s*(?:self\s*,\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[:\)]/);
+            if (simpleMatch && simpleMatch[1]) pName = simpleMatch[1];
+          }
+          finalInput = `${pName} = ${finalInput}`;
+        }
+
+        const student = getCurrentStudent();
+        const activeEmail = userEmail || student?.email || 'student@edustream.io';
+
+        // 1. Credit ₹1.00 bounty reward locally
+        const bountyDesc = `🎉 Bug Bounty: ₹1.00 credited for finding and auto-resolving testcase issue in ${problemTitle}`;
+        const localCredit = creditUserReward(1.00, bountyDesc, activeEmail);
+
+        // 2. Call backend to auto-resolve problem in R2 + memory cache and record credit in DB
+        let backendMessage = "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue.";
+        let backendBalance = localCredit.newBalance;
+
+        try {
+          const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              testCaseIndex,
+              correctedInput: finalInput,
+              correctedExpectedOutput: finalExpected,
+              email: activeEmail,
+              problemTitle
+            })
+          });
+          if (resp.ok) {
+            const resData = await resp.json();
+            if (resData.message) backendMessage = resData.message;
+            if (typeof resData.newBalance === 'number') backendBalance = resData.newBalance;
+          }
+        } catch (e) {
+          console.warn('[Auto-Resolve Backend Notice]:', e);
+        }
+
+        // 3. Apply correction in the workspace
+        onApplyCorrection(finalInput, finalExpected);
+
+        setResolvedStatus({
+          autoResolved: true,
+          credited: true,
+          creditedAmount: 1.00,
+          newBalance: backendBalance,
+          message: backendMessage
+        });
+      }
     } catch (e) {
       console.error('[Verify TestCase Error]:', e);
     } finally {
@@ -87,44 +166,11 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
     }
   };
 
-  const handleApply = async () => {
-    if (!aiResult) return;
-    let finalInput = (aiResult.correctedInput || currentInput || '').trim();
-    const finalExpected = (aiResult.correctedExpectedOutput || currentExpectedOutput || '').trim();
-
-    // Deterministic fallback: If input lacks '=', auto-prefix parameter name
-    if (!finalInput.includes('=')) {
-      let pName = 'grid';
-      const m = (methodSignature || '').match(/(?:int|void|bool|vector<[^>]+>|string|double|List<[^>]+>)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(?:self\s*,\s*)?(?:const\s+)?[a-zA-Z0-9_<>,:\[\]\s\*&]+?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/);
-      if (m && m[2]) {
-        pName = m[2];
-      } else {
-        const simpleMatch = (methodSignature || '').match(/\(\s*(?:self\s*,\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[:\)]/);
-        if (simpleMatch && simpleMatch[1]) pName = simpleMatch[1];
-      }
-      finalInput = `${pName} = ${finalInput}`;
+  const handleResubmit = () => {
+    onClose();
+    if (onResubmit) {
+      onResubmit();
     }
-
-    // 1. Sync to backend R2
-    try {
-      fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          testCaseIndex,
-          correctedInput: finalInput,
-          correctedExpectedOutput: finalExpected
-        })
-      }).catch(() => {});
-    } catch (_) {}
-
-    // 2. Apply in caller state & local overrides
-    onApplyCorrection(finalInput, finalExpected);
-    setAppliedSuccess(true);
-
-    setTimeout(() => {
-      onClose();
-    }, 1200);
   };
 
   return (
@@ -139,9 +185,13 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">AI Testcase Inspector & Repair</h3>
+                <h3 className="text-base font-bold text-white">AI Testcase Inspector & Auto-Resolver</h3>
                 <span className="px-2 py-0.5 rounded-full bg-indigo-950 border border-indigo-700/60 text-[10px] font-bold text-indigo-300 font-mono">
                   Mistral Large
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-700/60 text-[10px] font-bold text-emerald-300 font-mono flex items-center gap-1">
+                  <Coins className="w-3 h-3 text-emerald-400" />
+                  ₹1 Bounty
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -166,7 +216,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
             <div className="flex items-center justify-between text-xs font-bold text-slate-300">
               <span className="flex items-center gap-1.5">
                 <Code2 className="w-4 h-4 text-amber-400" />
-                <span>Selected Testcase Input (Case {testCaseIndex + 1})</span>
+                <span>Reported Testcase Input (Case {testCaseIndex + 1})</span>
               </span>
               <span className="text-[10px] text-slate-500 font-mono">Index {testCaseIndex}</span>
             </div>
@@ -198,13 +248,13 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
           <div className="space-y-2">
             <label className="block text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-              <span>What seems incorrect? (Optional description for AI)</span>
+              <span>Suspect this testcase or expected output is wrong? (Optional description for AI)</span>
             </label>
             <textarea
               rows={2}
               value={userNote}
               onChange={(e) => setUserNote(e.target.value)}
-              placeholder="e.g. Expected output true is wrong because matrix has 2 rows and target is not in bounds, or bracket is missing..."
+              placeholder="e.g. For nums=[1,1,1], duplicate subsets should be deduplicated to [[],[1],[1,1],[1,1,1]], or parameter prefix is missing..."
               className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:border-indigo-500 focus:outline-none transition-colors resize-none placeholder:text-slate-600"
             />
           </div>
@@ -214,17 +264,17 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
             <button
               onClick={handleRunVerification}
               disabled={isVerifying}
-              className="w-full py-3 px-5 rounded-2xl bg-gradient-to-r from-amber-600 via-indigo-600 to-purple-600 hover:from-amber-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-950/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-600 via-indigo-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-950/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 group"
             >
               {isVerifying ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Mistral Large AI is verifying problem constraints & computing true output...</span>
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+                  <span>Verifying algorithm constraints & auto-resolving testcase from backend...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Inspect & Verify Testcase with AI</span>
+                  <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 transition-transform" />
+                  <span>Verify & Auto-Resolve with AI (Earn ₹1 Bounty)</span>
                 </>
               )}
             </button>
@@ -234,28 +284,48 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
           {aiResult && (
             <div className="space-y-4 animate-fadeIn">
               
-              {/* Verdict Banner */}
-              <div
-                className={`p-4 rounded-2xl border flex items-start gap-3 shadow-lg ${
-                  aiResult.isIncorrect
-                    ? 'bg-rose-950/40 border-rose-500/60 text-rose-200'
-                    : 'bg-emerald-950/40 border-emerald-500/60 text-emerald-200'
-                }`}
-              >
-                {aiResult.isIncorrect ? (
-                  <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                )}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider">
-                    {aiResult.isIncorrect ? 'Discrepancy Detected in Testcase' : 'Testcase Verified Correct'}
-                  </h4>
-                  <p className="text-xs mt-0.5 text-slate-300">
-                    {aiResult.explanation}
-                  </p>
+              {/* Auto-Resolved / Verdict Banner */}
+              {aiResult.isIncorrect && resolvedStatus ? (
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/80 to-slate-900 border-2 border-emerald-500/80 text-emerald-100 shadow-xl shadow-emerald-950/50 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shadow-sm flex-shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-400 animate-pulse" />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-900/90 border border-emerald-500 text-emerald-300 font-mono text-[11px] font-bold flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          Auto-Resolved from Backend
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-950/90 border border-amber-500 text-amber-300 font-mono text-[11px] font-bold flex items-center gap-1">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          +₹1.00 Credited to Balance
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-emerald-100 leading-snug">
+                        {resolvedStatus.message}
+                      </p>
+                      {resolvedStatus.newBalance !== null && (
+                        <p className="text-xs text-emerald-300/90 font-mono pt-1">
+                          New Wallet Balance: <strong className="text-white font-bold">₹{resolvedStatus.newBalance.toFixed(2)}</strong>
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 rounded-2xl border flex items-start gap-3 shadow-lg bg-emerald-950/40 border-emerald-500/60 text-emerald-200">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                      Testcase Verified Correct
+                    </h4>
+                    <p className="text-xs mt-0.5 text-slate-300">
+                      {aiResult.explanation}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Step-by-Step AI Trace */}
               <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
@@ -286,7 +356,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                   <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/40 space-y-1.5">
                     <span className="text-[10px] font-bold text-emerald-400 uppercase flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>AI Corrected Testcase</span>
+                      <span>Auto-Fixed Testcase (Cloudflare R2 Synced)</span>
                     </span>
                     <div className="p-2.5 rounded-xl bg-slate-900/90 font-mono text-[11px] text-emerald-200 space-y-1 border border-emerald-500/20">
                       <p><strong className="text-emerald-400">Input:</strong> {aiResult.correctedInput}</p>
@@ -300,21 +370,11 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
               <div className="flex items-center gap-3 pt-2">
                 {aiResult.isIncorrect ? (
                   <button
-                    onClick={handleApply}
-                    disabled={appliedSuccess}
-                    className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                    onClick={handleResubmit}
+                    className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 cursor-pointer group"
                   >
-                    {appliedSuccess ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Applied & Synced to Cloudflare R2!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Apply AI Correction to Workspace & Sync</span>
-                      </>
-                    )}
+                    <Play className="w-4 h-4 fill-white text-white group-hover:scale-110 transition-transform" />
+                    <span>Resubmit Solution Now 🚀</span>
                   </button>
                 ) : (
                   <button

@@ -44,6 +44,7 @@ import {
 } from '../lib/dsaSheetsData';
 import { ProblemNotesModal } from './ProblemNotesModal';
 import { getLocalProblemNote } from '../lib/notesService';
+import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
 import { Video } from '../lib/types';
 
 interface SDESheetExplorerProps {
@@ -180,7 +181,11 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
     syncSolved();
     window.addEventListener('sdetube_problem_solved', syncSolved);
-    return () => window.removeEventListener('sdetube_problem_solved', syncSolved);
+    window.addEventListener('sdetube_potd_solved', syncSolved);
+    return () => {
+      window.removeEventListener('sdetube_problem_solved', syncSolved);
+      window.removeEventListener('sdetube_potd_solved', syncSolved);
+    };
   }, [activeSheet]);
 
   // Save solved state on change
@@ -256,22 +261,49 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     return selected;
   }, []);
 
-  // Solved status for SDE POTD (checks SDE solved list)
+  // Solved status for SDE POTD (checks SDE solved list + POTD today key)
   const isPotdSolved = useMemo(() => {
+    if (!potdProblem) return false;
+    if (isPotdSolvedToday()) return true;
     try {
       const sdeSaved = localStorage.getItem(`${STORAGE_SOLVED_PREFIX}sde`) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
       const sdeSolvedList: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
-      return sdeSolvedList.includes(potdProblem.id);
+      if (sdeSolvedList.includes(potdProblem.id)) return true;
+      return isProblemSlugSolved(potdProblem.slug || potdProblem.name);
     } catch {
       return false;
     }
   }, [potdProblem, solvedIds]);
 
-  const toggleSolved = (id: number, e?: React.MouseEvent) => {
+  const isProblemSolved = (p: DSAProblem) => {
+    return solvedIds.includes(p.id) || isProblemSlugSolved(p.slug || p.name);
+  };
+
+  const toggleSolved = (problem: DSAProblem | number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    const id = typeof problem === 'number' ? problem : problem.id;
+    const targetProb = typeof problem === 'object' ? problem : currentSheetProblems.find(p => p.id === id);
+    const isCurrentlySolved = targetProb ? isProblemSolved(targetProb) : solvedIds.includes(id);
+
     setSolvedIds((prev) => 
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      isCurrentlySolved ? prev.filter((item) => item !== id) : [...prev, id]
     );
+
+    if (targetProb) {
+      try {
+        const cleanSlug = (targetProb.slug || targetProb.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+        const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
+        const slugs = new Set<string>(rawSlugs ? JSON.parse(rawSlugs) : []);
+        if (isCurrentlySolved) {
+          slugs.delete(cleanSlug);
+        } else {
+          slugs.add(cleanSlug);
+        }
+        localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(slugs)));
+      } catch {}
+    }
+
+    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', { detail: { problemId: id } }));
   };
 
   const toggleRevision = (problem: DSAProblem, e?: React.MouseEvent) => {
@@ -355,7 +387,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       const matchesDifficulty = 
         selectedDifficulty === 'ALL' || p.difficulty === selectedDifficulty;
 
-      const isSolved = solvedIds.includes(p.id);
+      const isSolved = isProblemSolved(p);
       const isStarred = isProblemStarred(p);
 
       let matchesStatus = true;
@@ -399,7 +431,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         if (probs.length > 0) {
           subList.push({ subcategory: sub, problems: probs });
           catTotal += probs.length;
-          catSolved += probs.filter((item) => solvedIds.includes(item.id)).length;
+          catSolved += probs.filter((item) => isProblemSolved(item)).length;
         }
       });
 
@@ -418,21 +450,21 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   // Statistics calculation for the active sheet
   const totalCount = currentSheetProblems.length;
-  const solvedCount = solvedIds.filter((id) => currentSheetProblems.some((p) => p.id === id)).length;
+  const solvedCount = currentSheetProblems.filter((p) => isProblemSolved(p)).length;
   const solvedPercent = totalCount > 0 ? Math.round((solvedCount / totalCount) * 100) : 0;
   const mustDoCount = currentSheetProblems.filter((p) => p.rating.includes('Must Do')).length;
-  const mustDoSolved = currentSheetProblems.filter((p) => p.rating.includes('Must Do') && solvedIds.includes(p.id)).length;
+  const mustDoSolved = currentSheetProblems.filter((p) => p.rating.includes('Must Do') && isProblemSolved(p)).length;
 
   const currentSheetRevisionCount = currentSheetProblems.filter((p) => isProblemStarred(p)).length;
 
   const easyTotal = currentSheetProblems.filter((p) => p.difficulty === 'Easy').length;
-  const easySolved = currentSheetProblems.filter((p) => p.difficulty === 'Easy' && solvedIds.includes(p.id)).length;
+  const easySolved = currentSheetProblems.filter((p) => p.difficulty === 'Easy' && isProblemSolved(p)).length;
 
   const mediumTotal = currentSheetProblems.filter((p) => p.difficulty === 'Medium').length;
-  const mediumSolved = currentSheetProblems.filter((p) => p.difficulty === 'Medium' && solvedIds.includes(p.id)).length;
+  const mediumSolved = currentSheetProblems.filter((p) => p.difficulty === 'Medium' && isProblemSolved(p)).length;
 
   const hardTotal = currentSheetProblems.filter((p) => p.difficulty === 'Hard').length;
-  const hardSolved = currentSheetProblems.filter((p) => p.difficulty === 'Hard' && solvedIds.includes(p.id)).length;
+  const hardSolved = currentSheetProblems.filter((p) => p.difficulty === 'Hard' && isProblemSolved(p)).length;
 
   const resetAllFilters = () => {
     setSearchQuery('');
@@ -1120,7 +1152,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                   {isExpanded && (
                     <div className="p-4 sm:p-6 border-t border-slate-800/80 space-y-6 bg-slate-950/40">
                       {stepGroup.subcategories.map((sub) => {
-                        const subSolvedCount = sub.problems.filter((p) => solvedIds.includes(p.id)).length;
+                        const subSolvedCount = sub.problems.filter((p) => isProblemSolved(p)).length;
                         return (
                           <div key={sub.subcategory} className="space-y-3">
                             
@@ -1155,7 +1187,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/40 text-xs">
                                   {sub.problems.map((p) => {
-                                    const isSolved = solvedIds.includes(p.id);
+                                    const isSolved = isProblemSolved(p);
                                     const isMustDo = p.rating.includes('Must Do');
                                     const isStarred = isProblemStarred(p);
                                     const existingNote = getLocalProblemNote(p.slug || p.name);
@@ -1180,7 +1212,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                         <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                                           <button
                                             type="button"
-                                            onClick={(e) => toggleSolved(p.id, e)}
+                                            onClick={(e) => toggleSolved(p, e)}
                                             className={`w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer border ${
                                               isSolved
                                                 ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
@@ -1416,7 +1448,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                   </tr>
                 ) : (
                   filteredProblems.map((p) => {
-                    const isSolved = solvedIds.includes(p.id);
+                    const isSolved = isProblemSolved(p);
                     const isMustDo = Boolean(p.rating && p.rating.includes('Must Do'));
                     const isStarred = isProblemStarred(p);
                     const existingNote = getLocalProblemNote(p.slug || p.name);
@@ -1440,7 +1472,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                         <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
-                            onClick={(e) => toggleSolved(p.id, e)}
+                            onClick={(e) => toggleSolved(p, e)}
                             className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
                               isSolved
                                 ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm shadow-emerald-500/20'
@@ -1457,7 +1489,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                           <button
                             type="button"
                             onClick={(e) => toggleRevision(p, e)}
-                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                            className={`p-1 rounded-lg transition-all cursor-pointer ${
                               isStarred 
                                 ? 'text-amber-400 bg-amber-500/10 border border-amber-500/30' 
                                 : 'text-slate-600 hover:text-slate-300 hover:bg-slate-800'
