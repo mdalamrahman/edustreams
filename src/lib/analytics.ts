@@ -338,35 +338,65 @@ export function markLLDProblemSolved(problemId: string) {
 /**
  * Computes strictly 100% REAL user analytics data across DSA + LLD + Bonus (CN & DBMS).
  */
-export function getRealAnalytics(): RealAnalyticsMetrics {
-  // 1. DSA Solved across all storage keys
-  let dsaSolvedIds: number[] = [];
-  try {
-    const keys = [
-      STORAGE_SOLVED_IDS_KEY,
-      'sdetube_dsa_solved_sde',
-      'sdetube_dsa_solved_a2z',
-      'sdetube_dsa_solved_79',
-      'sdestream_solved_problems'
-    ];
-    const set = new Set<number>();
-    keys.forEach(k => {
-      try {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          const list = JSON.parse(raw);
-          if (Array.isArray(list)) {
-            list.forEach(id => typeof id === 'number' && set.add(id));
-          }
-        }
-      } catch {}
-    });
-    dsaSolvedIds = Array.from(set);
-  } catch {
-    dsaSolvedIds = [];
+export function getAllPlatformUniqueProblems(): any[] {
+  const map = new Map<string, any>();
+  const allSheets = [
+    ...SDE_SHEET_DATA,
+    ...SDE_SHEET_191_DATA,
+    ...A2Z_DSA_SHEET_473_DATA,
+    ...SDETUBE_79_SHEET_DATA,
+    ...BLIND_75_SHEET_DATA,
+    ...CODESTORYWITHMIK_SHEET_DATA
+  ];
+  for (const prob of (allSheets as any[])) {
+    const nameOrTitle = prob.name || prob.title || '';
+    const rawSlug = getLeetCodeSlug(nameOrTitle || prob.leetcode || '') || nameOrTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const cleanSlug = rawSlug.trim();
+    if (cleanSlug && !map.has(cleanSlug)) {
+      map.set(cleanSlug, prob);
+    }
   }
-  const dsaSolved = dsaSolvedIds.length;
-  const dsaTotal = SDE_SHEET_DATA.length;
+  return Array.from(map.values());
+}
+
+/**
+ * Computes strictly 100% REAL user analytics data across DSA + LLD + Bonus (CN & DBMS).
+ */
+export function getRealAnalytics(): RealAnalyticsMetrics {
+  // 1. DSA Solved across all sheets and unique slugs
+  const allUniqueProblems = getAllPlatformUniqueProblems();
+  const dsaTotal = Math.max(allUniqueProblems.length, 1);
+
+  let dsaSolved = 0;
+  let easyTotal = 0, easySolved = 0;
+  let medTotal = 0, medSolved = 0;
+  let hardTotal = 0, hardSolved = 0;
+
+  const catMap = new Map<string, { total: number; solved: number }>();
+
+  for (const prob of allUniqueProblems) {
+    const isSolved = isProblemSlugSolved(prob.slug || prob.leetcode || prob.name || prob.title);
+    if (isSolved) dsaSolved++;
+
+    const diff = (prob.difficulty || 'Medium').toLowerCase();
+    if (diff === 'easy') {
+      easyTotal++;
+      if (isSolved) easySolved++;
+    } else if (diff === 'hard') {
+      hardTotal++;
+      if (isSolved) hardSolved++;
+    } else {
+      medTotal++;
+      if (isSolved) medSolved++;
+    }
+
+    const cat = prob.category || 'Algorithms';
+    const cEntry = catMap.get(cat) || { total: 0, solved: 0 };
+    cEntry.total++;
+    if (isSolved) cEntry.solved++;
+    catMap.set(cat, cEntry);
+  }
+
   const dsaPct = dsaTotal > 0 ? Math.round((dsaSolved / dsaTotal) * 100) : 0;
 
   // 2. LLD Solved
@@ -414,34 +444,6 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     const raw = localStorage.getItem(STORAGE_TIME_BREAKDOWN_KEY);
     if (raw) timeBreakdown = JSON.parse(raw);
   } catch {}
-
-  // 6. Difficulty Stats
-  const solvedSet = new Set(dsaSolvedIds);
-  let easyTotal = 0, easySolved = 0;
-  let medTotal = 0, medSolved = 0;
-  let hardTotal = 0, hardSolved = 0;
-
-  const catMap = new Map<string, { total: number; solved: number }>();
-
-  for (const prob of SDE_SHEET_DATA) {
-    const isSolved = solvedSet.has(prob.id);
-    if (prob.difficulty === 'Easy') {
-      easyTotal++;
-      if (isSolved) easySolved++;
-    } else if (prob.difficulty === 'Medium') {
-      medTotal++;
-      if (isSolved) medSolved++;
-    } else if (prob.difficulty === 'Hard') {
-      hardTotal++;
-      if (isSolved) hardSolved++;
-    }
-
-    const cat = prob.category || 'Algorithms';
-    const cEntry = catMap.get(cat) || { total: 0, solved: 0 };
-    cEntry.total++;
-    if (isSolved) cEntry.solved++;
-    catMap.set(cat, cEntry);
-  }
 
   // Include LLD in category map
   catMap.set('System Design & LLD', { total: lldTotal, solved: lldSolved });

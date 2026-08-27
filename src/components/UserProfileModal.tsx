@@ -29,10 +29,14 @@ import {
 import {
   LeetCodeFullProfileData,
   GitHubProfileData,
+  GFGProfileData,
+  CodeforcesProfileData,
   getLinkedProfiles,
   saveLinkedProfiles,
   fetchLeetCodeFullProfile,
   fetchGitHubProfile,
+  fetchGFGProfile,
+  fetchCodeforcesProfile,
   getRealSDETubeStats,
   getUserBadges,
   getUserTracksCertificates,
@@ -56,13 +60,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onOpenWallet
 }) => {
   // Default tab is SDETube alone as requested
-  const [activeTab, setActiveTab] = useState<'sdetube' | 'leetcode' | 'github' | 'combined' | 'settings'>('sdetube');
+  const [activeTab, setActiveTab] = useState<'sdetube' | 'leetcode' | 'gfg' | 'codeforces' | 'github' | 'combined' | 'settings'>('sdetube');
   const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(user?.email));
   const [leetcodeData, setLeetcodeData] = useState<LeetCodeFullProfileData | null>(null);
+  const [gfgData, setGfgData] = useState<GFGProfileData | null>(null);
+  const [codeforcesData, setCodeforcesData] = useState<CodeforcesProfileData | null>(null);
   const [githubData, setGithubData] = useState<GitHubProfileData | null>(null);
+
   const [isLoadingLC, setIsLoadingLC] = useState<boolean>(false);
+  const [isLoadingGFG, setIsLoadingGFG] = useState<boolean>(false);
+  const [isLoadingCF, setIsLoadingCF] = useState<boolean>(false);
   const [isLoadingGH, setIsLoadingGH] = useState<boolean>(false);
+
   const [lcError, setLcError] = useState<string | null>(null);
+  const [gfgError, setGfgError] = useState<string | null>(null);
+  const [cfError, setCfError] = useState<string | null>(null);
   const [ghError, setGhError] = useState<string | null>(null);
 
   // Real SDETube Platform Stats (Scanned from real submissions & practice logs)
@@ -75,6 +87,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   // Settings Form
   const [lcInput, setLcInput] = useState(linkedConfig.leetcodeUsername || '');
+  const [gfgInput, setGfgInput] = useState(linkedConfig.gfgUsername || '');
+  const [cfInput, setCfInput] = useState(linkedConfig.codeforcesHandle || '');
   const [ghInput, setGhInput] = useState(linkedConfig.githubUsername || '');
   const [bioInput, setBioInput] = useState(linkedConfig.bio || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -111,6 +125,50 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  // Load GFG profile
+  const loadGFG = async (uname: string) => {
+    if (!uname.trim()) {
+      setGfgData(null);
+      return;
+    }
+    setIsLoadingGFG(true);
+    setGfgError(null);
+    try {
+      const data = await fetchGFGProfile(uname);
+      if (data && (data.status === 'Success' || data.total_problems_solved !== undefined)) {
+        setGfgData(data);
+      } else {
+        setGfgError(`Could not find GeeksforGeeks profile for @${uname}`);
+      }
+    } catch (e: any) {
+      setGfgError(e?.message || 'Failed to fetch GeeksforGeeks profile');
+    } finally {
+      setIsLoadingGFG(false);
+    }
+  };
+
+  // Load Codeforces profile
+  const loadCodeforces = async (handle: string) => {
+    if (!handle.trim()) {
+      setCodeforcesData(null);
+      return;
+    }
+    setIsLoadingCF(true);
+    setCfError(null);
+    try {
+      const data = await fetchCodeforcesProfile(handle);
+      if (data && (data.status === 'Success' || data.handle)) {
+        setCodeforcesData(data);
+      } else {
+        setCfError(`Could not find Codeforces profile for @${handle}`);
+      }
+    } catch (e: any) {
+      setCfError(e?.message || 'Failed to fetch Codeforces profile');
+    } finally {
+      setIsLoadingCF(false);
+    }
+  };
+
   // Load GitHub profile
   const loadGithub = async (uname: string) => {
     if (!uname.trim()) {
@@ -138,10 +196,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       const cfg = getLinkedProfiles(user?.email);
       setLinkedConfig(cfg);
       setLcInput(cfg.leetcodeUsername || '');
+      setGfgInput(cfg.gfgUsername || '');
+      setCfInput(cfg.codeforcesHandle || '');
       setGhInput(cfg.githubUsername || '');
       setBioInput(cfg.bio || '');
 
       if (cfg.leetcodeUsername) loadLeetcode(cfg.leetcodeUsername);
+      if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
+      if (cfg.codeforcesHandle) loadCodeforces(cfg.codeforcesHandle);
       if (cfg.githubUsername) loadGithub(cfg.githubUsername);
     }
   }, [isOpen, user?.email]);
@@ -150,6 +212,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     e.preventDefault();
     const updated: LinkedProfilesConfig = {
       leetcodeUsername: lcInput.trim(),
+      gfgUsername: gfgInput.trim(),
+      codeforcesHandle: cfInput.trim(),
       githubUsername: ghInput.trim(),
       bio: bioInput.trim()
     };
@@ -159,6 +223,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setTimeout(() => setSavedSuccess(false), 3000);
 
     if (updated.leetcodeUsername) loadLeetcode(updated.leetcodeUsername);
+    if (updated.gfgUsername) loadGFG(updated.gfgUsername);
+    if (updated.codeforcesHandle) loadCodeforces(updated.codeforcesHandle);
     if (updated.githubUsername) loadGithub(updated.githubUsername);
   };
 
@@ -308,6 +374,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('gfg')}
+            className={`px-4 sm:px-5 py-2.5 rounded-t-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 whitespace-nowrap ${
+              activeTab === 'gfg'
+                ? 'bg-slate-900 text-emerald-300 border-emerald-500 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 border-transparent'
+            }`}
+          >
+            <Award className="w-4 h-4 text-emerald-400" />
+            <span>GeeksforGeeks</span>
+            {linkedConfig.gfgUsername && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('codeforces')}
+            className={`px-4 sm:px-5 py-2.5 rounded-t-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 whitespace-nowrap ${
+              activeTab === 'codeforces'
+                ? 'bg-slate-900 text-sky-300 border-sky-500 shadow-md'
+                : 'text-slate-400 hover:text-slate-200 border-transparent'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-sky-400" />
+            <span>Codeforces</span>
+            {linkedConfig.codeforcesHandle && (
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('github')}
             className={`px-4 sm:px-5 py-2.5 rounded-t-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 whitespace-nowrap ${
               activeTab === 'github'
@@ -326,11 +422,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('combined')}
             className={`px-4 sm:px-5 py-2.5 rounded-t-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 whitespace-nowrap ${
               activeTab === 'combined'
-                ? 'bg-slate-900 text-emerald-300 border-emerald-500 shadow-md'
+                ? 'bg-slate-900 text-indigo-300 border-indigo-500 shadow-md'
                 : 'text-slate-400 hover:text-slate-200 border-transparent'
             }`}
           >
-            <Globe className="w-4 h-4 text-emerald-400" />
+            <Globe className="w-4 h-4 text-indigo-400" />
             <span>Combined Overview</span>
           </button>
 
@@ -338,7 +434,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={() => setActiveTab('settings')}
             className={`px-4 sm:px-5 py-2.5 rounded-t-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border-b-2 whitespace-nowrap ml-auto ${
               activeTab === 'settings'
-                ? 'bg-slate-900 text-indigo-300 border-indigo-500 shadow-md'
+                ? 'bg-slate-900 text-purple-300 border-purple-500 shadow-md'
                 : 'text-slate-400 hover:text-slate-200 border-transparent'
             }`}
           >
@@ -915,7 +1011,295 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════
-              TAB 3: GITHUB LIVE PROFILE (ONLY GITHUB DATA)
+              TAB 3: GEEKSFORGEEKS SCRAPED PROFILE
+          ═══════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'gfg' && (
+            <div className="space-y-6 animate-fadeIn">
+              {!linkedConfig.gfgUsername ? (
+                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-950/60 border border-emerald-700/60 flex items-center justify-center text-emerald-400">
+                    <Award className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">No GeeksforGeeks Handle Linked</h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      Link your GeeksforGeeks username in the settings tab to view your coding scores, problems solved, streak, and institute rankings.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-900/30"
+                  >
+                    Link GFG Username
+                  </button>
+                </div>
+              ) : isLoadingGFG ? (
+                <div className="p-12 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 mx-auto text-emerald-400 animate-spin" />
+                  <p className="text-xs text-slate-400 font-mono">Fetching profile from GeeksforGeeks...</p>
+                </div>
+              ) : gfgError ? (
+                <div className="p-6 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-center space-y-3">
+                  <p className="text-sm font-bold text-rose-300">{gfgError}</p>
+                  <button
+                    onClick={() => loadGFG(linkedConfig.gfgUsername || '')}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 cursor-pointer"
+                  >
+                    Retry Fetch
+                  </button>
+                </div>
+              ) : gfgData ? (
+                <div className="space-y-6">
+                  {/* GFG Header Card */}
+                  <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      {gfgData.avatar ? (
+                        <img
+                          src={gfgData.avatar}
+                          alt="GFG Avatar"
+                          className="w-16 h-16 rounded-2xl object-cover border border-emerald-500/50 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-950 border border-emerald-600/50 flex items-center justify-center text-emerald-400 font-black text-xl">
+                          {(gfgData.name || gfgData.username || 'G').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-white">
+                            {gfgData.name || gfgData.username}
+                          </h3>
+                          <span className="text-xs text-emerald-400 font-mono">(@{gfgData.username})</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Institute Rank: <strong className="text-slate-200 font-mono">{gfgData.institute_rank && gfgData.institute_rank !== 'N/A' ? `#${gfgData.institute_rank}` : 'N/A'}</strong>
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Organization: {gfgData.organization || 'GeeksforGeeks'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <a
+                      href={`https://www.geeksforgeeks.org/user/${gfgData.username}/`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 rounded-2xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 transition-all"
+                    >
+                      <span>Open on GeeksforGeeks</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  {/* GFG Statistics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-emerald-400" />
+                        <span>Problems Solved</span>
+                      </p>
+                      <p className="text-2xl font-black text-white font-mono">{gfgData.total_problems_solved || 0}</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        <span>Coding Score</span>
+                      </p>
+                      <p className="text-2xl font-black text-amber-300 font-mono">{gfgData.coding_score || gfgData.overall_score || 0}</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Flame className="w-4 h-4 text-rose-400" />
+                        <span>POTD Streak</span>
+                      </p>
+                      <p className="text-2xl font-black text-rose-300 font-mono">{gfgData.streak || 0} <span className="text-xs text-slate-500">Days</span></p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <BarChart3 className="w-4 h-4 text-sky-400" />
+                        <span>Monthly Score</span>
+                      </p>
+                      <p className="text-2xl font-black text-sky-300 font-mono">{gfgData.monthly_score || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Difficulty Breakdown (if available) */}
+                  {gfgData.difficulty && (
+                    <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 space-y-4">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-emerald-400" />
+                        <span>GFG Difficulty Breakdown</span>
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30">
+                          <p className="text-[10px] font-bold text-emerald-400 uppercase">Easy</p>
+                          <p className="text-xl font-black text-white font-mono">{gfgData.difficulty.easy || 0}</p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-500/30">
+                          <p className="text-[10px] font-bold text-amber-400 uppercase">Medium</p>
+                          <p className="text-xl font-black text-white font-mono">{gfgData.difficulty.medium || 0}</p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/30">
+                          <p className="text-[10px] font-bold text-rose-400 uppercase">Hard</p>
+                          <p className="text-xl font-black text-white font-mono">{gfgData.difficulty.hard || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              TAB 4: CODEFORCES API PROFILE
+          ═══════════════════════════════════════════════════════════════════ */}
+          {activeTab === 'codeforces' && (
+            <div className="space-y-6 animate-fadeIn">
+              {!linkedConfig.codeforcesHandle ? (
+                <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-sky-950/60 border border-sky-700/60 flex items-center justify-center text-sky-400">
+                    <Zap className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">No Codeforces Handle Linked</h3>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      Link your Codeforces handle in the settings tab to view your official rating, rank titles, and accepted submissions.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('settings')}
+                    className="px-5 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-sky-900/30"
+                  >
+                    Link Codeforces Handle
+                  </button>
+                </div>
+              ) : isLoadingCF ? (
+                <div className="p-12 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 mx-auto text-sky-400 animate-spin" />
+                  <p className="text-xs text-slate-400 font-mono">Fetching profile from Codeforces API...</p>
+                </div>
+              ) : cfError ? (
+                <div className="p-6 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-center space-y-3">
+                  <p className="text-sm font-bold text-rose-300">{cfError}</p>
+                  <button
+                    onClick={() => loadCodeforces(linkedConfig.codeforcesHandle || '')}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 cursor-pointer"
+                  >
+                    Retry Fetch
+                  </button>
+                </div>
+              ) : codeforcesData ? (
+                <div className="space-y-6">
+                  {/* Codeforces Header Card */}
+                  <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      {codeforcesData.avatar ? (
+                        <img
+                          src={codeforcesData.avatar}
+                          alt="Codeforces Avatar"
+                          className="w-16 h-16 rounded-2xl object-cover border border-sky-500/50 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-sky-950 border border-sky-600/50 flex items-center justify-center text-sky-400 font-black text-xl">
+                          {(codeforcesData.handle || 'C').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-white">
+                            {codeforcesData.firstName ? `${codeforcesData.firstName} ${codeforcesData.lastName || ''}` : codeforcesData.handle}
+                          </h3>
+                          <span className="text-xs text-sky-400 font-mono">(@{codeforcesData.handle})</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5 capitalize">
+                          Rank: <strong className="text-sky-300 font-bold">{codeforcesData.rank || 'Unrated'}</strong> (Max: {codeforcesData.maxRank || 'Unrated'})
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {codeforcesData.organization || 'Competitive Programmer'} {codeforcesData.city ? `• ${codeforcesData.city}` : ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    <a
+                      href={`https://codeforces.com/profile/${codeforcesData.handle}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 rounded-2xl bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-sky-300 text-xs font-bold flex items-center gap-2 transition-all"
+                    >
+                      <span>Open on Codeforces</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  {/* Codeforces Statistics Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-sky-400" />
+                        <span>Current Rating</span>
+                      </p>
+                      <p className="text-2xl font-black text-white font-mono">{codeforcesData.rating || 0}</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Trophy className="w-4 h-4 text-amber-400" />
+                        <span>Max Rating</span>
+                      </p>
+                      <p className="text-2xl font-black text-amber-300 font-mono">{codeforcesData.maxRating || 0}</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Problems Solved</span>
+                      </p>
+                      <p className="text-2xl font-black text-emerald-300 font-mono">{codeforcesData.total_problems_solved || 0}</p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
+                      <p className="text-xs text-slate-400 font-bold flex items-center gap-1.5">
+                        <Flame className="w-4 h-4 text-purple-400" />
+                        <span>Contribution</span>
+                      </p>
+                      <p className="text-2xl font-black text-purple-300 font-mono">{codeforcesData.contribution || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Difficulty Breakdown */}
+                  {codeforcesData.difficulty_breakdown && (
+                    <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 space-y-4">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-sky-400" />
+                        <span>Rating Tier Difficulty Breakdown</span>
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30">
+                          <p className="text-[10px] font-bold text-emerald-400 uppercase">Div 3 / Easy (≤1200)</p>
+                          <p className="text-xl font-black text-white font-mono">{codeforcesData.difficulty_breakdown.easy || 0}</p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-500/30">
+                          <p className="text-[10px] font-bold text-amber-400 uppercase">Div 2 / Medium (1201-1700)</p>
+                          <p className="text-xl font-black text-white font-mono">{codeforcesData.difficulty_breakdown.medium || 0}</p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/30">
+                          <p className="text-[10px] font-bold text-rose-400 uppercase">Div 1 / Hard (&gt;1700)</p>
+                          <p className="text-xl font-black text-white font-mono">{codeforcesData.difficulty_breakdown.hard || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              TAB 5: GITHUB LIVE PROFILE (ONLY GITHUB DATA)
           ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'github' && (
             <div className="space-y-6 animate-fadeIn">
@@ -932,7 +1316,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </div>
                   <button
                     onClick={() => setActiveTab('settings')}
-                    className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all cursor-pointer shadow-lg shadow-indigo-900/30"
+                    className="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all cursor-pointer shadow-lg"
                   >
                     Link GitHub Username
                   </button>
@@ -940,13 +1324,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               ) : isLoadingGH ? (
                 <div className="p-12 text-center space-y-3">
                   <RefreshCw className="w-8 h-8 mx-auto text-cyan-400 animate-spin" />
-                  <p className="text-xs text-slate-400 font-mono">Fetching GitHub profile...</p>
+                  <p className="text-xs text-slate-400 font-mono">Fetching live profile from GitHub API...</p>
                 </div>
               ) : ghError ? (
                 <div className="p-6 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-center space-y-3">
                   <p className="text-sm font-bold text-rose-300">{ghError}</p>
                   <button
-                    onClick={() => loadGithub(linkedConfig.githubUsername)}
+                    onClick={() => loadGithub(linkedConfig.githubUsername || '')}
                     className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-slate-200 cursor-pointer"
                   >
                     Retry Fetch
@@ -954,6 +1338,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               ) : githubData ? (
                 <div className="space-y-6">
+                  {/* GitHub Bio Header */}
                   <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <img
@@ -963,10 +1348,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       />
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-white">{githubData.name || githubData.login}</h3>
+                          <h3 className="text-base font-bold text-white">
+                            {githubData.name || githubData.login}
+                          </h3>
                           <span className="text-xs text-cyan-400 font-mono">(@{githubData.login})</span>
                         </div>
-                        <p className="text-xs text-slate-300 mt-0.5">{githubData.bio || 'GitHub Contributor'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 max-w-md">
+                          {githubData.bio || 'Software Engineer on GitHub'}
+                        </p>
                         {githubData.location && (
                           <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-1">
                             <Globe className="w-3 h-3" />
@@ -1027,7 +1416,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════
-              TAB 4: COMBINED 360° DEVELOPER OVERVIEW (SDETUBE + LEETCODE + GITHUB)
+              TAB 6: COMBINED 360° DEVELOPER OVERVIEW (SDETUBE + LEETCODE + GFG + CODEFORCES + GITHUB)
           ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'combined' && (
             <div className="space-y-6 animate-fadeIn">
@@ -1037,10 +1426,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <Globe className="w-5 h-5 text-emerald-400" />
                     <span>Combined Engineering Portfolio</span>
                   </h3>
-                  <p className="text-xs text-slate-400">Unified multi-platform view across SDETube algorithmic tracks, LeetCode ratings, and GitHub contributions</p>
+                  <p className="text-xs text-slate-400">Unified multi-platform view across SDETube, LeetCode, GeeksforGeeks, Codeforces, and GitHub</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
                   {/* SDETube Column */}
                   <div className="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/30 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -1093,8 +1482,62 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                       <div className="flex justify-between text-xs">
                         <span className="text-slate-400">Total Solved:</span>
                         <span className="font-bold text-emerald-400 font-mono">
-                          {leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || 'N/A'}
+                          {leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || 0}
                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* GeeksforGeeks Column */}
+                  <div className="p-4 rounded-2xl bg-slate-900/80 border border-emerald-500/30 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-emerald-400" />
+                        <span>GeeksforGeeks</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {linkedConfig.gfgUsername ? `@${linkedConfig.gfgUsername}` : 'Not linked'}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Coding Score:</span>
+                        <span className="font-bold text-emerald-300 font-mono">{gfgData?.coding_score || gfgData?.overall_score || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Institute Rank:</span>
+                        <span className="font-bold text-white font-mono">{gfgData?.institute_rank && gfgData.institute_rank !== 'N/A' ? `#${gfgData.institute_rank}` : 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Problems Solved:</span>
+                        <span className="font-bold text-emerald-400 font-mono">{gfgData?.total_problems_solved || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Codeforces Column */}
+                  <div className="p-4 rounded-2xl bg-slate-900/80 border border-sky-500/30 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                        <Zap className="w-4 h-4 text-sky-400" />
+                        <span>Codeforces API</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {linkedConfig.codeforcesHandle ? `@${linkedConfig.codeforcesHandle}` : 'Not linked'}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Current Rating:</span>
+                        <span className="font-bold text-sky-300 font-mono">{codeforcesData?.rating || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Rank Title:</span>
+                        <span className="font-bold text-white font-mono capitalize">{codeforcesData?.rank || 'Unrated'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-400">Problems Solved:</span>
+                        <span className="font-bold text-emerald-400 font-mono">{codeforcesData?.total_problems_solved || 0}</span>
                       </div>
                     </div>
                   </div>
@@ -1131,14 +1574,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           )}
 
           {/* ═══════════════════════════════════════════════════════════════════
-              TAB 5: SETTINGS & LINK HANDLES
+              TAB 7: SETTINGS & LINK HANDLES
           ═══════════════════════════════════════════════════════════════════ */}
           {activeTab === 'settings' && (
             <form onSubmit={handleSaveSettings} className="space-y-5 animate-fadeIn max-w-xl">
               <div>
                 <h3 className="text-sm font-bold text-white">Configure Developer Handles</h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Link your LeetCode and GitHub profiles to showcase live metrics, badges, and contest stats.
+                  Link your LeetCode, GeeksforGeeks, Codeforces, and GitHub profiles to showcase live metrics and stats across platforms.
                 </p>
               </div>
 
@@ -1159,10 +1602,40 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     type="text"
                     value={lcInput}
                     onChange={(e) => setLcInput(e.target.value)}
-                    placeholder="e.g. tour_de_force or neal_wu"
+                    placeholder="e.g. mudit_2904 or neal_wu"
                     className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:border-amber-500 focus:outline-none transition-colors"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Directly queries LeetCode's comprehensive GraphQL API.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>GeeksforGeeks Username</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={gfgInput}
+                    onChange={(e) => setGfgInput(e.target.value)}
+                    placeholder="e.g. ayush_sharma or sandeep_jain"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:border-emerald-500 focus:outline-none transition-colors"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Scrapes coding score, institute rank, POTD streak, and solved counts.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Codeforces Handle</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cfInput}
+                    onChange={(e) => setCfInput(e.target.value)}
+                    placeholder="e.g. tourist or Benq"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:border-sky-500 focus:outline-none transition-colors"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">Fetches official rating, rank title, and submissions via Codeforces API.</p>
                 </div>
 
                 <div>

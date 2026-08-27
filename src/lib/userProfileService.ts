@@ -85,9 +85,63 @@ export interface GitHubProfileData {
   created_at: string;
 }
 
+export interface GFGProfileData {
+  status: string;
+  username: string;
+  name?: string;
+  profile_url: string;
+  overall_score: number | string;
+  coding_score: number;
+  monthly_score: number;
+  total_problems_solved: number;
+  institute_rank: string | number;
+  longest_streak: number;
+  current_streak: number;
+  streak?: number;
+  organization?: string;
+  institute?: string;
+  designation?: string;
+  avatar?: string;
+  total_articles: number;
+  difficulty?: {
+    school?: number;
+    basic?: number;
+    easy?: number;
+    medium?: number;
+    hard?: number;
+  };
+}
+
+export interface CodeforcesProfileData {
+  status: string;
+  handle: string;
+  firstName?: string;
+  lastName?: string;
+  rating: number;
+  maxRating: number;
+  rank: string;
+  maxRank: string;
+  avatar: string;
+  titlePhoto?: string;
+  organization?: string;
+  city?: string;
+  country?: string;
+  contribution: number;
+  friendOfCount: number;
+  total_problems_solved: number;
+  difficulty_breakdown?: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  profile_url: string;
+}
+
 export interface LinkedProfilesConfig {
   leetcodeUsername: string;
   githubUsername: string;
+  gfgUsername?: string;
+  codeforcesHandle?: string;
   bio?: string;
   customAvatar?: string;
 }
@@ -104,6 +158,8 @@ export function getLinkedProfiles(email?: string): LinkedProfilesConfig {
   return {
     leetcodeUsername: '',
     githubUsername: '',
+    gfgUsername: '',
+    codeforcesHandle: '',
     bio: 'Software Development Engineer & DSA Enthusiast on SDETube.'
   };
 }
@@ -224,6 +280,85 @@ export async function fetchGitHubProfile(username: string): Promise<GitHubProfil
     });
     if (direct.ok) {
       return await direct.json();
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Fetches public GeeksforGeeks profile data via Backend proxy
+ */
+export async function fetchGFGProfile(username: string): Promise<GFGProfileData | null> {
+  const clean = username.trim();
+  if (!clean) return null;
+
+  try {
+    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/gfg/profile/${encodeURIComponent(clean)}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.status === 'Success' || data.total_problems_solved !== undefined || data.coding_score !== undefined)) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('[GFG Profile Fetch Notice]:', err);
+  }
+  return null;
+}
+
+/**
+ * Fetches public Codeforces profile data via Backend proxy or direct Codeforces API
+ */
+export async function fetchCodeforcesProfile(handle: string): Promise<CodeforcesProfileData | null> {
+  const clean = handle.trim();
+  if (!clean) return null;
+
+  // 1. Try Backend Proxy
+  try {
+    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/codeforces/profile/${encodeURIComponent(clean)}`, {
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && (data.status === 'Success' || data.handle)) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('[Backend Codeforces Proxy Notice]:', err);
+  }
+
+  // 2. Direct Codeforces API fallback
+  try {
+    const res = await fetch(`https://codeforces.com/api/user.info?handles=${encodeURIComponent(clean)}`, {
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'OK' && json.result?.[0]) {
+        const u = json.result[0];
+        return {
+          status: 'Success',
+          handle: u.handle,
+          rating: u.rating || 0,
+          maxRating: u.maxRating || 0,
+          rank: u.rank || 'unrated',
+          maxRank: u.maxRank || 'unrated',
+          avatar: u.avatar || '',
+          titlePhoto: u.titlePhoto || '',
+          organization: u.organization || '',
+          city: u.city || '',
+          country: u.country || '',
+          contribution: u.contribution || 0,
+          friendOfCount: u.friendOfCount || 0,
+          total_problems_solved: 0,
+          difficulty_breakdown: { easy: 0, medium: 0, hard: 0 },
+          profile_url: `https://codeforces.com/profile/${u.handle}`
+        };
+      }
     }
   } catch {}
 
@@ -705,18 +840,34 @@ export function getRealSDETubeStats(): SDETubeRealStats {
     }
   } catch {}
 
-  // 2. Scan sheet solved lists
+  // 2. Scan sheet solved lists and slug sets
   try {
     const sdeSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]');
+    const sde184Solved = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
+    const sde191Solved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde191') || '[]');
     const a2zSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]');
     const fast79Solved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_79') || '[]');
     const blindSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]');
     const mikSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]');
+    const fallbackSolved = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
+    const solvedSlugs = JSON.parse(localStorage.getItem('sdetube_solved_slugs') || '[]');
+    const solvedNames = JSON.parse(localStorage.getItem('sdetube_solved_names') || '[]');
 
-    [...sdeSolved, ...a2zSolved, ...fast79Solved, ...blindSolved, ...mikSolved].forEach(p => {
+    [
+      ...sdeSolved,
+      ...sde184Solved,
+      ...sde191Solved,
+      ...a2zSolved,
+      ...fast79Solved,
+      ...blindSolved,
+      ...mikSolved,
+      ...fallbackSolved,
+      ...solvedSlugs,
+      ...solvedNames
+    ].forEach(p => {
       if (typeof p === 'string' || typeof p === 'number') {
         const pSlug = String(p).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        solvedProblemSlugs.add(pSlug);
+        if (pSlug) solvedProblemSlugs.add(pSlug);
       }
     });
   } catch {}

@@ -9,3 +9,4 @@ python-multipart==0.0.9
 aiofiles==23.2.1
 imageio-ffmpeg==0.5.1
 boto3==1.34.50
+beautifulsoup4==4.15.0

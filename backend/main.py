@@ -13,6 +13,7 @@ import json
 import html
 import base64
 import requests
+from bs4 import BeautifulSoup
 from typing import Optional, List, Any
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
@@ -2509,6 +2510,294 @@ async def get_github_profile(username: str):
         return JSONResponse(status_code=response.status_code, content={"error": "GitHub user not found"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": "GitHub API communication failed", "details": str(e)})
+
+
+_GFG_PROFILE_CACHE: dict = {}
+_CODEFORCES_PROFILE_CACHE: dict = {}
+
+
+@app.get("/api/gfg/{username}")
+@app.get("/api/gfg/profile/{username}")
+async def get_gfg_profile(username: str):
+    """
+    Scrapes & parses public GeeksforGeeks profile metrics with 15-minute caching.
+    Extracts overall score, total problems solved, rank, streak, organization, and difficulty breakdown.
+    """
+    clean_user = username.strip().strip("/")
+    if not clean_user:
+        return JSONResponse(status_code=400, content={"error": "Username is required"})
+
+    now = time.time()
+    cache_key = clean_user.lower()
+    if cache_key in _GFG_PROFILE_CACHE:
+        cached_time, cached_data = _GFG_PROFILE_CACHE[cache_key]
+        if now - cached_time < 900:
+            return cached_data
+
+    def _fetch_and_parse_gfg():
+        url = f"https://www.geeksforgeeks.org/user/{clean_user}/"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+        except Exception as err:
+            return {"error": f"Failed to connect to GeeksforGeeks: {str(err)}", "status": "Failed"}, False
+
+        if response.status_code != 200:
+            return {"error": "User not found or GFG blocked the request", "status_code": response.status_code, "status": "Failed"}, False
+            
+        html_content = response.text
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # 1. Base results container
+        res = {
+            "status": "Success",
+            "username": clean_user,
+            "profile_url": url,
+            "overall_score": 0,
+            "coding_score": 0,
+            "monthly_score": 0,
+            "total_problems_solved": 0,
+            "institute_rank": "N/A",
+            "longest_streak": 0,
+            "current_streak": 0,
+            "organization": "",
+            "institute": "",
+            "designation": "",
+            "name": clean_user,
+            "avatar": "",
+            "total_articles": 0,
+            "difficulty": {
+                "school": 0,
+                "basic": 0,
+                "easy": 0,
+                "medium": 0,
+                "hard": 0
+            }
+        }
+        
+        # 2. Classic HTML layout checks (as provided by user)
+        score_card = soup.find("div", class_=lambda c: c and ("scoreCard" in str(c) or "score_card" in str(c)))
+        if score_card:
+            score_val = score_card.find(class_=lambda c: c and ("score_card_value" in str(c) or "value" in str(c)))
+            if score_val:
+                digits = re.sub(r'[^0-9]', '', score_val.text)
+                if digits:
+                    res["overall_score"] = int(digits)
+                    res["coding_score"] = res["overall_score"]
+                else:
+                    res["overall_score"] = score_val.text.strip()
+                    
+        problems_solved_el = soup.find("div", class_=lambda c: c and ("problem_solved_section" in str(c) or "problems_solved" in str(c)))
+        if problems_solved_el:
+            m_p = re.search(r'([0-9]+)', problems_solved_el.text)
+            if m_p:
+                res["total_problems_solved"] = int(m_p.group(1))
+
+        # 3. Next.js RSC payload stream extraction (modern GFG React architecture)
+        chunks = []
+        for m in re.finditer(r'self\.__next_f\.push\(\[1,\s*"(.*?)"\]\)', html_content, re.DOTALL):
+            try:
+                chunk = m.group(1).encode('utf-8').decode('unicode_escape', 'ignore')
+                chunks.append(chunk)
+            except Exception:
+                pass
+        full_stream = ''.join(chunks) if chunks else html_content
+
+        # Extract stats from stream
+        m_score = re.search(r'\"score\"\s*:\s*([0-9]+)', full_stream)
+        if m_score:
+            sc_val = int(m_score.group(1))
+            res["coding_score"] = sc_val
+            if not res["overall_score"]:
+                res["overall_score"] = sc_val
+
+        m_mscore = re.search(r'\"monthly_score\"\s*:\s*([0-9]+)', full_stream)
+        if m_mscore:
+            res["monthly_score"] = int(m_mscore.group(1))
+
+        m_solved = re.search(r'\"total_problems_solved\"\s*:\s*([0-9]+)', full_stream)
+        if m_solved:
+            res["total_problems_solved"] = int(m_solved.group(1))
+
+        m_rank = re.search(r'\"institute_rank\"\s*:\s*([0-9]+|\"[^\"]*\")', full_stream)
+        if m_rank:
+            val = m_rank.group(1).replace('"', '').strip()
+            if val and val != "null":
+                res["institute_rank"] = val
+
+        m_streak = re.search(r'\"pod_solved_longest_streak\"\s*:\s*([0-9]+)', full_stream)
+        if m_streak:
+            res["longest_streak"] = int(m_streak.group(1))
+
+        m_cur_streak = re.search(r'\"pod_solved_current_streak\"\s*:\s*([0-9]+)', full_stream)
+        if m_cur_streak:
+            res["current_streak"] = int(m_cur_streak.group(1))
+
+        # Extract name accurately
+        if soup.title and soup.title.string:
+            t_str = soup.title.string.strip()
+            t_clean = t_str.split('|')[0].split('-')[0].strip()
+            if t_clean and t_clean.lower() != "undefined" and len(t_clean) > 1:
+                res["name"] = t_clean
+
+        if not res["name"] or res["name"].lower() in ("viewport", "undefined", clean_user):
+            m_name = re.search(r'\"name\"\s*:\s*\"([A-Za-z0-9\s\.\-_]+)\"[^{}]*?\"profile_image_url\"', full_stream)
+            if m_name and m_name.group(1).lower() not in ("undefined", "null", "viewport"):
+                res["name"] = m_name.group(1).strip()
+            else:
+                res["name"] = clean_user
+
+        m_org = re.search(r'\"organization_name\"\s*:\s*\"([^\"]+)\"', full_stream)
+        if m_org and m_org.group(1) != "null":
+            res["organization"] = m_org.group(1)
+
+        m_inst = re.search(r'\"institute_name\"\s*:\s*\"([^\"]+)\"', full_stream)
+        if m_inst and m_inst.group(1) != "null":
+            res["institute"] = m_inst.group(1)
+
+        m_desig = re.search(r'\"designation\"\s*:\s*\"([^\"]+)\"', full_stream)
+        if m_desig and m_desig.group(1) != "null":
+            res["designation"] = m_desig.group(1)
+
+        m_avatar = re.search(r'\"profile_image_url\"\s*:\s*\"(https?://[^\"]+)\"', full_stream)
+        if m_avatar:
+            res["avatar"] = m_avatar.group(1)
+
+        m_articles = re.search(r'\"total_articles_published\"\s*:\s*([0-9]+)', full_stream)
+        if m_articles:
+            res["total_articles"] = int(m_articles.group(1))
+
+        for diff_k in ["school", "basic", "easy", "medium", "hard"]:
+            m_diff = re.search(rf'\"{diff_k}\"\s*:\s*([0-9]+)', full_stream, re.IGNORECASE)
+            if not m_diff:
+                m_diff = re.search(rf'\"{diff_k.capitalize()}\"\s*:\s*([0-9]+)', full_stream)
+            if m_diff:
+                res["difficulty"][diff_k] = int(m_diff.group(1))
+
+        diff_sum = sum(res["difficulty"].values())
+        if diff_sum > 0 and res["total_problems_solved"] == 0:
+            res["total_problems_solved"] = diff_sum
+
+        return res, True
+
+    try:
+        loop = asyncio.get_running_loop()
+        res_data, success = await loop.run_in_executor(None, _fetch_and_parse_gfg)
+        if success:
+            _GFG_PROFILE_CACHE[cache_key] = (now, res_data)
+            return res_data
+        status_code = res_data.get("status_code", 404) if isinstance(res_data, dict) else 404
+        return JSONResponse(status_code=status_code, content=res_data)
+    except Exception as e:
+        print(f"[GFG Scraper Error]: {e}")
+        return JSONResponse(status_code=500, content={"error": "Failed to scrape GeeksforGeeks profile", "details": str(e)})
+
+
+@app.get("/api/codeforces/{handle}")
+@app.get("/api/codeforces/profile/{handle}")
+async def get_codeforces_profile(handle: str):
+    """
+    Fetches public Codeforces profile, contest rating, rank, and computed solved problems
+    via official Codeforces API (https://codeforces.com/apiHelp) with 15-minute caching.
+    """
+    clean_handle = handle.strip().strip("/")
+    if not clean_handle:
+        return JSONResponse(status_code=400, content={"error": "Handle is required"})
+
+    now = time.time()
+    cache_key = clean_handle.lower()
+    if cache_key in _CODEFORCES_PROFILE_CACHE:
+        cached_time, cached_data = _CODEFORCES_PROFILE_CACHE[cache_key]
+        if now - cached_time < 900:
+            return cached_data
+
+    def _fetch_cf():
+        url_info = f"https://codeforces.com/api/user.info?handles={clean_handle}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "Accept": "application/json"
+        }
+        
+        try:
+            info_resp = requests.get(url_info, headers=headers, timeout=10)
+        except Exception as err:
+            return {"error": f"Failed to connect to Codeforces: {str(err)}", "status": "Failed"}, False
+
+        if info_resp.status_code != 200:
+            return {"error": "Codeforces user not found or API error", "status_code": info_resp.status_code, "status": "Failed"}, False
+            
+        info_json = info_resp.json()
+        if info_json.get("status") != "OK" or not info_json.get("result"):
+            return {"error": "Codeforces user not found", "details": info_json.get("comment"), "status": "Failed"}, False
+            
+        user_info = info_json["result"][0]
+
+        # Fetch submissions to calculate unique solved problems and rating breakdown
+        solved_count = 0
+        difficulty_breakdown = {"easy": 0, "medium": 0, "hard": 0}
+        try:
+            status_url = f"https://codeforces.com/api/user.status?handle={clean_handle}&from=1&count=2000"
+            status_resp = requests.get(status_url, headers=headers, timeout=10)
+            if status_resp.status_code == 200:
+                status_json = status_resp.json()
+                if status_json.get("status") == "OK":
+                    subs = status_json.get("result", [])
+                    solved_set = set()
+                    for sub in subs:
+                        if sub.get("verdict") == "OK":
+                            prob = sub.get("problem", {})
+                            p_key = f"{prob.get('contestId')}_{prob.get('index')}"
+                            if p_key not in solved_set:
+                                solved_set.add(p_key)
+                                p_rating = prob.get("rating", 0)
+                                if p_rating <= 1200 and p_rating > 0:
+                                    difficulty_breakdown["easy"] += 1
+                                elif p_rating <= 1700 and p_rating > 1200:
+                                    difficulty_breakdown["medium"] += 1
+                                elif p_rating > 1700:
+                                    difficulty_breakdown["hard"] += 1
+                                else:
+                                    difficulty_breakdown["easy"] += 1
+                    solved_count = len(solved_set)
+        except Exception as e:
+            print(f"[Codeforces Status Notice]: {e}")
+
+        result_data = {
+            "status": "Success",
+            "handle": user_info.get("handle", clean_handle),
+            "rating": user_info.get("rating", 0),
+            "maxRating": user_info.get("maxRating", 0),
+            "rank": user_info.get("rank", "unrated"),
+            "maxRank": user_info.get("maxRank", "unrated"),
+            "avatar": user_info.get("avatar", ""),
+            "titlePhoto": user_info.get("titlePhoto", ""),
+            "organization": user_info.get("organization", ""),
+            "city": user_info.get("city", ""),
+            "country": user_info.get("country", ""),
+            "contribution": user_info.get("contribution", 0),
+            "friendOfCount": user_info.get("friendOfCount", 0),
+            "total_problems_solved": solved_count,
+            "difficulty_breakdown": difficulty_breakdown,
+            "profile_url": f"https://codeforces.com/profile/{clean_handle}"
+        }
+        return result_data, True
+
+    try:
+        loop = asyncio.get_running_loop()
+        res_data, success = await loop.run_in_executor(None, _fetch_cf)
+        if success:
+            _CODEFORCES_PROFILE_CACHE[cache_key] = (now, res_data)
+            return res_data
+        status_code = res_data.get("status_code", 404) if isinstance(res_data, dict) else 404
+        return JSONResponse(status_code=status_code, content=res_data)
+    except Exception as e:
+        print(f"[Codeforces Profile Error]: {e}")
+        return JSONResponse(status_code=500, content={"error": "Failed to fetch Codeforces profile", "details": str(e)})
 
 
 class StoreSolutionRequest(BaseModel):

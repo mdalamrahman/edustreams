@@ -41,10 +41,14 @@ import {
 import {
   LeetCodeFullProfileData,
   GitHubProfileData,
+  GFGProfileData,
+  CodeforcesProfileData,
   getLinkedProfiles,
   saveLinkedProfiles,
   fetchLeetCodeFullProfile,
   fetchGitHubProfile,
+  fetchGFGProfile,
+  fetchCodeforcesProfile,
   generateUserSubmissionHeatmap,
   getUserBadges,
   getUserTracksCertificates,
@@ -81,9 +85,15 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [profileMode, setProfileMode] = useState<ProfileSectionMode>('combined');
   const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(user?.email));
   const [leetcodeData, setLeetcodeData] = useState<LeetCodeFullProfileData | null>(null);
+  const [gfgData, setGfgData] = useState<GFGProfileData | null>(null);
+  const [codeforcesData, setCodeforcesData] = useState<CodeforcesProfileData | null>(null);
   const [githubData, setGithubData] = useState<GitHubProfileData | null>(null);
+
   const [isLoadingLC, setIsLoadingLC] = useState<boolean>(false);
+  const [isLoadingGFG, setIsLoadingGFG] = useState<boolean>(false);
+  const [isLoadingCF, setIsLoadingCF] = useState<boolean>(false);
   const [isLoadingGH, setIsLoadingGH] = useState<boolean>(false);
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<CertificateData | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<SDETubeBadge | null>(null);
@@ -93,6 +103,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   // Edit form state
   const [formName, setFormName] = useState(user?.user_metadata?.name || 'Mudit');
   const [formLcUsername, setFormLcUsername] = useState(linkedConfig.leetcodeUsername || 'mudit_2904');
+  const [formGfgUsername, setFormGfgUsername] = useState(linkedConfig.gfgUsername || '');
+  const [formCfHandle, setFormCfHandle] = useState(linkedConfig.codeforcesHandle || '');
   const [formGhUsername, setFormGhUsername] = useState(linkedConfig.githubUsername || '');
   const [formBio, setFormBio] = useState(linkedConfig.bio || 'Computer Science Student & SDE Aspirant. Solving DSA and building distributed systems.');
   const [formLocation, setFormLocation] = useState('India');
@@ -117,6 +129,28 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     setIsLoadingLC(false);
   };
 
+  // Fetch live GFG data
+  const loadGFG = async (uname: string) => {
+    if (!uname.trim()) return;
+    setIsLoadingGFG(true);
+    try {
+      const data = await fetchGFGProfile(uname);
+      if (data) setGfgData(data);
+    } catch {}
+    setIsLoadingGFG(false);
+  };
+
+  // Fetch live Codeforces data
+  const loadCodeforces = async (handle: string) => {
+    if (!handle.trim()) return;
+    setIsLoadingCF(true);
+    try {
+      const data = await fetchCodeforcesProfile(handle);
+      if (data) setCodeforcesData(data);
+    } catch {}
+    setIsLoadingCF(false);
+  };
+
   // Fetch live GitHub data
   const loadGithub = async (uname: string) => {
     if (!uname.trim()) return;
@@ -133,6 +167,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     setLinkedConfig(cfg);
     const targetLc = cfg.leetcodeUsername || 'mudit_2904';
     if (targetLc) loadLeetcode(targetLc);
+    if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
+    if (cfg.codeforcesHandle) loadCodeforces(cfg.codeforcesHandle);
     if (cfg.githubUsername) loadGithub(cfg.githubUsername);
   }, [user?.email]);
 
@@ -140,6 +176,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     e.preventDefault();
     const updated: LinkedProfilesConfig = {
       leetcodeUsername: formLcUsername.trim(),
+      gfgUsername: formGfgUsername.trim(),
+      codeforcesHandle: formCfHandle.trim(),
       githubUsername: formGhUsername.trim(),
       bio: formBio.trim()
     };
@@ -152,6 +190,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     }, 1200);
 
     if (updated.leetcodeUsername) loadLeetcode(updated.leetcodeUsername);
+    if (updated.gfgUsername) loadGFG(updated.gfgUsername);
+    if (updated.codeforcesHandle) loadCodeforces(updated.codeforcesHandle);
     if (updated.githubUsername) loadGithub(updated.githubUsername);
   };
 
@@ -164,7 +204,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
   const totalSdetubeSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved || 38;
   const leetcodeSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || 148;
-  const combinedSolved = totalSdetubeSolved + leetcodeSolved;
+  const gfgSolved = Number(gfgData?.total_problems_solved || 0);
+  const cfSolved = Number(codeforcesData?.total_problems_solved || 0);
+  const combinedSolved = totalSdetubeSolved + leetcodeSolved + gfgSolved + cfSolved;
 
   const easySolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
@@ -350,6 +392,36 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                     <span className="truncate">leetcode.com/{formLcUsername}</span>
                   </span>
                   <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-amber-300" />
+                </a>
+              )}
+
+              {formGfgUsername && (
+                <a
+                  href={`https://www.geeksforgeeks.org/user/${formGfgUsername}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-2 rounded-xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 text-emerald-300 text-xs font-mono transition-all group"
+                >
+                  <span className="flex items-center gap-2">
+                    <Award className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="truncate">gfg.org/.../{formGfgUsername}</span>
+                  </span>
+                  <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-emerald-300" />
+                </a>
+              )}
+
+              {formCfHandle && (
+                <a
+                  href={`https://codeforces.com/profile/${formCfHandle}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between p-2 rounded-xl bg-slate-950/80 hover:bg-slate-850 border border-slate-800 text-sky-300 text-xs font-mono transition-all group"
+                >
+                  <span className="flex items-center gap-2">
+                    <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="truncate">codeforces.com/.../{formCfHandle}</span>
+                  </span>
+                  <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-sky-300" />
                 </a>
               )}
 
@@ -952,6 +1024,34 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   onChange={(e) => setFormLcUsername(e.target.value)}
                   placeholder="e.g. mudit_2904"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>GeeksforGeeks Username</span>
+                </label>
+                <input
+                  type="text"
+                  value={formGfgUsername}
+                  onChange={(e) => setFormGfgUsername(e.target.value)}
+                  placeholder="e.g. ayush_sharma"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Codeforces Handle</span>
+                </label>
+                <input
+                  type="text"
+                  value={formCfHandle}
+                  onChange={(e) => setFormCfHandle(e.target.value)}
+                  placeholder="e.g. tourist"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-sky-500 focus:outline-none"
                 />
               </div>
 
