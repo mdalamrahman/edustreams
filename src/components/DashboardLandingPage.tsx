@@ -25,7 +25,7 @@ import {
   Play
 } from 'lucide-react';
 import { getRealAnalytics, RealAnalyticsMetrics } from '../lib/analytics';
-import { fetchLeetCodePOTD, LeetCodeDailyQuestion } from '../lib/leetcodeApi';
+import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
 
 interface DashboardLandingPageProps {
@@ -86,11 +86,21 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   const [lcPotd, setLcPotd] = useState<LeetCodeDailyQuestion | null>(null);
   const [isLoadingLc, setIsLoadingLc] = useState(false);
 
+  // GeeksforGeeks Official Daily POTD
+  const [gfgPotd, setGfgPotd] = useState<GFGDailyQuestion | null>(null);
+  const [isLoadingGfg, setIsLoadingGfg] = useState(false);
+
   useEffect(() => {
     setIsLoadingLc(true);
     fetchLeetCodePOTD().then((res) => {
       setLcPotd(res);
       setIsLoadingLc(false);
+    });
+
+    setIsLoadingGfg(true);
+    fetchGFGPOTD().then((res) => {
+      setGfgPotd(res);
+      setIsLoadingGfg(false);
     });
   }, []);
 
@@ -103,77 +113,91 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       {/* 1. HERO WELCOME & STUDENT COMMAND CENTER HEADER                           */}
       {/* ========================================================================= */}
       <div className="w-full p-6 sm:p-10 rounded-3xl bg-gradient-to-br from-indigo-950/70 via-slate-900 to-purple-950/60 border border-indigo-500/30 shadow-2xl relative overflow-hidden">
-        {/* Ambient Glow Orbs */}
-        <div className="absolute -top-24 -right-24 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+        {/* Glow ambient background */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-xs font-bold flex items-center gap-1.5 shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                <span>STUDENT COMMAND CENTER</span>
-              </span>
-              <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-mono text-xs font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Biometric Passkey Secured</span>
-              </span>
-              {streakDays > 0 && (
-                <span className="px-3 py-1 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 font-mono text-xs font-bold flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5 fill-current animate-bounce" />
-                  <span>{streakDays} Day Streak</span>
-                </span>
-              )}
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          {/* Left Column: Greeting & Mission */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-bold tracking-wide">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Full-Stack SDE Interview Operating System</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-100 tracking-tight">
-              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-300">{userName}</span> 🚀
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+              Welcome back, <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-amber-300 bg-clip-text text-transparent">{userName}</span> 🚀
             </h1>
-            
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+
+            <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
               Your personalized interview preparation workspace. Master Data Structures & Algorithms, practice live Object-Oriented Low-Level Design, and solve daily coding challenges.
             </p>
+
+            {/* Live Metrics Row */}
+            <div className="flex flex-wrap gap-3 pt-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono">
+                <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <span className="text-slate-300">Streak:</span>
+                <span className="font-bold text-amber-300">{streakDays} Days</span>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-slate-300">Solved:</span>
+                <span className="font-bold text-emerald-300">{totalSolved} Problems</span>
+              </div>
+
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs font-mono">
+                <Clock className="w-4 h-4 text-indigo-400" />
+                <span className="text-slate-300">Time:</span>
+                <span className="font-bold text-indigo-300">{totalDedicatedHours}h Dedicated</span>
+              </div>
+            </div>
           </div>
 
-          {/* SDE Readiness Hero Gauge */}
-          <div className="flex-shrink-0 p-5 rounded-3xl bg-slate-950/80 border border-indigo-500/30 backdrop-blur-xl shadow-xl space-y-3 min-w-[260px]">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-bold uppercase tracking-wider">Interview Readiness</span>
-              <span className="text-indigo-300 font-mono font-black">{sdeReadinessScore}/100</span>
-            </div>
-            
-            <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-              <div 
-                className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400"
-                style={{ width: `${Math.min(100, sdeReadinessScore)}%` }}
-              />
-            </div>
+          {/* Right Column: SDE Readiness Score Dial */}
+          <div className="lg:col-span-5 flex flex-col items-center sm:items-end justify-center">
+            <div className="w-full max-w-xs p-5 rounded-2xl bg-slate-950/90 border border-indigo-500/30 shadow-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">Interview Readiness</span>
+                <span className="text-xs font-bold text-amber-300 font-mono">{sdeReadinessScore}/100</span>
+              </div>
 
-            <div className="flex items-center justify-between text-[11px]">
-              <span className={`font-bold ${
-                sdeReadinessScore >= 80 ? 'text-emerald-400' :
-                sdeReadinessScore >= 50 ? 'text-amber-400' :
-                'text-indigo-300'
-              }`}>
-                {sdeReadinessScore >= 80 ? '🚀 SDE Ready' :
-                 sdeReadinessScore >= 50 ? '🎯 Interview Ready' :
-                 sdeReadinessScore >= 25 ? '📈 Intermediate' :
-                 '🌱 Active Learner'}
-              </span>
-              <button
-                onClick={() => onNavigate('analytics')}
-                className="text-slate-400 hover:text-slate-200 font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <span>Analytics</span>
-                <ArrowRight className="w-3 h-3" />
-              </button>
+              {/* Progress Bar */}
+              <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                <div 
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 transition-all duration-1000 ease-out"
+                  style={{ width: `${Math.max(5, sdeReadinessScore)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px]">
+                <span className={`font-bold ${
+                  sdeReadinessScore >= 80 ? 'text-emerald-400' :
+                  sdeReadinessScore >= 50 ? 'text-amber-400' :
+                  'text-indigo-300'
+                }`}>
+                  {sdeReadinessScore >= 80 ? '🚀 SDE Ready' :
+                   sdeReadinessScore >= 50 ? '🎯 Interview Ready' :
+                   sdeReadinessScore >= 25 ? '📈 Intermediate' :
+                   '🌱 Active Learner'}
+                </span>
+                <button
+                  onClick={() => onNavigate('analytics')}
+                  className="text-slate-400 hover:text-slate-200 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Analytics</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. DUAL PROBLEM OF THE DAY (POTD) SPOTLIGHT                                */}
+      {/* 2. TRIPLE PROBLEM OF THE DAY (POTD) SPOTLIGHT (SDETube | LeetCode | GFG)   */}
       {/* ========================================================================= */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -181,18 +205,18 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <Flame className="w-5 h-5 text-amber-400 fill-amber-400" />
             <h2 className="text-lg font-extrabold text-slate-100">Today's Daily Coding Challenges (POTD)</h2>
           </div>
-          <span className="text-xs font-mono text-slate-400">Keep your daily streak alive</span>
+          <span className="text-xs font-mono text-slate-400">Solve daily on SDETube IDE or official platforms</span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           
-          {/* Card A: SDETube Curated POTD */}
+          {/* Card A: SDETube Curated SDE POTD */}
           <div className="glass-panel p-6 rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-950 via-indigo-950/20 to-slate-950 shadow-xl flex flex-col justify-between group hover:border-indigo-500/80 transition-all">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 font-mono text-xs font-bold text-indigo-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span>SDETube Curated POTD</span>
+                  <span>SDETube SDE POTD</span>
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
                   sdePotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
@@ -204,7 +228,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
+                <h3 className="text-base font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
                   {sdePotd.name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 line-clamp-2">
@@ -217,19 +241,44 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   {sdePotd.category}
                 </span>
                 <span>&bull;</span>
-                <span>{sdePotd.companies.slice(0, 3).join(', ')}</span>
+                <span className="truncate">{sdePotd.companies.slice(0, 2).join(', ')}</span>
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-slate-800/80">
+            <div className="pt-4 mt-4 border-t border-slate-800/80 space-y-2">
               <button
                 onClick={() => onOpenSdeProblem(sdePotd)}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 <Code className="w-4 h-4" />
-                <span>Solve in SDETube Monaco IDE</span>
+                <span>⚡ Solve in SDETube IDE</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              <div className="flex items-center gap-2">
+                {sdePotd.leetcode && (
+                  <a
+                    href={sdePotd.leetcode}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>LeetCode</span>
+                  </a>
+                )}
+                {sdePotd.gfg && (
+                  <a
+                    href={sdePotd.gfg}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>GFG</span>
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
@@ -239,7 +288,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-amber-950 border border-amber-700/60 font-mono text-xs font-bold text-amber-300 flex items-center gap-1.5">
                   <Code2 className="w-3.5 h-3.5" />
-                  <span>Official Daily Challenge</span>
+                  <span>LeetCode POTD</span>
                 </span>
                 {lcPotd && (
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
@@ -259,7 +308,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               ) : lcPotd ? (
                 <>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
+                    <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors line-clamp-1">
                       {lcPotd.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 font-mono">
@@ -268,7 +317,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
-                    {(lcPotd.topicTags || ['Algorithms']).map((tag, idx) => (
+                    {(lcPotd.topicTags || ['Algorithms']).slice(0, 3).map((tag, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono">
                         {tag}
                       </span>
@@ -282,17 +331,136 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               )}
             </div>
 
-            <div className="pt-4 mt-4 border-t border-slate-800/80">
+            <div className="pt-4 mt-4 border-t border-slate-800/80 space-y-2">
               {lcPotd && (
-                <a
-                  href={lcPotd.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
-                >
-                  <span>Solve Directly on Official Platform</span>
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+                <>
+                  <button
+                    onClick={() => {
+                      const dynamicProblem: SDEProblem = {
+                        id: 8888,
+                        sheetType: 'sde',
+                        category: (lcPotd.topicTags && lcPotd.topicTags[0]) || 'Daily Challenge',
+                        name: lcPotd.title,
+                        difficulty: (lcPotd.difficulty as any) || 'Medium',
+                        rating: '5.0 / 5',
+                        leetcode: lcPotd.url,
+                        gfg: `https://www.geeksforgeeks.org/problems/${lcPotd.titleSlug}/1`,
+                        companies: ['Google', 'Meta', 'Amazon'],
+                        slug: lcPotd.titleSlug
+                      };
+                      onOpenSdeProblem(dynamicProblem);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <Code className="w-4 h-4" />
+                    <span>⚡ Solve in SDETube IDE</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <a
+                    href={lcPotd.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    <span>↗ Solve on LeetCode</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Card C: GeeksforGeeks POTD */}
+          <div className="glass-panel p-6 rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950 shadow-xl flex flex-col justify-between group hover:border-emerald-500/80 transition-all">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700/60 font-mono text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>GFG POTD</span>
+                </span>
+                {gfgPotd && (
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                    gfgPotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
+                    gfgPotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
+                    'bg-rose-950 border-rose-700 text-rose-300'
+                  }`}>
+                    {gfgPotd.difficulty}
+                  </span>
+                )}
+              </div>
+
+              {isLoadingGfg ? (
+                <div className="py-6 text-center text-slate-400 font-mono text-xs animate-pulse">
+                  Querying live GFG Problem of the Day...
+                </div>
+              ) : gfgPotd ? (
+                <>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-100 group-hover:text-emerald-300 transition-colors line-clamp-1">
+                      {gfgPotd.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                      GFG Problem of the Day &bull; {gfgPotd.date}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {(gfgPotd.topicTags || ['Dynamic Programming']).slice(0, 2).map((tag, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono">
+                        {tag}
+                      </span>
+                    ))}
+                    {gfgPotd.accuracy && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-800 text-[10px] text-emerald-300 font-mono">
+                        {gfgPotd.accuracy}% Acc
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs text-slate-500 font-mono py-4">
+                  Daily GFG challenge available.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-slate-800/80 space-y-2">
+              {gfgPotd && (
+                <>
+                  <button
+                    onClick={() => {
+                      const dynamicProblem: SDEProblem = {
+                        id: 9999,
+                        sheetType: 'sde',
+                        category: (gfgPotd.topicTags && gfgPotd.topicTags[0]) || 'GFG POTD',
+                        name: gfgPotd.title,
+                        difficulty: (gfgPotd.difficulty as any) || 'Medium',
+                        rating: '5.0 / 5',
+                        leetcode: `https://leetcode.com/problem-list/all/?search=${encodeURIComponent(gfgPotd.title)}`,
+                        gfg: gfgPotd.url,
+                        companies: ['Amazon', 'Microsoft', 'Flipkart'],
+                        slug: gfgPotd.titleSlug
+                      };
+                      onOpenSdeProblem(dynamicProblem);
+                    }}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  >
+                    <Code className="w-4 h-4" />
+                    <span>⚡ Solve in SDETube IDE</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <a
+                    href={gfgPotd.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                  >
+                    <span>↗ Solve on GeeksforGeeks</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </>
               )}
             </div>
           </div>
