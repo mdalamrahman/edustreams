@@ -5938,6 +5938,117 @@ async def get_all_users_progress_endpoint():
     return {"status": "ok", "users": users}
 
 
+@app.get("/api/leetcode/{slug}")
+async def get_leetcode_problem_proxy(slug: str):
+    """Fetches authentic LeetCode problem data server-side to bypass browser CORS restrictions."""
+    clean_slug = slug.strip().lower()
+    query = """query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionId
+        questionFrontendId
+        title
+        titleSlug
+        content
+        difficulty
+        topicTags { name slug }
+        codeSnippets { lang langSlug code }
+        sampleTestCase
+        exampleTestcases
+        hints
+        categoryTitle
+      }
+    }"""
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Content-Type": "application/json",
+        "Referer": f"https://leetcode.com/problems/{clean_slug}/",
+        "Origin": "https://leetcode.com"
+    }
+    
+    try:
+        resp = requests.post(
+            "https://leetcode.com/graphql",
+            headers=headers,
+            json={"query": query, "variables": {"titleSlug": clean_slug}},
+            timeout=10
+        )
+        if not resp.ok:
+            return JSONResponse(status_code=resp.status_code, content={"error": f"LeetCode returned status {resp.status_code}"})
+            
+        data = resp.json()
+        q = data.get("data", {}).get("question")
+        if not q or not q.get("title"):
+            return JSONResponse(status_code=404, content={"error": f"Problem '{clean_slug}' not found on LeetCode"})
+
+        content_html = q.get("content") or ""
+        soup = BeautifulSoup(content_html, "html.parser")
+        for pre in soup.find_all("pre"):
+            pre.decompose()
+        clean_desc = soup.get_text(separator="\n").strip()
+
+        # Parse starters
+        starters = {
+            "cpp": "class Solution {\npublic:\n    // Solution code\n};",
+            "python": "class Solution:\n    # Solution code\n    pass",
+            "java": "class Solution {\n    // Solution code\n}",
+            "javascript": "/**\n * @return {any}\n */\nvar solution = function() {\n    \n};",
+            "go": "func solution() {\n    \n}",
+            "rust": "impl Solution {\n    \n}"
+        }
+        for s in q.get("codeSnippets") or []:
+            l_slug = s.get("langSlug")
+            code = s.get("code")
+            if l_slug == "cpp":
+                starters["cpp"] = code
+            elif l_slug in ("python3", "python"):
+                starters["python"] = code
+            elif l_slug == "java":
+                starters["java"] = code
+            elif l_slug == "javascript":
+                starters["javascript"] = code
+            elif l_slug == "golang":
+                starters["go"] = code
+            elif l_slug == "rust":
+                starters["rust"] = code
+
+        # Parse example testcases
+        example_cases = []
+        raw_examples = q.get("exampleTestcases") or q.get("sampleTestCase") or ""
+        if raw_examples:
+            for line in raw_examples.strip().split("\n"):
+                if line.strip():
+                    example_cases.append(line.strip())
+
+        # Extract examples from HTML pre blocks
+        examples = []
+        soup_orig = BeautifulSoup(content_html, "html.parser")
+        for pre in soup_orig.find_all("pre"):
+            text = pre.get_text()
+            in_m = re.search(r"Input:\s*([\s\S]*?)(?=\nOutput:|$)", text, re.IGNORECASE)
+            out_m = re.search(r"Output:\s*([\s\S]*?)(?=\nExplanation:|$)", text, re.IGNORECASE)
+            if in_m and out_m:
+                examples.append({
+                    "input": in_m.group(1).strip(),
+                    "output": out_m.group(1).strip()
+                })
+
+        return {
+            "id": f"lc-{q.get('questionFrontendId', '1')}",
+            "name": q.get("title"),
+            "slug": clean_slug,
+            "difficulty": q.get("difficulty", "Medium"),
+            "description": clean_desc or content_html,
+            "topicTags": [t.get("name") for t in (q.get("topicTags") or []) if t.get("name")],
+            "starters": starters,
+            "examples": examples,
+            "testCases": example_cases if example_cases else [e.get("input", "") for e in examples if e.get("input")],
+            "expectedOutputs": [e.get("output", "") for e in examples if e.get("output")]
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "7860"))

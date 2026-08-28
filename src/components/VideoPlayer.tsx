@@ -5,8 +5,11 @@ import {
   DownloadCloud, 
   CheckCircle2, 
   Maximize, 
+  Volume1,
   Volume2, 
   VolumeX, 
+  Zap,
+  Sliders,
   MessageSquare, 
   Sparkles, 
   Clock, 
@@ -52,6 +55,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem('sdetube_video_volume');
+      return v ? parseFloat(v) : 1.0;
+    } catch {
+      return 1.0;
+    }
+  });
+  const [volumeBoost, setVolumeBoost] = useState<number>(() => {
+    try {
+      const b = localStorage.getItem('sdetube_video_boost');
+      return b ? parseFloat(b) : 1.0;
+    } catch {
+      return 1.0;
+    }
+  });
+  const [isBoosterOpen, setIsBoosterOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(video.duration_seconds || 1200);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -67,6 +87,63 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
   const [confirmInput, setConfirmInput] = useState<string>('');
   const hideControlsTimer = useRef<any>(null);
+
+  // Web Audio API Gain Node for Hardware Volume Amplification
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+
+  const ensureAudioGraph = () => {
+    if (!videoRef.current) return;
+    try {
+      if (!audioCtxRef.current) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaElementSource(videoRef.current);
+        const gain = ctx.createGain();
+        gain.gain.value = isMuted ? 0 : volume * volumeBoost;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+
+        audioCtxRef.current = ctx;
+        gainNodeRef.current = gain;
+        sourceNodeRef.current = source;
+      }
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+    } catch (err) {
+      console.warn('[Audio Boost Notice]:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = isMuted ? 0 : volume * volumeBoost;
+    } else if (videoRef.current) {
+      videoRef.current.volume = isMuted ? 0 : Math.min(1, volume);
+    }
+  }, [volume, volumeBoost, isMuted]);
+
+  const handleVolumeChange = (newVol: number) => {
+    ensureAudioGraph();
+    setVolume(newVol);
+    if (newVol > 0 && isMuted) {
+      setIsMuted(false);
+    }
+    try {
+      localStorage.setItem('sdetube_video_volume', String(newVol));
+    } catch {}
+  };
+
+  const handleBoostChange = (newBoost: number) => {
+    ensureAudioGraph();
+    setVolumeBoost(newBoost);
+    try {
+      localStorage.setItem('sdetube_video_boost', String(newBoost));
+    } catch {}
+  };
 
   const triggerShowControls = () => {
     setShowControls(true);
@@ -597,22 +674,127 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               />
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   <button
-                    onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors"
+                    onClick={(e) => { e.stopPropagation(); ensureAudioGraph(); togglePlay(); }}
+                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer"
                   >
                     {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
 
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                    className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors"
-                  >
-                    {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  </button>
+                  {/* Volume Slider & Mute Toggle */}
+                  <div className="flex items-center space-x-1.5 group/vol relative">
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        ensureAudioGraph();
+                        setIsMuted(!isMuted); 
+                      }}
+                      className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer"
+                      title={isMuted ? 'Unmute' : 'Mute'}
+                    >
+                      {isMuted || volume === 0 ? (
+                        <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+                      ) : volume < 0.5 ? (
+                        <Volume1 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      ) : (
+                        <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      )}
+                    </button>
 
-                  <span className="text-[11px] sm:text-xs text-slate-300 font-mono">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={isMuted ? 0 : volume}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      className="w-14 sm:w-20 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
+                    />
+                  </div>
+
+                  {/* Volume Booster Popover Toggle */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        ensureAudioGraph();
+                        setIsBoosterOpen(!isBoosterOpen);
+                      }}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all border cursor-pointer ${
+                        volumeBoost > 1.0
+                          ? 'bg-amber-950/80 text-amber-300 border-amber-500/60 shadow-lg shadow-amber-500/20'
+                          : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:text-slate-200'
+                      }`}
+                      title="Audio Booster: amplify quiet speech and lecture volume"
+                    >
+                      <Zap className={`w-3 h-3 ${volumeBoost > 1.0 ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`} />
+                      <span>{Math.round(volumeBoost * 100)}%</span>
+                      {volumeBoost > 1.0 && <span className="hidden sm:inline text-[9px] text-amber-400">Boost</span>}
+                    </button>
+
+                    {/* Booster Popup Menu */}
+                    {isBoosterOpen && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute bottom-9 left-0 w-52 p-3 bg-slate-950/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl z-50 space-y-2.5 animate-fadeIn"
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                          <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Audio Amplifier</span>
+                          </span>
+                          <button 
+                            onClick={() => setIsBoosterOpen(false)}
+                            className="text-slate-400 hover:text-slate-200 text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                            <span>Boost Level</span>
+                            <span className="text-amber-300 font-bold">{Math.round(volumeBoost * 100)}% ({volumeBoost.toFixed(1)}x)</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.1"
+                            value={volumeBoost}
+                            onChange={(e) => handleBoostChange(parseFloat(e.target.value))}
+                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1 pt-1">
+                          {[
+                            { label: '100%', val: 1.0 },
+                            { label: '150%', val: 1.5 },
+                            { label: '200%', val: 2.0 },
+                            { label: '300%', val: 3.0 }
+                          ].map((b) => (
+                            <button
+                              key={b.val}
+                              onClick={() => handleBoostChange(b.val)}
+                              className={`py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                                volumeBoost === b.val
+                                  ? 'bg-amber-500 text-slate-950'
+                                  : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+                              }`}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <span className="text-[11px] sm:text-xs text-slate-300 font-mono hidden xs:inline">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>

@@ -625,7 +625,11 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center">
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Views</p>
-                <p className="text-xs font-black text-slate-200 mt-0.5">2.4k</p>
+                <p className="text-xs font-black text-slate-200 mt-0.5">
+                  {leetcodeData?.matchedUser?.profile?.reputation 
+                    ? (leetcodeData.matchedUser.profile.reputation * 12).toLocaleString() 
+                    : (combinedSolved > 0 ? (combinedSolved * 3).toLocaleString() : '0')}
+                </p>
               </div>
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Solutions</p>
@@ -633,7 +637,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               </div>
               <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800">
                 <p className="text-[10px] text-slate-500 uppercase font-mono font-bold">Reputation</p>
-                <p className="text-xs font-black text-amber-400 mt-0.5">{leetcodeData?.matchedUser?.profile?.reputation || 12}</p>
+                <p className="text-xs font-black text-amber-400 mt-0.5">{leetcodeData?.matchedUser?.profile?.reputation || 0}</p>
               </div>
             </div>
           </div>
@@ -645,16 +649,23 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <Terminal className="w-4 h-4 text-cyan-400" />
                 <span>Languages Breakdown</span>
               </span>
-              <span className="text-[10px] font-mono text-slate-500">{leetcodeData?.matchedUser?.languageProblemCount?.length || 4} languages</span>
+              <span className="text-[10px] font-mono text-slate-500">
+                {leetcodeData?.matchedUser?.languageProblemCount?.length || (combinedSolved > 0 ? 3 : 0)} languages
+              </span>
             </h3>
 
             <div className="space-y-2">
-              {(leetcodeData?.matchedUser?.languageProblemCount || [
-                { languageName: 'C++', problemsSolved: Math.round(combinedSolved * 0.60) },
-                { languageName: 'Python', problemsSolved: Math.round(combinedSolved * 0.25) },
-                { languageName: 'Java', problemsSolved: Math.round(combinedSolved * 0.10) },
-                { languageName: 'SQL', problemsSolved: 8 }
-              ]).map((lang) => (
+              {(leetcodeData?.matchedUser?.languageProblemCount || (
+                combinedSolved > 0 ? [
+                  { languageName: 'C++', problemsSolved: Math.round(combinedSolved * 0.50) },
+                  { languageName: 'Python', problemsSolved: Math.round(combinedSolved * 0.30) },
+                  { languageName: 'Java', problemsSolved: Math.max(0, combinedSolved - Math.round(combinedSolved * 0.50) - Math.round(combinedSolved * 0.30)) }
+                ] : [
+                  { languageName: 'C++', problemsSolved: 0 },
+                  { languageName: 'Python', problemsSolved: 0 },
+                  { languageName: 'Java', problemsSolved: 0 }
+                ]
+              )).map((lang) => (
                 <div key={lang.languageName} className="space-y-1">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-slate-300 font-bold">{lang.languageName}</span>
@@ -736,7 +747,15 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span>{profileMode === 'sdetube' ? 'SDETube Solved' : 'Combined Solved'}</span>
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">Beats 88.6%</span>
+                  {combinedSolved > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-bold font-mono">
+                      Beats {Math.min(99.9, Math.round(40 + (combinedSolved / 300) * 58))}%
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-500 text-[10px] font-mono">
+                      New Pioneer
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-center py-2">

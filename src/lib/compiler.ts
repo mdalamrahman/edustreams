@@ -1215,7 +1215,8 @@ export async function executeCode(
     const response = await fetch('https://ce.judge0.com/submissions?wait=true&base64_encoded=true', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(j0Payload)
+      body: JSON.stringify(j0Payload),
+      signal: AbortSignal.timeout(8000)
     });
 
     if (response.ok) {
@@ -1280,7 +1281,8 @@ export async function executeCode(
         language: normLang,
         code: executableCode,
         input: testInput
-      })
+      }),
+      signal: AbortSignal.timeout(8000)
     });
 
     if (response.ok) {
