@@ -9,10 +9,21 @@ export interface InterviewMessage {
   stage?: 'intro' | 'problem' | 'intuition' | 'coding' | 'complexity' | 'evaluation';
 }
 
+export interface CandidateDetails {
+  name?: string;
+  experienceYears?: number | string;
+  currentRole?: string;
+  techStack?: string[];
+  keyProjects?: string[];
+  resumeText?: string;
+  customGoals?: string;
+}
+
 export interface InterviewContext {
   company: string;
   level: SdeLevel;
   round: InterviewRound;
+  candidate?: CandidateDetails;
   question?: CuratedInterviewQuestion;
   candidateCode?: string;
   language?: string;
@@ -23,7 +34,7 @@ export interface InterviewContext {
  * Builds a structured, high-fidelity Principal Interviewer System Prompt.
  */
 export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
-  const { company, level, round, question } = ctx;
+  const { company, level, round, question, candidate } = ctx;
 
   const levelExpectations: Record<SdeLevel, string> = {
     'SDE-1': 'Expect solid algorithmic fundamentals, standard library mastery, clean syntax, basic edge cases, and time/space complexity awareness. Guide with warm, clear hints if stuck.',
@@ -46,16 +57,27 @@ export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
 
     HLD: `1. Present a large-scale distributed system problem (e.g., Uber Real-Time Dispatch, Instagram News Feed Fanout, URL Shortener).
 2. Guide them through: Functional/Non-functional Requirements -> Back-of-the-Envelope Math (QPS, Storage, Bandwidth) -> High-Level API Design -> Core Components (Load Balancer, Caching, DB Sharding) -> Deep-Dive into Bottlenecks & SPOFs.
-3. Challenge their choice of databases (SQL vs NoSQL vs Graph), caching strategies, message queues (Kafka vs RabbitMQ), and data partitioning keys.`,
+3. Challenge their choice of databases (SQL vs NoSQL vs Graph), caching strategies, message queues (Kafka vs RabbitMQ), and data partitioning keys.
+4. Refer to their interactive canvas diagram and probe how their architecture scales.`,
 
     Behavioral: `1. Conduct a rigorous behavioral evaluation using the Amazon/Google STAR method (Situation, Task, Action, Result).
 2. Deeply explore conflict resolution, technical disagreements with leadership, mentorship, dealing with production outages, and ambiguity.
-3. Follow up on the candidate's exact personal contribution ("What specifically did YOU do, not just your team?").`
+3. Reference their resume projects and experience if provided, and probe what specifically THEY delivered.`
   };
 
-  return `You are a Principal Engineering Interviewer at ${company} conducting a live technical mock interview.
+  return `You are a Principal Engineering Interviewer and Lead Bar Raiser at ${company} conducting a live technical mock interview.
 Role Level: ${level}
 Round Type: ${round}
+
+${candidate ? `CANDIDATE BACKGROUND & RESUME CONTEXT:
+- Candidate Name: ${candidate.name || 'Candidate'}
+- Experience Level: ${candidate.experienceYears ? `${candidate.experienceYears} Years` : 'Not specified'}
+- Current / Previous Role: ${candidate.currentRole || 'Software Engineer'}
+- Core Tech Stack: ${candidate.techStack && candidate.techStack.length > 0 ? candidate.techStack.join(', ') : 'C++, Python, Java'}
+${candidate.keyProjects && candidate.keyProjects.length > 0 ? `- Highlighted Projects: ${candidate.keyProjects.join('; ')}` : ''}
+${candidate.customGoals ? `- Candidate Focus / Goals: ${candidate.customGoals}` : ''}
+${candidate.resumeText ? `- Extracted Resume Context Snippet: ${candidate.resumeText.slice(0, 800)}` : ''}
+` : ''}
 
 LEVEL EXPECTATION FOR ${level}:
 ${levelExpectations[level]}
@@ -66,7 +88,8 @@ ${roundGuidelines[round]}
 ${question ? `CURRENT ASSIGNED PROBLEM:\nTitle: ${question.title}\nDescription: ${question.description}\nKey Evaluation Criteria: ${question.keyEvaluationCriteria.join(', ')}` : ''}
 
 TONE & BEHAVIOR:
-- Professional, encouraging, but rigorous and analytical.
+- Address the candidate naturally by name (${candidate?.name || 'there'}).
+- Professional, encouraging, but rigorous and analytical like a genuine ${company} principal engineer.
 - Speak in natural, spoken conversational sentences (2-3 sentences per turn).
 - Never dump the complete answer or write the code for them; give subtle progressive hints if they struggle.
 - Actively react to the candidate's thoughts, validate correct intuition, and steer away from suboptimal brute force paths.`;

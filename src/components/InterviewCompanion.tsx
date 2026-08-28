@@ -23,12 +23,23 @@ import {
   Building2, 
   Zap, 
   FileText, 
-  RefreshCw,
-  HelpCircle,
-  ShieldAlert,
-  Calculator,
-  Compass,
-  Radio
+  RefreshCw, 
+  HelpCircle, 
+  ShieldAlert, 
+  Calculator, 
+  Compass, 
+  Radio, 
+  Settings, 
+  ArrowRight, 
+  Sliders, 
+  Check, 
+  LayoutTemplate,
+  Upload,
+  User,
+  Briefcase,
+  GraduationCap,
+  X,
+  FileCheck2
 } from 'lucide-react';
 import { 
   SdeLevel, 
@@ -40,6 +51,7 @@ import {
 import { 
   InterviewMessage, 
   InterviewContext, 
+  CandidateDetails,
   sendInterviewerMessage, 
   speakInterviewerText, 
   stopInterviewerSpeech 
@@ -47,8 +59,10 @@ import {
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { InterviewScorecardModal } from './InterviewScorecardModal';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
+import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 import { FormattedChatText } from './FormattedChatText';
 import { SupportedLanguage } from '../lib/compiler';
+import { extractTextFromFile, analyzeResumeWithAI, ParsedCandidateProfile } from '../lib/resumeParser';
 import confetti from 'canvas-confetti';
 
 interface InterviewCompanionProps {
@@ -56,7 +70,20 @@ interface InterviewCompanionProps {
 }
 
 export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackToDashboard }) => {
-  // Configuration State
+  // Session Flow State: false = Pre-Interview Setup Wizard, true = Active Live Interview Room
+  const [isInterviewStarted, setIsInterviewStarted] = useState<boolean>(false);
+
+  // Candidate Profile Form State
+  const [candidateName, setCandidateName] = useState<string>('Candidate');
+  const [candidateExpYears, setCandidateExpYears] = useState<string>('2-4');
+  const [candidateRole, setCandidateRole] = useState<string>('Software Engineer');
+  const [candidateTechStack, setCandidateTechStack] = useState<string>('C++, Python, React, PostgreSQL, Redis, Kafka');
+  const [candidateGoals, setCandidateGoals] = useState<string>('');
+  const [resumeFileName, setResumeFileName] = useState<string>('');
+  const [resumeText, setResumeText] = useState<string>('');
+  const [isParsingResume, setIsParsingResume] = useState<boolean>(false);
+
+  // Interview Configuration State
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('google');
   const [selectedLevel, setSelectedLevel] = useState<SdeLevel>('SDE-2');
   const [selectedRound, setSelectedRound] = useState<InterviewRound>('DSA');
@@ -67,7 +94,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [activeQuestion, setActiveQuestion] = useState<CuratedInterviewQuestion | null>(null);
   const [editorCode, setEditorCode] = useState<string>('// Write your optimal solution here\n\n');
   const [whiteboardNotes, setWhiteboardNotes] = useState<string>('');
-  const [rightTab, setRightTab] = useState<'code' | 'diagram' | 'math' | 'star'>('code');
+  const [rightTab, setRightTab] = useState<'code' | 'hld_canvas' | 'diagram' | 'math' | 'star'>('code');
 
   // Interview Dialogue & Speech State
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
@@ -82,7 +109,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   // Timer State (45 mins default)
   const [secondsRemaining, setSecondsRemaining] = useState<number>(45 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(true);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
 
   // Assessment & Scorecard State
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
@@ -98,6 +125,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const isAiSpeakingRef = useRef<boolean>(false);
   const isAiThinkingRef = useRef<boolean>(false);
   const isHandsFreeModeRef = useRef<boolean>(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Keep refs synchronized
   useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
@@ -122,7 +150,40 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       }
     });
     return () => { isCancelled = true; };
-  }, [currentCompany, selectedRound, selectedLevel]);
+  }, [currentCompany, selectedRound, selectedLevel, language]);
+
+  // Handle PDF Resume Upload
+  const handleResumeFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setResumeFileName(file.name);
+    setIsParsingResume(true);
+
+    try {
+      const extracted = await extractTextFromFile(file);
+      setResumeText(extracted);
+
+      // AI Analysis to auto-populate candidate profile
+      const parsedProfile: ParsedCandidateProfile = await analyzeResumeWithAI(extracted);
+      if (parsedProfile.name && parsedProfile.name !== 'Candidate') {
+        setCandidateName(parsedProfile.name);
+      }
+      if (parsedProfile.currentRole) {
+        setCandidateRole(parsedProfile.currentRole);
+      }
+      if (parsedProfile.techStack && parsedProfile.techStack.length > 0) {
+        setCandidateTechStack(parsedProfile.techStack.join(', '));
+      }
+      if (parsedProfile.experienceYears) {
+        setCandidateExpYears(String(parsedProfile.experienceYears));
+      }
+    } catch (err) {
+      console.warn('Resume parse error:', err);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
 
   const startListening = () => {
     if (!recognitionRef.current || isAiThinkingRef.current) return;
@@ -159,11 +220,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
   };
 
-  // Initialize Interview Dialogue on start or round change
-  useEffect(() => {
+  // Launch the live interview session from the Pre-Interview Setup screen
+  const handleStartLiveInterview = () => {
     if (!activeQuestion) return;
 
-    const initialGreeting = `Hello! I'm your Principal Engineering Interviewer at ${currentCompany.name} today. We will be conducting a ${selectedLevel} ${selectedRound} interview.\n\nHere is your problem scenario:\n**${activeQuestion.title}**\n\n${activeQuestion.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code.`;
+    if (selectedRound === 'HLD') {
+      setRightTab('hld_canvas');
+    } else if (selectedRound === 'Behavioral') {
+      setRightTab('star');
+    } else {
+      setRightTab('code');
+    }
+
+    const candidateGreetingName = candidateName.trim() || 'Candidate';
+    const initialGreeting = `Hello ${candidateGreetingName}! I'm your Principal Engineering Interviewer at ${currentCompany.name} today. We will be conducting a ${selectedLevel} ${selectedRound} interview.\n\nHere is your problem scenario:\n**${activeQuestion.title}**\n\n${activeQuestion.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -176,6 +246,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setMessages([initialMsg]);
     setSecondsRemaining(45 * 60);
     setIsTimerRunning(true);
+    setIsInterviewStarted(true);
 
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
@@ -188,12 +259,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     } else if (isHandsFreeModeRef.current) {
       startListening();
     }
-
-    return () => {
-      stopInterviewerSpeech();
-      stopListening();
-    };
-  }, [activeQuestion]);
+  };
 
   // Auto-scroll transcript on new messages
   useEffect(() => {
@@ -292,8 +358,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
         recognition.onend = () => {
           isRecognitionActiveRef.current = false;
-          // In hands-free mode, if not AI speaking and not thinking, keep listening alive
-          if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+          if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current && isInterviewStarted) {
             try {
               recognition.start();
             } catch {}
@@ -313,13 +378,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         try { recognitionRef.current.abort(); } catch {}
       }
     };
-  }, []);
+  }, [isInterviewStarted]);
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue || interimSpeech).trim();
     if (!text || isAiThinkingRef.current) return;
 
-    // Clear speech timers & accumulator
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     setSilenceCountdown(null);
@@ -327,7 +391,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     speechAccumulatorRef.current = '';
     setInputValue('');
 
-    // Stop candidate mic and any AI speech while evaluating
     stopInterviewerSpeech();
     setIsAiSpeaking(false);
     stopListening();
@@ -344,10 +407,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setMessages(nextMessages);
     setIsAiThinking(true);
 
+    const candidateContext: CandidateDetails = {
+      name: candidateName,
+      experienceYears: candidateExpYears,
+      currentRole: candidateRole,
+      techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+      customGoals: candidateGoals,
+      resumeText: resumeText
+    };
+
     const ctx: InterviewContext = {
       company: currentCompany.name,
       level: selectedLevel,
       round: selectedRound,
+      candidate: candidateContext,
       question: activeQuestion || undefined,
       candidateCode: editorCode,
       language: language,
@@ -367,7 +440,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     setMessages([...nextMessages, interviewerMsg]);
 
-    // AI Voice Response & Seamless Hands-Free Auto-Listening Loop
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
       speakInterviewerText(aiReply, () => {
@@ -386,10 +458,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     stopInterviewerSpeech();
     setIsAiSpeaking(false);
 
+    const candidateContext: CandidateDetails = {
+      name: candidateName,
+      experienceYears: candidateExpYears,
+      currentRole: candidateRole,
+      techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+      customGoals: candidateGoals,
+      resumeText: resumeText
+    };
+
     const ctx: InterviewContext = {
       company: currentCompany.name,
       level: selectedLevel,
       round: selectedRound,
+      candidate: candidateContext,
       question: activeQuestion || undefined,
       candidateCode: editorCode,
       language: language,
@@ -417,74 +499,436 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Convert active question to HLD problem spec if applicable
+  const currentHldSpec: HLDProblemSpec | undefined = useMemo(() => {
+    if (!activeQuestion || selectedRound !== 'HLD') return undefined;
+    return {
+      id: activeQuestion.id,
+      title: activeQuestion.title,
+      description: activeQuestion.description,
+      difficulty: selectedLevel === 'SDE-1' ? 'Medium' : 'Hard',
+      companies: [currentCompany.name],
+      requirements: activeQuestion.keyEvaluationCriteria || ['High Availability (99.99%)', 'Low Latency (<100ms)', 'Scalable Storage'],
+      expectedScale: '10M+ DAU'
+    };
+  }, [activeQuestion, selectedRound, selectedLevel, currentCompany]);
+
+  // =========================================================================
+  // VIEW 1: PRE-INTERVIEW SETUP & CANDIDATE PROFILE FORM WIZARD
+  // =========================================================================
+  if (!isInterviewStarted) {
+    return (
+      <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto custom-scrollbar p-4 sm:p-8">
+        <div className="max-w-4xl mx-auto w-full space-y-8 animate-fadeIn">
+          
+          {/* Header Banner */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-500/40 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold w-fit">
+                <Bot className="w-3.5 h-3.5 text-indigo-400" />
+                <span>FAANG BAR RAISER SIMULATOR &bull; RESUME INGESTION</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Candidate Profile & Interview Setup
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+                Provide your background or upload your resume PDF. The AI Principal Interviewer will tailor technical questions, deep-dive into your projects, and evaluate you against real hiring bars.
+              </p>
+            </div>
+
+            {onBackToDashboard && (
+              <button
+                onClick={onBackToDashboard}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
+              >
+                Back to Dashboard
+              </button>
+            )}
+          </div>
+
+          {/* SECTION 1: CANDIDATE PROFILE & RESUME UPLOAD */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <User className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  1. Candidate Profile & Experience
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-slate-400">Contextual Ingestion</span>
+            </div>
+
+            {/* Resume Upload Dropzone */}
+            <div className="p-5 rounded-2xl bg-slate-950 border border-dashed border-indigo-500/40 hover:border-indigo-500 transition-colors flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                    <span>Upload Resume PDF / Text</span>
+                    {resumeFileName && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1 border border-emerald-500/40">
+                        <FileCheck2 className="w-3 h-3" />
+                        <span>Parsed</span>
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isParsingResume
+                      ? 'Extracting tech stack, projects & experience with AI...'
+                      : resumeFileName
+                      ? `Active Resume: ${resumeFileName}`
+                      : 'Upload your .pdf, .txt, or .docx resume for realistic project probing'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleResumeFileUpload}
+                  accept=".pdf,.txt,.md,.docx,.json"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isParsingResume}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-900/30 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{resumeFileName ? 'Replace Resume' : 'Select Resume PDF'}</span>
+                </button>
+                {resumeFileName && (
+                  <button
+                    onClick={() => {
+                      setResumeFileName('');
+                      setResumeText('');
+                    }}
+                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                    title="Remove Resume"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Candidate Details Form Inputs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              
+              {/* Candidate Full Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Your Full Name:</label>
+                <input
+                  type="text"
+                  value={candidateName}
+                  onChange={(e) => setCandidateName(e.target.value)}
+                  placeholder="e.g. Alex Morgan"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Experience Range */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Years of Experience (YOE):</label>
+                <select
+                  value={candidateExpYears}
+                  onChange={(e) => setCandidateExpYears(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  <option value="0-1">0-1 Years (Fresher / College Graduate)</option>
+                  <option value="2-4">2-4 Years (Mid-Level SDE-2)</option>
+                  <option value="5-8">5-8 Years (Senior SDE-3 / Lead)</option>
+                  <option value="9+">9+ Years (Staff / Principal Architect)</option>
+                </select>
+              </div>
+
+              {/* Current Role / College */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Current Role / Organization:</label>
+                <input
+                  type="text"
+                  value={candidateRole}
+                  onChange={(e) => setCandidateRole(e.target.value)}
+                  placeholder="e.g. Backend SDE @ FinTech Startup"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+            </div>
+
+            {/* Tech Stack & Weakness / Goal Input */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Primary Tech Stack & Tools:</label>
+                <input
+                  type="text"
+                  value={candidateTechStack}
+                  onChange={(e) => setCandidateTechStack(e.target.value)}
+                  placeholder="e.g. C++, Go, React, PostgreSQL, Redis, Kafka, AWS"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">Custom Focus / Weakness to Test (Optional):</label>
+                <input
+                  type="text"
+                  value={candidateGoals}
+                  onChange={(e) => setCandidateGoals(e.target.value)}
+                  placeholder="e.g. Test my distributed concurrency, graph DP & caching tradeoffs"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+          </div>
+
+          {/* SECTION 2: COMPANY & ROUND MATRIX */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Step 2A: Target Company */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Building2 className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">2. Target Company</h3>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {SUPPORTED_COMPANIES.map((comp) => {
+                  const isSelected = comp.id === selectedCompanyId;
+                  return (
+                    <button
+                      key={comp.id}
+                      onClick={() => setSelectedCompanyId(comp.id)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-indigo-950/80 border-indigo-500 shadow-md shadow-indigo-500/20'
+                          : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-white">{comp.name}</span>
+                        {isSelected && <Check className="w-4 h-4 text-indigo-400" />}
+                      </div>
+                      <p className="text-[10px] text-slate-400 line-clamp-1 mt-1 font-mono">
+                        {comp.focusAreas.DSA[0]}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2B: SDE Seniority Level */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Award className="w-4 h-4 text-purple-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">3. SDE Seniority Level</h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {(['SDE-1', 'SDE-2', 'SDE-3'] as SdeLevel[]).map((lvl) => {
+                  const isSelected = lvl === selectedLevel;
+                  const label = lvl === 'SDE-1' ? 'Junior / Fresher (0-2 YOE)' : lvl === 'SDE-2' ? 'Mid-Level Engineer (2-5 YOE)' : 'Senior / Staff Architect (5+ YOE)';
+                  const focus = lvl === 'SDE-1' ? 'Core DSA, syntax mastery, edge cases' : lvl === 'SDE-2' ? 'Complex algorithms, concurrency & modular LLD' : 'Global distributed systems, trade-offs & consensus';
+                  return (
+                    <button
+                      key={lvl}
+                      onClick={() => setSelectedLevel(lvl)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-purple-950/80 border-purple-500 shadow-md shadow-purple-500/20'
+                          : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-black text-sm text-white">{lvl}</span>
+                          <span className="text-xs text-slate-400 font-mono">• {label}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{focus}</p>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2C: Round Type */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">4. Technical Round Track</h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { id: 'DSA', name: 'DSA & Algorithms', desc: 'Monaco Code IDE, Big-O' },
+                  { id: 'LLD', name: 'LLD Machine Coding', desc: 'OOP Design Patterns' },
+                  { id: 'HLD', name: 'HLD System Design', desc: 'Interactive Architecture Canvas' },
+                  { id: 'Behavioral', name: 'Behavioral (STAR)', desc: 'Leadership & Conflict' }
+                ].map((rd) => {
+                  const isSelected = rd.id === selectedRound;
+                  return (
+                    <button
+                      key={rd.id}
+                      onClick={() => setSelectedRound(rd.id as InterviewRound)}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-cyan-950/80 border-cyan-500 shadow-md shadow-cyan-500/20'
+                          : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-white">{rd.name}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">{rd.desc}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2D: Language & Voice Preferences */}
+            <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+              <div className="flex items-center space-x-2">
+                <Sliders className="w-4 h-4 text-teal-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Environment & Voice Setup</h3>
+              </div>
+
+              <div className="space-y-3">
+                {/* Language Picker */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+                  <span className="text-slate-300 font-bold">Coding Language:</span>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono font-bold text-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value="cpp">C++ (GCC 13)</option>
+                    <option value="python">Python 3.12</option>
+                    <option value="java">Java 21</option>
+                    <option value="javascript">JavaScript (Node.js)</option>
+                    <option value="go">Go 1.22</option>
+                    <option value="rust">Rust 1.77</option>
+                  </select>
+                </div>
+
+                {/* Hands-Free Voice Flow */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+                  <div>
+                    <span className="text-slate-300 font-bold block">Hands-Free Live Voice Flow</span>
+                    <span className="text-[10px] text-slate-500">Auto-listens & auto-sends when you finish talking</span>
+                  </div>
+                  <button
+                    onClick={() => setIsHandsFreeMode(!isHandsFreeMode)}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                      isHandsFreeMode ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {isHandsFreeMode ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {/* AI Voice Output */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+                  <div>
+                    <span className="text-slate-300 font-bold block">AI Interviewer Voice Output</span>
+                    <span className="text-[10px] text-slate-500">Natural voice synthesis during dialogue</span>
+                  </div>
+                  <button
+                    onClick={() => setIsVoiceMuted(!isVoiceMuted)}
+                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                      !isVoiceMuted ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {!isVoiceMuted ? 'Enabled' : 'Muted'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Assigned Problem Summary Preview */}
+          {activeQuestion && (
+            <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-2">
+              <span className="text-xs font-bold uppercase text-indigo-400 tracking-wider">Matched Scenario Preview:</span>
+              <h4 className="text-base font-bold text-white">{activeQuestion.title}</h4>
+              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{activeQuestion.description}</p>
+            </div>
+          )}
+
+          {/* Start CTA Button */}
+          <div className="pt-2 flex justify-center">
+            <button
+              onClick={handleStartLiveInterview}
+              className="w-full sm:w-auto sm:px-12 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-sm tracking-wide shadow-2xl shadow-indigo-900/50 transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center space-x-2"
+            >
+              <Zap className="w-5 h-5 text-amber-300" />
+              <span>🚀 Enter Live Technical Interview Room (45 Mins)</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: ACTIVE LIVE SPLIT-SCREEN INTERVIEW ROOM
+  // =========================================================================
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-hidden font-sans">
       
       {/* 1. TOP CONFIGURATOR & STATUS BAR */}
       <div className="p-3 sm:px-6 bg-slate-900/95 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
         
-        {/* Left: Role, Company & Round Selector */}
+        {/* Left: Role, Company & Round Display */}
         <div className="flex flex-wrap items-center gap-2.5">
           
-          {/* Company Picker */}
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
             <Building2 className="w-4 h-4 text-indigo-400" />
-            <select
-              value={selectedCompanyId}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="bg-transparent text-slate-100 font-bold focus:outline-none cursor-pointer"
-            >
-              {SUPPORTED_COMPANIES.map(c => (
-                <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <span>{currentCompany.name}</span>
           </div>
 
-          {/* SDE Level Selector */}
-          <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-            {(['SDE-1', 'SDE-2', 'SDE-3'] as SdeLevel[]).map(lvl => (
-              <button
-                key={lvl}
-                onClick={() => setSelectedLevel(lvl)}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  selectedLevel === lvl
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {lvl}
-              </button>
-            ))}
-          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-xs font-mono font-bold">
+            {selectedLevel}
+          </span>
 
-          {/* Round Type Selector */}
-          <div className="flex items-center p-0.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
-            {(['DSA', 'LLD', 'HLD', 'Behavioral'] as InterviewRound[]).map(rd => (
-              <button
-                key={rd}
-                onClick={() => {
-                  setSelectedRound(rd);
-                  if (rd === 'HLD') setRightTab('diagram');
-                  else if (rd === 'Behavioral') setRightTab('star');
-                  else setRightTab('code');
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  selectedRound === rd
-                    ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {rd}
-              </button>
-            ))}
-          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-cyan-950 border border-cyan-700/60 text-cyan-300 text-xs font-mono font-bold">
+            {selectedRound} Round
+          </span>
+
+          {candidateName && (
+            <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 text-xs font-bold">
+              👤 {candidateName}
+            </span>
+          )}
+
+          <button
+            onClick={() => {
+              stopInterviewerSpeech();
+              stopListening();
+              setIsInterviewStarted(false);
+            }}
+            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+            title="Configure New Round or Update Profile"
+          >
+            <Settings className="w-3.5 h-3.5 text-slate-400" />
+            <span>Edit Profile</span>
+          </button>
 
         </div>
 
-        {/* Right: Timer, Voice Mute & End Interview CTA */}
-        <div className="flex items-center space-x-3">
+        {/* Right: Timer, Hands-Free Toggle, Voice Mute & End Interview CTA */}
+        <div className="flex items-center space-x-2.5">
           
           {/* Live Countdown Timer */}
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs font-bold text-amber-400">
@@ -512,7 +956,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border-teal-500/60 text-teal-300 shadow-sm shadow-teal-900/30'
                 : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
-            title="Hands-Free Voice Flow: Automatically listens and sends when you pause speaking without pressing any buttons"
+            title="Hands-Free Voice Flow: Automatically listens and sends when you pause speaking"
           >
             <Radio className={`w-3.5 h-3.5 ${isHandsFreeMode ? 'text-teal-400 animate-pulse' : 'text-slate-500'}`} />
             <span className="hidden sm:inline">{isHandsFreeMode ? 'Hands-Free Voice: ON' : 'Hands-Free: OFF'}</span>
@@ -610,7 +1054,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 }`}
               >
                 <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 font-mono">
-                  <span>{msg.role === 'interviewer' ? `${currentCompany.name} Interviewer` : 'Candidate'}</span>
+                  <span>{msg.role === 'interviewer' ? `${currentCompany.name} Interviewer` : `${candidateName || 'Candidate'}`}</span>
                   <span>•</span>
                   <span>{msg.timestamp}</span>
                 </div>
@@ -637,7 +1081,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           <div className="p-2.5 bg-slate-900/70 border-t border-slate-800 flex items-center space-x-1.5 overflow-x-auto custom-scrollbar flex-shrink-0 text-[11px]">
             <span className="text-slate-500 font-bold uppercase text-[9px] px-1">Quick:</span>
             <button
-              onClick={() => handleSendMessage('Can you provide a subtle hint on optimizing the time complexity?')}
+              onClick={() => handleSendMessage('Can you provide a subtle hint on optimizing the approach?')}
               className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
             >
               💡 Ask for Hint
@@ -728,7 +1172,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
             <button
               onClick={() => handleSendMessage()}
-              disabled={!inputValue.trim() && !interimSpeech.trim() || isAiThinking}
+              disabled={(!inputValue.trim() && !interimSpeech.trim()) || isAiThinking}
               className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
@@ -745,61 +1189,91 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             
             {/* View Mode Tabs */}
             <div className="flex items-center space-x-1 text-xs">
-              <button
-                onClick={() => setRightTab('code')}
-                className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                  rightTab === 'code'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Code2 className="w-3.5 h-3.5" />
-                <span>Code Editor</span>
-              </button>
+              
+              {selectedRound === 'HLD' ? (
+                <>
+                  <button
+                    onClick={() => setRightTab('hld_canvas')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'hld_canvas'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <LayoutTemplate className="w-3.5 h-3.5" />
+                    <span>Interactive System Design Canvas</span>
+                  </button>
 
-              <button
-                onClick={() => setRightTab('diagram')}
-                className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                  rightTab === 'diagram'
-                    ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>UML & Architecture</span>
-              </button>
+                  <button
+                    onClick={() => setRightTab('math')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'math'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    <span>Capacity Math</span>
+                  </button>
 
-              {selectedRound === 'HLD' && (
-                <button
-                  onClick={() => setRightTab('math')}
-                  className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                    rightTab === 'math'
-                      ? 'bg-teal-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Calculator className="w-3.5 h-3.5" />
-                  <span>Sizing Math</span>
-                </button>
+                  <button
+                    onClick={() => setRightTab('diagram')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'diagram'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>UML / PlantUML</span>
+                  </button>
+                </>
+              ) : selectedRound === 'Behavioral' ? (
+                <>
+                  <button
+                    onClick={() => setRightTab('star')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'star'
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>STAR Framework Guide</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setRightTab('code')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'code'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>Monaco Code IDE</span>
+                  </button>
+
+                  <button
+                    onClick={() => setRightTab('diagram')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'diagram'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>UML & Architecture</span>
+                  </button>
+                </>
               )}
 
-              {selectedRound === 'Behavioral' && (
-                <button
-                  onClick={() => setRightTab('star')}
-                  className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                    rightTab === 'star'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Compass className="w-3.5 h-3.5" />
-                  <span>STAR Guide</span>
-                </button>
-              )}
             </div>
 
             {/* Language Selector (When in Code Mode) */}
-            {rightTab === 'code' && (
+            {rightTab === 'code' && selectedRound !== 'HLD' && selectedRound !== 'Behavioral' && (
               <div className="flex items-center space-x-2">
                 <select
                   value={language}
@@ -821,7 +1295,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   className="px-3 py-1 rounded-lg bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                 >
                   <Send className="w-3 h-3" />
-                  <span>Submit to Interviewer</span>
+                  <span>Submit Code</span>
                 </button>
               </div>
             )}
@@ -831,6 +1305,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           {/* Right Panel Main View Canvas */}
           <div className="flex-1 overflow-hidden relative">
             
+            {/* VIEW 0: HLD INTERACTIVE DRAG-AND-DROP CANVAS */}
+            {rightTab === 'hld_canvas' && (
+              <div className="w-full h-full">
+                <HLDArchitectureCanvas
+                  problem={currentHldSpec}
+                />
+              </div>
+            )}
+
             {/* VIEW 1: MONACO CODE EDITOR */}
             {rightTab === 'code' && (
               <div className="w-full h-full flex flex-col">
@@ -963,8 +1446,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           onClose={() => setIsScorecardOpen(false)}
           onRetake={() => {
             setIsScorecardOpen(false);
-            setSecondsRemaining(45 * 60);
-            setIsTimerRunning(true);
+            setIsInterviewStarted(false);
           }}
         />
       )}
