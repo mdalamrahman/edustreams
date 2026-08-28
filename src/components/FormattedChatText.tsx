@@ -3,12 +3,13 @@ import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { Image as ImageIcon, ZoomIn, X } from 'lucide-react';
 
 interface FormattedChatTextProps {
-  text: string;
+  text?: any;
 }
 
-function decodeHtmlEntities(str: string): string {
-  if (!str) return '';
-  return str
+function decodeHtmlEntities(str: any): string {
+  if (str === null || str === undefined) return '';
+  const textStr = typeof str === 'string' ? str : (typeof str === 'object' ? JSON.stringify(str, null, 2) : String(str));
+  return textStr
     .replace(/<sup>([\s\S]*?)<\/sup>/gi, '^$1')
     .replace(/<sub>([\s\S]*?)<\/sub>/gi, '_$1')
     .replace(/&ldquo;/g, '“')
@@ -35,7 +36,7 @@ function decodeHtmlEntities(str: string): string {
  */
 export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) => {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
-  if (!text) return null;
+  if (text === null || text === undefined || text === '') return null;
 
   const cleanedText = decodeHtmlEntities(text);
 
@@ -123,11 +124,13 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
     i++;
   }
 
-  const renderInlineParts = (rawStr: string): React.ReactNode[] => {
-    if (!rawStr) return [];
+  const renderInlineParts = (rawStr: any): React.ReactNode[] => {
+    if (rawStr === null || rawStr === undefined) return [];
+    const safeStr = typeof rawStr === 'string' ? rawStr : String(rawStr);
+    if (!safeStr) return [];
     
     // Pre-clean nested and triple asterisks
-    let str = rawStr
+    let str = safeStr
       .replace(/\*\*\*([^*]+)\*\*\*/g, '**$1**')
       .replace(/\*\*([^*]+)\*/g, '**$1**')
       .replace(/\*([^*]+)\*\*/g, '**$1**');
