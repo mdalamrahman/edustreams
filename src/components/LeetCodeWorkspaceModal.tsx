@@ -65,6 +65,7 @@ import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } fro
 import { ReportTestCaseModal } from './ReportTestCaseModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
+import { KrokiDiagramViewer } from './KrokiDiagramViewer';
 
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
@@ -1648,11 +1649,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               onClick={() => setLeftTab('diagram')}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                 leftTab === 'diagram'
-                  ? 'bg-[#1e1e1e] text-white shadow-sm border border-white/10'
+                  ? 'bg-cyan-950/80 text-cyan-200 shadow-sm border border-cyan-500/40 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
               }`}
             >
-              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
               <span>Visualizer</span>
             </button>
 
@@ -2023,6 +2024,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     />
                   </div>
                 ) : null}
+              </div>
+            )}
+
+            {/* TAB: UML & ARCHITECTURE VISUALIZER (KROKI ENGINE) */}
+            {leftTab === 'diagram' && (
+              <div className="h-[620px] min-h-[500px] flex flex-col rounded-2xl overflow-hidden border border-slate-800 animate-fadeIn">
+                <KrokiDiagramViewer
+                  slugOrTitle={cleanTitle || currentProblemSlug || problemTemplate.name}
+                  category={problemTemplate.category}
+                />
               </div>
             )}
 

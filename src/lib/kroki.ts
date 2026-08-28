@@ -602,6 +602,184 @@ TicTacToeGame o-- Player
 Player o-- PlayingPiece
 Board o-- PlayingPiece
 @enduml`
+  },
+
+  // 12. Design Pattern: Factory & Abstract Factory Pattern
+  'factory-pattern': {
+    type: 'plantuml',
+    title: 'Factory Pattern — Object Creation Decoupling',
+    code: `@startuml
+${BASE_PLANTUML_THEME}
+title Factory Pattern — Dynamic Shape & Object Creation
+
+interface Shape {
+  + draw(): void
+  + calculateArea(): double
+}
+
+class Circle implements Shape {
+  - radius: double
+  + draw(): void
+  + calculateArea(): double
+}
+
+class Rectangle implements Shape {
+  - width: double
+  - height: double
+  + draw(): void
+  + calculateArea(): double
+}
+
+class ShapeFactory {
+  + getShape(type: String): Shape
+}
+
+ShapeFactory ..> Shape : creates
+ShapeFactory ..> Circle : instantiates
+ShapeFactory ..> Rectangle : instantiates
+@enduml`
+  },
+
+  // 13. Design Pattern: Observer Pattern
+  'observer-pattern': {
+    type: 'plantuml',
+    title: 'Observer Pattern — Publish/Subscribe Event Architecture',
+    code: `@startuml
+${BASE_PLANTUML_THEME}
+title Observer Pattern — Event & State Broadcasting
+
+interface Subject {
+  + subscribe(observer: Observer): void
+  + unsubscribe(observer: Observer): void
+  + notifyObservers(): void
+}
+
+interface Observer {
+  + update(state: Object): void
+}
+
+class StockMarketFeed implements Subject {
+  - observers: List<Observer>
+  - stockPrice: double
+  + setPrice(price: double): void
+  + subscribe(observer: Observer): void
+  + unsubscribe(observer: Observer): void
+  + notifyObservers(): void
+}
+
+class MobileAppDisplay implements Observer {
+  + update(state: Object): void
+}
+
+class AnalyticsDashboard implements Observer {
+  + update(state: Object): void
+}
+
+StockMarketFeed o-- Observer
+MobileAppDisplay ..|> Observer
+AnalyticsDashboard ..|> Observer
+@enduml`
+  },
+
+  // 14. Classic: Snake and Ladder Game
+  'snake-and-ladder': {
+    type: 'plantuml',
+    title: 'Snake and Ladder Game — OOP Class Hierarchy',
+    code: `@startuml
+${BASE_PLANTUML_THEME}
+title Snake and Ladder Game — System Architecture
+
+class Player {
+  - id: String
+  - currentPosition: int
+  + getPosition(): int
+  + setPosition(pos: int): void
+}
+
+class Dice {
+  - diceCount: int
+  + roll(): int
+}
+
+class Jump {
+  - start: int
+  - end: int
+  + getStart(): int
+  + getEnd(): int
+}
+
+class Cell {
+  - jump: Jump
+  + hasJump(): boolean
+  + getJump(): Jump
+}
+
+class Board {
+  - size: int
+  - cells: Cell[][]
+  + initializeBoard(): void
+  + getCell(pos: int): Cell
+}
+
+class GameEngine {
+  - board: Board
+  - dice: Dice
+  - players: Deque<Player>
+  + playTurn(): void
+  + isGameOver(): boolean
+}
+
+GameEngine o-- Board
+GameEngine o-- Dice
+GameEngine o-- Player
+Board o-- Cell
+Cell o-- Jump
+@enduml`
+  },
+
+  // 15. Classic: Movie Booking (BookMyShow)
+  'bookmyshow': {
+    type: 'plantuml',
+    title: 'BookMyShow / Movie Booking System — Real-time Concurrency Architecture',
+    code: `@startuml
+${BASE_PLANTUML_THEME}
+title Movie Ticket Booking (BookMyShow) — High-Level LLD
+
+class CinemaHall {
+  - hallId: String
+  - screens: List<Screen>
+}
+
+class Screen {
+  - screenId: String
+  - shows: List<Show>
+  - seats: List<Seat>
+}
+
+class Show {
+  - showId: String
+  - movie: Movie
+  - startTime: DateTime
+  - bookedSeats: Set<String>
+}
+
+class Seat {
+  - seatId: String
+  - seatType: SeatType
+  - price: double
+}
+
+class BookingService {
+  - paymentGateway: PaymentGateway
+  + lockSeats(showId: String, seats: List<Seat>): boolean
+  + confirmBooking(bookingId: String): Ticket
+}
+
+CinemaHall o-- Screen
+Screen o-- Show
+Screen o-- Seat
+BookingService ..> Show : books
+@enduml`
   }
 };
 
@@ -647,6 +825,18 @@ export function getLldDiagramForProblem(slugOrTitle: string, category?: string):
   }
   if (norm.includes('tic tac') || norm.includes('tictactoe')) {
     return LLD_DIAGRAM_TEMPLATES['tic-tac-toe'];
+  }
+  if (norm.includes('factory')) {
+    return LLD_DIAGRAM_TEMPLATES['factory-pattern'];
+  }
+  if (norm.includes('observer') || norm.includes('pubsub') || norm.includes('pub sub')) {
+    return LLD_DIAGRAM_TEMPLATES['observer-pattern'];
+  }
+  if (norm.includes('snake') && norm.includes('ladder')) {
+    return LLD_DIAGRAM_TEMPLATES['snake-and-ladder'];
+  }
+  if (norm.includes('movie') || norm.includes('bookmyshow') || norm.includes('theatre') || norm.includes('cinema')) {
+    return LLD_DIAGRAM_TEMPLATES['bookmyshow'];
   }
 
   const cleanPascal = (slugOrTitle || 'Problem').replace(/[^a-zA-Z0-9]/g, ' ').split(' ')
