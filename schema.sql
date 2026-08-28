@@ -98,3 +98,42 @@ CREATE POLICY "Users manage own attempts" ON public.question_attempts FOR ALL US
 
 DROP POLICY IF EXISTS "Users manage own analytics" ON public.user_analytics;
 CREATE POLICY "Users manage own analytics" ON public.user_analytics FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
+
+-- 6. User DSA Progress & Multi-Sheet Tracker
+CREATE TABLE IF NOT EXISTS public.user_dsa_progress (
+    user_email TEXT PRIMARY KEY,
+    user_id TEXT,
+    active_sheet TEXT DEFAULT 'sde',
+    solved_sde JSONB DEFAULT '[]'::jsonb,
+    solved_a2z JSONB DEFAULT '[]'::jsonb,
+    solved_79 JSONB DEFAULT '[]'::jsonb,
+    solved_blind75 JSONB DEFAULT '[]'::jsonb,
+    solved_mik JSONB DEFAULT '[]'::jsonb,
+    lld_solved_ids JSONB DEFAULT '[]'::jsonb,
+    revision_ids JSONB DEFAULT '[]'::jsonb,
+    linked_profiles JSONB DEFAULT '{}'::jsonb,
+    active_mins DOUBLE PRECISION DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 7. User Billing Transactions & Wallet Ledger
+CREATE TABLE IF NOT EXISTS public.billing_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_email TEXT NOT NULL,
+    amount DOUBLE PRECISION NOT NULL,
+    type TEXT NOT NULL,
+    description TEXT,
+    balance_after DOUBLE PRECISION,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.user_dsa_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow full access to user_dsa_progress" ON public.user_dsa_progress;
+CREATE POLICY "Allow full access to user_dsa_progress" ON public.user_dsa_progress FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow full access to billing_transactions" ON public.billing_transactions;
+CREATE POLICY "Allow full access to billing_transactions" ON public.billing_transactions FOR ALL USING (true) WITH CHECK (true);
+
