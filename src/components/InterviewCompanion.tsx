@@ -27,7 +27,8 @@ import {
   HelpCircle,
   ShieldAlert,
   Calculator,
-  Compass
+  Compass,
+  Radio
 } from 'lucide-react';
 import { 
   SdeLevel, 
@@ -71,10 +72,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   // Interview Dialogue & Speech State
   const [messages, setMessages] = useState<InterviewMessage[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
+  const [interimSpeech, setInterimSpeech] = useState<string>('');
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState<boolean>(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [isHandsFreeMode, setIsHandsFreeMode] = useState<boolean>(true);
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
 
   // Timer State (45 mins default)
   const [secondsRemaining, setSecondsRemaining] = useState<number>(45 * 60);
@@ -87,6 +91,18 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const speechAccumulatorRef = useRef<string>('');
+  const silenceTimerRef = useRef<any>(null);
+  const countdownIntervalRef = useRef<any>(null);
+  const isRecognitionActiveRef = useRef<boolean>(false);
+  const isAiSpeakingRef = useRef<boolean>(false);
+  const isAiThinkingRef = useRef<boolean>(false);
+  const isHandsFreeModeRef = useRef<boolean>(true);
+
+  // Keep refs synchronized
+  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
+  useEffect(() => { isAiThinkingRef.current = isAiThinking; }, [isAiThinking]);
+  useEffect(() => { isHandsFreeModeRef.current = isHandsFreeMode; }, [isHandsFreeMode]);
 
   // Selected company object
   const currentCompany = useMemo(() => {
@@ -108,6 +124,41 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return () => { isCancelled = true; };
   }, [currentCompany, selectedRound, selectedLevel]);
 
+  const startListening = () => {
+    if (!recognitionRef.current || isAiThinkingRef.current) return;
+    try {
+      stopInterviewerSpeech();
+      setIsAiSpeaking(false);
+      if (!isRecognitionActiveRef.current) {
+        recognitionRef.current.start();
+      }
+      setIsListening(true);
+    } catch (err) {
+      console.warn('Speech recognition start error:', err);
+    }
+  };
+
+  const stopListening = () => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setSilenceCountdown(null);
+
+    if (recognitionRef.current && isRecognitionActiveRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+    }
+    setIsListening(false);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   // Initialize Interview Dialogue on start or round change
   useEffect(() => {
     if (!activeQuestion) return;
@@ -128,11 +179,19 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
-      speakInterviewerText(initialGreeting, () => setIsAiSpeaking(false));
+      speakInterviewerText(initialGreeting, () => {
+        setIsAiSpeaking(false);
+        if (isHandsFreeModeRef.current) {
+          startListening();
+        }
+      });
+    } else if (isHandsFreeModeRef.current) {
+      startListening();
     }
 
     return () => {
       stopInterviewerSpeech();
+      stopListening();
     };
   }, [activeQuestion]);
 
@@ -141,7 +200,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     if (transcriptScrollRef.current) {
       transcriptScrollRef.current.scrollTop = transcriptScrollRef.current.scrollHeight;
     }
-  }, [messages, isAiThinking]);
+  }, [messages, isAiThinking, interimSpeech]);
 
   // Timer Tick
   useEffect(() => {
@@ -158,51 +217,120 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
-  // Setup Web Speech Recognition
+  // Setup Continuous Web Speech Recognition with Smart Silence Auto-Send
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.continuous = true;
+        recognition.interimResults = true;
         recognition.lang = 'en-US';
 
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          if (transcript) {
-            setInputValue(prev => prev ? `${prev} ${transcript}` : transcript);
-          }
-          setIsListening(false);
+        recognition.onstart = () => {
+          isRecognitionActiveRef.current = true;
+          setIsListening(true);
         };
 
-        recognition.onerror = () => setIsListening(false);
-        recognition.onend = () => setIsListening(false);
+        recognition.onresult = (event: any) => {
+          let accumulatedFinal = '';
+          let currentInterim = '';
+
+          for (let i = 0; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              accumulatedFinal += transcript + ' ';
+            } else {
+              currentInterim += transcript;
+            }
+          }
+
+          const fullSpeech = (accumulatedFinal + currentInterim).trim();
+          if (fullSpeech) {
+            speechAccumulatorRef.current = fullSpeech;
+            setInterimSpeech(fullSpeech);
+            setInputValue(fullSpeech);
+
+            // Reset silence countdown timer
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+            // If hands-free mode is on and we have meaningful speech, start 1.8s auto-send countdown
+            if (isHandsFreeModeRef.current && fullSpeech.split(' ').length >= 2) {
+              let remainingMs = 1800;
+              setSilenceCountdown(1.8);
+
+              countdownIntervalRef.current = setInterval(() => {
+                remainingMs -= 200;
+                if (remainingMs <= 0) {
+                  clearInterval(countdownIntervalRef.current);
+                  setSilenceCountdown(null);
+                } else {
+                  setSilenceCountdown(Number((remainingMs / 1000).toFixed(1)));
+                }
+              }, 200);
+
+              silenceTimerRef.current = setTimeout(() => {
+                clearInterval(countdownIntervalRef.current);
+                setSilenceCountdown(null);
+                const toSend = speechAccumulatorRef.current.trim();
+                if (toSend && !isAiThinkingRef.current) {
+                  speechAccumulatorRef.current = '';
+                  setInterimSpeech('');
+                  handleSendMessage(toSend);
+                }
+              }, 1800);
+            }
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          if (event.error !== 'no-speech') {
+            console.warn('Speech recognition error:', event.error);
+          }
+        };
+
+        recognition.onend = () => {
+          isRecognitionActiveRef.current = false;
+          // In hands-free mode, if not AI speaking and not thinking, keep listening alive
+          if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+            try {
+              recognition.start();
+            } catch {}
+          } else {
+            setIsListening(false);
+          }
+        };
+
         recognitionRef.current = recognition;
       }
     }
+
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+      }
+    };
   }, []);
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) return;
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      stopInterviewerSpeech();
-      setIsAiSpeaking(false);
-      recognitionRef.current.start();
-      setIsListening(true);
-    }
-  };
-
   const handleSendMessage = async (textToSend?: string) => {
-    const text = (textToSend || inputValue).trim();
-    if (!text || isAiThinking) return;
+    const text = (textToSend || inputValue || interimSpeech).trim();
+    if (!text || isAiThinkingRef.current) return;
 
+    // Clear speech timers & accumulator
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setSilenceCountdown(null);
+    setInterimSpeech('');
+    speechAccumulatorRef.current = '';
+    setInputValue('');
+
+    // Stop candidate mic and any AI speech while evaluating
     stopInterviewerSpeech();
     setIsAiSpeaking(false);
-    setInputValue('');
+    stopListening();
 
     const candidateMsg: InterviewMessage = {
       id: `msg-${Date.now()}`,
@@ -239,9 +367,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     setMessages([...nextMessages, interviewerMsg]);
 
+    // AI Voice Response & Seamless Hands-Free Auto-Listening Loop
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
-      speakInterviewerText(aiReply, () => setIsAiSpeaking(false));
+      speakInterviewerText(aiReply, () => {
+        setIsAiSpeaking(false);
+        if (isHandsFreeModeRef.current) {
+          startListening();
+        }
+      });
+    } else if (isHandsFreeModeRef.current) {
+      startListening();
     }
   };
 
@@ -362,6 +498,26 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               {isTimerRunning ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
             </button>
           </div>
+
+          {/* Hands-Free Live Voice Toggle */}
+          <button
+            onClick={() => {
+              const next = !isHandsFreeMode;
+              setIsHandsFreeMode(next);
+              if (!next) stopListening();
+              else if (!isAiSpeaking && !isAiThinking) startListening();
+            }}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              isHandsFreeMode
+                ? 'bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border-teal-500/60 text-teal-300 shadow-sm shadow-teal-900/30'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+            title="Hands-Free Voice Flow: Automatically listens and sends when you pause speaking without pressing any buttons"
+          >
+            <Radio className={`w-3.5 h-3.5 ${isHandsFreeMode ? 'text-teal-400 animate-pulse' : 'text-slate-500'}`} />
+            <span className="hidden sm:inline">{isHandsFreeMode ? 'Hands-Free Voice: ON' : 'Hands-Free: OFF'}</span>
+            <span className="sm:hidden">{isHandsFreeMode ? 'Voice ON' : 'Voice OFF'}</span>
+          </button>
 
           {/* Audio Voice Output Mute Toggle */}
           <button
@@ -506,6 +662,47 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             </button>
           </div>
 
+          {/* Active Voice Activity & Auto-Send Status Banner */}
+          {isListening && (
+            <div className="p-2 px-3 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between gap-2 flex-shrink-0 animate-fadeIn text-xs">
+              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                <div className="flex items-center space-x-0.5 flex-shrink-0">
+                  <span className="w-1 h-3.5 bg-teal-400 rounded-full animate-bounce" />
+                  <span className="w-1 h-5 bg-cyan-400 rounded-full animate-bounce [animation-delay:0.15s]" />
+                  <span className="w-1 h-2.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.3s]" />
+                </div>
+                <div className="flex-1 truncate">
+                  {interimSpeech ? (
+                    <p className="text-slate-200 font-sans italic truncate">
+                      "{interimSpeech}"
+                    </p>
+                  ) : (
+                    <p className="text-teal-400 font-medium truncate">
+                      🎙️ Continuous listening active... speak naturally (auto-sends on pause)
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {silenceCountdown !== null && (
+                <div className="flex items-center space-x-1.5 flex-shrink-0">
+                  <span className="px-2 py-0.5 rounded-full bg-teal-500/20 border border-teal-500/50 text-teal-300 font-mono text-[10px] font-bold animate-pulse">
+                    Sending in {silenceCountdown}s
+                  </span>
+                  <button
+                    onClick={() => {
+                      const toSend = speechAccumulatorRef.current.trim() || interimSpeech.trim() || inputValue.trim();
+                      if (toSend) handleSendMessage(toSend);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-bold cursor-pointer transition-colors"
+                  >
+                    Send Now
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Bottom Candidate Input Bar (Voice & Text) */}
           <div className="p-3 bg-slate-950 border-t border-slate-800 flex items-center space-x-2 flex-shrink-0">
             <button
@@ -525,13 +722,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
-              placeholder={isListening ? 'Listening to your voice...' : 'Type your answer or explain your approach...'}
+              placeholder={isListening ? 'Listening continuously... (or type your response)' : 'Type your answer or click mic to speak...'}
               className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 placeholder-slate-500"
             />
 
             <button
               onClick={() => handleSendMessage()}
-              disabled={!inputValue.trim() || isAiThinking}
+              disabled={!inputValue.trim() && !interimSpeech.trim() || isAiThinking}
               className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
