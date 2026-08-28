@@ -195,8 +195,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [billingFilter, setBillingFilter] = useState<'all' | 'credits' | 'debits'>('all');
 
   // Edit form state
-  const [formName, setFormName] = useState(user?.user_metadata?.name || 'Mudit');
-  const [formLcUsername, setFormLcUsername] = useState(linkedConfig.leetcodeUsername || 'mudit_2904');
+  const [formName, setFormName] = useState(user?.user_metadata?.name || user?.email?.split('@')[0] || 'Learner');
+  const [formLcUsername, setFormLcUsername] = useState(linkedConfig.leetcodeUsername || '');
   const [formGfgUsername, setFormGfgUsername] = useState(linkedConfig.gfgUsername || '');
   const [formCfHandle, setFormCfHandle] = useState(linkedConfig.codeforcesHandle || '');
   const [formGhUsername, setFormGhUsername] = useState(linkedConfig.githubUsername || '');
@@ -259,8 +259,11 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   useEffect(() => {
     const cfg = getLinkedProfiles(user?.email);
     setLinkedConfig(cfg);
-    const targetLc = cfg.leetcodeUsername || 'mudit_2904';
-    if (targetLc) loadLeetcode(targetLc);
+    setFormLcUsername(cfg.leetcodeUsername || '');
+    setFormGfgUsername(cfg.gfgUsername || '');
+    setFormCfHandle(cfg.codeforcesHandle || '');
+    setFormGhUsername(cfg.githubUsername || '');
+    if (cfg.leetcodeUsername) loadLeetcode(cfg.leetcodeUsername);
     if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
     if (cfg.codeforcesHandle) loadCodeforces(cfg.codeforcesHandle);
     if (cfg.githubUsername) loadGithub(cfg.githubUsername);
@@ -532,14 +535,16 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg font-black text-white truncate">
-                  {leetcodeData?.matchedUser?.profile?.realName || user?.user_metadata?.name || formName || 'Mudit'}
+                  {leetcodeData?.matchedUser?.profile?.realName || user?.user_metadata?.name || user?.email?.split('@')[0] || formName || 'Student'}
                 </h1>
-                <p className="text-xs text-slate-400 font-mono">@{formLcUsername || 'mudit_2904'}</p>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800/80 text-[10px] font-bold font-mono">
-                    Global Rank #{leetcodeData?.matchedUser?.profile?.ranking?.toLocaleString() || '1,420,381'}
-                  </span>
-                </div>
+                <p className="text-xs text-slate-400 font-mono">@{formLcUsername || user?.email?.split('@')[0] || 'student'}</p>
+                {leetcodeData?.matchedUser?.profile?.ranking ? (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800/80 text-[10px] font-bold font-mono">
+                      Global Rank #{leetcodeData.matchedUser.profile.ranking.toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1598,7 +1603,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   type="text"
                   value={formLcUsername}
                   onChange={(e) => setFormLcUsername(e.target.value)}
-                  placeholder="e.g. mudit_2904"
+                  placeholder="e.g. your_leetcode_username"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-amber-500 focus:outline-none"
                 />
               </div>

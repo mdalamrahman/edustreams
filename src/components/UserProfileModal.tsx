@@ -1604,7 +1604,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     type="text"
                     value={lcInput}
                     onChange={(e) => setLcInput(e.target.value)}
-                    placeholder="e.g. mudit_2904 or neal_wu"
+                    placeholder="e.g. your_leetcode_username"
                     className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:border-amber-500 focus:outline-none transition-colors"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">Directly queries LeetCode's comprehensive GraphQL API.</p>
