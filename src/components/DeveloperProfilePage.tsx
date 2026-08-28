@@ -76,6 +76,99 @@ interface DeveloperProfilePageProps {
 
 export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode' | 'github' | 'gfg' | 'codeforces';
 
+// ── Shared heatmap utility ──────────────────────────────────────────────────
+function buildHeatmapWeeks(heatmapData: Record<string, number>) {
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 364);
+  // align to Sunday
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+
+  const weeks: Array<Array<{ date: string; count: number; level: number }>> = [];
+  const cursor = new Date(startDate);
+  const maxCount = Math.max(1, ...Object.values(heatmapData));
+
+  while (cursor <= today) {
+    const week: typeof weeks[0] = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cursor.toISOString().slice(0, 10);
+      const count = heatmapData[iso] ?? 0;
+      const level = count === 0 ? 0 : count <= maxCount * 0.25 ? 1 : count <= maxCount * 0.5 ? 2 : count <= maxCount * 0.75 ? 3 : 4;
+      week.push({ date: iso, count, level });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  const totalSubmissions = Object.values(heatmapData).reduce((a, b) => a + b, 0);
+  const activeDays = Object.values(heatmapData).filter(v => v > 0).length;
+  return { weeks, totalSubmissions, activeDays };
+}
+
+interface PlatformHeatmapProps {
+  heatmap: Record<string, number>;
+  label: string;
+  accentColors: [string, string, string, string]; // level 1-4 classes
+  totalLabel?: string;
+}
+
+const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({ heatmap, label, accentColors, totalLabel }) => {
+  const { weeks, totalSubmissions, activeDays } = React.useMemo(() => buildHeatmapWeeks(heatmap), [heatmap]);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // month labels: pick roughly every 4.3 weeks
+  const monthLabels: string[] = [];
+  weeks.forEach((week, i) => {
+    if (i % 4 === 0) {
+      const m = new Date(week[0].date).getMonth();
+      monthLabels.push(months[m]);
+    }
+  });
+
+  const levelClasses = [
+    'bg-slate-900 border border-slate-800/60',
+    accentColors[0], accentColors[1], accentColors[2], accentColors[3]
+  ];
+
+  return (
+    <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-slate-400" />
+          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{label}</h3>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
+          <span><strong className="text-slate-300">{totalSubmissions.toLocaleString()}</strong> {totalLabel ?? 'submissions'}</span>
+          <span>•</span>
+          <span><strong className="text-slate-300">{activeDays}</strong> active days</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto pb-1 custom-scrollbar">
+        <div className="inline-flex flex-col gap-1 min-w-[640px]">
+          <div className="flex gap-1 px-1">
+            {monthLabels.map((m, i) => (
+              <span key={i} className="text-[9px] text-slate-600 font-mono" style={{ width: `${4 * 14}px` }}>{m}</span>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {weeks.map((week, wIdx) => (
+              <div key={wIdx} className="flex flex-col gap-1">
+                {week.map(day => (
+                  <div
+                    key={day.date}
+                    className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
+                    title={`${day.date}: ${day.count}`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
 export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   user,
   onOpenProblem,
@@ -207,6 +300,23 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const gfgSolved = Number(gfgData?.total_problems_solved || 0);
   const cfSolved = Number(codeforcesData?.total_problems_solved || 0);
   const combinedSolved = totalSdetubeSolved + leetcodeSolved + gfgSolved + cfSolved;
+
+  // Parse LeetCode submissionCalendar: {"<unix_ts>": count, ...} → {"YYYY-MM-DD": count}
+  const lcHeatmap = useMemo<Record<string, number>>(() => {
+    const raw = leetcodeData?.matchedUser?.submissionCalendar;
+    if (!raw) return {};
+    try {
+      const parsed: Record<string, number> = JSON.parse(raw);
+      const result: Record<string, number> = {};
+      for (const [ts, count] of Object.entries(parsed)) {
+        const date = new Date(Number(ts) * 1000).toISOString().slice(0, 10);
+        result[date] = (result[date] ?? 0) + count;
+      }
+      return result;
+    } catch { return {}; }
+  }, [leetcodeData?.matchedUser?.submissionCalendar]);
+
+
 
   const easySolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
@@ -956,6 +1066,21 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 </div>
               </div>
 
+              {/* LC Heatmap */}
+              {Object.keys(lcHeatmap).length > 0 && (
+                <PlatformHeatmap
+                  heatmap={lcHeatmap}
+                  label="LeetCode Submission Calendar (Past Year)"
+                  totalLabel="submissions"
+                  accentColors={[
+                    'bg-amber-950/70 border border-amber-800/60',
+                    'bg-amber-700 border border-amber-600',
+                    'bg-amber-500 border border-amber-400',
+                    'bg-amber-400 border border-amber-300 shadow-sm shadow-amber-400/50'
+                  ]}
+                />
+              )}
+
               {/* LC Official Badges */}
               {leetcodeData?.matchedUser?.badges && leetcodeData.matchedUser.badges.length > 0 && (
                 <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/20 shadow-xl space-y-3">
@@ -1064,6 +1189,46 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 </div>
               </div>
 
+              {/* GH Heatmap */}
+              {githubData.heatmap && Object.keys(githubData.heatmap).length > 0 && (
+                <PlatformHeatmap
+                  heatmap={githubData.heatmap}
+                  label="GitHub Contribution Activity (Past 90 Days)"
+                  totalLabel="contributions"
+                  accentColors={[
+                    'bg-slate-700/70 border border-slate-600/60',
+                    'bg-cyan-800 border border-cyan-700',
+                    'bg-cyan-600 border border-cyan-500',
+                    'bg-cyan-400 border border-cyan-300 shadow-sm shadow-cyan-400/50'
+                  ]}
+                />
+              )}
+
+              {/* GH Recent Activity */}
+              {githubData.recentActivity && githubData.recentActivity.length > 0 && (
+                <div className="p-5 rounded-3xl bg-slate-900 border border-slate-700/40 shadow-xl space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <Activity className="w-4 h-4 text-cyan-400" />
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Recent Activity</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {githubData.recentActivity.slice(0, 12).map((ev, idx) => {
+                      const typeIcon = ev.type === 'PushEvent' ? '⬆' : ev.type === 'PullRequestEvent' ? '↩' : ev.type === 'IssuesEvent' ? '⚠' : '✦';
+                      const typeBg = ev.type === 'PushEvent' ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-400' : ev.type === 'PullRequestEvent' ? 'bg-purple-950/40 border-purple-800/40 text-purple-400' : 'bg-slate-950/60 border-slate-800 text-slate-400';
+                      return (
+                        <div key={idx} className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-start gap-3 text-xs">
+                          <span className={`flex-shrink-0 w-6 h-6 rounded-lg border flex items-center justify-center text-[10px] font-bold ${typeBg}`}>{typeIcon}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-200 truncate">{ev.description || 'Activity'}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate">{ev.repo} • {new Date(ev.timestamp).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* GH CTA */}
               <div className="p-5 rounded-3xl bg-slate-900 border border-slate-700/40 shadow-xl flex items-center justify-between gap-4">
                 <div>
@@ -1169,6 +1334,44 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   <a href={`https://www.geeksforgeeks.org/user/${formGfgUsername}/`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-emerald-950/30 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-950/60 transition-all text-xs font-bold cursor-pointer">
                     <ExternalLink className="w-3.5 h-3.5" /><span>View GFG Profile</span>
                   </a>
+                </div>
+              </div>
+
+              {/* GFG Streak Calendar — visual streak bars since no heatmap API */}
+              <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">GFG Streak Overview</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">No public heatmap API — streak data only</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Current Streak', val: `${gfgData.current_streak} days`, icon: '🔥', color: 'text-emerald-300' },
+                    { label: 'Longest Streak', val: `${gfgData.longest_streak} days`, icon: '⚡', color: 'text-amber-300' },
+                    { label: 'Total Articles', val: gfgData.total_articles || '—', icon: '📝', color: 'text-sky-300' },
+                    { label: 'Monthly Score', val: gfgData.monthly_score, icon: '📈', color: 'text-teal-300' }
+                  ].map(s => (
+                    <div key={s.label} className="p-4 rounded-2xl bg-slate-950/80 border border-emerald-500/10 text-center">
+                      <div className="text-xl mb-1">{s.icon}</div>
+                      <p className={`text-base font-black font-mono ${s.color}`}>{s.val}</p>
+                      <p className="text-[10px] text-slate-500 font-mono uppercase mt-0.5">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Streak bar visualization */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-slate-500">Streak Progress</span>
+                    <span className="text-emerald-300 font-bold">{gfgData.current_streak} / {gfgData.longest_streak} days</span>
+                  </div>
+                  <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-emerald-600 to-teal-400 h-2.5 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, gfgData.longest_streak > 0 ? (gfgData.current_streak / gfgData.longest_streak) * 100 : 0)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1290,6 +1493,52 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   </a>
                 </div>
               </div>
+
+              {/* CF Heatmap */}
+              {codeforcesData.heatmap && Object.keys(codeforcesData.heatmap).length > 0 && (
+                <PlatformHeatmap
+                  heatmap={codeforcesData.heatmap}
+                  label="Codeforces Submission Calendar (Past Year)"
+                  totalLabel="submissions"
+                  accentColors={[
+                    'bg-sky-950/70 border border-sky-800/60',
+                    'bg-sky-700 border border-sky-600',
+                    'bg-sky-500 border border-sky-400',
+                    'bg-sky-400 border border-sky-300 shadow-sm shadow-sky-400/50'
+                  ]}
+                />
+              )}
+
+              {/* CF Recent Submissions */}
+              {codeforcesData.recentSubmissions && codeforcesData.recentSubmissions.length > 0 && (
+                <div className="p-5 rounded-3xl bg-slate-900 border border-sky-500/20 shadow-xl space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+                    <Code2 className="w-4 h-4 text-sky-400" />
+                    <h3 className="text-xs font-bold text-sky-300 uppercase tracking-wider">Recent Codeforces Submissions</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {codeforcesData.recentSubmissions.slice(0, 15).map((sub, idx) => {
+                      const isAC = sub.verdict === 'OK';
+                      const ratingColor = sub.rating >= 2000 ? 'text-rose-400' : sub.rating >= 1600 ? 'text-amber-400' : sub.rating >= 1200 ? 'text-sky-400' : 'text-emerald-400';
+                      return (
+                        <div key={idx} className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs transition-all hover:scale-[1.005] ${isAC ? 'bg-emerald-950/20 border-emerald-800/40' : 'bg-slate-950/60 border-slate-800'}`}>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isAC ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                            <div className="min-w-0">
+                              <p className={`font-bold truncate ${isAC ? 'text-slate-200' : 'text-slate-400'}`}>{sub.name}</p>
+                              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{new Date(sub.timestamp).toLocaleDateString()} • {sub.programmingLanguage}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {sub.rating > 0 && <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-700 bg-slate-900 ${ratingColor}`}>★{sub.rating}</span>}
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${isAC ? 'bg-emerald-950 text-emerald-300 border-emerald-800' : 'bg-rose-950 text-rose-300 border-rose-800'}`}>{isAC ? 'AC' : sub.verdict.replace(/_/g, ' ').slice(0,10)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </>) : (
               <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center">
                 <p className="text-xs text-slate-500">Could not load Codeforces data. Check handle in Edit Profile.</p>

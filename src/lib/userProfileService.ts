@@ -48,6 +48,7 @@ export interface LeetCodeFullProfileData {
         count: number;
       }>;
     };
+    submissionCalendar?: string;  // JSON string: {"1609459200": 5, ...}
   };
   userContestRanking?: {
     attendedContestsCount: number;
@@ -83,6 +84,13 @@ export interface GitHubProfileData {
   followers: number;
   following: number;
   created_at: string;
+  heatmap?: Record<string, number>;    // { "2024-01-15": 5, ... }
+  recentActivity?: Array<{
+    type: string;
+    repo: string;
+    description: string;
+    timestamp: string;
+  }>;
 }
 
 export interface GFGProfileData {
@@ -134,6 +142,16 @@ export interface CodeforcesProfileData {
     medium: number;
     hard: number;
   };
+  heatmap?: Record<string, number>;    // { "2024-01-15": 3, ... }
+  recentSubmissions?: Array<{
+    name: string;
+    contestId: string | number;
+    index: string;
+    rating: number;
+    verdict: string;
+    programmingLanguage: string;
+    timestamp: string;
+  }>;
   profile_url: string;
 }
 

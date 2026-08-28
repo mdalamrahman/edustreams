@@ -2426,6 +2426,7 @@ async def get_leetcode_full_profile(username: str):
             count
           }
         }
+        submissionCalendar
       }
       userContestRanking(username: $username) {
         attendedContestsCount
@@ -2480,7 +2481,7 @@ async def get_leetcode_full_profile(username: str):
 
 @app.get("/api/github/profile/{username}")
 async def get_github_profile(username: str):
-    """Fetches public GitHub profile and repo metrics with 15-minute caching."""
+    """Fetches public GitHub profile, repo metrics, and recent public events (heatmap) with 15-minute caching."""
     clean_user = username.strip()
     if not clean_user:
         return JSONResponse(status_code=400, content={"error": "Username is required"})
@@ -2497,14 +2498,80 @@ async def get_github_profile(username: str):
             "User-Agent": "SDETube-Dev-Platform",
             "Accept": "application/vnd.github.v3+json"
         }
+        # Fetch profile
         resp = requests.get(f"https://api.github.com/users/{clean_user}", headers=headers, timeout=8)
-        return resp
+        if resp.status_code != 200:
+            return resp, None, None
+        user_data = resp.json()
+
+        # Fetch recent public events (up to 300, paginated across 3 pages)
+        events = []
+        try:
+            for page in range(1, 4):
+                ev_resp = requests.get(
+                    f"https://api.github.com/users/{clean_user}/events/public?per_page=100&page={page}",
+                    headers=headers, timeout=8
+                )
+                if ev_resp.status_code == 200:
+                    page_events = ev_resp.json()
+                    events.extend(page_events)
+                    if len(page_events) < 100:
+                        break
+                else:
+                    break
+        except Exception:
+            pass
+
+        # Build daily heatmap from PushEvent, PullRequestEvent, IssuesEvent, CreateEvent
+        from collections import defaultdict
+        daily_counts: dict = defaultdict(int)
+        recent_activity = []
+        activity_types = {"PushEvent", "PullRequestEvent", "IssuesEvent", "CreateEvent", "ForkEvent", "WatchEvent"}
+        for ev in events:
+            ev_type = ev.get("type", "")
+            created_at = ev.get("created_at", "")
+            if not created_at:
+                continue
+            date_str = created_at[:10]  # YYYY-MM-DD
+            if ev_type in activity_types:
+                # Count commits for PushEvent
+                if ev_type == "PushEvent":
+                    commits = ev.get("payload", {}).get("commits", [])
+                    daily_counts[date_str] += max(1, len(commits))
+                else:
+                    daily_counts[date_str] += 1
+            # Recent activity list
+            repo_name = ev.get("repo", {}).get("name", "")
+            if ev_type in {"PushEvent", "PullRequestEvent", "IssuesEvent", "CreateEvent"} and len(recent_activity) < 20:
+                payload = ev.get("payload", {})
+                desc = ""
+                if ev_type == "PushEvent":
+                    commits = payload.get("commits", [])
+                    desc = commits[0].get("message", "").split("\n")[0][:80] if commits else "Pushed commits"
+                elif ev_type == "PullRequestEvent":
+                    pr = payload.get("pull_request", {})
+                    desc = pr.get("title", "Pull request")[:80]
+                elif ev_type == "IssuesEvent":
+                    issue = payload.get("issue", {})
+                    desc = issue.get("title", "Issue")[:80]
+                elif ev_type == "CreateEvent":
+                    ref = payload.get("ref", "repository")
+                    desc = f"Created {payload.get('ref_type', 'repo')}: {ref}"
+                recent_activity.append({
+                    "type": ev_type,
+                    "repo": repo_name,
+                    "description": desc,
+                    "timestamp": created_at
+                })
+
+        user_data["heatmap"] = dict(daily_counts)  # {"2024-01-15": 5, ...}
+        user_data["recentActivity"] = recent_activity
+        return resp, user_data, None
 
     try:
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, _fetch_gh)
-        if response.status_code == 200:
-            user_data = response.json()
+        response, user_data, _ = await loop.run_in_executor(None, _fetch_gh)
+        if response.status_code == 200 and user_data is not None:
             _GITHUB_PROFILE_CACHE[cache_key] = (now, user_data)
             return user_data
         return JSONResponse(status_code=response.status_code, content={"error": "GitHub user not found"})
@@ -2737,10 +2804,13 @@ async def get_codeforces_profile(handle: str):
             
         user_info = info_json["result"][0]
 
-        # Fetch submissions to calculate unique solved problems and rating breakdown
+        # Build daily heatmap and recent submissions list from the status data
         solved_count = 0
         difficulty_breakdown = {"easy": 0, "medium": 0, "hard": 0}
+        heatmap_daily: dict = {}
+        recent_subs_list = []
         try:
+            from collections import defaultdict as _dd
             status_url = f"https://codeforces.com/api/user.status?handle={clean_handle}&from=1&count=2000"
             status_resp = requests.get(status_url, headers=headers, timeout=10)
             if status_resp.status_code == 200:
@@ -2748,7 +2818,13 @@ async def get_codeforces_profile(handle: str):
                 if status_json.get("status") == "OK":
                     subs = status_json.get("result", [])
                     solved_set = set()
+                    daily_counts: dict = _dd(int)
                     for sub in subs:
+                        ts = sub.get("creationTimeSeconds", 0)
+                        if ts:
+                            from datetime import datetime as _dt
+                            date_str = _dt.utcfromtimestamp(ts).strftime("%Y-%m-%d")
+                            daily_counts[date_str] += 1
                         if sub.get("verdict") == "OK":
                             prob = sub.get("problem", {})
                             p_key = f"{prob.get('contestId')}_{prob.get('index')}"
@@ -2764,6 +2840,21 @@ async def get_codeforces_profile(handle: str):
                                 else:
                                     difficulty_breakdown["easy"] += 1
                     solved_count = len(solved_set)
+                    heatmap_daily = dict(daily_counts)
+                    # Recent 20 submissions with details
+                    for sub in subs[:20]:
+                        prob = sub.get("problem", {})
+                        ts = sub.get("creationTimeSeconds", 0)
+                        from datetime import datetime as _dt2
+                        recent_subs_list.append({
+                            "name": prob.get("name", "Unknown"),
+                            "contestId": prob.get("contestId", ""),
+                            "index": prob.get("index", ""),
+                            "rating": prob.get("rating", 0),
+                            "verdict": sub.get("verdict", "UNKNOWN"),
+                            "programmingLanguage": sub.get("programmingLanguage", ""),
+                            "timestamp": _dt2.utcfromtimestamp(ts).strftime("%Y-%m-%dT%H:%M:%SZ") if ts else ""
+                        })
         except Exception as e:
             print(f"[Codeforces Status Notice]: {e}")
 
@@ -2783,6 +2874,8 @@ async def get_codeforces_profile(handle: str):
             "friendOfCount": user_info.get("friendOfCount", 0),
             "total_problems_solved": solved_count,
             "difficulty_breakdown": difficulty_breakdown,
+            "heatmap": heatmap_daily,
+            "recentSubmissions": recent_subs_list,
             "profile_url": f"https://codeforces.com/profile/{clean_handle}"
         }
         return result_data, True
