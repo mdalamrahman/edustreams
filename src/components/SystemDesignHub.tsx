@@ -41,6 +41,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
+import { getLLDSolvedIds, toggleLLDSolvedId, loadUserProgress } from '../lib/progressService';
 
 export const HLD_PRACTICE_PROBLEMS: HLDProblemSpec[] = [
   {
@@ -221,14 +222,23 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
   const [activeView, setActiveView] = useState<'lld_problems' | 'hld_practice' | 'reader'>('lld_problems');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [solvedLldIds, setSolvedLldIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('sdetube_lld_solved_ids');
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+  const [solvedLldIds, setSolvedLldIds] = useState<number[]>(() => {
+    return getLLDSolvedIds();
   });
+
+  useEffect(() => {
+    const syncLld = () => {
+      setSolvedLldIds(getLLDSolvedIds());
+    };
+    syncLld();
+    loadUserProgress().then(syncLld).catch(() => {});
+    window.addEventListener('sdetube_progress_updated', syncLld);
+    window.addEventListener('sdetube_problem_solved', syncLld);
+    return () => {
+      window.removeEventListener('sdetube_progress_updated', syncLld);
+      window.removeEventListener('sdetube_problem_solved', syncLld);
+    };
+  }, []);
 
   // ── LLD Studio State ──
   const [activeProblem, setActiveProblem] = useState<LLDProblem | null>(null);
@@ -313,16 +323,11 @@ export const SystemDesignHub: React.FC<SystemDesignHubProps> = () => {
     setOopCode(newCode || '');
   };
 
-  const handleToggleSolved = (probId: string) => {
+  const handleToggleSolved = async (probId: string | number) => {
+    const numId = typeof probId === 'number' ? probId : parseInt(String(probId).replace(/\D/g, ''), 10) || 1;
     markLLDProblemSolved(probId);
-    setSolvedLldIds((prev) => {
-      const set = new Set(prev);
-      if (set.has(probId)) set.delete(probId);
-      else set.add(probId);
-      const arr = Array.from(set);
-      localStorage.setItem('sdetube_lld_solved_ids', JSON.stringify(arr));
-      return arr;
-    });
+    await toggleLLDSolvedId(numId);
+    setSolvedLldIds(getLLDSolvedIds());
   };
 
   /**
@@ -542,13 +547,13 @@ Provide:
               <button
                 onClick={() => handleToggleSolved(activeProblem.id)}
                 className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 cursor-pointer ${
-                  solvedLldIds.includes(activeProblem.id)
+                  solvedLldIds.includes(parseInt(String(activeProblem.id).replace(/\D/g, ''), 10) || 1)
                     ? 'bg-emerald-950 border-emerald-700 text-emerald-400'
                     : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300'
                 }`}
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>{solvedLldIds.includes(activeProblem.id) ? 'Solved' : 'Solve'}</span>
+                <span>{solvedLldIds.includes(parseInt(String(activeProblem.id).replace(/\D/g, ''), 10) || 1) ? 'Solved' : 'Solve'}</span>
               </button>
             </div>
           </div>
@@ -881,7 +886,8 @@ Provide:
           {activeView === 'lld_problems' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredProblems.map((prob) => {
-                const isSolved = solvedLldIds.includes(prob.id);
+                const numId = parseInt(String(prob.id).replace(/\D/g, ''), 10) || 1;
+                const isSolved = solvedLldIds.includes(numId);
                 return (
                   <div key={prob.id} className={`glass-panel p-6 rounded-3xl border transition-all flex flex-col justify-between group ${
                     isSolved ? 'border-emerald-700/60 bg-emerald-950/10' : 'border-slate-800/80 hover:border-purple-500/80 hover:bg-purple-950/10'

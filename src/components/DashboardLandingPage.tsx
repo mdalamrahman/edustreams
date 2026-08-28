@@ -268,7 +268,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
-                    {lcPotd.topicTags.map((tag, idx) => (
+                    {(lcPotd.topicTags || ['Algorithms']).map((tag, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-300 font-mono">
                         {tag}
                       </span>

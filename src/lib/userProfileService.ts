@@ -7,6 +7,12 @@
  */
 
 import { TELEGRAM_BACKEND_URL } from './telegram';
+import { 
+  getLinkedProfiles as getLinkedProfilesFromService, 
+  saveLinkedProfiles as saveLinkedProfilesToService, 
+  getUserProgressSync, 
+  LinkedProfilesConfig 
+} from './progressService';
 
 export interface LeetCodeFullProfileData {
   allQuestionsCount?: Array<{
@@ -155,39 +161,14 @@ export interface CodeforcesProfileData {
   profile_url: string;
 }
 
-export interface LinkedProfilesConfig {
-  leetcodeUsername: string;
-  githubUsername: string;
-  gfgUsername?: string;
-  codeforcesHandle?: string;
-  bio?: string;
-  customAvatar?: string;
-}
-
-const STORAGE_LINKED_PROFILES_KEY = 'sdetube_linked_dev_profiles';
+export type { LinkedProfilesConfig };
 
 export function getLinkedProfiles(email?: string): LinkedProfilesConfig {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_LINKED_PROFILES_KEY}_${email || 'default'}`) || localStorage.getItem(STORAGE_LINKED_PROFILES_KEY);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch {}
-  return {
-    leetcodeUsername: '',
-    githubUsername: '',
-    gfgUsername: '',
-    codeforcesHandle: '',
-    bio: 'Software Development Engineer & DSA Enthusiast on SDETube.'
-  };
+  return getLinkedProfilesFromService(email);
 }
 
 export function saveLinkedProfiles(config: LinkedProfilesConfig, email?: string): void {
-  try {
-    localStorage.setItem(`${STORAGE_LINKED_PROFILES_KEY}_${email || 'default'}`, JSON.stringify(config));
-    localStorage.setItem(STORAGE_LINKED_PROFILES_KEY, JSON.stringify(config));
-    window.dispatchEvent(new CustomEvent('sdetube_linked_profiles_updated', { detail: config }));
-  } catch {}
+  saveLinkedProfilesToService(config, email).catch(() => {});
 }
 
 /**
@@ -555,20 +536,22 @@ export interface UserSubmissionRecord {
 /**
  * Evaluates all milestone & streak badges for the student based on total solved & activity
  */
-export function getUserBadges(): SDETubeBadge[] {
-  const sdeSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]');
-  const a2zSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]');
-  const fast79Solved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_79') || '[]');
-  const blindSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]');
-  const mikSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]');
-  const lldSolved = JSON.parse(localStorage.getItem('sdetube_lld_solved_problems') || '[]');
+export function getUserBadges(userEmail?: string): SDETubeBadge[] {
+  const prog = getUserProgressSync(userEmail);
+  const sdeSolved = prog.solved_sde || [];
+  const a2zSolved = prog.solved_a2z || [];
+  const fast79Solved = prog.solved_79 || [];
+  const blindSolved = prog.solved_blind75 || [];
+  const mikSolved = prog.solved_mik || [];
+  const lldSolved = prog.lld_solved_ids || [];
 
   const allSolvedSet = new Set([
     ...sdeSolved,
     ...a2zSolved,
     ...fast79Solved,
     ...blindSolved,
-    ...mikSolved
+    ...mikSolved,
+    ...lldSolved
   ]);
   const totalSolved = allSolvedSet.size;
 
@@ -703,11 +686,12 @@ export function getUserBadges(): SDETubeBadge[] {
  * Calculates student completion progress across all learning tracks for official certificates (≥90%)
  */
 export function getUserTracksCertificates(userEmail?: string): TrackCertificateProgress[] {
-  const sdeSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]') as any[]).length;
-  const a2zSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]') as any[]).length;
-  const blindSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]') as any[]).length;
-  const mikSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]') as any[]).length;
-  const lldSolved = (JSON.parse(localStorage.getItem('sdetube_lld_solved_problems') || '[]') as any[]).length;
+  const prog = getUserProgressSync(userEmail);
+  const sdeSolved = (prog.solved_sde || []).length;
+  const a2zSolved = (prog.solved_a2z || []).length;
+  const blindSolved = (prog.solved_blind75 || []).length;
+  const mikSolved = (prog.solved_mik || []).length;
+  const lldSolved = (prog.lld_solved_ids || []).length;
 
   const tracks: Array<{
     trackId: string;
@@ -856,39 +840,23 @@ export function getRealSDETubeStats(): SDETubeRealStats {
         }
       }
     }
-  } catch {}
-
-  // 2. Scan sheet solved lists and slug sets
+  } catch {}  // 2. Scan sheet solved lists and slug sets from Supabase progress
   try {
-    const sdeSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]');
-    const sde184Solved = JSON.parse(localStorage.getItem('sdetube_sde_sheet_solved_ids') || '[]');
-    const sde191Solved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde191') || '[]');
-    const a2zSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]');
-    const fast79Solved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_79') || '[]');
-    const blindSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]');
-    const mikSolved = JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]');
-    const fallbackSolved = JSON.parse(localStorage.getItem('sdestream_solved_problems') || '[]');
-    const solvedSlugs = JSON.parse(localStorage.getItem('sdetube_solved_slugs') || '[]');
-    const solvedNames = JSON.parse(localStorage.getItem('sdetube_solved_names') || '[]');
-
+    const prog = getUserProgressSync();
     [
-      ...sdeSolved,
-      ...sde184Solved,
-      ...sde191Solved,
-      ...a2zSolved,
-      ...fast79Solved,
-      ...blindSolved,
-      ...mikSolved,
-      ...fallbackSolved,
-      ...solvedSlugs,
-      ...solvedNames
+      ...(prog.solved_sde || []),
+      ...(prog.solved_a2z || []),
+      ...(prog.solved_79 || []),
+      ...(prog.solved_blind75 || []),
+      ...(prog.solved_mik || []),
+      ...(prog.lld_solved_ids || [])
     ].forEach(p => {
       if (typeof p === 'string' || typeof p === 'number') {
-        const pSlug = String(p).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const pSlug = String(p).toLowerCase().replace(/[^a-z0-9]/g, '-');
         if (pSlug) solvedProblemSlugs.add(pSlug);
       }
     });
-  } catch {}
+  } catch {}{}
 
   // 3. Scan activity logs
   try {

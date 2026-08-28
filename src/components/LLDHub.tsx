@@ -41,6 +41,7 @@ import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
 import { LLDBossSheet } from './LLDBossSheet';
+import { getLLDSolvedIds, toggleLLDSolvedId, loadUserProgress } from '../lib/progressService';
 
 interface LLDHubProps {
   onOpenDirectProblem?: (problemId: string) => void;
@@ -50,14 +51,23 @@ export const LLDHub: React.FC<LLDHubProps> = () => {
   const [lldSubTab, setLldSubTab] = useState<'boss_sheet' | 'coding_arena' | 'github_reader'>('boss_sheet');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [solvedLldIds, setSolvedLldIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem('sdetube_lld_solved_ids');
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+  const [solvedLldIds, setSolvedLldIds] = useState<number[]>(() => {
+    return getLLDSolvedIds();
   });
+
+  useEffect(() => {
+    const syncLld = () => {
+      setSolvedLldIds(getLLDSolvedIds());
+    };
+    syncLld();
+    loadUserProgress().then(syncLld).catch(() => {});
+    window.addEventListener('sdetube_progress_updated', syncLld);
+    window.addEventListener('sdetube_problem_solved', syncLld);
+    return () => {
+      window.removeEventListener('sdetube_progress_updated', syncLld);
+      window.removeEventListener('sdetube_problem_solved', syncLld);
+    };
+  }, []);
 
   // ── LLD Studio State ──
   const [activeProblem, setActiveProblem] = useState<LLDProblem | null>(null);
@@ -135,14 +145,11 @@ export const LLDHub: React.FC<LLDHubProps> = () => {
     setOopCode(newCode || '');
   };
 
-  const handleToggleSolved = (probId: string) => {
+  const handleToggleSolved = async (probId: string | number) => {
+    const numId = typeof probId === 'number' ? probId : parseInt(String(probId).replace(/\D/g, ''), 10) || 1;
     markLLDProblemSolved(probId);
-    setSolvedLldIds((prev) => {
-      const set = new Set(prev);
-      if (set.has(probId)) set.delete(probId);
-      else set.add(probId);
-      return Array.from(set);
-    });
+    await toggleLLDSolvedId(numId);
+    setSolvedLldIds(getLLDSolvedIds());
   };
 
   const handleRunCode = async () => {
@@ -576,7 +583,8 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredProblems.map((prob) => {
-                  const isSolved = solvedLldIds.includes(prob.id);
+                  const numId = parseInt(String(prob.id).replace(/\D/g, ''), 10) || 1;
+                  const isSolved = solvedLldIds.includes(numId);
                   return (
                     <div
                       key={prob.id}

@@ -102,6 +102,52 @@ export async function fetchSupabaseLiveTelemetry(): Promise<Partial<SupabaseAdmi
       }
     }
 
+    // 4. Check user DSA progress
+    try {
+      const { data: dsaProg } = await supabase
+        .from('user_dsa_progress')
+        .select('*');
+
+      if (dsaProg && dsaProg.length > 0) {
+        for (const dp of dsaProg) {
+          const email = (dp.user_email || '').toLowerCase();
+          if (!email) continue;
+          const uid = dp.user_id || email;
+
+          const sde = Array.isArray(dp.solved_sde) ? dp.solved_sde.length : 0;
+          const a2z = Array.isArray(dp.solved_a2z) ? dp.solved_a2z.length : 0;
+          const s79 = Array.isArray(dp.solved_79) ? dp.solved_79.length : 0;
+          const b75 = Array.isArray(dp.solved_blind75) ? dp.solved_blind75.length : 0;
+          const mik = Array.isArray(dp.solved_mik) ? dp.solved_mik.length : 0;
+          const lld = Array.isArray(dp.lld_solved_ids) ? dp.lld_solved_ids.length : 0;
+          const totalSolved = sde + a2z + s79 + b75 + mik + lld;
+          const studyHours = Number((Number(dp.active_mins || 0) / 60).toFixed(1));
+
+          if (!userStatsMap.has(uid) && !userStatsMap.has(email)) {
+            userStatsMap.set(email, {
+              id: uid,
+              email: dp.user_email,
+              name: dp.linked_profiles?.leetcodeUsername || email.split('@')[0] || 'Learner',
+              solvedCount: totalSolved,
+              studyHours: studyHours,
+              streakDays: totalSolved > 0 || studyHours > 0 ? 1 : 0,
+              quizScorePercent: 100,
+              totalCodeRuns: totalSolved,
+              lastActive: dp.updated_at ? 'Recently active' : 'Active',
+              isOnline: true,
+              joinedDate: dp.updated_at ? dp.updated_at.slice(0, 10) : '2026-08-16'
+            });
+          } else {
+            const existing = userStatsMap.get(uid) || userStatsMap.get(email);
+            existing.solvedCount = Math.max(existing.solvedCount, totalSolved);
+            existing.studyHours = Math.max(existing.studyHours, studyHours);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[user_dsa_progress telemetry notice]:', err);
+    }
+
     const liveUsers = Array.from(userStatsMap.values());
 
     return {

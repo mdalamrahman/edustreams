@@ -2,6 +2,7 @@ import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_
 import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
+import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes } from './progressService';
 
 export interface DailyActivityItem {
   date: string; // 'YYYY-MM-DD'
@@ -244,6 +245,17 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
     } catch {}
   });
 
+  // Sync with central Supabase progressService
+  matchedProblems.forEach(p => {
+    try {
+      const sheet = p.sheetType || 'sde';
+      const curr = getSolvedIds(sheet);
+      if (!curr.includes(p.id)) {
+        setSolvedIds(sheet, [...curr, p.id]).catch(() => {});
+      }
+    } catch {}
+  });
+
   // 3. Persist solved slug and name for cross-sheet & cross-platform instant ticking
   try {
     const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
@@ -321,13 +333,20 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
 /**
  * Marks an LLD problem as solved.
  */
-export function markLLDProblemSolved(problemId: string) {
+export function markLLDProblemSolved(problemId: string | number) {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(STORAGE_LLD_SOLVED_KEY);
-    const set = new Set<string>(raw ? JSON.parse(raw) : []);
+    const set = new Set<string | number>(raw ? JSON.parse(raw) : []);
     set.add(problemId);
     localStorage.setItem(STORAGE_LLD_SOLVED_KEY, JSON.stringify(Array.from(set)));
+    
+    // Sync to Supabase via progressService
+    const numericId = typeof problemId === 'number' ? problemId : parseInt(problemId.replace(/\D/g, ''), 10) || 1;
+    saveUserProgress({
+      lld_solved_ids: Array.from(set).map(x => typeof x === 'number' ? x : parseInt(String(x).replace(/\D/g, ''), 10) || 1)
+    }).catch(() => {});
+
     recordRealActivity('lld', 15, 1, true);
     window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
       detail: { lldProblemId: problemId }

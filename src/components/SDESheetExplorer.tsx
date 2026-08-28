@@ -45,6 +45,17 @@ import {
 import { ProblemNotesModal } from './ProblemNotesModal';
 import { getLocalProblemNote } from '../lib/notesService';
 import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
+import { 
+  getSolvedIds as getSolvedIdsFromService, 
+  setSolvedIds as setSolvedIdsToService, 
+  getRevisionIds as getRevisionIdsFromService, 
+  setRevisionIds as setRevisionIdsToService, 
+  getActiveSheet as getActiveSheetFromService, 
+  setActiveSheet as setActiveSheetToService,
+  toggleProblemSolved as toggleProblemSolvedInService,
+  toggleRevisionId as toggleRevisionIdInService,
+  loadUserProgress
+} from '../lib/progressService';
 import { Video } from '../lib/types';
 
 interface SDESheetExplorerProps {
@@ -116,14 +127,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   userEmail,
   dsaVideos = []
 }) => {
-  // Active Sheet Selector: 'sde' (191 Qs) | 'a2z' (474 Qs) | '79' (79 Qs) | 'blind75' (76 Qs) | 'mik' (174 Qs)
-  const [activeSheet, setActiveSheet] = useState<DSASheetType>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_ACTIVE_SHEET_KEY) as DSASheetType;
-      if (saved && (saved === 'sde' || saved === 'a2z' || saved === '79' || saved === 'blind75' || saved === 'mik')) return saved;
-    } catch {}
-    return 'sde';
+  // Active Sheet Selector from Supabase progressService
+  const [activeSheet, setActiveSheetState] = useState<DSASheetType>(() => {
+    return getActiveSheetFromService(userEmail) as DSASheetType;
   });
+
+  const setActiveSheet = (sheet: DSASheetType) => {
+    setActiveSheetState(sheet);
+    setActiveSheetToService(sheet, userEmail).catch(() => {});
+  };
 
   const activeSheetConfig = DSA_SHEETS_CONFIG[activeSheet];
   const currentSheetProblems = useMemo(() => getSheetData(activeSheet), [activeSheet]);
@@ -146,69 +158,38 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     return () => window.removeEventListener('sdetube_notes_updated', handleNotesUpdated);
   }, []);
 
-  // Solved State per Sheet
-  const [solvedIds, setSolvedIds] = useState<number[]>(() => {
-    try {
-      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
-      const saved = localStorage.getItem(savedKey) || (activeSheet === 'sde' ? localStorage.getItem('sdetube_sde_sheet_solved_ids') : null);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+  // Solved State per Sheet from central progressService
+  const [solvedIds, setSolvedIdsState] = useState<number[]>(() => {
+    return getSolvedIdsFromService(activeSheet, userEmail);
   });
 
-  // Revision / Bookmarked Problems State (Composite Key: sheetType-id or id)
-  const [revisionIds, setRevisionIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_REVISION_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+  // Revision / Bookmarked Problems State from central progressService
+  const [revisionIds, setRevisionIdsState] = useState<string[]>(() => {
+    return getRevisionIdsFromService(userEmail);
   });
 
   // Re-sync solved state when switching sheets or when a problem is solved
   useEffect(() => {
     const syncSolved = () => {
-      try {
-        localStorage.setItem(STORAGE_ACTIVE_SHEET_KEY, activeSheet);
-        const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
-        const legacyKey = activeSheet === 'sde' ? 'sdetube_sde_sheet_solved_ids' : '';
-        const saved = localStorage.getItem(savedKey) || (legacyKey ? localStorage.getItem(legacyKey) : null);
-        setSolvedIds(saved ? JSON.parse(saved) : []);
-      } catch {}
+      const freshSolved = getSolvedIdsFromService(activeSheet, userEmail);
+      const freshRevisions = getRevisionIdsFromService(userEmail);
+      setSolvedIdsState(freshSolved);
+      setRevisionIdsState(freshRevisions);
     };
 
     syncSolved();
+    // Load fresh data from Supabase in background
+    loadUserProgress(userEmail).then(syncSolved).catch(() => {});
+
+    window.addEventListener('sdetube_progress_updated', syncSolved);
     window.addEventListener('sdetube_problem_solved', syncSolved);
     window.addEventListener('sdetube_potd_solved', syncSolved);
     return () => {
+      window.removeEventListener('sdetube_progress_updated', syncSolved);
       window.removeEventListener('sdetube_problem_solved', syncSolved);
       window.removeEventListener('sdetube_potd_solved', syncSolved);
     };
-  }, [activeSheet]);
-
-  // Save solved state on change
-  useEffect(() => {
-    try {
-      const savedKey = `${STORAGE_SOLVED_PREFIX}${activeSheet}`;
-      localStorage.setItem(savedKey, JSON.stringify(solvedIds));
-      if (activeSheet === 'sde') {
-        localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(solvedIds));
-      }
-    } catch (e) {
-      console.warn('[SDETube Sheets Storage Notice]:', e);
-    }
-  }, [solvedIds, activeSheet]);
-
-  // Save revision state on change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_REVISION_KEY, JSON.stringify(revisionIds));
-    } catch (e) {
-      console.warn('[SDETube Revision Storage Notice]:', e);
-    }
-  }, [revisionIds]);
+  }, [activeSheet, userEmail]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -279,39 +260,32 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     return solvedIds.includes(p.id) || isProblemSlugSolved(p.slug || p.name);
   };
 
-  const toggleSolved = (problem: DSAProblem | number, e?: React.MouseEvent) => {
+  const toggleSolved = async (problem: DSAProblem | number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const id = typeof problem === 'number' ? problem : problem.id;
     const targetProb = typeof problem === 'object' ? problem : currentSheetProblems.find(p => p.id === id);
+    const slug = targetProb?.slug || targetProb?.name || '';
+    
+    // Immediate optimistic local update
     const isCurrentlySolved = targetProb ? isProblemSolved(targetProb) : solvedIds.includes(id);
+    const nextSolved = isCurrentlySolved ? solvedIds.filter(item => item !== id) : [...solvedIds, id];
+    setSolvedIdsState(nextSolved);
 
-    setSolvedIds((prev) => 
-      isCurrentlySolved ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-
-    if (targetProb) {
-      try {
-        const cleanSlug = (targetProb.slug || targetProb.name).toLowerCase().replace(/[^a-z0-9]/g, '');
-        const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
-        const slugs = new Set<string>(rawSlugs ? JSON.parse(rawSlugs) : []);
-        if (isCurrentlySolved) {
-          slugs.delete(cleanSlug);
-        } else {
-          slugs.add(cleanSlug);
-        }
-        localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(slugs)));
-      } catch {}
-    }
-
-    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', { detail: { problemId: id } }));
+    // Persist to Supabase & Backend
+    await toggleProblemSolvedInService(activeSheet, id, userEmail, slug);
   };
 
-  const toggleRevision = (problem: DSAProblem, e?: React.MouseEvent) => {
+  const toggleRevision = async (problem: DSAProblem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const key = `${problem.sheetType}-${problem.id}`;
-    setRevisionIds((prev) => 
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
-    );
+    
+    // Immediate optimistic local update
+    const exists = revisionIds.includes(key);
+    const nextRevs = exists ? revisionIds.filter(item => item !== key) : [...revisionIds, key];
+    setRevisionIdsState(nextRevs);
+
+    // Persist to Supabase
+    await toggleRevisionIdInService(key, userEmail);
   };
 
   const isProblemStarred = (problem: DSAProblem) => {

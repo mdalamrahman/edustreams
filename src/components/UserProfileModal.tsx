@@ -45,6 +45,7 @@ import {
   SDETubeRealStats
 } from '../lib/userProfileService';
 import { getUserWallet } from '../lib/billing';
+import { getUserProgressSync } from '../lib/progressService';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -230,12 +231,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Real Local Sheet Solved counts
-  const sdeSolvedCount = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]') as any[]).length;
-  const a2zSolvedCount = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]') as any[]).length;
-  const fast79SolvedCount = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_79') || '[]') as any[]).length;
-  const blindSolvedCount = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]') as any[]).length;
-  const mikSolvedCount = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]') as any[]).length;
+  // Real Supabase Sheet Solved counts from progressService
+  const userProgress = getUserProgressSync(user?.email);
+  const sdeSolvedCount = (userProgress.solved_sde || []).length;
+  const a2zSolvedCount = (userProgress.solved_a2z || []).length;
+  const fast79SolvedCount = (userProgress.solved_79 || []).length;
+  const blindSolvedCount = (userProgress.solved_blind75 || []).length;
+  const mikSolvedCount = (userProgress.solved_mik || []).length;
 
   // 52-week heatmap grid (364 days divided into 52 weeks of 7 days)
   const heatmapWeeks: Array<Array<{ date: string; count: number; level: number }>> = [];

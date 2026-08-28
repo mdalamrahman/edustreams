@@ -170,6 +170,27 @@ class DatabaseManager:
                     )
                 """)
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_active_sess_email ON user_active_sessions(user_email)")
+
+                # User DSA Progress Table (Synced with Supabase & Cross-Device)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_dsa_progress (
+                        user_email TEXT PRIMARY KEY,
+                        user_id TEXT,
+                        active_sheet TEXT DEFAULT 'sde',
+                        solved_sde TEXT DEFAULT '[]',
+                        solved_a2z TEXT DEFAULT '[]',
+                        solved_79 TEXT DEFAULT '[]',
+                        solved_blind75 TEXT DEFAULT '[]',
+                        solved_mik TEXT DEFAULT '[]',
+                        lld_solved_ids TEXT DEFAULT '[]',
+                        revision_ids TEXT DEFAULT '[]',
+                        linked_profiles TEXT DEFAULT '{}',
+                        active_mins REAL DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_dsa_prog_email ON user_dsa_progress(user_email)")
                 conn.commit()
         except Exception as e:
             print(f"[DatabaseManager Init Notice]: {e}")
@@ -278,6 +299,117 @@ class DatabaseManager:
         except Exception as e:
             print(f"[DatabaseManager Get Session Info Error]: {e}")
             return None
+
+    def get_user_progress(self, user_email: str) -> dict:
+        if not user_email:
+            return {}
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT user_email, user_id, active_sheet, solved_sde, solved_a2z, solved_79, 
+                           solved_blind75, solved_mik, lld_solved_ids, revision_ids, linked_profiles, active_mins, updated_at
+                    FROM user_dsa_progress
+                    WHERE user_email = ?
+                """, (email,))
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        "user_email": row[0],
+                        "user_id": row[1] or "",
+                        "active_sheet": row[2] or "sde",
+                        "solved_sde": json.loads(row[3] or "[]"),
+                        "solved_a2z": json.loads(row[4] or "[]"),
+                        "solved_79": json.loads(row[5] or "[]"),
+                        "solved_blind75": json.loads(row[6] or "[]"),
+                        "solved_mik": json.loads(row[7] or "[]"),
+                        "lld_solved_ids": json.loads(row[8] or "[]"),
+                        "revision_ids": json.loads(row[9] or "[]"),
+                        "linked_profiles": json.loads(row[10] or "{}"),
+                        "active_mins": float(row[11] or 0),
+                        "updated_at": row[12]
+                    }
+        except Exception as e:
+            print(f"[DatabaseManager Get Progress Error]: {e}")
+        return {}
+
+    def save_user_progress(self, user_email: str, progress: dict) -> dict:
+        if not user_email:
+            return {"success": False, "error": "Email is required"}
+        email = user_email.strip().lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO user_dsa_progress (
+                        user_email, user_id, active_sheet, solved_sde, solved_a2z, solved_79,
+                        solved_blind75, solved_mik, lld_solved_ids, revision_ids, linked_profiles, active_mins, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(user_email) DO UPDATE SET
+                        user_id = COALESCE(excluded.user_id, user_dsa_progress.user_id),
+                        active_sheet = COALESCE(excluded.active_sheet, user_dsa_progress.active_sheet),
+                        solved_sde = COALESCE(excluded.solved_sde, user_dsa_progress.solved_sde),
+                        solved_a2z = COALESCE(excluded.solved_a2z, user_dsa_progress.solved_a2z),
+                        solved_79 = COALESCE(excluded.solved_79, user_dsa_progress.solved_79),
+                        solved_blind75 = COALESCE(excluded.solved_blind75, user_dsa_progress.solved_blind75),
+                        solved_mik = COALESCE(excluded.solved_mik, user_dsa_progress.solved_mik),
+                        lld_solved_ids = COALESCE(excluded.lld_solved_ids, user_dsa_progress.lld_solved_ids),
+                        revision_ids = COALESCE(excluded.revision_ids, user_dsa_progress.revision_ids),
+                        linked_profiles = COALESCE(excluded.linked_profiles, user_dsa_progress.linked_profiles),
+                        active_mins = COALESCE(excluded.active_mins, user_dsa_progress.active_mins),
+                        updated_at = CURRENT_TIMESTAMP
+                """, (
+                    email,
+                    progress.get("user_id", ""),
+                    progress.get("active_sheet", "sde"),
+                    json.dumps(progress.get("solved_sde", [])),
+                    json.dumps(progress.get("solved_a2z", [])),
+                    json.dumps(progress.get("solved_79", [])),
+                    json.dumps(progress.get("solved_blind75", [])),
+                    json.dumps(progress.get("solved_mik", [])),
+                    json.dumps(progress.get("lld_solved_ids", [])),
+                    json.dumps(progress.get("revision_ids", [])),
+                    json.dumps(progress.get("linked_profiles", {})),
+                    float(progress.get("active_mins", 0))
+                ))
+                conn.commit()
+                return {"success": True}
+        except Exception as e:
+            print(f"[DatabaseManager Save Progress Error]: {e}")
+            return {"success": False, "error": str(e)}
+
+    def get_all_users_progress(self) -> list:
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT user_email, user_id, active_sheet, solved_sde, solved_a2z, solved_79, 
+                           solved_blind75, solved_mik, lld_solved_ids, revision_ids, linked_profiles, active_mins, updated_at
+                    FROM user_dsa_progress
+                """)
+                rows = cursor.fetchall()
+                results = []
+                for row in rows:
+                    results.append({
+                        "user_email": row[0],
+                        "user_id": row[1] or "",
+                        "active_sheet": row[2] or "sde",
+                        "solved_sde": json.loads(row[3] or "[]"),
+                        "solved_a2z": json.loads(row[4] or "[]"),
+                        "solved_79": json.loads(row[5] or "[]"),
+                        "solved_blind75": json.loads(row[6] or "[]"),
+                        "solved_mik": json.loads(row[7] or "[]"),
+                        "lld_solved_ids": json.loads(row[8] or "[]"),
+                        "revision_ids": json.loads(row[9] or "[]"),
+                        "linked_profiles": json.loads(row[10] or "{}"),
+                        "active_mins": float(row[11] or 0),
+                        "updated_at": row[12]
+                    })
+                return results
+        except Exception as e:
+            print(f"[DatabaseManager Get All Users Progress Error]: {e}")
+            return []
 
 db_manager = DatabaseManager()
 
@@ -5702,7 +5834,108 @@ async def get_user_code_endpoint(slug: str, email: str = "student@edustream.io",
     return {"status": "ok", "code": ""}
 
 
+# =========================================================================
+# USER DSA PROGRESS & SUPABASE PERSISTENCE ENDPOINTS
+# =========================================================================
 
+@app.get("/api/user-progress/{email}")
+async def get_user_progress_endpoint(email: str):
+    """Fetches full DSA progress from SQLite / Supabase for a given user email."""
+    clean_email = email.strip().lower()
+    prog = db_manager.get_user_progress(clean_email)
+    
+    # Try fetching from Supabase if local is empty
+    if not prog and SUPABASE_URL and SUPABASE_KEY and "edustream-demo" not in SUPABASE_URL:
+        try:
+            session = _supabase_conn_manager.get_session()
+            url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.{clean_email}&select=*"
+            resp = session.get(url, timeout=4)
+            if resp.status_code == 200 and resp.json():
+                supa_row = resp.json()[0]
+                prog = {
+                    "user_email": clean_email,
+                    "user_id": supa_row.get("user_id", ""),
+                    "active_sheet": supa_row.get("active_sheet", "sde"),
+                    "solved_sde": supa_row.get("solved_sde") if isinstance(supa_row.get("solved_sde"), list) else json.loads(supa_row.get("solved_sde") or "[]"),
+                    "solved_a2z": supa_row.get("solved_a2z") if isinstance(supa_row.get("solved_a2z"), list) else json.loads(supa_row.get("solved_a2z") or "[]"),
+                    "solved_79": supa_row.get("solved_79") if isinstance(supa_row.get("solved_79"), list) else json.loads(supa_row.get("solved_79") or "[]"),
+                    "solved_blind75": supa_row.get("solved_blind75") if isinstance(supa_row.get("solved_blind75"), list) else json.loads(supa_row.get("solved_blind75") or "[]"),
+                    "solved_mik": supa_row.get("solved_mik") if isinstance(supa_row.get("solved_mik"), list) else json.loads(supa_row.get("solved_mik") or "[]"),
+                    "lld_solved_ids": supa_row.get("lld_solved_ids") if isinstance(supa_row.get("lld_solved_ids"), list) else json.loads(supa_row.get("lld_solved_ids") or "[]"),
+                    "revision_ids": supa_row.get("revision_ids") if isinstance(supa_row.get("revision_ids"), list) else json.loads(supa_row.get("revision_ids") or "[]"),
+                    "linked_profiles": supa_row.get("linked_profiles") if isinstance(supa_row.get("linked_profiles"), dict) else json.loads(supa_row.get("linked_profiles") or "{}"),
+                    "active_mins": float(supa_row.get("active_mins") or 0),
+                    "updated_at": supa_row.get("updated_at")
+                }
+                db_manager.save_user_progress(clean_email, prog)
+        except Exception as e:
+            print(f"[Supabase User Progress Fetch Notice]: {e}")
+
+    return {"status": "ok", "progress": prog or {
+        "user_email": clean_email,
+        "user_id": "",
+        "active_sheet": "sde",
+        "solved_sde": [],
+        "solved_a2z": [],
+        "solved_79": [],
+        "solved_blind75": [],
+        "solved_mik": [],
+        "lld_solved_ids": [],
+        "revision_ids": [],
+        "linked_profiles": {},
+        "active_mins": 0
+    }}
+
+
+@app.post("/api/user-progress")
+async def save_user_progress_endpoint(request: Request):
+    """Saves DSA progress to both SQLite and Supabase for cross-device persistence."""
+    try:
+        body = await request.json()
+        email = body.get("user_email") or body.get("email")
+        if not email:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Email is required"})
+        
+        clean_email = email.strip().lower()
+        res = db_manager.save_user_progress(clean_email, body)
+
+        # Async background sync to Supabase table
+        if SUPABASE_URL and SUPABASE_KEY and "edustream-demo" not in SUPABASE_URL:
+            try:
+                session = _supabase_conn_manager.get_session()
+                headers = {
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates"
+                }
+                supa_payload = {
+                    "user_email": clean_email,
+                    "user_id": body.get("user_id", ""),
+                    "active_sheet": body.get("active_sheet", "sde"),
+                    "solved_sde": body.get("solved_sde", []),
+                    "solved_a2z": body.get("solved_a2z", []),
+                    "solved_79": body.get("solved_79", []),
+                    "solved_blind75": body.get("solved_blind75", []),
+                    "solved_mik": body.get("solved_mik", []),
+                    "lld_solved_ids": body.get("lld_solved_ids", []),
+                    "revision_ids": body.get("revision_ids", []),
+                    "linked_profiles": body.get("linked_profiles", {}),
+                    "active_mins": float(body.get("active_mins", 0))
+                }
+                url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress"
+                session.post(url, headers=headers, json=supa_payload, timeout=5)
+            except Exception as supa_err:
+                print(f"[Supabase User Progress Sync Notice]: {supa_err}")
+
+        return {"status": "ok", "saved": True}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.get("/api/admin/users-progress")
+async def get_all_users_progress_endpoint():
+    """Returns all registered users progress for the Admin Dashboard."""
+    users = db_manager.get_all_users_progress()
+    return {"status": "ok", "users": users}
 
 
 if __name__ == "__main__":

@@ -65,6 +65,7 @@ import {
   BillingTransaction,
   TopupRequest
 } from '../lib/billing';
+import { getUserProgressSync } from '../lib/progressService';
 import { CertificateModal, CertificateData } from './CertificateModal';
 
 interface DeveloperProfilePageProps {
@@ -288,15 +289,18 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     if (updated.githubUsername) loadGithub(updated.githubUsername);
   };
 
-  // Solved Stats calculation
-  const sdeSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_sde') || '[]') as any[]).length;
-  const a2zSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_a2z') || '[]') as any[]).length;
-  const blindSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_blind75') || '[]') as any[]).length;
-  const mikSolved = (JSON.parse(localStorage.getItem('sdetube_dsa_sheet_solved_mik') || '[]') as any[]).length;
-  const lldSolved = (JSON.parse(localStorage.getItem('sdetube_lld_solved_problems') || '[]') as any[]).length;
+  // Solved Stats calculation — real data from Supabase progressService
+  const userEmail = user?.email;
+  const userProgress = getUserProgressSync(userEmail);
+  const sdeSolved = (userProgress.solved_sde || []).length;
+  const a2zSolved = (userProgress.solved_a2z || []).length;
+  const blindSolved = (userProgress.solved_blind75 || []).length;
+  const mikSolved = (userProgress.solved_mik || []).length;
+  const lldSolved = (userProgress.lld_solved_ids || []).length;
 
-  const totalSdetubeSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved || 38;
-  const leetcodeSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count || 148;
+  // Real solved total — no fake fallback
+  const totalSdetubeSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved;
+  const leetcodeSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count ?? 0;
   const gfgSolved = Number(gfgData?.total_problems_solved || 0);
   const cfSolved = Number(codeforcesData?.total_problems_solved || 0);
   const combinedSolved = totalSdetubeSolved + leetcodeSolved + gfgSolved + cfSolved;
@@ -321,19 +325,19 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const easySolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count || 62)
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count ?? 0)
     : Math.round(combinedSolved * 0.42);
 
   const medSolved = profileMode === 'sdetube'
     ? Math.round(totalSdetubeSolved * 0.45)
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count || 74)
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count ?? 0)
     : Math.round(combinedSolved * 0.48);
 
   const hardSolved = profileMode === 'sdetube'
     ? Math.max(0, totalSdetubeSolved - easySolved - medSolved)
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count || 12)
+    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count ?? 0)
     : Math.max(0, combinedSolved - easySolved - medSolved);
 
   // 52-week heatmap columns

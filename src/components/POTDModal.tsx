@@ -3,6 +3,7 @@ import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, 
 import { fetchLeetCodePOTD, LeetCodeDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
+import { getSolvedIds } from '../lib/progressService';
 
 interface POTDModalProps {
   onClose: () => void;
@@ -37,8 +38,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const isSdePotdSolved = useMemo(() => {
     if (isPotdSolvedToday()) return true;
     try {
-      const sdeSaved = localStorage.getItem('sdetube_dsa_sheet_solved_sde') || localStorage.getItem('sdetube_sde_sheet_solved_ids');
-      const sdeList: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
+      const sdeList = getSolvedIds('sde');
       if (sdeList.includes(sdePotd.id)) return true;
       return isProblemSlugSolved(sdePotd.slug || sdePotd.name);
     } catch {
@@ -230,7 +230,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
               <>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-wrap gap-1.5">
-                    {lcPotd.topicTags.map((tag, idx) => (
+                    {(lcPotd.topicTags || ['Algorithms']).map((tag, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-[10px] text-slate-300 font-mono">
                         {tag}
                       </span>
