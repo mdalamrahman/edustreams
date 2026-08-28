@@ -53,6 +53,7 @@ import { InsufficientCreditsModal } from './components/InsufficientCreditsModal'
 import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
+import { InterviewCompanion } from './components/InterviewCompanion';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -64,7 +65,7 @@ const sanitizeCaption = (cap?: string) => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>('dashboard');
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
   const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
@@ -114,8 +115,8 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'profile' ? 'profile' : tab}`;
+  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'interview' ? 'interview' : tab === 'profile' ? 'profile' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -1351,6 +1352,15 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         {/* VIEW 2.9: HLD ARCHITECTURE & SYSTEM DESIGN HUB */}
         {(activeTab === 'hld' || activeTab === 'system_design') && (
           <HLDHub />
+        )}
+
+        {/* VIEW 2.95: SDE MULTI-ROUND AI MOCK INTERVIEW COMPANION */}
+        {activeTab === 'interview' && (
+          <div className="h-[calc(100vh-100px)] min-h-[640px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl bg-slate-950">
+            <InterviewCompanion
+              onBackToDashboard={() => setActiveTab('dashboard')}
+            />
+          </div>
         )}
 
         {/* VIEW 3: DYNAMIC VELOCITY ANALYTICS & MISTRAL DIAGNOSTICS */}

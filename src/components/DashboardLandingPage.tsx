@@ -30,7 +30,7 @@ import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
 
 interface DashboardLandingPageProps {
   user: any;
-  onNavigate: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'system_design' | 'analytics') => void;
+  onNavigate: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics') => void;
   onOpenSdeProblem: (problem: SDEProblem) => void;
   onOpenSqlWorkspace: () => void;
   onOpenAskAI: () => void;
@@ -480,9 +480,34 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           <span className="text-xs font-mono text-slate-400">Direct Navigation</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           
-          {/* Portal 1: SDE Sheet */}
+          {/* Portal 1: AI Mock Interview (SDE-1, SDE-2, SDE-3) */}
+          <div 
+            onClick={() => onNavigate('interview')}
+            className="glass-panel p-6 rounded-3xl border border-amber-500/40 bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-950 hover:border-amber-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1 relative overflow-hidden"
+          >
+            <div className="p-3 rounded-2xl bg-amber-600/20 text-amber-300 border border-amber-500/30 w-fit mb-4 group-hover:scale-110 transition-transform">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[9px] font-bold border border-amber-500/30">
+                FAANG COMPANION
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
+              AI Mock Interview
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Live SDE-1/2/3 multi-round simulator with voice companion, Monaco IDE & Bar Raiser scorecards.
+            </p>
+            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-amber-400">
+              <span>Start Live Round</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Portal 2: SDE Sheet */}
           <div 
             onClick={() => onNavigate('sde_sheet')}
             className="glass-panel p-6 rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-950/30 via-slate-900 to-slate-950 hover:border-purple-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1"
@@ -502,7 +527,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
           </div>
 
-          {/* Portal 2: System Design & LLD */}
+          {/* Portal 3: System Design & LLD */}
           <div 
             onClick={() => onNavigate('system_design')}
             className="glass-panel p-6 rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 via-slate-900 to-slate-950 hover:border-indigo-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1"
@@ -511,7 +536,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               <Cpu className="w-6 h-6" />
             </div>
             <h3 className="text-base font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
-              System Design & LLD Hub
+              System Design & LLD
             </h3>
             <p className="text-xs text-slate-400 mt-1 leading-relaxed">
               Auto visual UML diagrams, Monaco OOP studio, and Principal Architect AI evaluation.
@@ -522,7 +547,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
           </div>
 
-          {/* Portal 3: Video Channels */}
+          {/* Portal 4: Video Channels */}
           <div 
             onClick={() => onNavigate('channels')}
             className="glass-panel p-6 rounded-3xl border border-sky-500/30 bg-gradient-to-br from-sky-950/30 via-slate-900 to-slate-950 hover:border-sky-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1"
@@ -542,7 +567,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
           </div>
 
-          {/* Portal 4: Velocity Analytics */}
+          {/* Portal 5: Velocity Analytics */}
           <div 
             onClick={() => onNavigate('analytics')}
             className="glass-panel p-6 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 via-slate-900 to-slate-950 hover:border-emerald-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1"

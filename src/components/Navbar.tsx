@@ -32,8 +32,8 @@ import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'analytics' | 'profile' | 'settings') => void;
+  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings';
+  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -192,6 +192,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: BookOpen,
       color: 'text-sky-400',
       activeColor: 'bg-sky-600 text-white'
+    },
+    {
+      id: 'interview' as const,
+      label: 'AI Mock Interview',
+      subtitle: 'SDE-1/2/3 Multi-Round Companion',
+      icon: Bot,
+      color: 'text-amber-400',
+      activeColor: 'bg-gradient-to-r from-amber-600 to-orange-600 text-white'
     },
     {
       id: 'analytics' as const,
