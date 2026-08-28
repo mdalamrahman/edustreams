@@ -5939,6 +5939,7 @@ async def get_all_users_progress_endpoint():
 
 
 @app.get("/api/leetcode/{slug}")
+@app.get("/leetcode/{slug}")
 async def get_leetcode_problem_proxy(slug: str):
     """Fetches authentic LeetCode problem data server-side to bypass browser CORS restrictions."""
     clean_slug = slug.strip().lower()

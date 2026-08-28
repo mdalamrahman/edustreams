@@ -764,18 +764,14 @@ async function _generateSolutionOnce(
   starterCode?: string,
   attempt = 1
 ): Promise<OptimalSolutionResponse | null> {
-  const attemptHint = attempt > 1
-    ? `\n\nPrevious attempt failed test cases. Please carefully reconsider edge cases and produce a fully correct solution.`
-    : '';
-
   const prompt = `You are a Principal Software Engineer and Competitive Programming Master.
 Generate an optimal, verified, production-grade solution for the following coding problem in ${language}.
 
 Problem: ${title}
 Description:
-${(description || '').slice(0, 4000)}
+${(description || '').slice(0, 3000)}
 
-${starterCode ? `Starter Signature Reference:\n\`\`\`\n${starterCode}\n\`\`\`` : ''}${attemptHint}
+${starterCode ? `Starter Signature Reference:\n\`\`\`\n${starterCode}\n\`\`\`` : ''}
 
 Output ONLY valid JSON matching this exact structure:
 {
@@ -786,7 +782,22 @@ Output ONLY valid JSON matching this exact structure:
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
-  // PRIMARY: Mistral AI
+  // Helper to safely extract JSON from LLM response
+  const parseJsonSafe = (raw: string): any => {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          return JSON.parse(match[0]);
+        } catch {}
+      }
+    }
+    return null;
+  };
+
+  // PRIMARY: Mistral Small (fast, high-precision code generator)
   try {
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
@@ -795,16 +806,18 @@ Output ONLY valid JSON matching this exact structure:
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-large-latest',
+        model: 'mistral-small-latest',
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
-        temperature: attempt > 1 ? 0.3 : 0.1   // slightly higher temp on retries
-      })
+        temperature: 0.1
+      }),
+      signal: AbortSignal.timeout(9000)
     });
     if (response.ok) {
       const data = await response.json();
-      const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
-      if (parsed.code) {
+      const content = data.choices[0]?.message?.content || '{}';
+      const parsed = parseJsonSafe(content);
+      if (parsed && parsed.code) {
         return {
           code: parsed.code,
           explanation: parsed.explanation || 'Optimal algorithmic solution.',
@@ -815,10 +828,10 @@ Output ONLY valid JSON matching this exact structure:
       }
     }
   } catch (e) {
-    console.warn('[Mistral Large Solution Notice]:', e);
+    console.warn('[Mistral Solution Notice]:', e);
   }
 
-  // FALLBACK: Groq Llama 3.1
+  // FALLBACK: Groq GPT-OSS 120B / Compound (sub-second generation)
   try {
     const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -828,16 +841,17 @@ Output ONLY valid JSON matching this exact structure:
         'Authorization': `Bearer ${groqKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-120b',
         messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: attempt > 1 ? 0.4 : 0.1
-      })
+        temperature: 0.1
+      }),
+      signal: AbortSignal.timeout(7000)
     });
     if (res.ok) {
       const data = await res.json();
-      const parsed = JSON.parse(data.choices[0]?.message?.content || '{}');
-      if (parsed.code) {
+      const content = data.choices[0]?.message?.content || '{}';
+      const parsed = parseJsonSafe(content);
+      if (parsed && parsed.code) {
         return {
           code: parsed.code,
           explanation: parsed.explanation || 'Optimal algorithmic solution.',
@@ -861,53 +875,28 @@ export async function requestAIOptimalSolution(
   starterCode?: string,
   slug?: string
 ): Promise<OptimalSolutionResponse> {
-  let bestSol: OptimalSolutionResponse | null = null;
+  // 1. Generate candidate solution directly
+  const candidate = await _generateSolutionOnce(title, description, language, starterCode, 1);
 
-  for (let attempt = 1; attempt <= MAX_SOL_ATTEMPTS; attempt++) {
-    // 1. Generate a candidate solution
-    const candidate = await _generateSolutionOnce(title, description, language, starterCode, attempt);
-
-    const sol: OptimalSolutionResponse = candidate ?? {
-      code: starterCode || `// Solution for ${title}`,
-      explanation: 'Optimal solution can be derived using standard algorithmic techniques.',
-      timeComplexity: 'Optimal',
-      spaceComplexity: 'O(1)',
-      approachName: 'Standard Optimal Approach'
-    };
-
-    // 2. If no slug, skip validation — just return what we have
-    if (!slug) {
-      return sol;
-    }
-
-    // 3. Validate + conditionally store in R2 (silent to the user)
-    const validated = await validateAndStoreSolution(slug, language, sol);
-
-    // 4a. Passed (or no test cases available to validate against) → return to UI
-    if (validated.stored || validated.validationPassed !== false) {
-      return validated;
-    }
-
-    // 4b. Failed → keep the result for last-resort fallback, then retry
-    console.warn(`[Solution] Attempt ${attempt}/${MAX_SOL_ATTEMPTS} failed validation — retrying…`);
-    bestSol = validated;   // keep last result in case all attempts fail
-  }
-
-  // All attempts exhausted — return the last generated solution without validation metadata
-  // (user sees the code, but no R2 badge since it wasn't stored)
-  return bestSol ?? {
+  const sol: OptimalSolutionResponse = candidate ?? {
     code: starterCode || `// Solution for ${title}`,
     explanation: 'Optimal solution can be derived using standard algorithmic techniques.',
     timeComplexity: 'Optimal',
     spaceComplexity: 'O(1)',
     approachName: 'Standard Optimal Approach'
   };
+
+  // 2. If slug is present, fire-and-forget background validation to persist in Cloudflare R2
+  if (slug && candidate?.code) {
+    validateAndStoreSolution(slug, language, sol).catch(() => {});
+  }
+
+  return sol;
 }
 
 /**
- * Standard chat completion helper with Mistral Large and Groq fallback.
+ * Standard chat completion helper with Mistral and Groq fallback.
  */
-
 export async function requestMistralChat(messages: Array<{ role: string; content: string }>): Promise<{ content: string }> {
   try {
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -917,10 +906,11 @@ export async function requestMistralChat(messages: Array<{ role: string; content
         'Authorization': `Bearer ${MISTRAL_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'mistral-large-latest',
+        model: 'mistral-small-latest',
         messages,
         temperature: 0.3
-      })
+      }),
+      signal: AbortSignal.timeout(8000)
     });
 
     if (response.ok) {
@@ -931,7 +921,7 @@ export async function requestMistralChat(messages: Array<{ role: string; content
     console.warn('[Mistral Chat Notice]:', e);
   }
 
-  // Fallback: Groq Llama 3.1 8B Instant
+  // Fallback: Groq GPT-OSS 120B
   try {
     const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -941,10 +931,11 @@ export async function requestMistralChat(messages: Array<{ role: string; content
         'Authorization': `Bearer ${groqKey}`
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-120b',
         messages,
         temperature: 0.2
-      })
+      }),
+      signal: AbortSignal.timeout(6000)
     });
 
     if (res.ok) {

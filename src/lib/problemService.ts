@@ -660,7 +660,43 @@ Return ONLY valid JSON matching this exact structure:
     console.warn(`[Mistral Problem Generation Notice for '${cleanTitle}']:`, err);
   }
 
-  // Fallback template if network/Mistral fails
+  // FALLBACK: Groq OpenAI GPT-OSS 120B (instant 1s generation)
+  try {
+    const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
+    const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-oss-120b',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1
+      }),
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (groqResp.ok) {
+      const gData = await groqResp.json();
+      const gContent = gData?.choices?.[0]?.message?.content || '';
+      const match = gContent.match(/\{[\s\S]*\}/);
+      if (match) {
+        const gParsed = JSON.parse(match[0]) as ProblemTemplate;
+        if (gParsed && gParsed.name && gParsed.testCases && gParsed.testCases.length >= 10) {
+          const hardened = repairAndHardenProblem(gParsed);
+          try {
+            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(hardened));
+          } catch (_) {}
+          return hardened;
+        }
+      }
+    }
+  } catch (gErr) {
+    console.warn(`[Groq Problem Generation Notice for '${cleanTitle}']:`, gErr);
+  }
+
+  // Fallback template if network/LLMs fail
   const defaultStarters = generateDefaultStarters(cleanTitle);
   const fallbackProblem: ProblemTemplate = {
     name: cleanTitle,
