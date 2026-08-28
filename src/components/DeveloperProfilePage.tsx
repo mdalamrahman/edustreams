@@ -1110,14 +1110,14 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               )}
 
               {/* LC Official Badges */}
-              {leetcodeData?.matchedUser?.badges && leetcodeData.matchedUser.badges.length > 0 && (
+              {Array.isArray(leetcodeData?.matchedUser?.badges) && leetcodeData.matchedUser.badges.length > 0 && (
                 <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/20 shadow-xl space-y-3">
                   <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                     <Medal className="w-4 h-4" /><span>LeetCode Official Badges</span>
                     <span className="text-slate-500 font-mono normal-case ml-auto">{leetcodeData.matchedUser.badges.length} earned</span>
                   </h3>
                   <div className="flex flex-wrap gap-3">
-                    {leetcodeData.matchedUser.badges.map(b => (
+                    {(leetcodeData.matchedUser.badges || []).map(b => (
                       <div key={b.id} className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-amber-950/20 border border-amber-700/30 text-center w-20">
                         <img src={b.icon} alt={b.name} className="w-10 h-10 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         <p className="text-[10px] text-amber-200 font-bold leading-tight">{b.name}</p>
@@ -1128,14 +1128,14 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               )}
 
               {/* LC Recent AC Submissions */}
-              {leetcodeData?.recentSubmissionList && leetcodeData.recentSubmissionList.length > 0 && (
+              {Array.isArray(leetcodeData?.recentSubmissionList) && leetcodeData.recentSubmissionList.length > 0 && (
                 <div className="p-6 rounded-3xl bg-slate-900 border border-amber-500/20 shadow-xl space-y-4">
                   <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                     <Code2 className="w-4 h-4 text-amber-400" />
                     <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">Recent LeetCode Submissions</h3>
                   </div>
                   <div className="space-y-2">
-                    {leetcodeData.recentSubmissionList.slice(0, 12).map((sub, idx) => {
+                    {(leetcodeData.recentSubmissionList || []).slice(0, 12).map((sub, idx) => {
                       const isAC = sub.statusDisplay === 'Accepted';
                       return (
                         <div key={idx} className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs transition-all hover:scale-[1.01] ${isAC ? 'bg-emerald-950/20 border-emerald-800/40' : 'bg-slate-950/60 border-slate-800'}`}>

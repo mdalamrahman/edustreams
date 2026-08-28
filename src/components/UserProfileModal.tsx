@@ -940,15 +940,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     </div>
                   )}
 
-                  {/* LeetCode Badges (ONLY if present) */}
-                  {leetcodeData.matchedUser.badges && leetcodeData.matchedUser.badges.length > 0 && (
+                  {/* Earned Badges (ONLY if present) */}
+                  {Array.isArray(leetcodeData?.matchedUser?.badges) && leetcodeData.matchedUser.badges.length > 0 && (
                     <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 space-y-3">
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                         <Medal className="w-4 h-4 text-purple-400" />
                         <span>Earned Badges ({leetcodeData.matchedUser.badges.length})</span>
                       </h4>
                       <div className="flex flex-wrap gap-4">
-                        {leetcodeData.matchedUser.badges.map((badge) => {
+                        {(leetcodeData.matchedUser.badges || []).map((badge) => {
                           const iconUrl = badge.icon.startsWith('http') ? badge.icon : `https://leetcode.com${badge.icon}`;
                           return (
                             <div key={badge.id} className="p-3 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center gap-1.5 w-24 text-center shadow-md">
@@ -962,14 +962,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   )}
 
                   {/* Languages Breakdown (ONLY if present) */}
-                  {leetcodeData.matchedUser.languageProblemCount && leetcodeData.matchedUser.languageProblemCount.length > 0 && (
+                  {Array.isArray(leetcodeData?.matchedUser?.languageProblemCount) && leetcodeData.matchedUser.languageProblemCount.length > 0 && (
                     <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 space-y-3">
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                         <Terminal className="w-4 h-4 text-cyan-400" />
                         <span>Languages Breakdown</span>
                       </h4>
                       <div className="flex flex-wrap gap-2">
-                        {leetcodeData.matchedUser.languageProblemCount.map((lang) => (
+                        {(leetcodeData.matchedUser.languageProblemCount || []).map((lang) => (
                           <div key={lang.languageName} className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono flex items-center gap-2">
                             <span className="font-bold text-slate-200">{lang.languageName}</span>
                             <span className="px-1.5 py-0.5 rounded-md bg-slate-950 text-emerald-400 text-[10px] font-bold">{lang.problemsSolved}</span>
@@ -980,14 +980,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   )}
 
                   {/* Recent Submissions (ONLY if present) */}
-                  {leetcodeData.recentSubmissionList && leetcodeData.recentSubmissionList.length > 0 && (
+                  {Array.isArray(leetcodeData?.recentSubmissionList) && leetcodeData.recentSubmissionList.length > 0 && (
                     <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 space-y-3">
                       <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                         <Activity className="w-4 h-4 text-indigo-400" />
                         <span>Recent LeetCode Submissions</span>
                       </h4>
                       <div className="space-y-2">
-                        {leetcodeData.recentSubmissionList.map((sub, idx) => {
+                        {(leetcodeData.recentSubmissionList || []).map((sub, idx) => {
                           const isAc = sub.statusDisplay === 'Accepted';
                           return (
                             <div key={idx} className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 text-xs">

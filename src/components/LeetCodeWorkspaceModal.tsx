@@ -1807,7 +1807,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                   {/* Example Test Cases */}
                   <div className="space-y-4 pt-2">
-                    {problemTemplate.examples.map((ex, idx) => (
+                    {(problemTemplate.examples || []).map((ex, idx) => (
                       <div key={idx} className="space-y-2">
                         <div className="font-bold text-[14px] text-white tracking-tight">Example {idx + 1}:</div>
                         
@@ -1854,7 +1854,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <div className="space-y-2.5 pt-4 border-t border-white/10">
                     <div className="font-bold text-[14px] text-white tracking-tight">Constraints:</div>
                     <ul className="list-disc pl-5 space-y-2 text-[#eff1f6] text-xs">
-                      {problemTemplate.constraints.map((c, idx) => (
+                      {(problemTemplate.constraints || []).map((c, idx) => (
                         <li key={idx}>
                           <code className="lc-code-chip">{c}</code>
                         </li>
@@ -2429,7 +2429,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <div className="space-y-2">
                   <div className="font-bold text-slate-200 text-xs">Actionable Optimization Tips</div>
                   <ul className="space-y-2">
-                    {aiReview.suggestions.map((sug, idx) => (
+                    {(aiReview.suggestions || []).map((sug, idx) => (
                       <li key={idx} className="p-3 rounded-xl bg-purple-950/20 border border-purple-900/40 flex items-start gap-2 text-slate-300 text-xs">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">

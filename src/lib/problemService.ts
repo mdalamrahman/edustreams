@@ -219,6 +219,20 @@ export function extractParamNames(starters: Record<SupportedLanguage, string> | 
 export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplate {
   if (!problem) return problem;
 
+  // Guarantee array properties are always defined
+  problem.examples = Array.isArray(problem.examples) ? problem.examples : [];
+  problem.constraints = Array.isArray(problem.constraints) ? problem.constraints : [];
+  problem.testCases = Array.isArray(problem.testCases) ? problem.testCases : [];
+  problem.expectedOutputs = Array.isArray(problem.expectedOutputs) ? problem.expectedOutputs : [];
+  problem.hints = Array.isArray(problem.hints) ? problem.hints : [];
+  problem.approaches = Array.isArray(problem.approaches) ? problem.approaches : [];
+  if (!problem.starters || Object.keys(problem.starters).length === 0) {
+    problem.starters = generateDefaultStarters(problem.name || 'algorithm');
+  }
+  if (!problem.solutions) {
+    problem.solutions = problem.starters;
+  }
+
   const paramNames = extractParamNames(problem.starters, problem.examples);
   const numParams = paramNames.length;
   const tcs = problem.testCases || [];
