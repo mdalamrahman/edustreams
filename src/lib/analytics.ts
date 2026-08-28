@@ -165,6 +165,7 @@ export function isPotdSolvedToday(): boolean {
   if (localStorage.getItem(`sdetube_potd_solved_${today}`) === 'true') return true;
   if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
   if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
+  if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
 
   // Check today's SDE POTD seed
   try {
@@ -293,11 +294,13 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
     );
 
     const isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');
+    const isGfgPotd = strId === '9999' || strId === 'gfgpotd' || cleanSlug.includes('gfg');
 
-    if (isSdePotd || isLcPotd || strId === 'potd') {
+    if (isSdePotd || isLcPotd || isGfgPotd || strId === 'potd') {
       localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
       if (isSdePotd) localStorage.setItem(`sdetube_potd_sdetube_solved_${today}`, 'true');
       if (isLcPotd) localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+      if (isGfgPotd) localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
       window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { date: today, problemId: matchedId } }));
     }
   } catch (err) {
