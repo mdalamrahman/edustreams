@@ -67,7 +67,8 @@ import {
   speakInterviewerText, 
   stopInterviewerSpeech,
   getOrLockInterviewerVoice,
-  resetInterviewerVoiceLock
+  resetInterviewerVoiceLock,
+  unlockSpeechSynthesis
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { 
@@ -384,6 +385,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const handleStartLiveInterview = async () => {
     if (!activeQuestion) return;
 
+    // 0. Unlock browser speech synthesis audio context directly in this user click gesture
+    unlockSpeechSynthesis();
+
     // 1. Billing Gatekeeping (₹10 standard rate or live dynamic rate)
     const student = getCurrentStudent();
     const interviewCost = PRICING_CONFIG.AI_MOCK_INTERVIEW || 10.0;
@@ -440,17 +444,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setIsTimerRunning(true);
     setIsInterviewStarted(true);
 
-    if (!isVoiceMuted) {
-      setIsAiSpeaking(true);
-      speakInterviewerText(initialGreeting, () => {
-        setIsAiSpeaking(false);
-        if (isHandsFreeModeRef.current) {
-          startListening();
-        }
-      });
-    } else if (isHandsFreeModeRef.current) {
-      startListening();
-    }
+    // Speak initial greeting after live room mounts
+    setTimeout(() => {
+      if (!isVoiceMuted) {
+        setIsAiSpeaking(true);
+        speakInterviewerText(initialGreeting, () => {
+          setIsAiSpeaking(false);
+          if (isHandsFreeModeRef.current) {
+            startListening();
+          }
+        });
+      } else if (isHandsFreeModeRef.current) {
+        startListening();
+      }
+    }, 150);
   };
 
   // Auto-scroll transcript on new messages
@@ -1539,14 +1546,32 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             </div>
 
-            {/* Speaking Status Waves */}
-            {isAiSpeaking && (
-              <div className="flex items-center space-x-1">
-                <span className="w-1 h-4 bg-cyan-400 rounded-full animate-bounce" />
-                <span className="w-1 h-6 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.15s]" />
-                <span className="w-1 h-3 bg-purple-400 rounded-full animate-bounce [animation-delay:0.3s]" />
-              </div>
-            )}
+            {/* Right: Speaking Waves or Replay Button */}
+            <div className="flex items-center space-x-2">
+              {isAiSpeaking ? (
+                <div className="flex items-center space-x-1">
+                  <span className="w-1 h-4 bg-cyan-400 rounded-full animate-bounce" />
+                  <span className="w-1 h-6 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.15s]" />
+                  <span className="w-1 h-3 bg-purple-400 rounded-full animate-bounce [animation-delay:0.3s]" />
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    unlockSpeechSynthesis();
+                    const lastInterviewerMsg = [...messages].reverse().find(m => m.role === 'interviewer');
+                    if (lastInterviewerMsg) {
+                      setIsAiSpeaking(true);
+                      speakInterviewerText(lastInterviewerMsg.content, () => setIsAiSpeaking(false));
+                    }
+                  }}
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all cursor-pointer"
+                  title="Replay the last interviewer speech"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Speak</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Live Transcript Dialogue Stream */}
@@ -1561,10 +1586,26 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   msg.role === 'candidate' ? 'items-end' : 'items-start'
                 }`}
               >
-                <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 font-mono">
-                  <span>{msg.role === 'interviewer' ? `${currentCompany.name} Interviewer` : `${candidateName || 'Candidate'}`}</span>
-                  <span>•</span>
-                  <span>{msg.timestamp}</span>
+                <div className="flex items-center justify-between w-full max-w-[92%] text-[10px] text-slate-500 font-mono">
+                  <div className="flex items-center space-x-1.5">
+                    <span>{msg.role === 'interviewer' ? `${currentCompany.name} Interviewer` : `${candidateName || 'Candidate'}`}</span>
+                    <span>•</span>
+                    <span>{msg.timestamp}</span>
+                  </div>
+                  {msg.role === 'interviewer' && (
+                    <button
+                      onClick={() => {
+                        unlockSpeechSynthesis();
+                        setIsAiSpeaking(true);
+                        speakInterviewerText(msg.content, () => setIsAiSpeaking(false));
+                      }}
+                      className="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-indigo-300 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
+                      title="Play / Replay this voice response"
+                    >
+                      <Volume2 className="w-3 h-3 text-cyan-400" />
+                      <span>Play</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className={`p-3.5 rounded-2xl max-w-[92%] select-text leading-relaxed font-sans ${

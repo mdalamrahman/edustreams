@@ -160,16 +160,35 @@ export async function sendInterviewerMessage(
   return "Thank you for explaining that. Let's dig deeper into the trade-offs. How do you plan to scale this under high concurrency?";
 }
 
-// Global Voice Lock Reference
+// Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
 let lockedInterviewerVoice: SpeechSynthesisVoice | null = null;
 let lockedVoiceURI: string | null = null;
 let speechKeepaliveTimer: any = null;
 let isSpeakingActive = false;
+let activeUtteranceQueue: SpeechSynthesisUtterance[] = [];
 
 export function resetInterviewerVoiceLock(): void {
   lockedInterviewerVoice = null;
   lockedVoiceURI = null;
   stopInterviewerSpeech();
+}
+
+/**
+ * Unlocks the browser SpeechSynthesis audio engine on a user gesture click.
+ */
+export function unlockSpeechSynthesis(): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    const warmUp = new SpeechSynthesisUtterance(' ');
+    warmUp.volume = 0.01;
+    warmUp.rate = 2.0;
+    window.speechSynthesis.speak(warmUp);
+  } catch (err) {
+    console.warn('Speech synthesis unlock warning:', err);
+  }
 }
 
 export function getOrLockInterviewerVoice(): SpeechSynthesisVoice | null {
@@ -185,8 +204,8 @@ export function getOrLockInterviewerVoice(): SpeechSynthesisVoice | null {
 
   // Prioritize premium natural voices
   const preferred = voices.find(v => 
-    (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Guy')) && 
-    (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB'))
+    (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Guy') || v.name.includes('David') || v.name.includes('Mark') || v.name.includes('Zira')) && 
+    (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB') || v.lang.startsWith('en'))
   ) || voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
 
   if (preferred) {
@@ -205,42 +224,62 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 }
 
 /**
- * Robust Text-to-Speech (TTS) synthesizer with sentence-level chunking and Chrome keepalive.
- * Prevents stalling on long technical explanations.
+ * Robust Text-to-Speech (TTS) synthesizer with sentence-level chunking, Chrome keepalive,
+ * asynchronous cancel debounce, and GC retention.
  */
 export function speakInterviewerText(text: string, onEnd?: () => void): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    if (onEnd) onEnd();
+    return;
+  }
 
   stopInterviewerSpeech();
   isSpeakingActive = true;
 
   try {
-    const cleanText = text
+    // 1. Clean markdown & expand technical abbreviations for natural pronunciation
+    let cleanText = text
       .replace(/```[\s\S]*?```/g, 'Code block provided in editor.')
-      .replace(/[*_#`~>]/g, '')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[*_#~>]/g, '')
       .replace(/https?:\/\/\S+/g, '')
+      .replace(/Dr\./g, 'Doctor')
+      .replace(/Mr\./g, 'Mister')
+      .replace(/Ms\./g, 'Miss')
+      .replace(/e\.g\./gi, 'for example')
+      .replace(/i\.e\./gi, 'that is')
+      .replace(/vs\./gi, 'versus')
+      .replace(/\bQPS\b/g, 'Q P S')
+      .replace(/\bSPOF\b/g, 'single point of failure')
+      .replace(/\bTPS\b/g, 'T P S')
+      .replace(/\bAPI\b/g, 'A P I')
+      .replace(/\bDB\b/g, 'database')
+      .replace(/\bLLD\b/g, 'low level design')
+      .replace(/\bHLD\b/g, 'high level design')
+      .replace(/\bDSA\b/g, 'D S A')
       .trim();
 
     if (!cleanText) {
+      isSpeakingActive = false;
       if (onEnd) onEnd();
       return;
     }
 
-    // Split text into natural sentence chunks (max 140 chars each) to prevent Chromium TTS freeze
-    const rawSentences = cleanText.match(/[^.!?]+(?:[.!?]+|$)/g) || [cleanText];
+    // 2. Split text into clean, natural sentence chunks (max 150 chars each)
+    const rawSentences = cleanText.match(/[^.!?\n]+(?:[.!?\n]+|$)/g) || [cleanText];
     const chunks: string[] = [];
 
     for (const raw of rawSentences) {
       const trimmed = raw.trim();
       if (!trimmed) continue;
-      if (trimmed.length <= 140) {
+      if (trimmed.length <= 150) {
         chunks.push(trimmed);
       } else {
-        // Sub-split at commas or conjunctions
-        const subParts = trimmed.split(/,\s+/);
+        // Sub-split long sentences at commas, semicolons, or colons
+        const subParts = trimmed.split(/[,;:–—]\s+/);
         let current = '';
         for (const sub of subParts) {
-          if ((current + ', ' + sub).length <= 140) {
+          if ((current + ', ' + sub).length <= 150) {
             current = current ? current + ', ' + sub : sub;
           } else {
             if (current) chunks.push(current);
@@ -252,57 +291,103 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
     }
 
     if (chunks.length === 0) {
+      isSpeakingActive = false;
       if (onEnd) onEnd();
       return;
     }
 
-    const voice = getOrLockInterviewerVoice();
-    let chunkIndex = 0;
+    // 3. Unfreeze browser speech engine and wait 50ms for asynchronous cancel to clear
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
 
-    // Start Chrome Keepalive timer (toggles pause/resume every 6s to prevent 15s freeze bug)
-    if (speechKeepaliveTimer) clearInterval(speechKeepaliveTimer);
-    speechKeepaliveTimer = setInterval(() => {
-      if (isSpeakingActive && window.speechSynthesis.speaking) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
-      }
-    }, 6000);
+    setTimeout(() => {
+      if (!isSpeakingActive) return;
 
-    const playNextChunk = () => {
-      if (!isSpeakingActive || chunkIndex >= chunks.length) {
+      try {
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+
+        const voice = getOrLockInterviewerVoice();
+        let chunkIndex = 0;
+        activeUtteranceQueue = [];
+
+        // Pre-create and retain all utterances in memory to prevent GC collection bug
+        for (let i = 0; i < chunks.length; i++) {
+          const utt = new SpeechSynthesisUtterance(chunks[i]);
+          utt.rate = 1.0;
+          utt.pitch = 1.0;
+          utt.volume = 1.0;
+          if (voice) {
+            utt.voice = voice;
+            utt.lang = voice.lang;
+          } else {
+            utt.lang = 'en-US';
+          }
+          activeUtteranceQueue.push(utt);
+        }
+
+        // Start Keepalive Heartbeat (prevents Chrome 15s freeze bug)
+        if (speechKeepaliveTimer) clearInterval(speechKeepaliveTimer);
+        speechKeepaliveTimer = setInterval(() => {
+          if (isSpeakingActive && window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+          }
+        }, 5000);
+
+        const playChunk = (index: number) => {
+          if (!isSpeakingActive || index >= activeUtteranceQueue.length) {
+            stopInterviewerSpeech();
+            if (onEnd) onEnd();
+            return;
+          }
+
+          const currentUtt = activeUtteranceQueue[index];
+
+          currentUtt.onstart = () => {
+            // Keep alive check
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+          };
+
+          currentUtt.onend = () => {
+            playChunk(index + 1);
+          };
+
+          currentUtt.onerror = (e) => {
+            if (e.error !== 'interrupted' && e.error !== 'canceled') {
+              console.warn('Speech chunk playback error:', e.error);
+            }
+            if (isSpeakingActive) {
+              playChunk(index + 1);
+            }
+          };
+
+          try {
+            window.speechSynthesis.speak(currentUtt);
+            // In case browser is in paused state:
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+          } catch (speakErr) {
+            console.warn('Failed to speak chunk:', speakErr);
+            playChunk(index + 1);
+          }
+        };
+
+        playChunk(0);
+      } catch (innerErr) {
+        console.warn('Speech playback initiation error:', innerErr);
         stopInterviewerSpeech();
         if (onEnd) onEnd();
-        return;
       }
+    }, 60);
 
-      const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
-      utterance.rate = 1.02;
-      utterance.pitch = 1.0;
-
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
-      }
-
-      utterance.onend = () => {
-        chunkIndex++;
-        playNextChunk();
-      };
-
-      utterance.onerror = (e) => {
-        if (e.error !== 'interrupted' && e.error !== 'canceled') {
-          console.warn('Speech chunk error:', e.error);
-        }
-        chunkIndex++;
-        playNextChunk();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    };
-
-    playNextChunk();
   } catch (err) {
-    console.warn('Speech synthesis error:', err);
+    console.warn('Speech synthesis general error:', err);
     stopInterviewerSpeech();
     if (onEnd) onEnd();
   }
@@ -310,6 +395,7 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
 
 export function stopInterviewerSpeech(): void {
   isSpeakingActive = false;
+  activeUtteranceQueue = [];
   if (speechKeepaliveTimer) {
     clearInterval(speechKeepaliveTimer);
     speechKeepaliveTimer = null;
@@ -317,6 +403,9 @@ export function stopInterviewerSpeech(): void {
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     try {
       window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     } catch {}
   }
 }
