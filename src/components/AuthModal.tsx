@@ -37,7 +37,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (isOpen) {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
-        const inviteCode = params.get('passcode') || params.get('passkey') || params.get('code') || params.get('otp');
+        
+        // 1. Direct Email Verification Link (Clicked in email)
+        const verifyEmail = params.get('verify_email');
+        const verifyOtp = params.get('verify_otp') || (verifyEmail ? params.get('otp') : null);
+        if (verifyEmail && verifyOtp) {
+          setEmail(verifyEmail);
+          setEmailOtp(verifyOtp);
+          setMode('verify_otp');
+          setLoading(true);
+          setSuccessMsg('Verifying your email from direct link...');
+          verifyEmailOtp(verifyEmail, verifyOtp).then(({ user, error: verifyErr }) => {
+            setLoading(false);
+            if (verifyErr) {
+              setError(verifyErr);
+              setSuccessMsg('');
+            } else if (user) {
+              setSuccessMsg('🎉 Email verified successfully! Unlocking SDETube Arena...');
+              setTimeout(() => {
+                onSuccess(user);
+                if (onClose) onClose();
+              }, 600);
+            }
+          }).catch((e) => {
+            setLoading(false);
+            setError(e?.message || 'Direct link verification error.');
+          });
+          return;
+        }
+
+        // 2. Direct Invite Passcode Attached
+        const inviteCode = params.get('passcode') || params.get('passkey') || params.get('code');
         const urlEmail = params.get('email');
         if (inviteCode) {
           setAuthCode(inviteCode.toUpperCase());
@@ -46,6 +76,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           if (urlEmail) setEmail(urlEmail);
         }
       }
+
       const bio = isWebAuthnSupported();
       setSupportsBiometrics(bio);
       if (!authCode) {

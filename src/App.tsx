@@ -337,10 +337,10 @@ export function App() {
       setAuthChecking(false);
     });
 
-    // Check if invite passcode or direct registration link was opened
+    // Check if invite passcode or direct email verification link was opened
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const inviteCode = params.get('passcode') || params.get('passkey') || params.get('code') || params.get('otp');
+      const inviteCode = params.get('passcode') || params.get('passkey') || params.get('code') || params.get('otp') || params.get('verify_email');
       if (inviteCode) {
         setIsAuthModalOpen(true);
       }
