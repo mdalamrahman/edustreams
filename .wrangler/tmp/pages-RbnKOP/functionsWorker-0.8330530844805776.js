@@ -1184,7 +1184,7 @@ var onRequest3 = /* @__PURE__ */ __name(async (context2) => {
   }
 }, "onRequest");
 
-// ../.wrangler/tmp/pages-1o0Nko/functionsRoutes-0.9145188455080925.mjs
+// ../.wrangler/tmp/pages-RbnKOP/functionsRoutes-0.1094340481479239.mjs
 var routes = [
   {
     routePath: "/api/gfg/potd",

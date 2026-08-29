@@ -532,22 +532,74 @@ export async function generateDynamicInterviewQuestion(
     system_architect: 'Focus on global geo-distributed consensus, fault isolation, failure modes, CAP theorem tradeoffs, and disaster recovery.'
   };
 
-  const domainThemes = [
-    'Distributed Key-Value Engine & Sharding',
-    'Real-Time High-Throughput Event Streaming',
-    'Geospatial Proximity & Routing Indices',
-    'High-Frequency Financial Ledger & Idempotency',
-    'Video Chunking & Adaptive Bitrate CDN',
-    'Collaborative Real-time Document Sync (CRDT/OT)',
-    'Dynamic Sliding Window & Monotonic Deques',
-    'Bipartite Graph Traversals & Network Flow',
-    'Tree Path Reconstruction & Bitmask State Machines'
-  ];
-  const randomDomain = domainThemes[Math.floor(Math.random() * domainThemes.length)];
+  const roundThemes: Record<InterviewRound, string[]> = {
+    DSA: [
+      'Multi-Dimensional Dynamic Programming on Matrices & Subsequences',
+      'Graph Shortest Paths, Strongly Connected Components & Topological Sorting',
+      'Monotonic Stack / Deque for Sliding Windows & Range Query Bounds',
+      'Bitwise Trie & Prefix Tree Subarray Optimization',
+      'Segment Tree & Binary Indexed Tree (Fenwick) with Lazy Propagation',
+      'Two Pointers & Fast/Slow Traversal with String Matching',
+      'Disjoint Set Union (DSU) with Path Compression & Rank Optimization',
+      'Backtracking with Pruning & State Bitmask Optimization',
+      'Binary Search on Answer Space & Monotonic Predicate Functions',
+      'Interval Merging, Sweep-Line & Coordinate Compression'
+    ],
+    LLD: [
+      'Machine Coding: Thread-Safe Amazon Locker Slot Allocation Network',
+      'Machine Coding: Multi-Algorithm Rate Limiter (Token Bucket, Leaky Bucket, Sliding Log)',
+      'Machine Coding: Double-Entry Financial Ledger with Idempotency Locks',
+      'Machine Coding: Parking Lot & Multi-Vehicle Spot Matching Dispatcher',
+      'Machine Coding: Elevator Scheduling Controller with Multiple Car State Machines',
+      'Machine Coding: In-Memory Task Scheduler with Cron Trigger & Worker Thread Pool',
+      'Machine Coding: Splitwise Expense Sharing with Debt Graph Simplification'
+    ],
+    HLD: [
+      'Global Distributed Key-Value Store with Raft Consensus & Sharded LSM-Trees',
+      'Real-Time Driver Location Stream & Geospatial Indexing (H3 Hexagons)',
+      'High-Scale News Feed Fanout (Hybrid Push/Pull with Redis Caching & TAO)',
+      'Global Video Transcoding & Adaptive Bitrate Streaming CDN Pipeline',
+      'Real-Time Collaborative Document Editing Engine with CRDTs / Operational Transformation',
+      'Global Payment Processing Gateway with Idempotency & Distributed Ledgers',
+      'Distributed Notification & Webhook Dispatcher with Dead-Letter Queues'
+    ],
+    Behavioral: [
+      'Principled Technical Pushback against High-Pressure Deadlines (STAR)',
+      'Navigating Severe Production Outages, Post-Mortems & System Blast Radius Mitigation',
+      'Leading Cross-Functional Consensus across Disagreeing Senior Architect Teams',
+      'Balancing Rapid MVP Speed against Intentional Technical Debt Tracking',
+      'Mentoring Junior Engineers and Elevating Overall Team Engineering Rigor'
+    ]
+  };
 
-  const prompt = `You are a Principal Bar Raiser and Senior Engineering Director at ${company} conducting a ${level} live interview for the "${round}" round.
+  const themesForRound = roundThemes[round] || roundThemes.DSA;
+  const randomDomain = themesForRound[Math.floor(Math.random() * themesForRound.length)];
+
+  const roundDirectives: Record<InterviewRound, string> = {
+    DSA: `STRICT MANDATORY RULE: This is a PURE DATA STRUCTURES & ALGORITHMS (DSA) CODING PROBLEM.
+- It MUST be an algorithmic coding problem requiring functions, arrays, graphs, trees, DP, stacks, or math.
+- UNDER NO CIRCUMSTANCES should you generate a System Design, HLD, or microservices problem.
+- Must provide exact input data types, array/string sizes, value bounds, and constraints (e.g. 1 <= nums.length <= 10^5).
+- Must provide concrete Sample Input and Sample Output with explanation.
+- Must provide algorithmic starter code with clean function signatures in all supported languages.`,
+
+    LLD: `STRICT MANDATORY RULE: This is a LOW-LEVEL DESIGN (LLD) / MACHINE CODING PROBLEM.
+- It MUST be an object-oriented class design or machine coding scenario.
+- Focus on SOLID design principles, clean modular class hierarchies, design patterns (Strategy, Factory, Observer, State), and thread-safety.
+- Provide starter class skeletons and interfaces in all supported languages.`,
+
+    HLD: `STRICT MANDATORY RULE: This is a HIGH-LEVEL SYSTEM DESIGN (HLD) ARCHITECTURE PROBLEM.
+- It MUST be a large-scale distributed system architecture scenario.
+- Focus on microservices, QPS estimations, database sharding, caching tiers, message queues, CAP tradeoffs, and fault tolerance.`,
+
+    Behavioral: `STRICT MANDATORY RULE: This is a BEHAVIORAL & LEADERSHIP (STAR METHOD) SCENARIO.
+- It MUST be a behavioral interview question evaluating Situation, Task, Action, and Result.`
+  };
+
+  const prompt = `You are a Principal Bar Raiser and Senior Engineering Director at ${company} conducting a ${level} live technical mock interview for the "${round}" round.
 Create a BRAND NEW, ORIGINAL, and REALISTIC technical interview problem.
-DO NOT reuse standard textbook cliches (like Two Sum, standard LRU Cache, or standard Word Ladder). Create a fresh, highly engaging real-world scenario.
+
+${roundDirectives[round]}
 
 SEED/THEME: ${randomDomain} (Entropy: ${randomSalt})
 TEST STYLE: ${style} (${stylePromptMap[style]})

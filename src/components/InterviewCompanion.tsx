@@ -194,8 +194,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isCurrentlyFullscreen);
-      if (!isCurrentlyFullscreen && isInterviewStarted) {
+      if (!isCurrentlyFullscreen && isInterviewStarted && !isEvaluating && !scorecard) {
         setShowFullscreenWarning(true);
+        pauseInterview('Fullscreen mode was exited — Fullscreen is strictly required during live technical interviews');
       } else {
         setShowFullscreenWarning(false);
       }
@@ -203,7 +204,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [isInterviewStarted]);
+  }, [isInterviewStarted, isEvaluating, scorecard]);
 
   // Tab Inactivity & Page Left Auto-Pause Proctoring
   const pauseInterview = (reason = 'Page left or focus moved away from interview tab') => {
@@ -1507,19 +1508,37 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       isFullscreen ? 'fixed inset-0 z-50 w-screen h-screen' : 'flex-1 h-full'
     }`}>
       
-      {/* FULLSCREEN RE-ENTRY PROCTORING BANNER */}
-      {showFullscreenWarning && (
-        <div className="bg-amber-500 text-slate-950 p-2.5 px-4 flex items-center justify-between z-50 text-xs font-bold animate-fadeIn flex-shrink-0 shadow-lg">
-          <div className="flex items-center space-x-2">
-            <ShieldAlert className="w-4 h-4 text-slate-950" />
-            <span>Fullscreen Focus Exited — Re-enter fullscreen to maintain interview immersion & proctoring integrity.</span>
+      {/* FULLSCREEN STRICT ENFORCEMENT PROCTORING MODAL */}
+      {showFullscreenWarning && !isFullscreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-2xl animate-fadeIn">
+          <div className="max-w-md w-full glass-panel p-6 sm:p-8 rounded-3xl border border-rose-500/60 bg-gradient-to-b from-slate-900 via-slate-950 to-rose-950/40 text-center space-y-5 shadow-2xl shadow-rose-950/60">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 mx-auto flex items-center justify-center animate-pulse">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-100 flex items-center justify-center gap-2">
+                <span>Fullscreen Mode Required</span>
+              </h3>
+              <p className="text-xs text-rose-300/90 font-mono mt-1">
+                Live interview is paused because Fullscreen mode was exited.
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                To maintain authentic test conditions, prevent distractions, and ensure proctoring integrity, you must remain in Fullscreen mode during the live technical interview.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={async () => {
+                  await requestFullscreenMode();
+                  resumeInterview();
+                }}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 via-indigo-600 to-cyan-500 hover:from-rose-400 hover:to-cyan-400 text-white font-black text-sm shadow-xl shadow-rose-900/40 flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02]"
+              >
+                <Maximize2 className="w-4 h-4" />
+                <span>Re-Enter Fullscreen & Resume Interview</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={requestFullscreenMode}
-            className="px-3 py-1 rounded-lg bg-slate-950 text-amber-400 hover:bg-slate-900 text-xs font-bold cursor-pointer transition-colors"
-          >
-            Re-Enter Fullscreen
-          </button>
         </div>
       )}
 
@@ -1915,10 +1934,74 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           {/* Right Panel Tabs */}
           <div className="p-2.5 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2 flex-shrink-0">
             
-            {/* View Mode Tabs */}
+            {/* View Mode Tabs (Strictly Round-Specific) */}
             <div className="flex items-center space-x-1 text-xs">
               
-              {selectedRound === 'HLD' ? (
+              {selectedRound === 'DSA' ? (
+                <>
+                  <button
+                    onClick={() => setRightTab('code')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'code'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>DSA Code IDE</span>
+                  </button>
+
+                  <button
+                    onClick={() => setRightTab('math')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'math'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    <span>Complexity & Notes</span>
+                  </button>
+                </>
+              ) : selectedRound === 'LLD' ? (
+                <>
+                  <button
+                    onClick={() => setRightTab('code')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'code'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>Machine Coding IDE</span>
+                  </button>
+
+                  <button
+                    onClick={() => setRightTab('diagram')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'diagram'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Class UML Diagram</span>
+                  </button>
+
+                  <button
+                    onClick={() => setRightTab('math')}
+                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      rightTab === 'math'
+                        ? 'bg-teal-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Calculator className="w-3.5 h-3.5" />
+                    <span>Domain Notes</span>
+                  </button>
+                </>
+              ) : selectedRound === 'HLD' ? (
                 <>
                   <button
                     onClick={() => setRightTab('hld_canvas')}
@@ -1929,7 +2012,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     }`}
                   >
                     <LayoutTemplate className="w-3.5 h-3.5" />
-                    <span>Interactive System Design Canvas</span>
+                    <span>System Architecture Canvas</span>
                   </button>
 
                   <button
@@ -1953,10 +2036,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     }`}
                   >
                     <Layers className="w-3.5 h-3.5" />
-                    <span>UML / PlantUML</span>
+                    <span>UML Architecture</span>
                   </button>
                 </>
-              ) : selectedRound === 'Behavioral' ? (
+              ) : (
                 <>
                   <button
                     onClick={() => setRightTab('star')}
@@ -1968,32 +2051,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   >
                     <Compass className="w-3.5 h-3.5" />
                     <span>STAR Framework Guide</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setRightTab('code')}
-                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                      rightTab === 'code'
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Code2 className="w-3.5 h-3.5" />
-                    <span>Monaco Code IDE</span>
-                  </button>
-
-                  <button
-                    onClick={() => setRightTab('diagram')}
-                    className={`px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
-                      rightTab === 'diagram'
-                        ? 'bg-cyan-600 text-white shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>UML & Architecture</span>
                   </button>
                 </>
               )}
@@ -2074,46 +2131,134 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             )}
 
-            {/* VIEW 3: HLD CAPACITY SIZING MATH */}
+            {/* VIEW 3: ROUND-SPECIFIC COMPLEXITY & MATH SCRATCHPAD */}
             {rightTab === 'math' && (
               <div className="w-full h-full p-6 overflow-y-auto custom-scrollbar space-y-6 text-xs text-slate-200">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Calculator className="w-4 h-4 text-teal-400" />
-                    <span>Back-of-the-Envelope Capacity Estimations</span>
-                  </h4>
-                  <p className="text-slate-400 text-[11px]">
-                    Standard FAANG System Design calculation benchmarks for {currentCompany.name}.
-                  </p>
-                </div>
+                {selectedRound === 'DSA' ? (
+                  <>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-teal-400" />
+                        <span>Algorithmic Complexity & Dry Run Scratchpad</span>
+                      </h4>
+                      <p className="text-slate-400 text-[11px]">
+                        FAANG Bar Raiser evaluation expects explicit Big-O Time & Space analysis and edge cases.
+                      </p>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="font-bold text-teal-400 uppercase text-[10px]">1. QPS / Throughput Formula</span>
-                    <p className="font-mono text-slate-300">
-                      Average QPS = Daily Active Users × Requests Per Day / 86,400s<br/>
-                      Peak QPS = Average QPS × 2 to 5 (Traffic Spikes)
-                    </p>
-                  </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-teal-400 uppercase text-[10px]">1. Standard Complexity Bounds</span>
+                        <p className="font-mono text-slate-300">
+                          N &le; 10<sup>4</sup> &rarr; O(N<sup>2</sup>) or O(N log N)<br/>
+                          N &le; 10<sup>5</sup> &rarr; O(N log N) or O(N)<br/>
+                          N &le; 10<sup>7</sup> &rarr; O(N) linear scan / two pointers
+                        </p>
+                      </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                    <span className="font-bold text-indigo-400 uppercase text-[10px]">2. Storage Estimations</span>
-                    <p className="font-mono text-slate-300">
-                      Daily Storage = Daily Writes × Payload Size (e.g. 500B to 2KB)<br/>
-                      5-Year Storage = Daily Storage × 365 × 5
-                    </p>
-                  </div>
-                </div>
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-indigo-400 uppercase text-[10px]">2. Common DSA Edge Cases</span>
+                        <p className="font-mono text-slate-300">
+                          &bull; Empty inputs / Single-element arrays<br/>
+                          &bull; Integer overflow bounds (use 64-bit int / long long)<br/>
+                          &bull; Duplicate values, cyclic graphs & disconnected components
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                  <span className="font-bold text-amber-400 uppercase text-[10px]">Quick Scratchpad for Math & Notes:</span>
-                  <textarea
-                    value={whiteboardNotes}
-                    onChange={(e) => setWhiteboardNotes(e.target.value)}
-                    placeholder="Enter DAU, QPS math, storage bounds, or database partition keys here..."
-                    className="w-full h-40 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-teal-500 resize-none custom-scrollbar"
-                  />
-                </div>
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <span className="font-bold text-amber-400 uppercase text-[10px]">Dry Run State, Invariants & Complexity Notes:</span>
+                      <textarea
+                        value={whiteboardNotes}
+                        onChange={(e) => setWhiteboardNotes(e.target.value)}
+                        placeholder="Write your state transitions, dry run trace tables, invariant assertions, or Big-O analysis here..."
+                        className="w-full h-40 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-teal-500 resize-none custom-scrollbar"
+                      />
+                    </div>
+                  </>
+                ) : selectedRound === 'LLD' ? (
+                  <>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-teal-400" />
+                        <span>Low-Level Design & Machine Coding Domain Model</span>
+                      </h4>
+                      <p className="text-slate-400 text-[11px]">
+                        Identify core domain entities, design patterns, and thread-safety concurrency locks.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-teal-400 uppercase text-[10px]">1. SOLID Principles Checklist</span>
+                        <p className="font-mono text-slate-300">
+                          &bull; Single Responsibility &bull; Open-Closed<br/>
+                          &bull; Liskov Substitution &bull; Interface Segregation<br/>
+                          &bull; Dependency Inversion
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-indigo-400 uppercase text-[10px]">2. Key Design Patterns</span>
+                        <p className="font-mono text-slate-300">
+                          &bull; Strategy / Factory / Singleton<br/>
+                          &bull; Observer (Event notifications)<br/>
+                          &bull; State Pattern (Status workflows)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <span className="font-bold text-amber-400 uppercase text-[10px]">Class Interfaces & Entity Relationships:</span>
+                      <textarea
+                        value={whiteboardNotes}
+                        onChange={(e) => setWhiteboardNotes(e.target.value)}
+                        placeholder="List your classes, enum states, method signatures, or concurrency mutexes here..."
+                        className="w-full h-40 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-teal-500 resize-none custom-scrollbar"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-teal-400" />
+                        <span>Back-of-the-Envelope Capacity Estimations</span>
+                      </h4>
+                      <p className="text-slate-400 text-[11px]">
+                        Standard FAANG System Design calculation benchmarks for {currentCompany.name}.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-teal-400 uppercase text-[10px]">1. QPS / Throughput Formula</span>
+                        <p className="font-mono text-slate-300">
+                          Average QPS = Daily Active Users × Requests Per Day / 86,400s<br/>
+                          Peak QPS = Average QPS × 2 to 5 (Traffic Spikes)
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                        <span className="font-bold text-indigo-400 uppercase text-[10px]">2. Storage Estimations</span>
+                        <p className="font-mono text-slate-300">
+                          Daily Storage = Daily Writes × Payload Size (e.g. 500B to 2KB)<br/>
+                          5-Year Storage = Daily Storage × 365 × 5
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                      <span className="font-bold text-amber-400 uppercase text-[10px]">Quick Scratchpad for Math & Notes:</span>
+                      <textarea
+                        value={whiteboardNotes}
+                        onChange={(e) => setWhiteboardNotes(e.target.value)}
+                        placeholder="Enter DAU, QPS math, storage bounds, or database partition keys here..."
+                        className="w-full h-40 p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-teal-500 resize-none custom-scrollbar"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
