@@ -22,10 +22,14 @@ import {
   WifiOff,
   BookOpen,
   X,
-  Lock
+  Lock,
+  FileEdit,
+  StickyNote
 } from 'lucide-react';
 import { AINotesAndSimulation } from './AINotesAndSimulation';
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
+import { StudentVideoNotesTab } from './StudentVideoNotesTab';
+import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
 import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { getCurrentStudent } from '../lib/auth';
@@ -55,6 +59,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFloatingNotes, setShowFloatingNotes] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
     try {
       const v = localStorage.getItem('sdetube_video_volume');
@@ -77,7 +83,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isCachedOffline, setIsCachedOffline] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'notes_sim'>('caption');
+  const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'notes_sim' | 'student_notes'>('caption');
   const [streamError, setStreamError] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
   const [showControls, setShowControls] = useState(true);
@@ -87,6 +93,36 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
   const [confirmInput, setConfirmInput] = useState<string>('');
   const hideControlsTimer = useRef<any>(null);
+
+  // Fullscreen event listener
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  // Spacebar Play / Pause Shortcut (ignoring inputs & textareas)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        const target = e.target as HTMLElement;
+        const isEditable = target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.closest('input, textarea, [contenteditable="true"]')
+        );
+        if (!isEditable) {
+          e.preventDefault();
+          togglePlay();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isPlaying]);
 
   // Web Audio API Gain Node for Hardware Volume Amplification
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -624,6 +660,46 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             )}
 
+            {/* Floating Notes Hover Dot Button */}
+            <div className="absolute top-4 left-4 z-40 animate-fadeIn pointer-events-auto">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFloatingNotes(!showFloatingNotes);
+                }}
+                className={`group relative flex items-center space-x-2 px-3 py-1.5 rounded-full border shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-105 cursor-pointer ${
+                  showFloatingNotes
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                    : 'bg-slate-950/85 hover:bg-amber-950/80 text-amber-300 hover:text-amber-200 border-amber-500/50'
+                }`}
+                title="Notes overlay (Drag anywhere & take notes while watching)"
+              >
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span className="text-xs font-bold font-sans">Notes</span>
+                <span className="hidden sm:group-hover:inline-block absolute left-full ml-2 px-2 py-0.5 rounded-lg bg-slate-900 border border-amber-500/40 text-[10px] text-amber-300 whitespace-nowrap shadow-lg">
+                  {showFloatingNotes ? 'Close Notes Overlay' : 'Drag & Type Notes'}
+                </span>
+              </button>
+            </div>
+
+            {/* Floating Draggable Notes Overlay (Works seamlessly in Fullscreen & Normal Viewport) */}
+            {showFloatingNotes && (
+              <FloatingVideoNotesOverlay
+                video={video}
+                currentTime={currentTime}
+                onClose={() => setShowFloatingNotes(false)}
+                onSeek={(time) => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = time;
+                    setCurrentTime(time);
+                  }
+                }}
+              />
+            )}
+
             {!isPlaying && !streamError && !isLoadingStream && (
               <>
                 {/* Center Play Circle */}
@@ -812,6 +888,19 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     ))}
                   </div>
 
+                  {/* Notes Overlay Toggle Button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowFloatingNotes(!showFloatingNotes); }}
+                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      showFloatingNotes
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
+                        : 'bg-slate-900/80 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border-amber-500/40'
+                    }`}
+                    title="Student Notes Overlay (Drag anywhere)"
+                  >
+                    <FileEdit className="w-4 h-4" />
+                  </button>
+
                   <button
                     onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }}
                     className="p-1.5 rounded-lg bg-slate-900/80 hover:bg-indigo-600 text-slate-200 hover:text-white transition-colors border border-slate-700"
@@ -829,10 +918,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Tabs Below Player */}
       <div className="p-4 bg-slate-900/80 border-t border-slate-800">
         <div className="flex items-center justify-between mb-3 border-b border-slate-800/80 pb-2">
-          <div className="flex space-x-4">
+          <div className="flex space-x-3 sm:space-x-4 overflow-x-auto custom-scrollbar">
             <button
               onClick={() => setActiveTab('caption')}
-              className={`flex items-center space-x-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center space-x-1.5 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'caption'
                   ? 'text-sky-400 border-b-2 border-sky-400 pb-1'
                   : 'text-slate-400 hover:text-slate-200'
@@ -844,7 +933,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={() => setActiveTab('transcript')}
-              className={`flex items-center space-x-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center space-x-1.5 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'transcript'
                   ? 'text-purple-400 border-b-2 border-purple-400 pb-1'
                   : 'text-slate-400 hover:text-slate-200'
@@ -856,7 +945,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
             <button
               onClick={() => setActiveTab('notes_sim')}
-              className={`flex items-center space-x-1.5 text-xs font-bold transition-all ${
+              className={`flex items-center space-x-1.5 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'notes_sim'
                   ? 'text-emerald-400 border-b-2 border-emerald-400 pb-1'
                   : 'text-slate-400 hover:text-slate-200'
@@ -865,9 +954,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
               <span>AI Notes & Simulation</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('student_notes')}
+              className={`flex items-center space-x-1.5 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeTab === 'student_notes'
+                  ? 'text-amber-400 border-b-2 border-amber-400 pb-1'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileEdit className="w-3.5 h-3.5 text-amber-400" />
+              <span>Student Notes</span>
+            </button>
           </div>
 
-          <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
+          <span className="text-xs text-slate-400 font-mono flex items-center gap-1 flex-shrink-0">
             <Clock className="w-3.5 h-3.5 text-indigo-400" /> {Math.round((video.duration_seconds || 0) / 60)} Mins
           </span>
         </div>
@@ -913,6 +1014,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               )}
             </div>
           </div>
+        ) : activeTab === 'student_notes' ? (
+          <StudentVideoNotesTab 
+            video={video} 
+            currentTime={currentTime} 
+            onSeek={(time) => {
+              if (videoRef.current) {
+                videoRef.current.currentTime = time;
+                setCurrentTime(time);
+              }
+            }}
+          />
         ) : (
           <AINotesAndSimulation video={video} videoArtifacts={videoArtifacts} isLoading={loadingTranscript} onOpenAskAI={onOpenAskAI} />
         )}
