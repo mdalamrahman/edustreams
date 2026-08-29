@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers } from 'lucide-react';
-import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
+import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
 import { getSolvedIds } from '../lib/progressService';
@@ -64,32 +64,41 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
-  const loadLeetCodePOTD = async () => {
+  const loadLeetCodePOTD = async (force = false) => {
     setIsLoadingLc(true);
     try {
-      const res = await fetchLeetCodePOTD();
+      const res = await fetchLeetCodePOTD(force);
       setLcPotd(res);
-    } catch {
+    } catch (e) {
+      console.warn('Failed to load LeetCode POTD', e);
     } finally {
       setIsLoadingLc(false);
     }
   };
 
-  const loadGfgPOTD = async () => {
+  const loadGfgPOTD = async (force = false) => {
     setIsLoadingGfg(true);
     try {
-      const res = await fetchGFGPOTD();
+      const res = await fetchGFGPOTD(force);
       setGfgPotd(res);
-    } catch {
+    } catch (e) {
+      console.warn('Failed to load GFG POTD', e);
     } finally {
       setIsLoadingGfg(false);
     }
+  };
+
+  const handleRefreshAll = async () => {
+    clearPOTDCache();
+    await Promise.all([loadLeetCodePOTD(true), loadGfgPOTD(true)]);
   };
 
   useEffect(() => {
     loadLeetCodePOTD();
     loadGfgPOTD();
   }, []);
+
+  const isRefreshingAny = isLoadingLc || isLoadingGfg;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
@@ -132,12 +141,26 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 cursor-pointer"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRefreshAll}
+              disabled={isRefreshingAny}
+              className={`p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border border-slate-800 flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+                isRefreshingAny ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              title="Refresh all live daily problems"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingAny ? 'animate-spin text-amber-400' : ''}`} />
+              <span className="hidden sm:inline">Refresh POTDs</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* 3-Tab Selector: SDETube Curated | LeetCode POTD | GeeksforGeeks POTD */}
@@ -363,11 +386,12 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   </a>
 
                   <button
-                    onClick={loadLeetCodePOTD}
-                    className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer flex items-center justify-center"
+                    onClick={() => loadLeetCodePOTD(true)}
+                    disabled={isLoadingLc}
+                    className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer flex items-center justify-center transition-all disabled:opacity-50"
                     title="Refresh LeetCode POTD"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className={`w-4 h-4 ${isLoadingLc ? 'animate-spin text-amber-400' : ''}`} />
                   </button>
                 </div>
               </>
@@ -472,11 +496,12 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   </a>
 
                   <button
-                    onClick={loadGfgPOTD}
-                    className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer flex items-center justify-center"
+                    onClick={() => loadGfgPOTD(true)}
+                    disabled={isLoadingGfg}
+                    className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer flex items-center justify-center transition-all disabled:opacity-50"
                     title="Refresh GFG POTD"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw className={`w-4 h-4 ${isLoadingGfg ? 'animate-spin text-emerald-400' : ''}`} />
                   </button>
                 </div>
               </>

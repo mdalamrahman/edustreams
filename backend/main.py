@@ -4218,6 +4218,137 @@ async def download_telegram_attachment(
 
 
 # -------------------------------------------------------------------
+# LIVE OFFICIAL PROBLEM OF THE DAY (POTD) PROXY PIPELINE
+# -------------------------------------------------------------------
+
+@app.get("/api/potd/leetcode")
+@app.get("/api/leetcode/potd")
+async def get_leetcode_potd_endpoint():
+    """
+    Fetches live authentic Problem of the Day directly from LeetCode official GraphQL API.
+    """
+    query = """query questionOfToday {
+      activeDailyCodingChallengeQuestion {
+        date
+        link
+        question {
+          acRate
+          difficulty
+          frontendQuestionId: questionFrontendId
+          title
+          titleSlug
+          topicTags {
+            name
+          }
+        }
+      }
+    }"""
+    try:
+        req = urllib.request.Request(
+            "https://leetcode.com/graphql",
+            data=json.dumps({"query": query}).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://leetcode.com/"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            daily = res_data.get("data", {}).get("activeDailyCodingChallengeQuestion")
+            if daily and daily.get("question"):
+                q = daily["question"]
+                slug = q.get("titleSlug", "")
+                return JSONResponse({
+                    "date": daily.get("date") or datetime.utcnow().strftime("%Y-%m-%d"),
+                    "questionId": q.get("frontendQuestionId", "1"),
+                    "questionFrontendId": q.get("frontendQuestionId", "1"),
+                    "title": q.get("title", ""),
+                    "titleSlug": slug,
+                    "difficulty": q.get("difficulty", "Medium"),
+                    "topicTags": [t.get("name") for t in q.get("topicTags", []) if t.get("name")],
+                    "url": f"https://leetcode.com/problems/{slug}/",
+                    "acRate": q.get("acRate")
+                }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+    except Exception as e:
+        print(f"[LeetCode POTD Error]: {e}")
+
+    # Fallback to Alfa LeetCode API
+    try:
+        req_fb = urllib.request.Request(
+            "https://alfa-leetcode-api.onrender.com/daily",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req_fb, timeout=6) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            if data and (data.get("questionTitle") or data.get("title")):
+                title = data.get("questionTitle") or data.get("title")
+                slug = data.get("titleSlug") or re.sub(r"[^a-z0-9]+", "-", title.lower())
+                return JSONResponse({
+                    "date": data.get("date") or datetime.utcnow().strftime("%Y-%m-%d"),
+                    "questionId": data.get("questionId") or data.get("questionFrontendId") or "1",
+                    "questionFrontendId": data.get("questionFrontendId") or data.get("questionId") or "1",
+                    "title": title,
+                    "titleSlug": slug,
+                    "difficulty": data.get("difficulty", "Medium"),
+                    "topicTags": [t if isinstance(t, str) else t.get("name") for t in data.get("topicTags", [])] or ["Algorithms"],
+                    "url": data.get("questionLink") or f"https://leetcode.com/problems/{slug}/"
+                }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+    except Exception as e:
+        print(f"[LeetCode POTD Fallback Error]: {e}")
+
+    raise HTTPException(status_code=502, detail="Failed to fetch LeetCode POTD")
+
+
+@app.get("/api/potd/gfg")
+@app.get("/api/gfg/potd")
+@app.get("/api/gfg-potd")
+async def get_gfg_potd_endpoint():
+    """
+    Fetches live authentic Problem of the Day directly from GeeksforGeeks Practice API.
+    """
+    endpoints = [
+        "https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/",
+        "https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/"
+    ]
+    for ep in endpoints:
+        try:
+            req = urllib.request.Request(
+                ep,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "application/json"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=8) as response:
+                data = json.loads(response.read().decode("utf-8"))
+                if data and (data.get("problem_name") or data.get("title")) and (data.get("problem_url") or data.get("url")):
+                    title = data.get("problem_name") or data.get("title")
+                    url = data.get("problem_url") or data.get("url")
+                    match = re.search(r"/problems/([^/]+)/", url)
+                    slug = match.group(1) if match else re.sub(r"[^a-z0-9]+", "-", title.lower())
+                    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+                    return JSONResponse({
+                        "id": data.get("id") or data.get("problem_id") or 2155,
+                        "date": (data.get("date") or today_str)[:10],
+                        "questionId": str(data.get("problem_id") or data.get("id") or "2155"),
+                        "title": title,
+                        "titleSlug": slug,
+                        "difficulty": data.get("difficulty", "Medium"),
+                        "topicTags": data.get("tags", {}).get("topic_tags", ["Dynamic Programming"]),
+                        "companyTags": data.get("tags", {}).get("company_tags", []),
+                        "url": url,
+                        "accuracy": data.get("accuracy", 50.0),
+                        "totalSubmissions": data.get("total_submissions", 12000)
+                    }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+        except Exception as e:
+            print(f"[GFG POTD Fetch Error from {ep}]: {e}")
+
+    raise HTTPException(status_code=502, detail="Failed to fetch GeeksforGeeks POTD")
+
+
+# -------------------------------------------------------------------
 # AUDIO EXTRACTION, CHUNKING & STT PIPELINE
 # -------------------------------------------------------------------
 
