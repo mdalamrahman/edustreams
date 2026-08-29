@@ -16,8 +16,9 @@ import requests
 from bs4 import BeautifulSoup
 from typing import Optional, List, Any
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -793,6 +794,9 @@ app = FastAPI(
     version="2.0.0",
 )
 
+# 1. Global JSON GZip Compression (Reduces outbound bandwidth by 70-85% for free)
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"https?://.*",
@@ -804,7 +808,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def add_cors_headers_middleware(request: Request, call_next):
+async def add_cors_and_caching_headers_middleware(request: Request, call_next):
     origin = request.headers.get("origin") or "*"
     if request.method == "OPTIONS":
         response = Response(status_code=204)
@@ -820,7 +824,11 @@ async def add_cors_headers_middleware(request: Request, call_next):
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Expose-Headers"] = "Content-Range, Content-Length, Accept-Ranges, Content-Type"
-    return response
+
+    # Attach caching header to safe GET requests if not already specified
+    if request.method == "GET" and "Cache-Control" not in response.headers and not request.url.path.startswith("/api/stream"):
+        response.headers["Cache-Control"] = "public, max-age=60"
+
     return response
 
 

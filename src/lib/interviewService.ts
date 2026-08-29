@@ -1,5 +1,5 @@
 import { MISTRAL_API_KEY } from './mistral';
-import { SdeLevel, InterviewRound, CuratedInterviewQuestion } from './githubInterviewData';
+import { SdeLevel, InterviewRound, TestStyle, CuratedInterviewQuestion } from './githubInterviewData';
 
 export interface InterviewMessage {
   id: string;
@@ -23,6 +23,7 @@ export interface InterviewContext {
   company: string;
   level: SdeLevel;
   round: InterviewRound;
+  testStyle?: TestStyle;
   candidate?: CandidateDetails;
   question?: CuratedInterviewQuestion;
   candidateCode?: string;
@@ -34,12 +35,19 @@ export interface InterviewContext {
  * Builds a structured, high-fidelity Principal Interviewer System Prompt.
  */
 export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
-  const { company, level, round, question, candidate } = ctx;
+  const { company, level, round, testStyle, question, candidate } = ctx;
 
   const levelExpectations: Record<SdeLevel, string> = {
     'SDE-1': 'Expect solid algorithmic fundamentals, standard library mastery, clean syntax, basic edge cases, and time/space complexity awareness. Guide with warm, clear hints if stuck.',
     'SDE-2': 'Expect scalable designs, clean modular architecture, concurrency handling, rigorous boundary condition validation, and active trade-off discussions. Challenge them on optimizations and edge cases.',
     'SDE-3': 'Expect deep architectural vision, distributed systems consensus (CAP, Raft/Paxos), failure modes, SPOFs, cost estimations, and leadership pushback. Push them hard on bottleneck analysis and large-scale trade-offs.'
+  };
+
+  const styleDirectives: Record<TestStyle, string> = {
+    faang_bar_raiser: 'Adopt the strict FAANG Bar Raiser style. Demand mathematical rigor, asymptotic Big-O proofs, and rigorous probing on subtle corner cases (e.g. integer overflow, cycles, null inputs).',
+    high_growth_startup: 'Adopt a pragmatic Silicon Valley Tech Lead style. Focus on speed of execution, clean maintainable code, database indexing, API ergonomics, and sensible MVP compromises.',
+    fintech_low_latency: 'Adopt a Principal Low-Latency Systems Architect style. Focus heavily on concurrency race conditions, atomic operations, cache locality, thread-safety, zero allocations, and GC latency impact.',
+    system_architect: 'Adopt a Global Chief Architect style. Probe deeply into geo-distributed replication, CAP theorem tradeoffs, single points of failure (SPOFs), multi-region disaster recovery, and cascading failures.'
   };
 
   const roundGuidelines: Record<InterviewRound, string> = {
@@ -68,6 +76,7 @@ export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
   return `You are a Principal Engineering Interviewer and Lead Bar Raiser at ${company} conducting a live technical mock interview.
 Role Level: ${level}
 Round Type: ${round}
+Interview Style: ${testStyle || 'faang_bar_raiser'} (${styleDirectives[testStyle || 'faang_bar_raiser']})
 
 ${candidate ? `CANDIDATE BACKGROUND & RESUME CONTEXT:
 - Candidate Name: ${candidate.name || 'Candidate'}
@@ -81,6 +90,9 @@ ${candidate.resumeText ? `- Extracted Resume Context Snippet: ${candidate.resume
 
 LEVEL EXPECTATION FOR ${level}:
 ${levelExpectations[level]}
+
+STYLE DIRECTIVE:
+${styleDirectives[testStyle || 'faang_bar_raiser']}
 
 CRITICAL INTERVIEW GUIDELINES FOR ${round}:
 ${roundGuidelines[round]}
@@ -148,7 +160,62 @@ export async function sendInterviewerMessage(
 }
 
 /**
- * Text-to-Speech (TTS) voice synthesizer using the browser's Web Speech API.
+ * Voice Locking System:
+ * Guarantees that the interviewer's voice remains 100% consistent throughout the entire test session.
+ */
+let lockedInterviewerVoice: SpeechSynthesisVoice | null = null;
+let lockedVoiceURI: string | null = null;
+
+export function resetInterviewerVoiceLock(): void {
+  lockedInterviewerVoice = null;
+  lockedVoiceURI = null;
+}
+
+export function getOrLockInterviewerVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return null;
+  
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // If already locked and valid in current voice list, return it
+  if (lockedVoiceURI) {
+    const existing = voices.find(v => v.voiceURI === lockedVoiceURI);
+    if (existing) {
+      lockedInterviewerVoice = existing;
+      return existing;
+    }
+  }
+
+  // Pick highest quality natural English voice
+  const preferred = voices.find(v => 
+    v.lang.startsWith('en') && (
+      v.name.includes('Natural') || 
+      v.name.includes('Online (Natural)') ||
+      v.name.includes('Google US English') || 
+      v.name.includes('Samantha') || 
+      v.name.includes('Daniel') ||
+      v.name.includes('Guy') ||
+      v.name.includes('Aria')
+    )
+  ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+
+  if (preferred) {
+    lockedInterviewerVoice = preferred;
+    lockedVoiceURI = preferred.voiceURI;
+  }
+
+  return lockedInterviewerVoice;
+}
+
+// Pre-initialize voice listener
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  window.speechSynthesis.onvoiceschanged = () => {
+    getOrLockInterviewerVoice();
+  };
+}
+
+/**
+ * Text-to-Speech (TTS) voice synthesizer using the locked interviewer voice.
  */
 export function speakInterviewerText(text: string, onEnd?: () => void): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -157,13 +224,14 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
     window.speechSynthesis.cancel(); // Stop any pending utterances
     const cleanText = text.replace(/```[\s\S]*?```/g, 'Code block provided in editor.').replace(/[*_#`]/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.05;
+    utterance.rate = 1.02;
     utterance.pitch = 1.0;
 
-    // Pick a natural English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const naturalVoice = voices.find(v => (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Daniel')) && v.lang.startsWith('en')) || voices.find(v => v.lang.startsWith('en'));
-    if (naturalVoice) utterance.voice = naturalVoice;
+    const voice = getOrLockInterviewerVoice();
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    }
 
     if (onEnd) utterance.onend = onEnd;
     window.speechSynthesis.speak(utterance);

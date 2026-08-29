@@ -39,14 +39,22 @@ import {
   Briefcase,
   GraduationCap,
   X,
-  FileCheck2
+  FileCheck2,
+  Maximize2,
+  Minimize2,
+  Target,
+  Wand2,
+  Flame
 } from 'lucide-react';
 import { 
   SdeLevel, 
   InterviewRound, 
+  TestStyle,
   SUPPORTED_COMPANIES, 
+  SUPPORTED_TEST_STYLES,
   CuratedInterviewQuestion, 
-  getCompanyInterviewData 
+  getCompanyInterviewData,
+  generateDynamicInterviewQuestion
 } from '../lib/githubInterviewData';
 import { 
   InterviewMessage, 
@@ -54,7 +62,9 @@ import {
   CandidateDetails,
   sendInterviewerMessage, 
   speakInterviewerText, 
-  stopInterviewerSpeech 
+  stopInterviewerSpeech,
+  getOrLockInterviewerVoice,
+  resetInterviewerVoiceLock
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { InterviewScorecardModal } from './InterviewScorecardModal';
@@ -73,6 +83,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   // Session Flow State: false = Pre-Interview Setup Wizard, true = Active Live Interview Room
   const [isInterviewStarted, setIsInterviewStarted] = useState<boolean>(false);
 
+  // Fullscreen State & Proctoring Enforcement
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showFullscreenWarning, setShowFullscreenWarning] = useState<boolean>(false);
+
   // Candidate Profile Form State
   const [candidateName, setCandidateName] = useState<string>('Candidate');
   const [candidateExpYears, setCandidateExpYears] = useState<string>('2-4');
@@ -87,11 +101,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('google');
   const [selectedLevel, setSelectedLevel] = useState<SdeLevel>('SDE-2');
   const [selectedRound, setSelectedRound] = useState<InterviewRound>('DSA');
+  const [selectedTestStyle, setSelectedTestStyle] = useState<TestStyle>('faang_bar_raiser');
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
 
-  // Active Problem & Context
+  // Active Problem & Custom AI Generation State
   const [availableQuestions, setAvailableQuestions] = useState<CuratedInterviewQuestion[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<CuratedInterviewQuestion | null>(null);
+  const [isGeneratingCustomQuestion, setIsGeneratingCustomQuestion] = useState<boolean>(false);
   const [editorCode, setEditorCode] = useState<string>('// Write your optimal solution here\n\n');
   const [whiteboardNotes, setWhiteboardNotes] = useState<string>('');
   const [rightTab, setRightTab] = useState<'code' | 'hld_canvas' | 'diagram' | 'math' | 'star'>('code');
@@ -137,10 +153,49 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return SUPPORTED_COMPANIES.find(c => c.id === selectedCompanyId) || SUPPORTED_COMPANIES[0];
   }, [selectedCompanyId]);
 
-  // Load questions when company/round/level changes
+  // Handle Fullscreen toggle and listeners
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+      if (!isCurrentlyFullscreen && isInterviewStarted) {
+        setShowFullscreenWarning(true);
+      } else {
+        setShowFullscreenWarning(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [isInterviewStarted]);
+
+  const requestFullscreenMode = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+        setShowFullscreenWarning(false);
+      }
+    } catch (err) {
+      console.warn('Fullscreen request notice:', err);
+    }
+  };
+
+  const exitFullscreenMode = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (err) {
+      console.warn('Exit fullscreen notice:', err);
+    }
+  };
+
+  // Load questions when company/round/level/style changes
   useEffect(() => {
     let isCancelled = false;
-    getCompanyInterviewData(currentCompany.name, selectedRound, selectedLevel).then(qs => {
+    getCompanyInterviewData(currentCompany.name, selectedRound, selectedLevel, selectedTestStyle).then(qs => {
       if (!isCancelled && qs && qs.length > 0) {
         setAvailableQuestions(qs);
         setActiveQuestion(qs[0]);
@@ -150,7 +205,36 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       }
     });
     return () => { isCancelled = true; };
-  }, [currentCompany, selectedRound, selectedLevel, language]);
+  }, [currentCompany, selectedRound, selectedLevel, selectedTestStyle, language]);
+
+  // Dynamic Custom Question Generator for candidate's exact profile & tech stack
+  const handleGenerateCustomQuestion = async () => {
+    setIsGeneratingCustomQuestion(true);
+    try {
+      const customQ = await generateDynamicInterviewQuestion(
+        currentCompany.name,
+        selectedRound,
+        selectedLevel,
+        selectedTestStyle,
+        {
+          name: candidateName,
+          techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+          experienceYears: candidateExpYears,
+          currentRole: candidateRole,
+          resumeText: resumeText,
+          customGoals: candidateGoals
+        }
+      );
+      setActiveQuestion(customQ);
+      if (customQ.starterCode && customQ.starterCode[language]) {
+        setEditorCode(customQ.starterCode[language]);
+      }
+    } catch (err) {
+      console.warn('Custom question generation notice:', err);
+    } finally {
+      setIsGeneratingCustomQuestion(false);
+    }
+  };
 
   // Handle PDF Resume Upload
   const handleResumeFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,9 +305,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   };
 
   // Launch the live interview session from the Pre-Interview Setup screen
-  const handleStartLiveInterview = () => {
+  const handleStartLiveInterview = async () => {
     if (!activeQuestion) return;
 
+    // 1. Enforce Fullscreen Mode
+    await requestFullscreenMode();
+
+    // 2. Lock interviewer voice for the entire test session
+    resetInterviewerVoiceLock();
+    getOrLockInterviewerVoice();
+
+    // 3. Tab routing according to round
     if (selectedRound === 'HLD') {
       setRightTab('hld_canvas');
     } else if (selectedRound === 'Behavioral') {
@@ -233,7 +325,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
 
     const candidateGreetingName = candidateName.trim() || 'Candidate';
-    const initialGreeting = `Hello ${candidateGreetingName}! I'm your Principal Engineering Interviewer at ${currentCompany.name} today. We will be conducting a ${selectedLevel} ${selectedRound} interview.\n\nHere is your problem scenario:\n**${activeQuestion.title}**\n\n${activeQuestion.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
+    const interviewerName = currentCompany.name === 'Google' ? 'Dr. Sarah Chen' : currentCompany.name === 'Amazon' ? 'David Miller' : currentCompany.name === 'Meta' ? 'Alex Rivera' : 'Michael Zhang';
+
+    const initialGreeting = `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${activeQuestion.title}**\n\n${activeQuestion.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -420,6 +514,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       company: currentCompany.name,
       level: selectedLevel,
       round: selectedRound,
+      testStyle: selectedTestStyle,
       candidate: candidateContext,
       question: activeQuestion || undefined,
       candidateCode: editorCode,
@@ -471,6 +566,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       company: currentCompany.name,
       level: selectedLevel,
       round: selectedRound,
+      testStyle: selectedTestStyle,
       candidate: candidateContext,
       question: activeQuestion || undefined,
       candidateCode: editorCode,
@@ -526,13 +622,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold w-fit">
                 <Bot className="w-3.5 h-3.5 text-indigo-400" />
-                <span>FAANG BAR RAISER SIMULATOR &bull; RESUME INGESTION</span>
+                <span>FAANG BAR RAISER SIMULATOR &bull; MULTI-STYLE CUSTOM INTERVIEWS</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Candidate Profile & Interview Setup
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-                Provide your background or upload your resume PDF. The AI Principal Interviewer will tailor technical questions, deep-dive into your projects, and evaluate you against real hiring bars.
+                Provide your background, choose your test style, or upload your resume PDF. The AI Principal Interviewer locks its voice, customizes questions for your exact profile, and evaluates you with authentic hiring bars.
               </p>
             </div>
 
@@ -686,14 +782,55 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
           </div>
 
-          {/* SECTION 2: COMPANY & ROUND MATRIX */}
+          {/* SECTION 2: TEST STYLES SELECTION */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Target className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  2. Select Interview Test Style
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-slate-400">Custom Evaluation Paradigm</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {SUPPORTED_TEST_STYLES.map((style) => {
+                const isSelected = style.id === selectedTestStyle;
+                return (
+                  <button
+                    key={style.id}
+                    onClick={() => setSelectedTestStyle(style.id)}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-amber-950/70 border-amber-500 shadow-lg shadow-amber-500/20'
+                        : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-white">{style.name}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-amber-300 font-mono text-[9px] font-bold inline-block mt-1">
+                        {style.badge}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">{style.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* SECTION 3: COMPANY, LEVEL & ROUND MATRIX */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Step 2A: Target Company */}
+            {/* Step 3A: Target Company */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2">
                 <Building2 className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">2. Target Company</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">3. Target Company</h3>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -722,11 +859,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             </div>
 
-            {/* Step 2B: SDE Seniority Level */}
+            {/* Step 3B: SDE Seniority Level */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2">
                 <Award className="w-4 h-4 text-purple-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">3. SDE Seniority Level</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">4. SDE Seniority Level</h3>
               </div>
 
               <div className="grid grid-cols-1 gap-3">
@@ -758,11 +895,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             </div>
 
-            {/* Step 2C: Round Type */}
+            {/* Step 3C: Round Type */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2">
                 <Layers className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">4. Technical Round Track</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Technical Round Track</h3>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -794,11 +931,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             </div>
 
-            {/* Step 2D: Language & Voice Preferences */}
+            {/* Step 3D: Language & Voice Preferences */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2">
                 <Sliders className="w-4 h-4 text-teal-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Environment & Voice Setup</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">6. Environment & Voice Setup</h3>
               </div>
 
               <div className="space-y-3">
@@ -838,8 +975,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 {/* AI Voice Output */}
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
                   <div>
-                    <span className="text-slate-300 font-bold block">AI Interviewer Voice Output</span>
-                    <span className="text-[10px] text-slate-500">Natural voice synthesis during dialogue</span>
+                    <span className="text-slate-300 font-bold block">Interviewer Locked Voice</span>
+                    <span className="text-[10px] text-slate-500">Fixed, natural speech pitch & timbre throughout</span>
                   </div>
                   <button
                     onClick={() => setIsVoiceMuted(!isVoiceMuted)}
@@ -847,7 +984,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                       !isVoiceMuted ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
                     }`}
                   >
-                    {!isVoiceMuted ? 'Enabled' : 'Muted'}
+                    {!isVoiceMuted ? 'Active' : 'Muted'}
                   </button>
                 </div>
               </div>
@@ -855,25 +992,46 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
           </div>
 
-          {/* Assigned Problem Summary Preview */}
-          {activeQuestion && (
-            <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <span className="text-xs font-bold uppercase text-indigo-400 tracking-wider">Matched Scenario Preview:</span>
-              <h4 className="text-base font-bold text-white">{activeQuestion.title}</h4>
-              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{activeQuestion.description}</p>
+          {/* Assigned Problem Summary Preview & Dynamic AI Generator Button */}
+          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold uppercase text-indigo-400 tracking-wider">Matched Scenario Preview:</span>
+                <h4 className="text-base font-bold text-white mt-0.5">
+                  {activeQuestion?.title || 'Loading Scenario...'}
+                </h4>
+              </div>
+
+              <button
+                onClick={handleGenerateCustomQuestion}
+                disabled={isGeneratingCustomQuestion}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 self-start sm:self-auto disabled:opacity-50"
+                title="Generates a brand-new scenario customized for your exact skills and stack"
+              >
+                <Wand2 className={`w-3.5 h-3.5 ${isGeneratingCustomQuestion ? 'animate-spin' : ''}`} />
+                <span>{isGeneratingCustomQuestion ? 'Generating Custom AI Scenario...' : '✨ Generate Custom Question for My Stack'}</span>
+              </button>
             </div>
-          )}
+
+            {activeQuestion && (
+              <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{activeQuestion.description}</p>
+            )}
+          </div>
 
           {/* Start CTA Button */}
-          <div className="pt-2 flex justify-center">
+          <div className="pt-2 flex flex-col items-center gap-2">
             <button
               onClick={handleStartLiveInterview}
-              className="w-full sm:w-auto sm:px-12 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-sm tracking-wide shadow-2xl shadow-indigo-900/50 transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center space-x-2"
+              className="w-full sm:w-auto sm:px-14 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-sm tracking-wide shadow-2xl shadow-indigo-900/50 transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center space-x-2"
             >
               <Zap className="w-5 h-5 text-amber-300" />
-              <span>🚀 Enter Live Technical Interview Room (45 Mins)</span>
+              <span>🚀 Enter Fullscreen Technical Interview Room (45 Mins)</span>
               <ArrowRight className="w-5 h-5" />
             </button>
+            <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
+              <Maximize2 className="w-3 h-3 text-slate-400" />
+              <span>Enforces distraction-free fullscreen focus mode</span>
+            </span>
           </div>
 
         </div>
@@ -882,15 +1040,33 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   }
 
   // =========================================================================
-  // VIEW 2: ACTIVE LIVE SPLIT-SCREEN INTERVIEW ROOM
+  // VIEW 2: ACTIVE LIVE SPLIT-SCREEN INTERVIEW ROOM (FULLSCREEN ENFORCED)
   // =========================================================================
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-hidden font-sans">
+    <div className={`flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans ${
+      isFullscreen ? 'fixed inset-0 z-50 w-screen h-screen' : 'flex-1 h-full'
+    }`}>
       
+      {/* FULLSCREEN RE-ENTRY PROCTORING BANNER */}
+      {showFullscreenWarning && (
+        <div className="bg-amber-500 text-slate-950 p-2.5 px-4 flex items-center justify-between z-50 text-xs font-bold animate-fadeIn flex-shrink-0 shadow-lg">
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="w-4 h-4 text-slate-950" />
+            <span>Fullscreen Focus Exited — Re-enter fullscreen to maintain interview immersion & proctoring integrity.</span>
+          </div>
+          <button
+            onClick={requestFullscreenMode}
+            className="px-3 py-1 rounded-lg bg-slate-950 text-amber-400 hover:bg-slate-900 text-xs font-bold cursor-pointer transition-colors"
+          >
+            Re-Enter Fullscreen
+          </button>
+        </div>
+      )}
+
       {/* 1. TOP CONFIGURATOR & STATUS BAR */}
       <div className="p-3 sm:px-6 bg-slate-900/95 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
         
-        {/* Left: Role, Company & Round Display */}
+        {/* Left: Role, Company, Test Style & Round Display */}
         <div className="flex flex-wrap items-center gap-2.5">
           
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
@@ -903,7 +1079,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           </span>
 
           <span className="px-2.5 py-1 rounded-lg bg-cyan-950 border border-cyan-700/60 text-cyan-300 text-xs font-mono font-bold">
-            {selectedRound} Round
+            {selectedRound}
+          </span>
+
+          <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-700/60 text-amber-300 text-xs font-mono font-bold hidden sm:inline">
+            🎯 {SUPPORTED_TEST_STYLES.find(s => s.id === selectedTestStyle)?.name || 'Bar Raiser'}
           </span>
 
           {candidateName && (
@@ -922,12 +1102,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             title="Configure New Round or Update Profile"
           >
             <Settings className="w-3.5 h-3.5 text-slate-400" />
-            <span>Edit Profile</span>
+            <span>Edit Setup</span>
           </button>
 
         </div>
 
-        {/* Right: Timer, Hands-Free Toggle, Voice Mute & End Interview CTA */}
+        {/* Right: Timer, Fullscreen Toggle, Hands-Free Toggle, Voice Mute & End Interview CTA */}
         <div className="flex items-center space-x-2.5">
           
           {/* Live Countdown Timer */}
@@ -942,6 +1122,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               {isTimerRunning ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-400" />}
             </button>
           </div>
+
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={isFullscreen ? exitFullscreenMode : requestFullscreenMode}
+            className="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4 text-indigo-400" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
 
           {/* Hands-Free Live Voice Toggle */}
           <button
@@ -1022,7 +1211,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     {currentCompany.name} Lead Bar Raiser
                   </h4>
                   <span className="px-1.5 py-0.2 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[9px] font-mono">
-                    AI Companion
+                    Voice Locked
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
