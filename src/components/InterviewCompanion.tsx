@@ -152,6 +152,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [secondsRemaining, setSecondsRemaining] = useState<number>(45 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
 
+  // Auto-Pause & Proctoring State (Freeze timer/voice when tab is blurred or hidden)
+  const [isInterviewPaused, setIsInterviewPaused] = useState<boolean>(false);
+  const [pauseReason, setPauseReason] = useState<string>('');
+  const [isChangeQuestionModalOpen, setIsChangeQuestionModalOpen] = useState<boolean>(false);
+
   // Assessment & Scorecard State
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [scorecard, setScorecard] = useState<InterviewScorecard | null>(null);
@@ -200,6 +205,48 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [isInterviewStarted]);
 
+  // Tab Inactivity & Page Left Auto-Pause Proctoring
+  const pauseInterview = (reason = 'Page left or focus moved away from interview tab') => {
+    setIsInterviewPaused(true);
+    setPauseReason(reason);
+    setIsTimerRunning(false);
+    stopListening();
+    stopInterviewerSpeech();
+    setIsAiSpeaking(false);
+  };
+
+  const resumeInterview = () => {
+    setIsInterviewPaused(false);
+    setPauseReason('');
+    setIsTimerRunning(true);
+    unlockSpeechSynthesis();
+    if (isHandsFreeModeRef.current && !isVoiceMuted && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+      startListening();
+    }
+  };
+
+  useEffect(() => {
+    if (!isInterviewStarted || isEvaluating || scorecard) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        pauseInterview('Tab switched or minimized — Live interview paused to preserve time');
+      }
+    };
+
+    const handleWindowBlur = () => {
+      pauseInterview('Focus lost — Left interview window');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [isInterviewStarted, isEvaluating, scorecard]);
+
   // Prevent accidental exit / reload during active live interview
   useEffect(() => {
     if (isInterviewStarted) {
@@ -233,7 +280,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop audio tracks after verifying
         stream.getTracks().forEach(t => t.stop());
         setIsMicPermissionGranted(true);
         setIsCheckingMic(false);
@@ -283,6 +329,18 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     });
     return () => { isCancelled = true; };
   }, [currentCompany, selectedRound, selectedLevel, selectedTestStyle, language]);
+
+  // Shuffle available curated questions
+  const handleShuffleQuestion = () => {
+    if (availableQuestions.length > 0) {
+      const remaining = availableQuestions.filter(q => q.id !== activeQuestion?.id);
+      const nextQ = remaining.length > 0 ? remaining[Math.floor(Math.random() * remaining.length)] : availableQuestions[0];
+      setActiveQuestion(nextQ);
+      if (nextQ.starterCode && nextQ.starterCode[language]) {
+        setEditorCode(nextQ.starterCode[language]);
+      }
+    }
+  };
 
   // Dynamic Custom Question Generator for candidate's exact profile & tech stack
   const handleGenerateCustomQuestion = async () => {
@@ -381,9 +439,89 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
   };
 
+  // Switch to a fresh dynamic question in an ongoing live interview
+  const handleSwitchToNewQuestion = async () => {
+    setIsGeneratingCustomQuestion(true);
+    try {
+      const newQ = await generateDynamicInterviewQuestion(
+        currentCompany.name,
+        selectedRound,
+        selectedLevel,
+        selectedTestStyle,
+        {
+          name: candidateName,
+          techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+          experienceYears: candidateExpYears,
+          currentRole: candidateRole,
+          resumeText: resumeText,
+          customGoals: candidateGoals
+        }
+      );
+      setActiveQuestion(newQ);
+      if (newQ.starterCode && newQ.starterCode[language]) {
+        setEditorCode(newQ.starterCode[language]);
+      }
+      setIsChangeQuestionModalOpen(false);
+
+      const candidateGreetingName = candidateName.trim() || 'Candidate';
+      const switchMsg: InterviewMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'interviewer',
+        content: `Understood, ${candidateGreetingName}. Here is your fresh ${selectedRound} scenario:\n\n**${newQ.title}**\n\n${newQ.description}\n\nPlease walk me through your initial thoughts and clarifying questions before writing code or drawing.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        stage: 'problem'
+      };
+
+      setMessages(prev => [...prev, switchMsg]);
+
+      if (!isVoiceMuted) {
+        setIsAiSpeaking(true);
+        speakInterviewerText(switchMsg.content, () => {
+          setIsAiSpeaking(false);
+          if (isHandsFreeModeRef.current) startListening();
+        });
+      }
+    } catch (err) {
+      console.warn('Switch question error:', err);
+    } finally {
+      setIsGeneratingCustomQuestion(false);
+    }
+  };
+
   // Launch the live interview session from the Pre-Interview Setup screen
   const handleStartLiveInterview = async () => {
-    if (!activeQuestion) return;
+    let questionToUse = activeQuestion;
+
+    // Auto-generate fresh personalized question if default
+    if (!questionToUse || questionToUse.id.startsWith('goog-dsa-1')) {
+      try {
+        setIsGeneratingCustomQuestion(true);
+        questionToUse = await generateDynamicInterviewQuestion(
+          currentCompany.name,
+          selectedRound,
+          selectedLevel,
+          selectedTestStyle,
+          {
+            name: candidateName,
+            techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+            experienceYears: candidateExpYears,
+            currentRole: candidateRole,
+            resumeText: resumeText,
+            customGoals: candidateGoals
+          }
+        );
+        setActiveQuestion(questionToUse);
+        if (questionToUse.starterCode && questionToUse.starterCode[language]) {
+          setEditorCode(questionToUse.starterCode[language]);
+        }
+      } catch (e) {
+        console.warn('Auto dynamic question generation fallback:', e);
+      } finally {
+        setIsGeneratingCustomQuestion(false);
+      }
+    }
+
+    if (!questionToUse) return;
 
     // 0. Unlock browser speech synthesis audio context directly in this user click gesture
     unlockSpeechSynthesis();
@@ -429,7 +567,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     const candidateGreetingName = candidateName.trim() || 'Candidate';
     const interviewerName = currentCompany.name === 'Google' ? 'Dr. Sarah Chen' : currentCompany.name === 'Amazon' ? 'David Miller' : currentCompany.name === 'Meta' ? 'Alex Rivera' : 'Michael Zhang';
 
-    const initialGreeting = `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${activeQuestion.title}**\n\n${activeQuestion.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
+    const initialGreeting = `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -1172,15 +1310,26 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 </div>
               </div>
 
-              <button
-                onClick={handleGenerateCustomQuestion}
-                disabled={isGeneratingCustomQuestion}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 self-start sm:self-auto flex-shrink-0 disabled:opacity-50"
-                title="Synthesizes a brand-new scenario customized for your exact skills and stack"
-              >
-                <Wand2 className={`w-3.5 h-3.5 ${isGeneratingCustomQuestion ? 'animate-spin' : ''}`} />
-                <span>{isGeneratingCustomQuestion ? 'Customizing Secret Problem...' : '✨ Customize Secret Problem to My Stack'}</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto flex-shrink-0">
+                <button
+                  onClick={handleShuffleQuestion}
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Picks another authentic scenario from our curated company question bank"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                  <span>🎲 Shuffle Question</span>
+                </button>
+
+                <button
+                  onClick={handleGenerateCustomQuestion}
+                  disabled={isGeneratingCustomQuestion}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
+                  title="Synthesizes a brand-new scenario customized for your exact skills, level, and tech stack"
+                >
+                  <Wand2 className={`w-3.5 h-3.5 ${isGeneratingCustomQuestion ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingCustomQuestion ? 'Customizing Secret Problem...' : '✨ Generate AI Problem for My Stack'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Checklist items */}
@@ -1477,6 +1626,36 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             title={isVoiceMuted ? 'Unmute AI Voice Output' : 'Mute AI Voice Output'}
           >
             {isVoiceMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
+          </button>
+
+          {/* Pause / Resume Interview Proctor Button */}
+          <button
+            onClick={() => {
+              if (isInterviewPaused) {
+                resumeInterview();
+              } else {
+                pauseInterview('Manual Pause by Candidate');
+              }
+            }}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              isInterviewPaused
+                ? 'bg-amber-500/20 border-amber-500 text-amber-300 animate-pulse shadow-md shadow-amber-500/20'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-amber-300 hover:border-amber-500/40'
+            }`}
+            title={isInterviewPaused ? 'Resume live interview' : 'Pause live interview (freezes timer & AI voice)'}
+          >
+            {isInterviewPaused ? <Play className="w-3.5 h-3.5 fill-amber-300" /> : <Pause className="w-3.5 h-3.5 text-amber-400" />}
+            <span className="hidden md:inline">{isInterviewPaused ? 'Resume' : 'Pause'}</span>
+          </button>
+
+          {/* Switch Question Button */}
+          <button
+            onClick={() => setIsChangeQuestionModalOpen(true)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-purple-300 hover:border-purple-500/40 text-xs font-bold transition-all cursor-pointer"
+            title="Switch to a fresh AI scenario or shuffle the question bank"
+          >
+            <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden md:inline">New Question</span>
           </button>
 
           {/* Maximize Canvas / Split View Toggle */}
@@ -1998,6 +2177,93 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           <Bot className="w-4 h-4 text-cyan-300 animate-pulse" />
           <span>Show AI Interviewer Dialogue (Split View)</span>
         </button>
+      )}
+
+      {/* PROCTORING AUTO-PAUSE MODAL OVERLAY */}
+      {isInterviewPaused && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-fadeIn">
+          <div className="max-w-md w-full glass-panel p-6 sm:p-8 rounded-3xl border border-amber-500/50 bg-gradient-to-b from-slate-900 via-slate-950 to-amber-950/30 text-center space-y-5 shadow-2xl shadow-amber-950/50">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 mx-auto flex items-center justify-center animate-pulse">
+              <Pause className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-100 flex items-center justify-center gap-2">
+                <span>Interview Paused</span>
+              </h3>
+              <p className="text-xs text-amber-300/90 font-mono mt-1">
+                {pauseReason || 'Page left or focus moved away from the active interview tab'}
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                The 45-minute countdown, AI speech, and speech-to-text are frozen. Return to the window and click Resume to continue your live session.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                onClick={resumeInterview}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-sm shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.02]"
+              >
+                <Play className="w-4 h-4 fill-slate-950" />
+                <span>Resume Interview</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SWITCH / TUNE QUESTION MODAL */}
+      {isChangeQuestionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="max-w-lg w-full glass-panel p-6 sm:p-7 rounded-3xl border border-purple-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-purple-950/20 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300">
+                  <Wand2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">Switch / Tune Interview Question</h3>
+                  <p className="text-[11px] text-slate-400">Generate a fresh AI scenario or choose from the curated bank</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChangeQuestionModalOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              <p>
+                Current Question: <span className="font-bold text-white font-mono">{activeQuestion?.title}</span>
+              </p>
+              <p className="text-slate-400">
+                Would you like to synthesize a fresh AI problem tailored to your tech stack ({candidateTechStack.slice(0, 40)}...) or shuffle from the curated {currentCompany.name} bank?
+              </p>
+            </div>
+
+            <div className="pt-3 flex flex-col sm:flex-row gap-2.5">
+              <button
+                onClick={handleSwitchToNewQuestion}
+                disabled={isGeneratingCustomQuestion}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Wand2 className={`w-3.5 h-3.5 ${isGeneratingCustomQuestion ? 'animate-spin' : ''}`} />
+                <span>{isGeneratingCustomQuestion ? 'Generating Fresh Scenario...' : '✨ Generate Fresh AI Question'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleShuffleQuestion();
+                  setIsChangeQuestionModalOpen(false);
+                }}
+                className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                <span>🎲 Shuffle Bank</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 3. EVALUATION SCORECARD MODAL */}
