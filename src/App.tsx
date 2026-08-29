@@ -62,13 +62,67 @@ const sanitizeCaption = (cap?: string) => {
     .trim();
 };
 
+const getInitialTab = (): 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings' => {
+  if (typeof window === 'undefined') return 'dashboard';
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  const pathname = window.location.pathname || '';
+  const params = new URLSearchParams(search);
+  const qTab = params.get('tab');
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(qTab)) {
+    return qTab as any;
+  }
+  if (hash.startsWith('#/problem/') || hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet') || pathname.startsWith('/dsa-sheets') || pathname.startsWith('/sde-sheet')) return 'sde_sheet';
+  if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) return 'lld';
+  if (hash.startsWith('#/hld') || pathname.startsWith('/hld') || hash.startsWith('#/system-design') || pathname.startsWith('/system-design')) return 'hld';
+  if (hash.startsWith('#/interview') || pathname.startsWith('/interview')) return 'interview';
+  if (hash.startsWith('#/profile') || hash.startsWith('#/user/') || pathname.startsWith('/profile')) return 'profile';
+  if (hash.startsWith('#/analytics') || pathname.startsWith('/analytics')) return 'analytics';
+  if (hash.startsWith('#/channels') || pathname.startsWith('/channels') || hash.startsWith('#/channel/')) return 'channels';
+  if (hash.startsWith('#/lesson') || hash.startsWith('#/video') || pathname.startsWith('/lesson') || pathname.startsWith('/video')) return 'lesson';
+  return 'dashboard';
+};
+
+const getInitialChannel = (): string => {
+  if (typeof window === 'undefined') return MOCK_CHANNELS[0].id;
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  const pathname = window.location.pathname || '';
+  const params = new URLSearchParams(search);
+  const qCh = params.get('channel');
+  if (qCh) return qCh;
+  if (hash.startsWith('#/channel/')) return hash.replace('#/channel/', '').trim();
+  if (pathname.startsWith('/channel/')) return pathname.replace('/channel/', '').trim();
+  return MOCK_CHANNELS[0].id;
+};
+
+const getInitialChannelViewMode = (): 'overview' | 'detail' => {
+  if (typeof window === 'undefined') return 'overview';
+  const hash = window.location.hash || '';
+  const pathname = window.location.pathname || '';
+  if (hash.startsWith('#/channel/') || pathname.startsWith('/channel/')) return 'detail';
+  return 'overview';
+};
+
+const getInitialVideo = (): Video => {
+  if (typeof window === 'undefined') return MOCK_VIDEOS[0];
+  try {
+    const saved = localStorage.getItem('edustream_last_selected_video');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.id) return parsed;
+    }
+  } catch {}
+  return MOCK_VIDEOS[0];
+};
+
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>(getInitialTab);
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
-  const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>('overview');
-  const [selectedChannelId, setSelectedChannelId] = useState<string>(MOCK_CHANNELS[0].id);
-  const [selectedVideo, setSelectedVideo] = useState<Video>(MOCK_VIDEOS[0]);
+  const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>(getInitialChannelViewMode);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>(getInitialChannel);
+  const [selectedVideo, setSelectedVideo] = useState<Video>(getInitialVideo);
   const [dynamicVideos, setDynamicVideos] = useState<Video[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
@@ -280,6 +334,17 @@ export function App() {
         window.history.replaceState(null, '', targetHash);
       }
       return;
+    }
+
+    if (selectedVideo) {
+      try {
+        localStorage.setItem('edustream_last_selected_video', JSON.stringify(selectedVideo));
+      } catch {}
+    }
+    if (selectedChannelId) {
+      try {
+        localStorage.setItem('edustream_last_selected_channel', selectedChannelId);
+      } catch {}
     }
 
     let targetHash = '#/' + activeTab;

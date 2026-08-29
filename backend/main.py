@@ -794,6 +794,17 @@ app = FastAPI(
     version="2.0.0",
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Pre-warms Telethon client connection, dialogs, and channel entities into memory upon boot."""
+    try:
+        print("[Startup] Pre-warming Telethon MTProto client and channel entities...")
+        client = await get_client()
+        if client and client.is_connected():
+            print("[Startup] Telethon MTProto client successfully pre-warmed and ready.")
+    except Exception as e:
+        print(f"[Startup Warning] Telethon pre-warm notice: {e}")
+
 # 1. Global JSON GZip Compression (Reduces outbound bandwidth by 70-85% for free)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
@@ -3952,13 +3963,13 @@ REQUEST_SIZE = 512 * 1024  # 512KB per Telethon MTProto chunk (optimal throughpu
 DEFAULT_RANGE_SIZE = 4 * 1024 * 1024  # 4MB default response chunk for smooth buffer
 
 
-@app.get("/stream/{chat_id}/{msg_id}")
-@app.get("/api/stream/{chat_id}/{msg_id}")
+@app.api_route("/stream/{chat_id}/{msg_id}", methods=["GET", "HEAD"])
+@app.api_route("/api/stream/{chat_id}/{msg_id}", methods=["GET", "HEAD"])
 async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
     """
     Streams actual video bytes from local disk storage if available,
     otherwise fetches from Telegram Datacenters via Telethon MTProto.
-    Supports HTTP 206 Partial Content range requests for instant video scrubbing.
+    Supports HTTP 206 Partial Content range requests and HEAD probe requests.
     """
     # 1. Check if video file is already stored locally on disk (e.g. C:\Users\User\Desktop\edustreamfiles)
     real_chat_id = MOCK_CHANNEL_ID_MAP.get(chat_id, chat_id)
@@ -3982,6 +3993,22 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
         end = min(end, file_size - 1)
         chunk_size = end - start + 1
 
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(chunk_size),
+            "Content-Type": mime_type,
+            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+            "X-EduStream-Source": "LocalDiskStorage",
+        }
+
+        if request.method == "HEAD":
+            return Response(content=b"", status_code=206 if range_header else 200, headers=headers)
+
         async def generate_from_disk():
             with open(local_file_path, "rb") as f:
                 f.seek(start)
@@ -3994,18 +4021,6 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
                     yield chunk
                     remaining -= len(chunk)
 
-        headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
-            "Content-Range": f"bytes {start}-{end}/{file_size}",
-            "Accept-Ranges": "bytes",
-            "Content-Length": str(chunk_size),
-            "Content-Type": mime_type,
-            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
-            "X-EduStream-Source": "LocalDiskStorage",
-        }
         return StreamingResponse(generate_from_disk(), status_code=206, headers=headers)
 
     # 2. Local disk cache miss: stream from Telegram MTProto
@@ -4076,6 +4091,22 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
         aligned_start = (start // REQUEST_SIZE) * REQUEST_SIZE
         skip_bytes = start - aligned_start
 
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(chunk_size),
+            "Content-Type": mime_type,
+            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
+            "X-EduStream-Source": "TelegramMTProto",
+        }
+
+        if request.method == "HEAD":
+            return Response(content=b"", status_code=206 if range_header else 200, headers=headers)
+
         async def generate():
             bytes_sent = 0
             retries = 3
@@ -4120,18 +4151,6 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
                         break
                     await asyncio.sleep(0.1)
 
-        headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, Content-Type",
-            "Content-Range": f"bytes {start}-{end}/{file_size}",
-            "Accept-Ranges": "bytes",
-            "Content-Length": str(chunk_size),
-            "Content-Type": mime_type,
-            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
-            "X-EduStream-Source": "TelegramMTProto",
-        }
         return StreamingResponse(generate(), status_code=206, headers=headers)
 
     except HTTPException:

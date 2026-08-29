@@ -1024,3 +1024,38 @@ export function generateUpiPaymentUrl(amount: number): string {
   const tn = encodeURIComponent(`SDETube Recharge Rs ${amount}`);
   return `upi://pay?pa=${pa}&pn=${pn}&am=${am}&cu=INR&tn=${tn}`;
 }
+
+/**
+ * Executes atomic server-side wallet credit deduction via Supabase RPC with pessimistic locking.
+ */
+export async function deductCreditsAtomic(
+  userId: string,
+  amount: number,
+  actionType: BillingActionType | string,
+  description: string,
+  idempotencyKey?: string
+): Promise<{ success: boolean; balance?: number; error?: string }> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('deduct_wallet_credits', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_action_type: actionType,
+      p_description: description,
+      p_idempotency_key: idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    });
+
+    if (error) {
+      console.warn('[Supabase deduct_wallet_credits RPC Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data || data.success !== true) {
+      return { success: false, error: data?.error || 'Payment failed', balance: data?.balance };
+    }
+
+    return { success: true, balance: data.balance };
+  } catch (err: any) {
+    console.warn('[Supabase RPC Exception]:', err);
+    return { success: false, error: String(err?.message || err) };
+  }
+}
