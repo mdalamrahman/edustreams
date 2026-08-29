@@ -42,7 +42,8 @@ import {
   Database,
   Key,
   Copy,
-  Trash2
+  Trash2,
+  MessageSquare
 } from 'lucide-react';
 import { 
   fetchSystemRates, 
@@ -120,6 +121,9 @@ export default function App() {
   const [targetStudentEmail, setTargetStudentEmail] = useState<string>('');
   const [isGeneratingOtp, setIsGeneratingOtp] = useState<boolean>(false);
   const [copiedOtpCode, setCopiedOtpCode] = useState<string>('');
+  const [previewEmailOtp, setPreviewEmailOtp] = useState<DynamicSignupOtp | null>(null);
+  const [emailTemplateTab, setEmailTemplateTab] = useState<'preview' | 'html' | 'text'>('preview');
+  const [emailCopyStatus, setEmailCopyStatus] = useState<string>('');
 
   // Rates Save Feedback
   const [isSavingRates, setIsSavingRates] = useState<boolean>(false);
@@ -1132,10 +1136,21 @@ export default function App() {
 
                             return (
                               <tr key={idx} className="hover:bg-slate-900/40">
-                                <td className="p-3 px-4 font-black text-sm text-emerald-400">{otp.code}</td>
+                                <td className="p-3 px-4 font-black text-sm text-emerald-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{otp.code}</span>
+                                    <button
+                                      onClick={() => handleCopyCode(otp.code)}
+                                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
+                                      title="Copy code"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </td>
                                 <td className="p-3 px-4 text-slate-300">{otp.targetEmail || 'Open (Any Student)'}</td>
                                 <td className="p-3 px-4 text-slate-400">
-                                  {isExpired ? 'Expired' : `${remainingMins} minutes left`}
+                                  {isExpired ? 'Expired' : `${remainingMins} mins left`}
                                 </td>
                                 <td className="p-3 px-4">
                                   {isExpired ? (
@@ -1149,19 +1164,36 @@ export default function App() {
                                   )}
                                 </td>
                                 <td className="p-3 px-4 text-right">
-                                  <div className="flex items-center justify-end space-x-2">
+                                  <div className="flex items-center justify-end space-x-1.5">
+                                    {/* 1-Click Copy Invite Link */}
                                     <button
-                                      onClick={() => handleCopyCode(otp.code)}
-                                      className="p-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold transition-colors flex items-center gap-1"
-                                      title="Copy passcode"
+                                      onClick={() => {
+                                        const url = `https://sdetube.vercel.app/?passcode=${otp.code}${otp.targetEmail ? `&email=${encodeURIComponent(otp.targetEmail)}` : ''}`;
+                                        navigator.clipboard.writeText(url);
+                                        setCopiedOtpCode(otp.code);
+                                        setTimeout(() => setCopiedOtpCode(''), 2000);
+                                      }}
+                                      className="p-1 px-2 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 hover:text-white text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                      title="Copy direct signup link with passcode attached"
                                     >
-                                      <Copy className="w-3 h-3" />
-                                      <span>{copiedOtpCode === otp.code ? 'Copied!' : 'Copy'}</span>
+                                      <Key className="w-3 h-3 text-indigo-400" />
+                                      <span>{copiedOtpCode === otp.code ? 'Link Copied!' : 'Copy Link'}</span>
                                     </button>
 
+                                    {/* Preview & Send Branded Email */}
+                                    <button
+                                      onClick={() => setPreviewEmailOtp(otp)}
+                                      className="p-1 px-2 rounded-lg bg-teal-950/80 hover:bg-teal-900 border border-teal-700/60 text-teal-300 hover:text-white text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                      title="Preview and Send Branded Invite Email"
+                                    >
+                                      <Mail className="w-3 h-3 text-teal-400" />
+                                      <span>Branded Email</span>
+                                    </button>
+
+                                    {/* Revoke */}
                                     <button
                                       onClick={() => handleRevokeOtp(otp.code)}
-                                      className="p-1 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-[10px] font-bold transition-colors"
+                                      className="p-1 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-[10px] font-bold transition-colors cursor-pointer"
                                       title="Revoke passcode"
                                     >
                                       Revoke
@@ -1609,6 +1641,240 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Branded Email Template & Share Modal */}
+      {previewEmailOtp && (() => {
+        const inviteUrl = `https://sdetube.vercel.app/?passcode=${previewEmailOtp.code}${previewEmailOtp.targetEmail ? `&email=${encodeURIComponent(previewEmailOtp.targetEmail)}` : ''}`;
+        const durationMins = Math.max(1, Math.round((previewEmailOtp.expiresAt - (previewEmailOtp.createdAt || (Date.now() - 600000))) / (60 * 1000))) || 60;
+        
+        const htmlCode = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Your Exclusive AsperSDE Invitation</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #020617; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #020617; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #4338ca 0%, #1e1b4b 100%); padding: 35px 30px; text-align: center;">
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">AsperSDE</h1>
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #cbd5e1; font-weight: 500;">Elite Software Engineering & System Design Platform</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 35px 30px;">
+              <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #ffffff;">Exclusive Student Access Pass</h2>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                You have been authorized by the administrator to join <strong>AsperSDE (SDETube)</strong>. Use your one-time verification passcode below or click the direct registration link to begin.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #020617; border: 1px solid #334155; border-radius: 14px; margin-bottom: 25px;">
+                <tr>
+                  <td align="center" style="padding: 20px;">
+                    <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; margin-bottom: 6px;">Your One-Time Passcode</span>
+                    <span style="font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 900; color: #34d399; letter-spacing: 4px;">${previewEmailOtp.code}</span>
+                    <span style="display: block; font-size: 11px; color: #fbbf24; margin-top: 6px;">⏱️ Valid for ${durationMins} Minutes</span>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 30px;">
+                <tr>
+                  <td align="center">
+                    <a href="${inviteUrl}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #0d9488 100%); color: #ffffff; font-size: 15px; font-weight: 800; text-decoration: none; padding: 15px 35px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+                      🚀 Click Here to Complete Registration
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0 0 25px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: center;">
+                Or paste this direct link into your browser:<br>
+                <a href="${inviteUrl}" style="color: #6366f1; text-decoration: underline;">${inviteUrl}</a>
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top: 1px solid #1e293b; padding-top: 25px;">
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">⚡ <strong>418+ HD Video Lectures:</strong> Complete Striver A2Z DSA, LLD Patterns & System Design.</td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">💻 <strong>Monaco Web Judge:</strong> Multi-language sandbox supporting C++, Java, Python, and Go.</td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">🏗️ <strong>System Design Studio:</strong> Interactive HLD canvas & AI-driven LLD class diagrams.</td>
+                </tr>
+                <tr>
+                  <td style="font-size: 13px; color: #cbd5e1;">🤖 <strong>AI Mock Interviews:</strong> Real-time 45-minute FAANG Bar Raiser technical evaluations.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #020617; border-top: 1px solid #1e293b; padding: 20px 30px; text-align: center; font-size: 11px; color: #475569;">
+              © 2026 AsperSDE / SDETube. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+        const plainTextMessage = `🚀 *Exclusive AsperSDE (SDETube) Invitation Pass*\n\nYou have been authorized by the administrator to join AsperSDE.\n\n🔑 *Your One-Time Passcode:* ${previewEmailOtp.code}\n⏱️ *Validity:* ${durationMins} Minutes\n\n👉 *Direct 1-Click Registration Link:*\n${inviteUrl}\n\n*Included Modules:*\n• 418 HD Lectures (Striver DSA, LLD, HLD, DBMS)\n• Monaco Multi-Language Code Judge\n• System Design Studio & Interactive Canvas\n• 45-Min FAANG AI Mock Interviews\n\n_AsperSDE Platform_`;
+
+        const mailtoUrl = `mailto:${previewEmailOtp.targetEmail || ''}?subject=${encodeURIComponent('Your Exclusive AsperSDE Registration Access Pass')}&body=${encodeURIComponent(`Hello,\n\nYou have been authorized to join the AsperSDE Platform.\n\nYour One-Time Authorization Passcode: ${previewEmailOtp.code}\n\nClick the link below to complete your registration:\n${inviteUrl}\n\nValid for ${durationMins} minutes.\n\nBest regards,\nAsperSDE Team`)}`;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl animate-fadeIn flex flex-col max-h-[90vh]">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="p-2 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Student Registration Email & Invite Link</h3>
+                    <p className="text-[11px] text-slate-400">Passcode: <span className="font-mono font-bold text-emerald-400">{previewEmailOtp.code}</span> &bull; Target: {previewEmailOtp.targetEmail || 'Any Student'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPreviewEmailOtp(null)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* View Switcher Tabs */}
+              <div className="flex items-center space-x-2 border-b border-slate-800/80 pb-2">
+                <button
+                  onClick={() => setEmailTemplateTab('preview')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    emailTemplateTab === 'preview'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-900/30'
+                      : 'bg-slate-950 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  👁️ Visual Preview
+                </button>
+                <button
+                  onClick={() => setEmailTemplateTab('html')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    emailTemplateTab === 'html'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-900/30'
+                      : 'bg-slate-950 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  📄 HTML Source
+                </button>
+                <button
+                  onClick={() => setEmailTemplateTab('text')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    emailTemplateTab === 'text'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-900/30'
+                      : 'bg-slate-950 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  💬 WhatsApp / Text
+                </button>
+              </div>
+
+              {/* Content Body */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar border border-slate-800 rounded-2xl bg-slate-950 p-4">
+                {emailTemplateTab === 'preview' && (
+                  <div className="space-y-4 max-w-lg mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <div className="text-center p-4 rounded-xl bg-gradient-to-r from-indigo-900 to-slate-900 border border-indigo-500/30">
+                      <h4 className="text-xl font-black text-white">AsperSDE</h4>
+                      <p className="text-xs text-indigo-300 font-semibold">Elite Software Engineering Accelerator</p>
+                    </div>
+                    <div className="text-center space-y-3">
+                      <p className="text-xs text-slate-300">You have been authorized by Admin to join AsperSDE.</p>
+                      <div className="p-4 rounded-xl bg-slate-950 border border-slate-700 space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-500 font-mono">Your One-Time Passcode</span>
+                        <div className="text-2xl font-black text-emerald-400 font-mono tracking-widest">{previewEmailOtp.code}</div>
+                        <span className="text-[10px] text-amber-400 font-mono">⏱️ Valid for {durationMins} Minutes</span>
+                      </div>
+                      <a
+                        href={inviteUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-900/40 hover:opacity-95"
+                      >
+                        🚀 Click Here to Complete Registration
+                      </a>
+                      <p className="text-[11px] text-slate-500 font-mono break-all pt-1">
+                        Attached Link: {inviteUrl}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {emailTemplateTab === 'html' && (
+                  <pre className="text-[11px] font-mono text-teal-300 whitespace-pre-wrap select-all">
+                    {htmlCode}
+                  </pre>
+                )}
+
+                {emailTemplateTab === 'text' && (
+                  <pre className="text-xs font-mono text-slate-200 whitespace-pre-wrap select-all bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                    {plainTextMessage}
+                  </pre>
+                )}
+              </div>
+
+              {/* Action Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteUrl);
+                    setEmailCopyStatus('link');
+                    setTimeout(() => setEmailCopyStatus(''), 2000);
+                  }}
+                  className="py-2 px-3 rounded-xl bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>{emailCopyStatus === 'link' ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(htmlCode);
+                    setEmailCopyStatus('html');
+                    setTimeout(() => setEmailCopyStatus(''), 2000);
+                  }}
+                  className="py-2 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 border border-teal-700/60 text-teal-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{emailCopyStatus === 'html' ? 'Copied HTML!' : 'Copy HTML'}</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(plainTextMessage);
+                    setEmailCopyStatus('text');
+                    setTimeout(() => setEmailCopyStatus(''), 2000);
+                  }}
+                  className="py-2 px-3 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{emailCopyStatus === 'text' ? 'Copied Text!' : 'Copy Text'}</span>
+                </button>
+
+                <a
+                  href={mailtoUrl}
+                  className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center"
+                >
+                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Open Mail App</span>
+                </a>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

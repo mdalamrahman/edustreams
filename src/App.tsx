@@ -337,6 +337,15 @@ export function App() {
       setAuthChecking(false);
     });
 
+    // Check if invite passcode or direct registration link was opened
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const inviteCode = params.get('passcode') || params.get('passkey') || params.get('code') || params.get('otp');
+      if (inviteCode) {
+        setIsAuthModalOpen(true);
+      }
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) setUser(session.user);
       setAuthChecking(false);
