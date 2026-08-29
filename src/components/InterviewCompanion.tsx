@@ -665,6 +665,19 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
   };
 
+  const handleCloseScorecardAndExitInterview = () => {
+    setIsScorecardOpen(false);
+    setIsInterviewStarted(false);
+    setIsTimerRunning(false);
+    setIsAiSpeaking(false);
+    stopInterviewerSpeech();
+    stopListening();
+    exitFullscreenMode();
+    if (onBackToDashboard) {
+      onBackToDashboard();
+    }
+  };
+
   const formatTimer = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
@@ -1881,10 +1894,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       {isScorecardOpen && scorecard && (
         <InterviewScorecardModal
           scorecard={scorecard}
-          onClose={() => setIsScorecardOpen(false)}
+          onClose={handleCloseScorecardAndExitInterview}
           onRetake={() => {
             setIsScorecardOpen(false);
             setIsInterviewStarted(false);
+            setIsTimerRunning(false);
+            setIsAiSpeaking(false);
+            stopInterviewerSpeech();
+            stopListening();
+            exitFullscreenMode();
           }}
         />
       )}
