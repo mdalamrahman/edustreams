@@ -44,7 +44,10 @@ import {
   Minimize2,
   Target,
   Wand2,
-  Flame
+  Flame,
+  History,
+  HardDrive,
+  Database
 } from 'lucide-react';
 import { 
   SdeLevel, 
@@ -67,6 +70,13 @@ import {
   resetInterviewerVoiceLock
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
+import { 
+  saveInterviewSession, 
+  getInterviewHistory, 
+  getInterviewSessionDetails,
+  StoredInterviewRecord, 
+  FullInterviewSessionPayload 
+} from '../lib/interviewHistoryService';
 import { InterviewScorecardModal } from './InterviewScorecardModal';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
 import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
@@ -86,6 +96,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   // Fullscreen State & Proctoring Enforcement
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showFullscreenWarning, setShowFullscreenWarning] = useState<boolean>(false);
+
+  // Pre-Flight Microphone Check State
+  const [isMicPermissionGranted, setIsMicPermissionGranted] = useState<boolean>(false);
+  const [isCheckingMic, setIsCheckingMic] = useState<boolean>(false);
 
   // Candidate Profile Form State
   const [candidateName, setCandidateName] = useState<string>('Candidate');
@@ -132,6 +146,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [scorecard, setScorecard] = useState<InterviewScorecard | null>(null);
   const [isScorecardOpen, setIsScorecardOpen] = useState<boolean>(false);
 
+  // History Drawer / Modal State
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [historyRecords, setHistoryRecords] = useState<StoredInterviewRecord[]>([]);
+  const [selectedHistorySession, setSelectedHistorySession] = useState<FullInterviewSessionPayload | null>(null);
+  const [isLoadingHistoryDetails, setIsLoadingHistoryDetails] = useState<boolean>(false);
+
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const speechAccumulatorRef = useRef<string>('');
@@ -168,6 +188,52 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [isInterviewStarted]);
+
+  // Prevent accidental exit / reload during active live interview
+  useEffect(() => {
+    if (isInterviewStarted) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = 'Live Technical Interview in progress! Are you sure you want to exit?';
+        return e.returnValue;
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [isInterviewStarted]);
+
+  // Load Past Interview History
+  const loadPastHistory = async () => {
+    const records = await getInterviewHistory(candidateName);
+    setHistoryRecords(records);
+    setIsHistoryOpen(true);
+  };
+
+  const handleInspectHistoryRecord = async (interviewId: string) => {
+    setIsLoadingHistoryDetails(true);
+    const details = await getInterviewSessionDetails(interviewId);
+    setSelectedHistorySession(details);
+    setIsLoadingHistoryDetails(false);
+  };
+
+  // Pre-Flight Microphone Permission Check
+  const requestPreflightMicPermission = async (): Promise<boolean> => {
+    setIsCheckingMic(true);
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop audio tracks after verifying
+        stream.getTracks().forEach(t => t.stop());
+        setIsMicPermissionGranted(true);
+        setIsCheckingMic(false);
+        return true;
+      }
+    } catch (err) {
+      console.warn('Microphone access denied or error:', err);
+    }
+    setIsCheckingMic(false);
+    return false;
+  };
 
   const requestFullscreenMode = async () => {
     try {
@@ -308,14 +374,19 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const handleStartLiveInterview = async () => {
     if (!activeQuestion) return;
 
-    // 1. Enforce Fullscreen Mode
+    // 1. Pre-flight Mic Verification (guarantees no permission popups during test)
+    if (!isMicPermissionGranted) {
+      await requestPreflightMicPermission();
+    }
+
+    // 2. Enforce Fullscreen Mode
     await requestFullscreenMode();
 
-    // 2. Lock interviewer voice for the entire test session
+    // 3. Lock interviewer voice for the entire test session
     resetInterviewerVoiceLock();
     getOrLockInterviewerVoice();
 
-    // 3. Tab routing according to round
+    // 4. Tab routing according to round
     if (selectedRound === 'HLD') {
       setRightTab('hld_canvas');
     } else if (selectedRound === 'Behavioral') {
@@ -580,6 +651,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setScorecard(result);
     setIsScorecardOpen(true);
 
+    // Save full session payload to Cloudflare R2 and scorecard index to Supabase
+    saveInterviewSession(messages, ctx, result, duration).then(res => {
+      console.log('[Interview History] Saved session to Cloudflare R2 & Supabase:', res);
+    });
+
     if (result.overallScore >= 75) {
       confetti({
         particleCount: 80,
@@ -622,24 +698,35 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold w-fit">
                 <Bot className="w-3.5 h-3.5 text-indigo-400" />
-                <span>FAANG BAR RAISER SIMULATOR &bull; MULTI-STYLE CUSTOM INTERVIEWS</span>
+                <span>FAANG BAR RAISER SIMULATOR &bull; R2 & SUPABASE PERSISTED</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Candidate Profile & Interview Setup
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-                Provide your background, choose your test style, or upload your resume PDF. The AI Principal Interviewer locks its voice, customizes questions for your exact profile, and evaluates you with authentic hiring bars.
+                Provide your background, grant mic permissions upfront, choose your test style, or upload your resume PDF. The AI Principal Interviewer locks its voice, customizes questions for your exact profile, and records all transcripts and scorecards.
               </p>
             </div>
 
-            {onBackToDashboard && (
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <button
-                onClick={onBackToDashboard}
-                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
+                onClick={loadPastHistory}
+                className="px-4 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/50 text-indigo-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                title="View Past Mock Interviews, Scorecards & Transcripts"
               >
-                Back to Dashboard
+                <History className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Past Interviews</span>
               </button>
-            )}
+
+              {onBackToDashboard && (
+                <button
+                  onClick={onBackToDashboard}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
+                >
+                  Back
+                </button>
+              )}
+            </div>
           </div>
 
           {/* SECTION 1: CANDIDATE PROFILE & RESUME UPLOAD */}
@@ -931,14 +1018,51 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             </div>
 
-            {/* Step 3D: Language & Voice Preferences */}
+            {/* Step 3D: Language, Voice & Pre-Flight Mic Check */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center space-x-2">
                 <Sliders className="w-4 h-4 text-teal-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">6. Environment & Voice Setup</h3>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">6. Audio & Environment Check</h3>
               </div>
 
               <div className="space-y-3">
+                {/* Pre-Flight Microphone Check Button */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-200 font-bold">Microphone Permission Check:</span>
+                      {isMicPermissionGranted ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          <span>Granted</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/40">
+                          Pre-Flight Check
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {isMicPermissionGranted
+                        ? 'Microphone calibrated. No popups will interrupt your fullscreen test.'
+                        : 'Grant microphone access now so the browser never interrupts mid-interview.'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={requestPreflightMicPermission}
+                    disabled={isCheckingMic || isMicPermissionGranted}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer flex-shrink-0 flex items-center gap-1.5 ${
+                      isMicPermissionGranted
+                        ? 'bg-emerald-950 border border-emerald-700/60 text-emerald-400'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-900/30'
+                    }`}
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>{isCheckingMic ? 'Testing...' : isMicPermissionGranted ? 'Tested & Ready' : 'Test Microphone'}</span>
+                  </button>
+                </div>
+
                 {/* Language Picker */}
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
                   <span className="text-slate-300 font-bold">Coding Language:</span>
@@ -969,22 +1093,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     }`}
                   >
                     {isHandsFreeMode ? 'Enabled' : 'Disabled'}
-                  </button>
-                </div>
-
-                {/* AI Voice Output */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
-                  <div>
-                    <span className="text-slate-300 font-bold block">Interviewer Locked Voice</span>
-                    <span className="text-[10px] text-slate-500">Fixed, natural speech pitch & timbre throughout</span>
-                  </div>
-                  <button
-                    onClick={() => setIsVoiceMuted(!isVoiceMuted)}
-                    className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                      !isVoiceMuted ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {!isVoiceMuted ? 'Active' : 'Muted'}
                   </button>
                 </div>
               </div>
@@ -1057,11 +1165,125 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             </button>
             <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
               <Maximize2 className="w-3 h-3 text-slate-400" />
-              <span>Enforces distraction-free fullscreen focus mode</span>
+              <span>Enforces distraction-free fullscreen focus mode & auto-persists to Cloudflare R2</span>
             </span>
           </div>
 
         </div>
+
+        {/* PAST INTERVIEW HISTORY MODAL */}
+        {isHistoryOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+              
+              {/* Modal Header */}
+              <div className="p-5 px-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Past Mock Interview Sessions</h3>
+                    <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
+                      <HardDrive className="w-3 h-3 text-cyan-400" />
+                      <span>Stored in Cloudflare R2 & Synced to Supabase</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsHistoryOpen(false);
+                    setSelectedHistorySession(null);
+                  }}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                {selectedHistorySession ? (
+                  /* Detail View of a Past Session */
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setSelectedHistorySession(null)}
+                      className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      &larr; Back to History List
+                    </button>
+
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-white">{selectedHistorySession.company} • {selectedHistorySession.level} {selectedHistorySession.round}</span>
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/40">
+                          Score: {selectedHistorySession.scorecard?.overallScore}/100 ({selectedHistorySession.scorecard?.hiringDecision})
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400">{selectedHistorySession.question?.title}</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Interview Transcript</h4>
+                      <div className="space-y-2.5 max-h-72 overflow-y-auto custom-scrollbar p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                        {selectedHistorySession.messages?.map((m) => (
+                          <div key={m.id} className="text-xs leading-relaxed">
+                            <span className="font-bold text-indigo-400">{m.role === 'interviewer' ? `${selectedHistorySession.company} Interviewer` : 'Candidate'}: </span>
+                            <span className="text-slate-300">{m.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : historyRecords.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <History className="w-8 h-8 text-slate-600 mx-auto" />
+                    <p className="text-sm font-bold text-slate-300">No mock interview records found yet</p>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Complete your first 45-minute technical mock interview. All transcripts, code, and scorecards will be safely stored in Cloudflare R2 and Supabase.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {historyRecords.map((rec) => (
+                      <div
+                        key={rec.id}
+                        onClick={() => handleInspectHistoryRecord(rec.id)}
+                        className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 transition-all cursor-pointer flex items-center justify-between gap-4 group"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-sm text-white group-hover:text-indigo-300 transition-colors">
+                              {rec.company}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[10px] font-mono">
+                              {rec.level} • {rec.round}
+                            </span>
+                            <span className="text-xs text-slate-500 font-mono">
+                              {new Date(rec.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 line-clamp-1">{rec.question_title}</p>
+                        </div>
+
+                        <div className="flex items-center space-x-3 flex-shrink-0">
+                          <div className="text-right">
+                            <span className="font-black text-sm text-emerald-400 block">{rec.overall_score}/100</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{rec.hiring_decision}</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }

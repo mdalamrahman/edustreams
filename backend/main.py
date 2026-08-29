@@ -2011,6 +2011,115 @@ async def get_stored_solution(slug: str, lang: str):
     return {"slug": clean_slug, "language": clean_lang, "code": None, "stored": False}
 
 
+@app.post("/api/interview/save")
+async def save_interview_session_route(req: Request):
+    """
+    Persists full mock interview session (dialogue transcript, candidate code, scorecard, whiteboard notes)
+    into Cloudflare R2 object storage (0 egress cost) and syncs lightweight metadata index to Supabase.
+    """
+    try:
+        payload = await req.json()
+        if not payload or not isinstance(payload, dict):
+            return JSONResponse(status_code=400, content={"error": "Invalid interview payload"})
+        
+        interview_id = payload.get("id") or f"interview_{int(time.time())}_{random.randint(1000, 9999)}"
+        payload["id"] = interview_id
+        if "created_at" not in payload:
+            payload["created_at"] = datetime.utcnow().isoformat() + "Z"
+            
+        r2_key = f"interviews/{interview_id}.json"
+        uploaded_key = r2_storage.upload_json(r2_key, payload)
+        
+        # Sync scorecard metadata to Supabase user_dsa_progress linked_profiles
+        user_email = (payload.get("user_email") or payload.get("candidate_name") or "guest_candidate").strip().lower()
+        try:
+            session = _supabase_conn_manager.get_session()
+            url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.{user_email}&select=*"
+            res = session.get(url, timeout=4)
+            existing_records = []
+            if res.status_code == 200:
+                rows = res.json()
+                if rows and len(rows) > 0:
+                    linked = rows[0].get("linked_profiles") or {}
+                    existing_records = linked.get("mock_interviews") or []
+            
+            summary_record = {
+                "id": interview_id,
+                "company": payload.get("company", "Tech Company"),
+                "level": payload.get("level", "SDE-2"),
+                "round": payload.get("round", "DSA"),
+                "test_style": payload.get("test_style", "faang_bar_raiser"),
+                "question_title": payload.get("question", {}).get("title") if isinstance(payload.get("question"), dict) else payload.get("question_title", "Interview Scenario"),
+                "overall_score": (payload.get("scorecard") or {}).get("overallScore", 0),
+                "hiring_decision": (payload.get("scorecard") or {}).get("hiringDecision", "Strong Hire"),
+                "duration_minutes": payload.get("duration_minutes", 45),
+                "r2_storage_key": r2_key,
+                "created_at": payload.get("created_at")
+            }
+            
+            # Keep newest on top
+            updated_interviews = [summary_record] + [r for r in existing_records if r.get("id") != interview_id][:29]
+            
+            # Upsert into user_dsa_progress
+            upsert_url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress"
+            upsert_headers = {
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates"
+            }
+            upsert_body = {
+                "user_email": user_email,
+                "linked_profiles": {"mock_interviews": updated_interviews},
+                "updated_at": datetime.utcnow().isoformat() + "Z"
+            }
+            session.post(upsert_url, headers=upsert_headers, json=upsert_body, timeout=4)
+        except Exception as sb_err:
+            print(f"[Supabase Interview Index Sync Notice]: {sb_err}")
+            
+        return {
+            "success": True,
+            "interview_id": interview_id,
+            "r2_storage_key": uploaded_key or r2_key,
+            "message": "Full interview session successfully persisted into Cloudflare R2 and indexed in Supabase"
+        }
+    except Exception as e:
+        print(f"[Save Interview Error]: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/interview/history")
+async def get_interview_history_route(user_email: Optional[str] = "guest_candidate"):
+    """
+    Fetches interview scorecard history for the candidate from Supabase / R2.
+    """
+    email = (user_email or "guest_candidate").strip().lower()
+    try:
+        session = _supabase_conn_manager.get_session()
+        url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.{email}&select=*"
+        res = session.get(url, timeout=4)
+        if res.status_code == 200:
+            rows = res.json()
+            if rows and len(rows) > 0:
+                linked = rows[0].get("linked_profiles") or {}
+                interviews = linked.get("mock_interviews") or []
+                return {"success": True, "interviews": interviews}
+    except Exception as e:
+        print(f"[Fetch Interview History Notice]: {e}")
+    return {"success": True, "interviews": []}
+
+
+@app.get("/api/interview/{interview_id}")
+async def get_interview_session_route(interview_id: str):
+    """
+    Fetches the complete session transcript & details from Cloudflare R2.
+    """
+    clean_id = re.sub(r'[^a-zA-Z0-9_\-]', '', interview_id)
+    r2_key = f"interviews/{clean_id}.json"
+    session_data = r2_storage.fetch_json(r2_key)
+    if session_data:
+        return {"success": True, "interview": session_data}
+    return JSONResponse(status_code=404, content={"error": f"Interview session '{clean_id}' not found in R2"})
+
+
 @app.post("/api/problem/{slug}/solution")
 async def validate_and_store_solution_endpoint(slug: str, req: Request):
     """
