@@ -12,11 +12,20 @@ export const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   }
 });
 
+export interface DynamicSignupOtp {
+  code: string;
+  targetEmail?: string;
+  createdAt: number;
+  expiresAt: number;
+  generatedBy: string;
+  isUsed: boolean;
+}
+
 export interface SystemPlatformRates {
   // Video & Media Section
   video_view_cost: number;
   video_download_cost: number;
-  download_whitelist: string[]; // User-specific download permissions
+  download_whitelist: string[]; // Per-user download permissions
   free_pass_duration_hours: number;
 
   // Coding & Judge Section
@@ -41,6 +50,9 @@ export interface SystemPlatformRates {
   // Moderation
   suspended_users: string[];
   banned_users: string[];
+
+  // Signup OTPs
+  signup_otps?: DynamicSignupOtp[];
 }
 
 export interface AdminUserRecord {
@@ -62,7 +74,6 @@ export interface AdminUserRecord {
 
 export interface SectionUsageItem {
   section: string;
-  iconName: string;
   usageCount: number;
   revenueCredits: number;
   description: string;
@@ -94,7 +105,7 @@ export interface PlatformAnalyticsSummary {
 const DEFAULT_RATES: SystemPlatformRates = {
   video_view_cost: 5.0,
   video_download_cost: 10.0,
-  download_whitelist: ['mdalamrahman4@gmail.com', 'admin@aspersde.com'],
+  download_whitelist: [],
   free_pass_duration_hours: 24,
 
   dsa_compiler_run_cost: 0.05,
@@ -113,7 +124,8 @@ const DEFAULT_RATES: SystemPlatformRates = {
   signup_bonus_credits: 10.00,
 
   suspended_users: [],
-  banned_users: []
+  banned_users: [],
+  signup_otps: []
 };
 
 /**
@@ -171,6 +183,75 @@ export async function saveSystemRates(rates: SystemPlatformRates): Promise<boole
 }
 
 /**
+ * Generate a new Signup OTP / Passcode stored in Supabase
+ */
+export async function generateAdminSignupOtp(
+  adminEmail: string = 'admin@aspersde.com',
+  expiryMinutes: number = 60,
+  targetStudentEmail?: string
+): Promise<DynamicSignupOtp | null> {
+  try {
+    const rates = await fetchSystemRates();
+    const existingOtps = (rates.signup_otps || []).filter(o => o.expiresAt > Date.now());
+
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    const code = `SDE-${randomNum}`;
+    const now = Date.now();
+    const expiresAt = now + (expiryMinutes * 60 * 1000);
+
+    const newOtp: DynamicSignupOtp = {
+      code,
+      targetEmail: targetStudentEmail ? targetStudentEmail.toLowerCase().trim() : undefined,
+      createdAt: now,
+      expiresAt,
+      generatedBy: adminEmail,
+      isUsed: false
+    };
+
+    existingOtps.unshift(newOtp);
+    rates.signup_otps = existingOtps.slice(0, 30); // Keep last 30 active/recent
+
+    // Also sync to Admin user metadata for backward compatibility with AuthModal passkey check
+    try {
+      const ADMIN_USER_ID = 'd0f83a4a-d9ca-4c01-98e6-111f9a962a95';
+      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(ADMIN_USER_ID);
+      const existingMeta = userData?.user?.user_metadata || {};
+      await supabaseAdmin.auth.admin.updateUserById(ADMIN_USER_ID, {
+        user_metadata: {
+          ...existingMeta,
+          dynamic_passkey: {
+            code,
+            createdAt: now,
+            expiresAt,
+            generatedBy: adminEmail
+          }
+        }
+      });
+    } catch {}
+
+    const saved = await saveSystemRates(rates);
+    return saved ? newOtp : null;
+  } catch (err) {
+    console.error('Failed to generate signup OTP:', err);
+    return null;
+  }
+}
+
+/**
+ * Revoke or delete a signup OTP from Supabase
+ */
+export async function revokeSignupOtp(code: string): Promise<boolean> {
+  try {
+    const rates = await fetchSystemRates();
+    rates.signup_otps = (rates.signup_otps || []).filter(o => o.code !== code);
+    return await saveSystemRates(rates);
+  } catch (err) {
+    console.error('Failed to revoke signup OTP:', err);
+    return false;
+  }
+}
+
+/**
  * Toggle user-specific video download permission in Supabase
  */
 export async function toggleUserDownloadWhitelist(email: string, allow: boolean): Promise<boolean> {
@@ -189,7 +270,7 @@ export async function toggleUserDownloadWhitelist(email: string, allow: boolean)
 }
 
 /**
- * Fetch all registered users with progress, wallet balances, and moderation status from Supabase
+ * Fetch all registered users with accurate progress, wallet balances, and moderation status from Supabase
  */
 export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
   const usersMap = new Map<string, AdminUserRecord>();
@@ -285,7 +366,7 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
         }
 
         // Aggregate total debit spend
-        if (tx.type === 'DEBIT' && usersMap.has(email)) {
+        if ((tx.type === 'DEBIT' || Number(tx.amount || 0) < 0) && usersMap.has(email)) {
           usersMap.get(email)!.totalSpent += Math.abs(Number(tx.amount || 0));
         }
       }
@@ -294,30 +375,12 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
     console.error('Failed to fetch billing balances:', err);
   }
 
-  // Ensure default superadmin exists
-  if (!usersMap.has('mdalamrahman4@gmail.com')) {
-    usersMap.set('mdalamrahman4@gmail.com', {
-      id: 'usr-mdalamrahman4',
-      email: 'mdalamrahman4@gmail.com',
-      name: 'SuperAdmin (MD ALAM RAHMAN)',
-      createdAt: '2026-08-01',
-      solvedCount: 418,
-      solvedDsa: 365,
-      solvedLld: 53,
-      activeMinutes: 2400,
-      walletBalance: 10000,
-      totalSpent: 450,
-      canDownloadVideos: true,
-      isSuspended: false,
-      isBanned: false
-    });
-  }
-
   return Array.from(usersMap.values());
 }
 
 /**
- * Fetch executive revenue, recharges, questions solved, and section breakdown from Supabase
+ * Fetch 100% ACCURATE executive revenue, recharges, questions solved, and section breakdown directly from Supabase
+ * (NO HARDCODED / MOCK FALLBACKS)
  */
 export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyticsSummary> {
   let totalRechargesAllTime = 0;
@@ -328,6 +391,7 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
   let totalDsaSolved = 0;
   let totalLldSolved = 0;
   let totalInterviews = 0;
+  let registeredUsersCount = 0;
   let recentTxs: any[] = [];
 
   const currentMonthPrefix = new Date().toISOString().slice(0, 7); // e.g. "2026-08"
@@ -346,7 +410,7 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
   let aiChatCount = 0;
   let aiChatRevenue = 0;
 
-  // 1. Fetch user_dsa_progress for solved questions and active minutes
+  // 1. Fetch user_dsa_progress for exact solved questions, active minutes, and mock interviews
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress?select=*`, {
       headers: {
@@ -361,6 +425,7 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
       const rows = await res.json();
       for (const r of rows) {
         if (r.user_email === 'system_platform_config') continue;
+        registeredUsersCount += 1;
         totalActiveMinutes += Number(r.active_mins || 0);
         totalDsaSolved += (r.solved_sde?.length || 0) + (r.solved_a2z?.length || 0) + (r.solved_blind75?.length || 0) + (r.solved_mik?.length || 0);
         totalLldSolved += (r.lld_solved_ids?.length || 0);
@@ -374,9 +439,9 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
     console.error('Error fetching progress telemetry:', err);
   }
 
-  // 2. Fetch billing_transactions for revenue & topups
+  // 2. Fetch billing_transactions for exact revenue & topup calculations
   try {
-    const txRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?select=*&order=created_at.desc&limit=500`, {
+    const txRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?select=*&order=created_at.desc`, {
       headers: {
         'apikey': SERVICE_ROLE_KEY,
         'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
@@ -388,35 +453,36 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
     if (txRes.ok) {
       recentTxs = await txRes.json();
       for (const tx of recentTxs) {
-        const amt = Math.abs(Number(tx.amount || 0));
+        const rawAmt = Number(tx.amount || 0);
+        const absAmt = Math.abs(rawAmt);
         const isThisMonth = (tx.created_at || '').startsWith(currentMonthPrefix);
 
-        if (tx.type === 'CREDIT' && (tx.category === 'UPI_TOPUP' || tx.description?.includes('Recharge') || tx.description?.includes('Topup'))) {
-          totalRechargesAllTime += amt;
-          if (isThisMonth) totalRechargesThisMonth += amt;
-        } else if (tx.type === 'DEBIT') {
-          totalRevenueAllTime += amt;
-          if (isThisMonth) totalRevenueThisMonth += amt;
+        if (tx.type === 'CREDIT' || rawAmt > 0) {
+          totalRechargesAllTime += absAmt;
+          if (isThisMonth) totalRechargesThisMonth += absAmt;
+        } else if (tx.type === 'DEBIT' || rawAmt < 0) {
+          totalRevenueAllTime += absAmt;
+          if (isThisMonth) totalRevenueThisMonth += absAmt;
 
-          // Categorize section usage
-          const desc = (tx.description || '').toLowerCase();
+          // Categorize section usage from real transaction description / category
+          const desc = ((tx.description || '') + ' ' + (tx.category || '') + ' ' + (tx.type || '')).toLowerCase();
           if (desc.includes('video') || tx.category === 'VIDEO_FIRST_TIME' || tx.category === 'VIDEO_SUBSEQUENT') {
             videoViewsCount += 1;
-            videoViewsRevenue += amt;
-          } else if (desc.includes('compiler') || desc.includes('judge') || tx.category === 'COMPILER_RUN' || tx.category === 'CODE_SUBMIT') {
+            videoViewsRevenue += absAmt;
+          } else if (desc.includes('compiler') || desc.includes('judge') || desc.includes('code_submit') || tx.category === 'COMPILER_RUN' || tx.category === 'CODE_SUBMIT') {
             dsaJudgeRunsCount += 1;
-            dsaJudgeRevenue += amt;
-          } else if (desc.includes('lld') || tx.category === 'AI_EVALUATION_LLD') {
+            dsaJudgeRevenue += absAmt;
+          } else if (desc.includes('lld') || tx.category === 'AI_EVALUATION_LLD' || tx.category === 'LLD_DIAGRAM') {
             lldAiReviewsCount += 1;
-            lldAiRevenue += amt;
+            lldAiRevenue += absAmt;
           } else if (desc.includes('hld') || tx.category === 'AI_EVALUATION_HLD' || tx.category === 'HLD_STUDIO_DRAW') {
             hldCanvasCount += 1;
-            hldCanvasRevenue += amt;
+            hldCanvasRevenue += absAmt;
           } else if (desc.includes('interview') || tx.category?.includes('INTERVIEW')) {
-            interviewRevenue += amt;
-          } else if (desc.includes('ai') || tx.category === 'AI_CHAT') {
+            interviewRevenue += absAmt;
+          } else if (desc.includes('ai') || desc.includes('solution') || desc.includes('chat') || tx.category === 'AI_CHAT' || tx.category === 'AI_OPTIMAL_SOLUTION') {
             aiChatCount += 1;
-            aiChatRevenue += amt;
+            aiChatRevenue += absAmt;
           }
         }
       }
@@ -428,65 +494,59 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
   const sectionUsageBreakdown: SectionUsageItem[] = [
     {
       section: 'Video Lectures & Streams',
-      iconName: 'Video',
-      usageCount: Math.max(videoViewsCount, 418),
-      revenueCredits: Math.round(videoViewsRevenue || 2090),
-      description: 'Striver DSA, LLD, DBMS & System Design 418 HD Lectures'
+      usageCount: videoViewsCount,
+      revenueCredits: Number(videoViewsRevenue.toFixed(2)),
+      description: 'HD Video Lecture Views & Offline Player Streams'
     },
     {
       section: 'DSA Code IDE & Judge0',
-      iconName: 'Code2',
-      usageCount: Math.max(dsaJudgeRunsCount, totalDsaSolved * 3),
-      revenueCredits: Math.round(dsaJudgeRevenue || totalDsaSolved * 1.5),
+      usageCount: dsaJudgeRunsCount,
+      revenueCredits: Number(dsaJudgeRevenue.toFixed(2)),
       description: 'Monaco C++, Python, Java, Go Compiler Runs & Automated Judging'
     },
     {
       section: 'FAANG Bar Raiser AI Interviews',
-      iconName: 'Bot',
-      usageCount: Math.max(interviewSessionsCount, 12),
-      revenueCredits: Math.round(interviewRevenue || 600),
+      usageCount: interviewSessionsCount,
+      revenueCredits: Number(interviewRevenue.toFixed(2)),
       description: '45-Min Voice Locked Mock Technical Rounds & Scorecards'
     },
     {
       section: 'Interactive HLD Architecture Canvas',
-      iconName: 'LayoutTemplate',
-      usageCount: Math.max(hldCanvasCount, 45),
-      revenueCredits: Math.round(hldCanvasRevenue || 45),
-      description: 'Distributed System Design Diagrams & Capacity Math Studio'
+      usageCount: hldCanvasCount,
+      revenueCredits: Number(hldCanvasRevenue.toFixed(2)),
+      description: 'Distributed System Design Diagrams & Architecture Studio'
     },
     {
       section: 'LLD Machine Coding & Design Patterns',
-      iconName: 'Cpu',
-      usageCount: Math.max(lldAiReviewsCount, 38),
-      revenueCredits: Math.round(lldAiRevenue || 28.5),
+      usageCount: lldAiReviewsCount,
+      revenueCredits: Number(lldAiRevenue.toFixed(2)),
       description: 'SOLID Principles, OOP Patterns & Architecture Diagrams'
     },
     {
       section: 'Ask AI Chat & Code Assistance',
-      iconName: 'Sparkles',
-      usageCount: Math.max(aiChatCount, 210),
-      revenueCredits: Math.round(aiChatRevenue || 42),
+      usageCount: aiChatCount,
+      revenueCredits: Number(aiChatRevenue.toFixed(2)),
       description: 'Mistral LLM Explanations, Quiz Batches & Optimal Solutions'
     }
   ];
 
   return {
-    totalRechargesAllTime: Math.max(totalRechargesAllTime, 14500),
-    totalRechargesThisMonth: Math.max(totalRechargesThisMonth, 5200),
-    totalRevenueGeneratedAllTime: Math.max(totalRevenueAllTime, 8950),
-    totalRevenueGeneratedThisMonth: Math.max(totalRevenueThisMonth, 3420),
-    totalActiveMinutesSpent: Math.max(totalActiveMinutes, 3600),
-    totalDsaQuestionsSolved: Math.max(totalDsaSolved, 418),
-    totalLldQuestionsSolved: Math.max(totalLldSolved, 53),
-    totalInterviewSessionsConducted: Math.max(totalInterviews, 12),
-    totalRegisteredUsers: 25,
+    totalRechargesAllTime: Number(totalRechargesAllTime.toFixed(2)),
+    totalRechargesThisMonth: Number(totalRechargesThisMonth.toFixed(2)),
+    totalRevenueGeneratedAllTime: Number(totalRevenueAllTime.toFixed(2)),
+    totalRevenueGeneratedThisMonth: Number(totalRevenueThisMonth.toFixed(2)),
+    totalActiveMinutesSpent: Math.round(totalActiveMinutes),
+    totalDsaQuestionsSolved: totalDsaSolved,
+    totalLldQuestionsSolved: totalLldSolved,
+    totalInterviewSessionsConducted: totalInterviews,
+    totalRegisteredUsers: registeredUsersCount,
     sectionUsageBreakdown,
     recentTransactions: recentTxs.slice(0, 50)
   };
 }
 
 /**
- * Moderate a user in Supabase (Ban / Suspend)
+ * Moderate a user in Supabase (Ban / Unban / Suspend / Unsuspend)
  */
 export async function moderateUserInSupabase(
   email: string,
@@ -517,7 +577,7 @@ export async function moderateUserInSupabase(
 }
 
 /**
- * Delete user account from Supabase
+ * Delete user account permanently from Supabase
  */
 export async function deleteUserFromSupabase(email: string): Promise<boolean> {
   const cleanEmail = email.toLowerCase().trim();
@@ -537,6 +597,13 @@ export async function deleteUserFromSupabase(email: string): Promise<boolean> {
         'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
       }
     });
+
+    // Also remove from whitelist/ban lists
+    const rates = await fetchSystemRates();
+    rates.download_whitelist = (rates.download_whitelist || []).filter(e => e.toLowerCase() !== cleanEmail);
+    rates.suspended_users = (rates.suspended_users || []).filter(e => e.toLowerCase() !== cleanEmail);
+    rates.banned_users = (rates.banned_users || []).filter(e => e.toLowerCase() !== cleanEmail);
+    await saveSystemRates(rates);
 
     return true;
   } catch (err) {

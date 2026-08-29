@@ -39,7 +39,10 @@ import {
   LayoutTemplate,
   Sparkles,
   ArrowUpRight,
-  Database
+  Database,
+  Key,
+  Copy,
+  Trash2
 } from 'lucide-react';
 import { 
   fetchSystemRates, 
@@ -47,12 +50,15 @@ import {
   fetchAllAdminUsers, 
   fetchPlatformTelemetryAndRevenue,
   toggleUserDownloadWhitelist,
+  generateAdminSignupOtp,
+  revokeSignupOtp,
   moderateUserInSupabase, 
   deleteUserFromSupabase, 
   adjustUserCreditsInSupabase, 
   SystemPlatformRates, 
   AdminUserRecord,
-  PlatformAnalyticsSummary
+  PlatformAnalyticsSummary,
+  DynamicSignupOtp
 } from './lib/supabaseAdminClient';
 import confetti from 'canvas-confetti';
 
@@ -77,7 +83,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string>('');
 
   // Active Hub Tab
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'pricing' | 'credits'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits'>('analytics');
 
   // Live Data States (Direct from Supabase)
   const [rates, setRates] = useState<SystemPlatformRates>({
@@ -97,7 +103,8 @@ export default function App() {
     daily_usage_fee: 1.00,
     signup_bonus_credits: 10.00,
     suspended_users: [],
-    banned_users: []
+    banned_users: [],
+    signup_otps: []
   });
 
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
@@ -107,6 +114,12 @@ export default function App() {
   // User Filter & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended' | 'banned' | 'whitelisted'>('all');
+
+  // OTP Generator Form States
+  const [otpExpiryMinutes, setOtpExpiryMinutes] = useState<number>(60);
+  const [targetStudentEmail, setTargetStudentEmail] = useState<string>('');
+  const [isGeneratingOtp, setIsGeneratingOtp] = useState<boolean>(false);
+  const [copiedOtpCode, setCopiedOtpCode] = useState<string>('');
 
   // Rates Save Feedback
   const [isSavingRates, setIsSavingRates] = useState<boolean>(false);
@@ -145,7 +158,7 @@ export default function App() {
     setTimeout(() => {
       setIsVerifyingCaptcha(false);
       setIsCaptchaVerified(true);
-    }, 900);
+    }, 800);
   };
 
   // Step 1: Verify Password & Captcha
@@ -188,8 +201,7 @@ export default function App() {
 
     try {
       if (window.PublicKeyCredential) {
-        // Hardware credential simulated verification
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 900));
         sessionStorage.setItem('aspersde_admin_auth', 'true');
         setIsAuthenticated(true);
         confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
@@ -222,6 +234,34 @@ export default function App() {
     setAdminPassword('');
     setIsCaptchaVerified(false);
     setOtpCode('');
+  };
+
+  // Generate Signup OTP in Supabase
+  const handleGenerateSignupOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsGeneratingOtp(true);
+    const newOtp = await generateAdminSignupOtp(adminEmail, otpExpiryMinutes, targetStudentEmail || undefined);
+    setIsGeneratingOtp(false);
+    if (newOtp) {
+      setTargetStudentEmail('');
+      await loadAllData();
+      confetti({ particleCount: 40, spread: 60 });
+    }
+  };
+
+  // Revoke Signup OTP
+  const handleRevokeOtp = async (code: string) => {
+    setIsProcessingAction(true);
+    await revokeSignupOtp(code);
+    await loadAllData();
+    setIsProcessingAction(false);
+  };
+
+  // Copy OTP Code to Clipboard
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedOtpCode(code);
+    setTimeout(() => setCopiedOtpCode(''), 2000);
   };
 
   // Toggle user-specific download permission
@@ -310,7 +350,6 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950 text-slate-100 relative overflow-hidden font-sans">
-        {/* Background ambient lighting */}
         <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
 
@@ -376,7 +415,7 @@ export default function App() {
                   <div>
                     <span className="text-xs font-bold text-white block">Cloudflare Turnstile</span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      {isCaptchaVerified ? 'Security verification passed' : 'Click checkbox to verify human'}
+                      {isCaptchaVerified ? 'Security challenge passed' : 'Click checkbox to verify human'}
                     </span>
                   </div>
                 </div>
@@ -560,7 +599,7 @@ export default function App() {
           }`}
         >
           <BarChart3 className="w-4 h-4" />
-          <span>Executive Revenue & Usage Analytics</span>
+          <span>Executive Revenue & Telemetry</span>
         </button>
 
         <button
@@ -572,7 +611,19 @@ export default function App() {
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>User Directory & Download Whitelist ({users.length})</span>
+          <span>User Directory & Moderation ({users.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('otps')}
+          className={`px-4 py-2.5 rounded-t-2xl transition-all cursor-pointer flex items-center space-x-2 border-t border-x ${
+            activeTab === 'otps'
+              ? 'bg-slate-900 border-slate-800 text-emerald-400 shadow-sm'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Key className="w-4 h-4" />
+          <span>Signup OTP & Passcode Generator</span>
         </button>
 
         <button
@@ -604,7 +655,7 @@ export default function App() {
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
         
         {/* ===================================================================
-            TAB 1: EXECUTIVE REVENUE & USAGE TELEMETRY
+            TAB 1: EXECUTIVE REVENUE & USAGE TELEMETRY (100% ACCURATE FROM SUPABASE)
             =================================================================== */}
         {activeTab === 'analytics' && telemetry && (
           <div className="space-y-6 animate-fadeIn">
@@ -619,7 +670,7 @@ export default function App() {
                   <DollarSign className="w-4 h-4 text-emerald-400" />
                 </div>
                 <p className="text-3xl font-black text-emerald-400">₹{telemetry.totalRechargesAllTime.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-500 font-mono">Platform UPI & Crypto Inflow</p>
+                <p className="text-[10px] text-slate-500 font-mono">Platform Inflow &bull; Supabase Ledger</p>
               </div>
 
               {/* Total Recharges This Month */}
@@ -629,7 +680,7 @@ export default function App() {
                   <TrendingUp className="w-4 h-4 text-teal-400" />
                 </div>
                 <p className="text-3xl font-black text-teal-300">₹{telemetry.totalRechargesThisMonth.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-500 font-mono">Active Monthly Inflow</p>
+                <p className="text-[10px] text-slate-500 font-mono">Current Month Top-ups</p>
               </div>
 
               {/* Total Revenue Consumed (All Time) */}
@@ -663,8 +714,8 @@ export default function App() {
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-500 font-mono">Total Time Spent by Students</span>
-                  <p className="text-2xl font-black text-white">{Math.round(telemetry.totalActiveMinutesSpent / 60)} Hours</p>
-                  <p className="text-[10px] text-slate-400 font-mono">{telemetry.totalActiveMinutesSpent} active study minutes</p>
+                  <p className="text-2xl font-black text-white">{(telemetry.totalActiveMinutesSpent / 60).toFixed(1)} Hours</p>
+                  <p className="text-[10px] text-slate-400 font-mono">{telemetry.totalActiveMinutesSpent} active study minutes in DB</p>
                 </div>
               </div>
 
@@ -686,7 +737,7 @@ export default function App() {
                 <div>
                   <span className="text-[10px] font-bold uppercase text-slate-500 font-mono">AI Mock Interviews Conducted</span>
                   <p className="text-2xl font-black text-purple-300">{telemetry.totalInterviewSessionsConducted}</p>
-                  <p className="text-[10px] text-slate-400 font-mono">FAANG Bar Raiser 45-Min Tests</p>
+                  <p className="text-[10px] text-slate-400 font-mono">FAANG Bar Raiser Assessments</p>
                 </div>
               </div>
 
@@ -698,7 +749,7 @@ export default function App() {
                 <div>
                   <h3 className="font-bold text-sm text-white">Section-by-Section Usage & Revenue Breakdown</h3>
                   <p className="text-xs text-slate-400">
-                    Telemetry of how much each platform module is used and the revenue it yields.
+                    Live telemetry calculated from real student actions in Supabase.
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-slate-400 font-mono text-[10px]">
@@ -728,7 +779,7 @@ export default function App() {
             {/* Recent Transaction Audit Log */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-white">Recent Ledger Transactions Audit</h3>
+                <h3 className="font-bold text-sm text-white">Recent Ledger Transactions ({telemetry.recentTransactions.length})</h3>
                 <button
                   onClick={handleExportCSV}
                   className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
@@ -751,19 +802,27 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 font-mono">
-                      {telemetry.recentTransactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-slate-900/40">
-                          <td className="p-3 px-4 text-slate-300">{tx.user_email}</td>
-                          <td className={`p-3 px-4 font-bold ${tx.type === 'CREDIT' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {tx.type === 'CREDIT' ? '+' : '-'}₹{Math.abs(tx.amount)}
-                          </td>
-                          <td className="p-3 px-4 text-slate-400">{tx.type}</td>
-                          <td className="p-3 px-4 text-slate-400 font-sans">{tx.description}</td>
-                          <td className="p-3 px-4 text-slate-500 text-[11px]">
-                            {tx.created_at ? new Date(tx.created_at).toLocaleString() : 'Recent'}
+                      {telemetry.recentTransactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-6 text-center text-slate-500">
+                            No billing transactions recorded in Supabase yet.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        telemetry.recentTransactions.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-slate-900/40">
+                            <td className="p-3 px-4 text-slate-300">{tx.user_email}</td>
+                            <td className={`p-3 px-4 font-bold ${tx.type === 'CREDIT' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {tx.type === 'CREDIT' ? '+' : '-'}₹{Math.abs(tx.amount)}
+                            </td>
+                            <td className="p-3 px-4 text-slate-400">{tx.type}</td>
+                            <td className="p-3 px-4 text-slate-400 font-sans">{tx.description}</td>
+                            <td className="p-3 px-4 text-slate-500 text-[11px]">
+                              {tx.created_at ? new Date(tx.created_at).toLocaleString() : 'Recent'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -774,7 +833,7 @@ export default function App() {
         )}
 
         {/* ===================================================================
-            TAB 2: USER DIRECTORY & DOWNLOAD WHITELIST
+            TAB 2: USER DIRECTORY & MODERATION (PER-USER CONTROLS)
             =================================================================== */}
         {activeTab === 'users' && (
           <div className="space-y-6 animate-fadeIn">
@@ -824,7 +883,7 @@ export default function App() {
                       <th className="p-3.5 px-4 font-bold">User Identity</th>
                       <th className="p-3.5 px-4 font-bold">DSA & LLD Solved</th>
                       <th className="p-3.5 px-4 font-bold">Wallet / Spent</th>
-                      <th className="p-3.5 px-4 font-bold">Video Downloads Whitelist</th>
+                      <th className="p-3.5 px-4 font-bold">Video Download (Per-User)</th>
                       <th className="p-3.5 px-4 font-bold">Status</th>
                       <th className="p-3.5 px-4 font-bold text-right">Moderation Actions</th>
                     </tr>
@@ -872,15 +931,16 @@ export default function App() {
                               {!isSuperAdmin ? (
                                 <button
                                   onClick={() => handleToggleDownloadWhitelist(u.email, u.canDownloadVideos)}
-                                  className={`px-3 py-1 rounded-xl font-mono text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  disabled={isProcessingAction}
+                                  className={`px-3 py-1.5 rounded-xl font-mono text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                                     u.canDownloadVideos
-                                      ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 hover:bg-emerald-900'
+                                      ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 hover:bg-emerald-900 shadow-sm shadow-emerald-900/30'
                                       : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-300'
                                   }`}
-                                  title="Toggle video download permissions for this user only"
+                                  title="Toggle video download permissions for this specific user"
                                 >
-                                  {u.canDownloadVideos ? <Unlock className="w-3 h-3 text-emerald-400" /> : <Lock className="w-3 h-3 text-slate-500" />}
-                                  <span>{u.canDownloadVideos ? 'Downloads Allowed' : 'Downloads Blocked'}</span>
+                                  {u.canDownloadVideos ? <Unlock className="w-3.5 h-3.5 text-emerald-400" /> : <Lock className="w-3.5 h-3.5 text-slate-500" />}
+                                  <span>{u.canDownloadVideos ? 'Download: ALLOWED' : 'Download: BLOCKED'}</span>
                                 </button>
                               ) : (
                                 <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 text-[10px] font-mono">Master Allowed</span>
@@ -955,9 +1015,9 @@ export default function App() {
                                   <button
                                     onClick={() => handleDeleteUser(u.email)}
                                     className="p-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 text-[11px] font-bold cursor-pointer transition-colors"
-                                    title="Permanently Delete User"
+                                    title="Permanently Delete User from Supabase"
                                   >
-                                    <UserX className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                   </button>
 
                                 </div>
@@ -979,7 +1039,152 @@ export default function App() {
         )}
 
         {/* ===================================================================
-            TAB 3: GRANULAR 12-SECTION PRICING MATRIX
+            TAB 3: SIGNUP OTP & PASSCODE GENERATOR HUB
+            =================================================================== */}
+        {activeTab === 'otps' && (
+          <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+            
+            <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-6 shadow-2xl">
+              
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Student Registration OTP & Passcode Generator</h3>
+                    <p className="text-xs text-slate-400">
+                      Generate official 6-digit authorization passcodes required by students on the signup screen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generator Form */}
+              <form onSubmit={handleGenerateSignupOtp} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Passcode Validity Duration:</label>
+                    <select
+                      value={otpExpiryMinutes}
+                      onChange={(e) => setOtpExpiryMinutes(Number(e.target.value))}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono font-bold text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value={10}>10 Minutes (Standard Security)</option>
+                      <option value={30}>30 Minutes</option>
+                      <option value={60}>1 Hour</option>
+                      <option value={1440}>24 Hours</option>
+                      <option value={10080}>7 Days</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-300">Restricted Student Email (Optional):</label>
+                    <input
+                      type="email"
+                      value={targetStudentEmail}
+                      onChange={(e) => setTargetStudentEmail(e.target.value)}
+                      placeholder="Leave blank for any student"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isGeneratingOtp}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Key className="w-4 h-4" />
+                  <span>{isGeneratingOtp ? 'Writing to Supabase...' : 'Generate New Student Signup Passcode'}</span>
+                </button>
+              </form>
+
+              {/* Active & Recent Generated OTPs List */}
+              <div className="space-y-3 pt-2">
+                <h4 className="font-bold text-xs text-slate-300 uppercase tracking-wider font-mono">
+                  Active & Recent Registration Passcodes (Stored in Supabase)
+                </h4>
+
+                <div className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-900 text-slate-400 font-mono text-[10px] uppercase sticky top-0 border-b border-slate-800">
+                        <tr>
+                          <th className="p-3 px-4">Passcode</th>
+                          <th className="p-3 px-4">Target Email</th>
+                          <th className="p-3 px-4">Expires In</th>
+                          <th className="p-3 px-4">Status</th>
+                          <th className="p-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-mono">
+                        {(!rates.signup_otps || rates.signup_otps.length === 0) ? (
+                          <tr>
+                            <td colSpan={5} className="p-6 text-center text-slate-500">
+                              No active signup passcodes generated yet. Click "Generate" above to create one.
+                            </td>
+                          </tr>
+                        ) : (
+                          rates.signup_otps.map((otp, idx) => {
+                            const isExpired = Date.now() > otp.expiresAt;
+                            const remainingMins = Math.max(0, Math.round((otp.expiresAt - Date.now()) / (60 * 1000)));
+
+                            return (
+                              <tr key={idx} className="hover:bg-slate-900/40">
+                                <td className="p-3 px-4 font-black text-sm text-emerald-400">{otp.code}</td>
+                                <td className="p-3 px-4 text-slate-300">{otp.targetEmail || 'Open (Any Student)'}</td>
+                                <td className="p-3 px-4 text-slate-400">
+                                  {isExpired ? 'Expired' : `${remainingMins} minutes left`}
+                                </td>
+                                <td className="p-3 px-4">
+                                  {isExpired ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/40">
+                                      EXPIRED
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/40">
+                                      ACTIVE
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3 px-4 text-right">
+                                  <div className="flex items-center justify-end space-x-2">
+                                    <button
+                                      onClick={() => handleCopyCode(otp.code)}
+                                      className="p-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold transition-colors flex items-center gap-1"
+                                      title="Copy passcode"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                      <span>{copiedOtpCode === otp.code ? 'Copied!' : 'Copy'}</span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleRevokeOtp(otp.code)}
+                                      className="p-1 px-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-[10px] font-bold transition-colors"
+                                      title="Revoke passcode"
+                                    >
+                                      Revoke
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ===================================================================
+            TAB 4: GRANULAR 12-SECTION PRICING MATRIX
             =================================================================== */}
         {activeTab === 'pricing' && (
           <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
@@ -1030,7 +1235,7 @@ export default function App() {
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1">
-                    <label className="text-[11px] font-bold text-slate-300 block">Cost per Video Download:</label>
+                    <label className="text-[11px] font-bold text-slate-300 block">Cost per Video Download (If Allowed):</label>
                     <div className="flex items-center space-x-2">
                       <input
                         type="number"
@@ -1281,7 +1486,7 @@ export default function App() {
         )}
 
         {/* ===================================================================
-            TAB 4: MANUAL CREDIT GRANTOR
+            TAB 5: MANUAL CREDIT GRANTOR
             =================================================================== */}
         {activeTab === 'credits' && (
           <div className="max-w-2xl mx-auto space-y-6 animate-fadeIn">
