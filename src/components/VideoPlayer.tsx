@@ -103,20 +103,74 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // Spacebar Play / Pause Shortcut (ignoring inputs & textareas)
+  // Global Pause Event & Tab Visibility Listeners
+  useEffect(() => {
+    const handlePauseVideo = () => {
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener('sdetube_pause_video', handlePauseVideo);
+
+    // Auto-pause video when browser tab/window is minimized or switched
+    const handleVisibilityChange = () => {
+      if (document.hidden && videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('sdetube_pause_video', handlePauseVideo);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (videoRef.current && !videoRef.current.paused) {
+        videoRef.current.pause();
+      }
+    };
+  }, []);
+
+  // Spacebar Play / Pause Shortcut (strictly avoiding Monaco editor, modals, inputs, textareas)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.key === ' ') {
-        const target = e.target as HTMLElement;
-        const isEditable = target && (
+        // 1. Check if any modal, coding IDE, or fullscreen overlay is open
+        const isModalOrIdeOpen = Boolean(
+          document.querySelector(
+            '[role="dialog"], .fixed.inset-0.z-50, .fixed.inset-0.z-40, .monaco-editor, .monaco-workbench, #coding-workspace-modal'
+          )
+        );
+        if (isModalOrIdeOpen) {
+          // If a modal or coding IDE is open on screen, do NOT toggle background video playback
+          return;
+        }
+
+        // 2. Check active element and target element
+        const target = (e.target || document.activeElement) as HTMLElement | null;
+        if (!target) return;
+
+        const isInputOrEditor = Boolean(
           target.tagName === 'INPUT' ||
           target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
           target.isContentEditable ||
-          target.closest('input, textarea, [contenteditable="true"]')
+          target.getAttribute('role') === 'textbox' ||
+          target.closest('input, textarea, select, [contenteditable="true"], .monaco-editor, .monaco-mouse-cursor-text, .view-line, .view-lines, .overflow-guard, [role="dialog"], [role="textbox"]')
         );
-        if (!isEditable) {
-          e.preventDefault();
-          togglePlay();
+
+        if (isInputOrEditor) {
+          return;
+        }
+
+        // 3. Only toggle if video player container is visible on screen
+        if (videoRef.current && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            e.preventDefault();
+            togglePlay();
+          }
         }
       }
     };

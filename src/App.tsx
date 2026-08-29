@@ -107,6 +107,7 @@ export function App() {
   };
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
+    window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
     setAskAIMode(mode);
     setAskAITimestamp(timestamp);
     setIsAskAIOpen(true);
@@ -114,6 +115,9 @@ export function App() {
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
   const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+    if (tab !== 'lesson') {
+      window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
+    }
     let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'interview' ? 'interview' : tab === 'profile' ? 'profile' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
@@ -752,6 +756,9 @@ export function App() {
   };
 
   const handleOpenCodingFullscreen = (problem: SDEProblem | DSAProblem) => {
+    // Immediately pause any active background video playback
+    window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
+
     if (isMobile) {
       setShowMobileGating(true);
       return;
