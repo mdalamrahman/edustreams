@@ -26,7 +26,7 @@ export async function checkAndAutoLogin(): Promise<StudentUser | null> {
   // 1. Check active Supabase Auth session
   try {
     const { data } = await supabase.auth.getSession();
-    if (data?.session?.user) {
+    if (data?.session?.user && data.session.user.email_confirmed_at) {
       const u = data.session.user;
       const studentUser: StudentUser = {
         id: u.id,
