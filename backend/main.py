@@ -854,13 +854,176 @@ class DiagnosticRequest(BaseModel):
     subject_stats: Optional[dict] = None
 
 
-# -------------------------------------------------------------------
-# ROOT & HEALTH
-# -------------------------------------------------------------------
+class SendInviteEmailRequest(BaseModel):
+    to_email: str
+    passcode: str
+    invite_url: str
+    duration_mins: Optional[int] = 60
+    custom_subject: Optional[str] = None
+
 
 # Global trackers for background transcription & AI synthesis tasks
 active_transcription_jobs = {}
 active_background_tasks = {}
+
+
+@app.post("/api/admin/send-invite-email")
+@app.post("/api/send-otp-email")
+async def send_invite_email_endpoint(payload: SendInviteEmailRequest):
+    recipient = payload.to_email.strip().lower()
+    if not recipient or "@" not in recipient:
+        raise HTTPException(status_code=400, detail="Valid recipient email address is required.")
+    
+    passcode = payload.passcode.strip().upper()
+    duration_mins = payload.duration_mins or 60
+    invite_url = payload.invite_url.strip()
+    subject = payload.custom_subject or f"Your AsperSDE Registration Passcode: {passcode}"
+
+    # Generate HTML content
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Your Exclusive AsperSDE Invitation</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #020617; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #020617; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #4338ca 0%, #1e1b4b 100%); padding: 35px 30px; text-align: center;">
+              <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">AsperSDE</h1>
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #cbd5e1; font-weight: 500;">Elite Software Engineering & System Design Platform</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 35px 30px;">
+              <h2 style="margin: 0 0 12px 0; font-size: 18px; color: #ffffff;">Exclusive Student Access Pass</h2>
+              <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
+                You have been authorized by the administrator to join <strong>AsperSDE (SDETube)</strong>. Use your one-time verification passcode below or click the direct registration link to begin.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #020617; border: 1px solid #334155; border-radius: 14px; margin-bottom: 25px;">
+                <tr>
+                  <td align="center" style="padding: 20px;">
+                    <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; margin-bottom: 6px;">Your One-Time Passcode</span>
+                    <span style="font-family: 'Courier New', Courier, monospace; font-size: 28px; font-weight: 900; color: #34d399; letter-spacing: 4px;">{passcode}</span>
+                    <span style="display: block; font-size: 11px; color: #fbbf24; margin-top: 6px;">⏱️ Valid for {duration_mins} Minutes</span>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 30px;">
+                <tr>
+                  <td align="center">
+                    <a href="{invite_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #0d9488 100%); color: #ffffff; font-size: 15px; font-weight: 800; text-decoration: none; padding: 15px 35px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+                      🚀 Click Here to Complete Registration
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 0 0 25px 0; font-size: 12px; color: #64748b; word-break: break-all; text-align: center;">
+                Or paste this direct link into your browser:<br>
+                <a href="{invite_url}" style="color: #6366f1; text-decoration: underline;">{invite_url}</a>
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top: 1px solid #1e293b; padding-top: 25px;">
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">⚡ <strong>418+ HD Video Lectures:</strong> Complete Striver A2Z DSA, LLD Patterns & System Design.</td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">💻 <strong>Monaco Web Judge:</strong> Multi-language sandbox supporting C++, Java, Python, and Go.</td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 12px; font-size: 13px; color: #cbd5e1;">🏗️ <strong>System Design Studio:</strong> Interactive HLD canvas & AI-driven LLD class diagrams.</td>
+                </tr>
+                <tr>
+                  <td style="font-size: 13px; color: #cbd5e1;">🤖 <strong>AI Mock Interviews:</strong> Real-time 45-minute FAANG Bar Raiser technical evaluations.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #020617; border-top: 1px solid #1e293b; padding: 20px 30px; text-align: center; font-size: 11px; color: #475569;">
+              © 2026 AsperSDE / SDETube. All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+    # Check for SMTP or Resend credentials in environment
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER") or os.getenv("SMTP_USERNAME") or os.getenv("ADMIN_EMAIL")
+    smtp_pass = os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or os.getenv("GMAIL_APP_PASSWORD")
+    resend_api_key = os.getenv("RESEND_API_KEY")
+
+    # 1. Try Resend API if key is present
+    if resend_api_key:
+        try:
+            r = requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
+                json={
+                    "from": "AsperSDE <onboarding@resend.dev>",
+                    "to": [recipient],
+                    "subject": subject,
+                    "html": html_content
+                },
+                timeout=10
+            )
+            if r.status_code in [200, 201]:
+                return {"success": True, "provider": "Resend API", "recipient": recipient}
+        except Exception as e:
+            print(f"[Resend API Error]: {e}")
+
+    # 2. Try SMTP if host or user is present
+    if smtp_host or smtp_user:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = smtp_user or "admin@aspersde.com"
+            msg["To"] = recipient
+
+            text_part = MIMEText(f"Your AsperSDE passcode is {passcode}. Direct registration link: {invite_url}", "plain")
+            html_part = MIMEText(html_content, "html")
+            msg.attach(text_part)
+            msg.attach(html_part)
+
+            host = smtp_host or "smtp.gmail.com"
+            with smtplib.SMTP(host, smtp_port, timeout=12) as server:
+                server.starttls()
+                if smtp_user and smtp_pass:
+                    server.login(smtp_user, smtp_pass)
+                server.sendmail(msg["From"], [recipient], msg.as_string())
+            
+            return {"success": True, "provider": f"SMTP ({host})", "recipient": recipient}
+        except Exception as e:
+            print(f"[SMTP Send Error]: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "recipient": recipient,
+                "passcode": passcode,
+                "invite_url": invite_url,
+                "note": "SMTP server refused connection or credentials missing on Render environment."
+            }
+
+    # If neither SMTP nor Resend is set on Render environment:
+    return {
+        "success": False,
+        "status": "SMTP_NOT_CONFIGURED",
+        "recipient": recipient,
+        "passcode": passcode,
+        "invite_url": invite_url,
+        "message": "Direct server email dispatch requires SMTP_USER and SMTP_PASSWORD (or RESEND_API_KEY) in Render environment variables. You can use the 'Open Mail App' or 'Copy Email HTML' buttons in the Admin Portal to send in 1-click."
+    }
 
 
 @app.get("/")

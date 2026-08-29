@@ -124,6 +124,8 @@ export default function App() {
   const [previewEmailOtp, setPreviewEmailOtp] = useState<DynamicSignupOtp | null>(null);
   const [emailTemplateTab, setEmailTemplateTab] = useState<'preview' | 'html' | 'text'>('preview');
   const [emailCopyStatus, setEmailCopyStatus] = useState<string>('');
+  const [isSendingServerEmail, setIsSendingServerEmail] = useState<boolean>(false);
+  const [serverEmailResult, setServerEmailResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Rates Save Feedback
   const [isSavingRates, setIsSavingRates] = useState<boolean>(false);
@@ -259,6 +261,47 @@ export default function App() {
     await revokeSignupOtp(code);
     await loadAllData();
     setIsProcessingAction(false);
+  };
+
+  // Dispatch Live Email via Render Backend
+  const handleSendServerEmail = async (otp: DynamicSignupOtp) => {
+    if (!otp.targetEmail) {
+      alert('Please specify a Target Student Email to send an automated email directly.');
+      return;
+    }
+    setIsSendingServerEmail(true);
+    setServerEmailResult(null);
+    try {
+      const inviteUrl = `https://sdetube.vercel.app/?passcode=${otp.code}&email=${encodeURIComponent(otp.targetEmail)}`;
+      const durationMins = Math.max(1, Math.round((otp.expiresAt - (otp.createdAt || (Date.now() - 600000))) / (60 * 1000))) || 60;
+      
+      const res = await fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-invite-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to_email: otp.targetEmail,
+          passcode: otp.code,
+          invite_url: inviteUrl,
+          duration_mins: durationMins
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setServerEmailResult({ success: true, message: `Live email dispatched to ${otp.targetEmail} via ${data.provider}!` });
+      } else {
+        setServerEmailResult({
+          success: false,
+          message: data.message || data.error || 'Server email dispatch requires SMTP_USER / SMTP_PASSWORD in Render environment variables. You can click "Open Mail App" to send in 1 click via your local email app!'
+        });
+      }
+    } catch (err: any) {
+      setServerEmailResult({
+        success: false,
+        message: 'Could not contact Render email service. Use "Open Mail App" or "Copy HTML" for instant 1-click delivery!'
+      });
+    } finally {
+      setIsSendingServerEmail(false);
+    }
   };
 
   // Copy OTP Code to Clipboard
@@ -1824,8 +1867,38 @@ export default function App() {
                 )}
               </div>
 
+              {/* Server Email Dispatch Feedback */}
+              {serverEmailResult && (
+                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                  serverEmailResult.success 
+                    ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300' 
+                    : 'bg-amber-950/80 border-amber-500/60 text-amber-300'
+                }`}>
+                  {serverEmailResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <span className="font-bold">{serverEmailResult.success ? 'Email Sent Successfully' : 'Notice'}</span>
+                    <p className="text-[11px] leading-relaxed opacity-90">{serverEmailResult.message}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Action Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 border-t border-slate-800">
+                {/* 1-Click Server Dispatch */}
+                <button
+                  onClick={() => handleSendServerEmail(previewEmailOtp)}
+                  disabled={isSendingServerEmail || !previewEmailOtp.targetEmail}
+                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-900/30 disabled:opacity-50"
+                  title={previewEmailOtp.targetEmail ? "Send automated email via server" : "Please set target student email first"}
+                >
+                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>{isSendingServerEmail ? 'Sending...' : 'Send Live Email'}</span>
+                </button>
+
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(inviteUrl);
