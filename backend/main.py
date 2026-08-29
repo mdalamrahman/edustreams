@@ -1027,6 +1027,7 @@ async def send_invite_email_endpoint(payload: SendInviteEmailRequest):
 
 
 @app.get("/")
+@app.get("/healthz")
 @app.get("/api/health")
 @app.get("/health")
 async def read_root_and_health():
@@ -3952,6 +3953,7 @@ DEFAULT_RANGE_SIZE = 2 * 1024 * 1024  # 2MB default response chunk
 
 
 @app.get("/stream/{chat_id}/{msg_id}")
+@app.get("/api/stream/{chat_id}/{msg_id}")
 async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
     """
     Streams actual video bytes from local disk storage if available,
@@ -6669,6 +6671,99 @@ async def get_gfg_potd_proxy():
         "accuracy": picked["acc"],
         "totalSubmissions": picked["subs"]
     }
+
+
+# -------------------------------------------------------------
+# MULTI-LLM CASCADE INTERVIEW CHAT (SSE STREAMING)
+# Groq Llama-3.3-70B -> Gemini 2.5 Flash -> Mistral Codestral
+# -------------------------------------------------------------
+
+class InterviewChatRequest(BaseModel):
+    user_id: Optional[str] = "student"
+    prompt: str
+    history: Optional[List[dict]] = []
+
+
+async def cascade_interview_stream(prompt: str, history: list):
+    # Tier 1: Groq Llama-3.3-70B / Llama-3.1-8b (Fastest)
+    if GROQ_API_KEY:
+        try:
+            import groq
+            groq_client = groq.AsyncGroq(api_key=GROQ_API_KEY)
+            messages = [{"role": m.get("role", "user"), "content": m.get("content", "")} for m in (history or [])]
+            messages.append({"role": "user", "content": prompt})
+            
+            stream = await groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                stream=True,
+                temperature=0.4
+            )
+            async for chunk in stream:
+                content = chunk.choices[0].delta.content or ""
+                if content:
+                    yield f"data: {json.dumps({'token': content})}\n\n"
+            return
+        except Exception as e:
+            print(f"[AI Cascade: Groq Tier 1 Notice]: {e}")
+
+    # Tier 2: Gemini 2.5 Flash
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            chat = model.start_chat(history=[])
+            response = chat.send_message(prompt, stream=True)
+            for chunk in response:
+                if chunk.text:
+                    yield f"data: {json.dumps({'token': chunk.text})}\n\n"
+            return
+        except Exception as e:
+            print(f"[AI Cascade: Gemini Tier 2 Notice]: {e}")
+
+    # Tier 3: Mistral Codestral
+    if MISTRAL_API_KEY:
+        try:
+            url = "https://api.mistral.ai/v1/chat/completions"
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"}
+            msgs = [{"role": m.get("role", "user"), "content": m.get("content", "")} for m in (history or [])]
+            msgs.append({"role": "user", "content": prompt})
+            payload = {
+                "model": "codestral-latest",
+                "messages": msgs,
+                "temperature": 0.4,
+                "stream": True
+            }
+            resp = requests.post(url, headers=headers, json=payload, stream=True, timeout=30)
+            if resp.status_code == 200:
+                for line in resp.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8')
+                        if decoded.startswith("data: ") and not decoded.startswith("data: [DONE]"):
+                            raw_json = decoded.replace("data: ", "").strip()
+                            try:
+                                parsed = json.loads(raw_json)
+                                token = parsed.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                                if token:
+                                    yield f"data: {json.dumps({'token': token})}\n\n"
+                            except Exception:
+                                pass
+                return
+        except Exception as e:
+            print(f"[AI Cascade: Mistral Tier 3 Notice]: {e}")
+
+    yield f"data: {json.dumps({'error': 'All AI providers currently busy. Please retry in a moment.'})}\n\n"
+
+
+@app.post("/interview/chat")
+@app.post("/api/interview/chat")
+async def interview_chat_endpoint(payload: InterviewChatRequest):
+    return StreamingResponse(
+        cascade_interview_stream(payload.prompt, payload.history or []),
+        media_type="text/event-stream"
+    )
 
 
 if __name__ == "__main__":

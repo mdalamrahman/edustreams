@@ -40,8 +40,12 @@ export function getChatId(channelId: string): number | null {
  * @returns Full stream URL like: https://mdalamrahman-edustream.hf.space/stream/-1004390749731/7121
  */
 export function getStreamUrl(channelId: string, messageId: number): string {
-  const chatId = CHANNEL_CHAT_ID_MAP[channelId];
+  const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
   if (!chatId || !messageId) return '';
+  // In Cloudflare Pages or web deployment, route through zero-cost edge function with 30-day CDN caching
+  if (typeof window !== 'undefined' && (window.location.hostname.includes('pages.dev') || window.location.hostname.includes('sdetube') || window.location.hostname.includes('vercel.app'))) {
+    return `/api/video/${chatId}/${messageId}`;
+  }
   return `${BACKEND_BASE}/stream/${chatId}/${messageId}`;
 }
 
