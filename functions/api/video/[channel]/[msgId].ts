@@ -5,7 +5,7 @@ interface Env {
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { channel, msgId } = context.params;
   const range = context.request.headers.get('Range');
-  const backendBase = (context.env.RENDER_BACKEND_URL || 'https://edustream-backend.onrender.com').replace(/\/+$/, '');
+  const backendBase = (context.env.RENDER_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com').replace(/\/+$/, '');
   
   const targetUrl = `${backendBase}/stream/${channel}/${msgId}`;
 

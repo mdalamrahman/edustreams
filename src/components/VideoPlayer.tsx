@@ -31,7 +31,7 @@ import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { StudentVideoNotesTab } from './StudentVideoNotesTab';
 import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
-import { getStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { getStreamUrl, getDirectStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { getCurrentStudent } from '../lib/auth';
 
 interface VideoPlayerProps {
@@ -270,11 +270,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Build the real Telegram stream URL from channel_id + message_id via HF backend
-  const streamSrc = getStreamUrl(video.channel_id, video.telegram_message_id || 0);
+  // Primary stream URL (Cloudflare Pages edge proxy) & Fallback URL (direct Render backend)
+  const primaryStreamSrc = getStreamUrl(video.channel_id, video.telegram_message_id || 0);
+  const fallbackDirectStreamSrc = getDirectStreamUrl(video.channel_id, video.telegram_message_id || 0);
+  const [activeStreamSrc, setActiveStreamSrc] = useState<string>(primaryStreamSrc);
+  const [triedFallback, setTriedFallback] = useState<boolean>(false);
 
   // Reset player state strictly when video changes
   useEffect(() => {
+    setActiveStreamSrc(primaryStreamSrc);
+    setTriedFallback(false);
     setStreamError(false);
     setIsLoadingStream(true);
     setIsPlaying(false);
@@ -283,17 +288,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (videoRef.current) {
       videoRef.current.load();
     }
-  }, [video.id]);
+  }, [video.id, primaryStreamSrc]);
 
   useEffect(() => {
-    if ('caches' in window && streamSrc) {
+    if ('caches' in window && activeStreamSrc) {
       caches.open('edustream-video-v1').then(async (cache) => {
-        const match = await cache.match(streamSrc);
+        const match = await cache.match(activeStreamSrc);
         if (match) setIsCachedOffline(true);
         else setIsCachedOffline(false);
       });
     }
-  }, [streamSrc]);
+  }, [activeStreamSrc]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -302,8 +307,21 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [isMuted]);
 
   const handleVideoError = () => {
+    // If edge proxy fails, attempt automatic failover to the direct Render backend before showing error screen
+    if (!triedFallback && fallbackDirectStreamSrc && activeStreamSrc !== fallbackDirectStreamSrc) {
+      console.warn(`[EduStream] Edge proxy stream failed, attempting direct backend failover: ${fallbackDirectStreamSrc}`);
+      setTriedFallback(true);
+      setActiveStreamSrc(fallbackDirectStreamSrc);
+      setIsLoadingStream(true);
+      if (videoRef.current) {
+        videoRef.current.load();
+        videoRef.current.play().catch(() => {});
+      }
+      return;
+    }
+
     console.warn(`[EduStream] Telegram stream error for: ${video.title} (msg #${video.telegram_message_id})`);
-    console.warn(`[EduStream] Stream URL: ${streamSrc}`);
+    console.warn(`[EduStream] Stream URL: ${activeStreamSrc}`);
     setStreamError(true);
     setIsLoadingStream(false);
   };
@@ -381,7 +399,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const cleanName = `${(video.title || 'lecture').replace(/[^\w\s.-]/gi, '')}.mp4`;
     const downloadEndpoint = (video.channel_id && video.telegram_message_id)
       ? `${TELEGRAM_BACKEND_URL}/api/download/${video.channel_id}/${video.telegram_message_id}?file_name=${encodeURIComponent(cleanName)}`
-      : streamSrc;
+      : activeStreamSrc;
 
     try {
       const response = await fetch(downloadEndpoint);
@@ -661,7 +679,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onMouseMove={triggerShowControls}
         className="relative aspect-video bg-black group overflow-hidden select-none"
       >
-        {streamError || !streamSrc ? (
+        {streamError || !activeStreamSrc ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-slate-300 p-6 text-center">
             <div className="w-14 h-14 rounded-full bg-indigo-950 border-2 border-indigo-600 flex items-center justify-center text-indigo-400 mb-4 animate-pulse">
               <WifiOff className="w-7 h-7" />
@@ -682,7 +700,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <>
             <video
               ref={videoRef}
-              src={streamSrc}
+              src={activeStreamSrc}
               controls={false}
               controlsList="nodownload"
               onContextMenu={(e) => { if (!isAdmin) e.preventDefault(); }}
@@ -696,11 +714,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }}
               onLoadedMetadata={() => {
                 setIsLoadingStream(false);
+                setStreamError(false);
                 if (videoRef.current) setDuration(videoRef.current.duration);
               }}
               onError={(e) => {
                 console.warn('Video Stream error:', e);
-                setIsLoadingStream(false);
+                handleVideoError();
               }}
               className="w-full h-full object-contain"
             />

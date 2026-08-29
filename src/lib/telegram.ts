@@ -7,10 +7,10 @@
  */
 
 // Render / Backend base URL (default to relative path in browser for zero-CORS proxying via Vercel/Vite)
-const BACKEND_URL = (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_URL as string || import.meta.env.VITE_RENDER_BACKEND_URL as string) : '') || '';
+const BACKEND_URL = (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_URL as string || import.meta.env.VITE_RENDER_BACKEND_URL as string) : '') || 'https://edustream-backend-90vm.onrender.com';
 
 // Remove trailing slash if present
-const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : '';
+const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : 'https://edustream-backend-90vm.onrender.com';
 
 /**
  * Mapping from internal frontend channel IDs to Telegram Bot API channel IDs.
@@ -47,6 +47,15 @@ export function getStreamUrl(channelId: string, messageId: number): string {
     return `/api/video/${chatId}/${messageId}`;
   }
   return `${BACKEND_BASE}/stream/${chatId}/${messageId}`;
+}
+
+/**
+ * Directly constructs the origin Render stream URL as a failover bypass.
+ */
+export function getDirectStreamUrl(channelId: string, messageId: number): string {
+  const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
+  if (!chatId || !messageId) return '';
+  return `https://edustream-backend-90vm.onrender.com/stream/${chatId}/${messageId}`;
 }
 
 /**
