@@ -44,10 +44,43 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
           PRICING_CONFIG.VIDEO_FIRST_TIME = Number(p.video_view_cost);
           PRICING_CONFIG.VIDEO_SUBSEQUENT = Number(p.video_view_cost);
         }
+        if (p.dsa_compiler_run_cost !== undefined) PRICING_CONFIG.COMPILER_RUN_DSA_LLD = Number(p.dsa_compiler_run_cost);
+        if (p.dsa_submission_cost !== undefined) PRICING_CONFIG.CODE_SUBMIT_DSA_LLD = Number(p.dsa_submission_cost);
+        if (p.sql_run_cost !== undefined) PRICING_CONFIG.SQL_RUN_JUDGE = Number(p.sql_run_cost);
+        if (p.lld_ai_eval_cost !== undefined) PRICING_CONFIG.AI_EVALUATION_LLD = Number(p.lld_ai_eval_cost);
+        if (p.hld_ai_eval_cost !== undefined) PRICING_CONFIG.AI_EVALUATION_HLD = Number(p.hld_ai_eval_cost);
+        if (p.ai_chat_message_cost !== undefined) PRICING_CONFIG.AI_CHAT_MESSAGE = Number(p.ai_chat_message_cost);
+        if (p.ai_optimal_solution_cost !== undefined) PRICING_CONFIG.AI_OPTIMAL_SOLUTION_GEN = Number(p.ai_optimal_solution_cost);
+        if (p.ai_quiz_gen_cost !== undefined) PRICING_CONFIG.AI_QUIZ_GEN_BATCH = Number(p.ai_quiz_gen_cost);
+        if (p.daily_usage_fee !== undefined) PRICING_CONFIG.DAILY_USAGE_FEE = Number(p.daily_usage_fee);
+        if (p.signup_bonus_credits !== undefined) PRICING_CONFIG.SIGNUP_FREE_CREDITS = Number(p.signup_bonus_credits);
       }
     }
   } catch {}
   return PRICING_CONFIG;
+}
+
+export async function isUserAllowedToDownloadVideo(userEmail?: string | null): Promise<boolean> {
+  if (!userEmail) return false;
+  const cleanEmail = userEmail.toLowerCase().trim();
+  if (cleanEmail.includes('mdalamrahman4') || cleanEmail.includes('admin@aspersde')) return true;
+
+  try {
+    const res = await fetch(`https://bbxwgezqiqjbmxthchfn.supabase.co/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0 && data[0].linked_profiles?.download_whitelist) {
+        const list: string[] = data[0].linked_profiles.download_whitelist;
+        return list.map(e => e.toLowerCase().trim()).includes(cleanEmail);
+      }
+    }
+  } catch {}
+  return false;
 }
 
 export const UPI_CONFIG = {
