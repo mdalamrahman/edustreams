@@ -83,6 +83,9 @@ import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 import { FormattedChatText } from './FormattedChatText';
 import { SupportedLanguage } from '../lib/compiler';
 import { extractTextFromFile, analyzeResumeWithAI, ParsedCandidateProfile } from '../lib/resumeParser';
+import { canAffordAction, deductCredits, PRICING_CONFIG, fetchLivePlatformPricing } from '../lib/billing';
+import { getCurrentStudent } from '../lib/auth';
+import { WalletTopupModal } from './WalletTopupModal';
 import confetti from 'canvas-confetti';
 
 interface InterviewCompanionProps {
@@ -97,12 +100,19 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showFullscreenWarning, setShowFullscreenWarning] = useState<boolean>(false);
 
+  // HLD Canvas & Screen Sizing
+  const [isCanvasMaximized, setIsCanvasMaximized] = useState<boolean>(false);
+
+  // Wallet & Billing State
+  const [isWalletOpen, setIsWalletOpen] = useState<boolean>(false);
+  const [billingError, setBillingError] = useState<string>('');
+
   // Pre-Flight Microphone Check State
   const [isMicPermissionGranted, setIsMicPermissionGranted] = useState<boolean>(false);
   const [isCheckingMic, setIsCheckingMic] = useState<boolean>(false);
 
   // Candidate Profile Form State
-  const [candidateName, setCandidateName] = useState<string>('Candidate');
+  const [candidateName, setCandidateName] = useState<string>(() => getCurrentStudent()?.email?.split('@')[0] || 'Candidate');
   const [candidateExpYears, setCandidateExpYears] = useState<string>('2-4');
   const [candidateRole, setCandidateRole] = useState<string>('Software Engineer');
   const [candidateTechStack, setCandidateTechStack] = useState<string>('C++, Python, React, PostgreSQL, Redis, Kafka');
@@ -374,19 +384,36 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const handleStartLiveInterview = async () => {
     if (!activeQuestion) return;
 
-    // 1. Pre-flight Mic Verification (guarantees no permission popups during test)
+    // 1. Billing Gatekeeping (₹10 standard rate or live dynamic rate)
+    const student = getCurrentStudent();
+    const interviewCost = PRICING_CONFIG.AI_MOCK_INTERVIEW || 10.0;
+
+    if (student?.email && !canAffordAction(interviewCost, student.email)) {
+      setBillingError(`Insufficient Wallet Balance: ₹${interviewCost.toFixed(2)} is required to start a Live FAANG Mock Interview. Please top up your wallet.`);
+      setIsWalletOpen(true);
+      return;
+    }
+
+    setBillingError('');
+
+    // Deduct credits from user wallet & record transaction
+    if (student?.email) {
+      deductCredits(interviewCost, 'AI_MOCK_INTERVIEW', `Live FAANG Mock Interview (${selectedRound} - ${currentCompany.name})`, student.email);
+    }
+
+    // 2. Pre-flight Mic Verification (guarantees no permission popups during test)
     if (!isMicPermissionGranted) {
       await requestPreflightMicPermission();
     }
 
-    // 2. Enforce Fullscreen Mode
+    // 3. Enforce Fullscreen Mode
     await requestFullscreenMode();
 
-    // 3. Lock interviewer voice for the entire test session
+    // 4. Lock interviewer voice for the entire test session
     resetInterviewerVoiceLock();
     getOrLockInterviewerVoice();
 
-    // 4. Tab routing according to round
+    // 5. Tab routing according to round
     if (selectedRound === 'HLD') {
       setRightTab('hld_canvas');
     } else if (selectedRound === 'Behavioral') {
@@ -1168,17 +1195,32 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
           {/* Start CTA Button */}
           <div className="pt-2 flex flex-col items-center gap-2">
+            {billingError && (
+              <div className="p-3.5 rounded-2xl bg-amber-950/90 border border-amber-500/50 text-amber-300 text-xs font-semibold flex items-center justify-between gap-3 max-w-lg w-full shadow-lg">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <span>{billingError}</span>
+                </div>
+                <button
+                  onClick={() => setIsWalletOpen(true)}
+                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs cursor-pointer flex-shrink-0"
+                >
+                  Top Up Wallet
+                </button>
+              </div>
+            )}
+
             <button
               onClick={handleStartLiveInterview}
               className="w-full sm:w-auto sm:px-14 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-sm tracking-wide shadow-2xl shadow-indigo-900/50 transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer flex items-center justify-center space-x-2"
             >
               <Zap className="w-5 h-5 text-amber-300" />
-              <span>🚀 Enter Fullscreen Technical Interview Room (45 Mins)</span>
+              <span>🚀 Enter Technical Interview Room (₹{(PRICING_CONFIG.AI_MOCK_INTERVIEW || 10).toFixed(0)} • 45 Mins)</span>
               <ArrowRight className="w-5 h-5" />
             </button>
             <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
               <Maximize2 className="w-3 h-3 text-slate-400" />
-              <span>Enforces distraction-free fullscreen focus mode & auto-persists to Cloudflare R2</span>
+              <span>Distraction-free fullscreen &bull; ₹{(PRICING_CONFIG.AI_MOCK_INTERVIEW || 10).toFixed(0)} per full session &bull; Auto-saved to Cloudflare R2</span>
             </span>
           </div>
 
@@ -1430,6 +1472,21 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             {isVoiceMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
           </button>
 
+          {/* Maximize Canvas / Split View Toggle */}
+          <button
+            onClick={() => setIsCanvasMaximized(!isCanvasMaximized)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              isCanvasMaximized
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-indigo-400 text-white shadow-md shadow-indigo-900/40'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white'
+            }`}
+            title={isCanvasMaximized ? "Switch back to Split View (Show Chat + Canvas)" : "Maximize Canvas (Full Width) for large architecture diagrams"}
+          >
+            {isCanvasMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />}
+            <span className="hidden sm:inline">{isCanvasMaximized ? 'Restore Split View' : 'Maximize Canvas (Full Width)'}</span>
+            <span className="sm:hidden">{isCanvasMaximized ? 'Split' : 'Full'}</span>
+          </button>
+
           {/* End Round & Generate Assessment */}
           <button
             onClick={handleEndInterviewAndEvaluate}
@@ -1445,10 +1502,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       </div>
 
       {/* 2. MAIN SPLIT-SCREEN WORKSPACE */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden relative">
         
-        {/* LEFT PANEL (VOICE COMPANION & LIVE DIALOGUE) - 5 COLS */}
-        <div className="lg:col-span-5 flex flex-col border-r border-slate-800 bg-slate-950/90 overflow-hidden">
+        {/* LEFT PANEL (VOICE COMPANION & LIVE DIALOGUE) */}
+        <div className={`${isCanvasMaximized ? 'hidden' : 'lg:col-span-5'} flex flex-col border-r border-slate-800 bg-slate-950/90 overflow-hidden`}>
           
           {/* AI Interviewer Avatar & Audio Orb */}
           <div className="p-4 bg-slate-900/60 border-b border-slate-800/80 flex items-center justify-between flex-shrink-0">
@@ -1632,8 +1689,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
         </div>
 
-        {/* RIGHT PANEL (ADAPTIVE INTERACTIVE CANVAS) - 7 COLS */}
-        <div className="lg:col-span-7 flex flex-col bg-slate-950 overflow-hidden">
+        {/* RIGHT PANEL (ADAPTIVE INTERACTIVE CANVAS) */}
+        <div className={`${isCanvasMaximized ? 'lg:col-span-12' : 'lg:col-span-7'} flex flex-col bg-slate-950 overflow-hidden`}>
           
           {/* Right Panel Tabs */}
           <div className="p-2.5 px-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2 flex-shrink-0">
@@ -1890,6 +1947,18 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
       </div>
 
+      {/* Floating Chat Pill when Canvas is Maximized */}
+      {isCanvasMaximized && (
+        <button
+          onClick={() => setIsCanvasMaximized(false)}
+          className="fixed bottom-6 left-6 z-40 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs shadow-2xl shadow-indigo-900/60 border border-indigo-400/40 hover:scale-105 transition-all flex items-center gap-2 cursor-pointer animate-fadeIn"
+          title="Return to Split View with Live Dialogue"
+        >
+          <Bot className="w-4 h-4 text-cyan-300 animate-pulse" />
+          <span>Show AI Interviewer Dialogue (Split View)</span>
+        </button>
+      )}
+
       {/* 3. EVALUATION SCORECARD MODAL */}
       {isScorecardOpen && scorecard && (
         <InterviewScorecardModal
@@ -1904,6 +1973,16 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             stopListening();
             exitFullscreenMode();
           }}
+        />
+      )}
+
+      {/* 4. WALLET TOPUP MODAL */}
+      {isWalletOpen && (
+        <WalletTopupModal
+          isOpen={isWalletOpen}
+          onClose={() => setIsWalletOpen(false)}
+          userEmail={getCurrentStudent()?.email || undefined}
+          initialAmount={100}
         />
       )}
 

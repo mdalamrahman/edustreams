@@ -18,6 +18,7 @@ export const PRICING_CONFIG = {
   AI_QUIZ_GEN_BATCH: 0.50,           // 50 paise (₹0.50) per on-demand AI quiz batch generation
   AI_EVALUATION_HLD: 1.00,           // ₹1 for AI evaluation of HLD
   AI_EVALUATION_LLD: 0.75,           // ₹0.75 (75 paise) for AI evaluation of LLD
+  AI_MOCK_INTERVIEW: 10.00,          // ₹10 for full-length AI Mock Interview with Bar Raiser
   COMPILER_RUN_DSA_LLD: 0.05,        // 5 paise (₹0.05) per compiler run
   CODE_SUBMIT_DSA_LLD: 0.50,         // 50 paise (₹0.50) per submission / judge
   SQL_RUN_JUDGE: 0.10,               // 10 paise (₹0.10) per SQL run
@@ -49,6 +50,7 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
         if (p.sql_run_cost !== undefined) PRICING_CONFIG.SQL_RUN_JUDGE = Number(p.sql_run_cost);
         if (p.lld_ai_eval_cost !== undefined) PRICING_CONFIG.AI_EVALUATION_LLD = Number(p.lld_ai_eval_cost);
         if (p.hld_ai_eval_cost !== undefined) PRICING_CONFIG.AI_EVALUATION_HLD = Number(p.hld_ai_eval_cost);
+        if (p.mock_interview_cost !== undefined) PRICING_CONFIG.AI_MOCK_INTERVIEW = Number(p.mock_interview_cost);
         if (p.ai_chat_message_cost !== undefined) PRICING_CONFIG.AI_CHAT_MESSAGE = Number(p.ai_chat_message_cost);
         if (p.ai_optimal_solution_cost !== undefined) PRICING_CONFIG.AI_OPTIMAL_SOLUTION_GEN = Number(p.ai_optimal_solution_cost);
         if (p.ai_quiz_gen_cost !== undefined) PRICING_CONFIG.AI_QUIZ_GEN_BATCH = Number(p.ai_quiz_gen_cost);
@@ -100,6 +102,7 @@ export type BillingActionType =
   | 'AI_QUIZ_GEN'
   | 'AI_EVALUATION_HLD'
   | 'AI_EVALUATION_LLD'
+  | 'AI_MOCK_INTERVIEW'
   | 'LLD_DIAGRAM'
   | 'COMPILER_RUN'
   | 'CODE_SUBMIT'

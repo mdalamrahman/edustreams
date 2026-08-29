@@ -63,10 +63,11 @@ export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
 4. Ask them to write clean modular code or class definitions in the editor.
 5. Probe how their design handles new requirements or concurrency.`,
 
-    HLD: `1. Present a large-scale distributed system problem (e.g., Uber Real-Time Dispatch, Instagram News Feed Fanout, URL Shortener).
-2. Guide them through: Functional/Non-functional Requirements -> Back-of-the-Envelope Math (QPS, Storage, Bandwidth) -> High-Level API Design -> Core Components (Load Balancer, Caching, DB Sharding) -> Deep-Dive into Bottlenecks & SPOFs.
-3. Challenge their choice of databases (SQL vs NoSQL vs Graph), caching strategies, message queues (Kafka vs RabbitMQ), and data partitioning keys.
-4. Refer to their interactive canvas diagram and probe how their architecture scales.`,
+    HLD: `1. Present the problem scenario and core requirements clearly.
+2. CRITICAL RULE: Under NO circumstances should you reveal, suggest, or design the architecture solution yourself. Do NOT say "You should use Redis, Kafka, or Cassandra". You must make the candidate propose the design and justify every single component.
+3. Guide them sequentially through: Requirements Clarification -> Capacity & QPS Estimations -> API Contracts -> High-Level Architecture -> Deep Dives into Bottlenecks, Sharding & SPOFs.
+4. Ask probing questions: "What is your data partitioning key?", "Why this database over another?", "How do you handle peak traffic spikes?", "What happens if a broker fails?".
+5. Keep conversational turns concise (2-3 sentences) so the candidate speaks 80% of the time.`,
 
     Behavioral: `1. Conduct a rigorous behavioral evaluation using the Amazon/Google STAR method (Situation, Task, Action, Result).
 2. Deeply explore conflict resolution, technical disagreements with leadership, mentorship, dealing with production outages, and ambiguity.
@@ -99,12 +100,12 @@ ${roundGuidelines[round]}
 
 ${question ? `CURRENT ASSIGNED PROBLEM:\nTitle: ${question.title}\nDescription: ${question.description}\nKey Evaluation Criteria: ${question.keyEvaluationCriteria.join(', ')}` : ''}
 
-TONE & BEHAVIOR:
+STRICT CONSTRAINTS & BEHAVIOR:
+- STRICT ISOLATION: Never refer to any other candidate or past interviews. Evaluate strictly this candidate.
+- NO SPOILERS: In DSA and HLD, never reveal the solution or complete code/architecture. Let the candidate lead.
+- SPOKEN PACING: Speak in natural, spoken conversational English. Keep replies between 2 to 3 sentences so voice synthesis is smooth.
 - Address the candidate naturally by name (${candidate?.name || 'there'}).
-- Professional, encouraging, but rigorous and analytical like a genuine ${company} principal engineer.
-- Speak in natural, spoken conversational sentences (2-3 sentences per turn).
-- Never dump the complete answer or write the code for them; give subtle progressive hints if they struggle.
-- Actively react to the candidate's thoughts, validate correct intuition, and steer away from suboptimal brute force paths.`;
+- Professional, encouraging, but rigorous like a genuine ${company} Principal Engineer.`;
 }
 
 /**
@@ -143,61 +144,50 @@ export async function sendInterviewerMessage(
         model: 'mistral-small-latest',
         messages: formattedMessages,
         temperature: 0.6,
-        max_tokens: 450
+        max_tokens: 350
       })
     });
 
     if (response.ok) {
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || 'Let us continue. Could you walk me through your intuition?';
+      const rawReply = data.choices?.[0]?.message?.content || '';
+      return rawReply.trim();
     }
   } catch (err) {
-    console.error('Mistral Interviewer API Error:', err);
+    console.error('Mistral interview API error:', err);
   }
 
-  // Graceful fallback interviewer prompts
-  return `That makes sense. Can you explain your time and space complexity tradeoffs for this approach, and how you would handle potential edge cases?`;
+  return "Thank you for explaining that. Let's dig deeper into the trade-offs. How do you plan to scale this under high concurrency?";
 }
 
-/**
- * Voice Locking System:
- * Guarantees that the interviewer's voice remains 100% consistent throughout the entire test session.
- */
+// Global Voice Lock Reference
 let lockedInterviewerVoice: SpeechSynthesisVoice | null = null;
 let lockedVoiceURI: string | null = null;
+let speechKeepaliveTimer: any = null;
+let isSpeakingActive = false;
 
 export function resetInterviewerVoiceLock(): void {
   lockedInterviewerVoice = null;
   lockedVoiceURI = null;
+  stopInterviewerSpeech();
 }
 
 export function getOrLockInterviewerVoice(): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
-  
+
   const voices = window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
 
-  // If already locked and valid in current voice list, return it
   if (lockedVoiceURI) {
     const existing = voices.find(v => v.voiceURI === lockedVoiceURI);
-    if (existing) {
-      lockedInterviewerVoice = existing;
-      return existing;
-    }
+    if (existing) return existing;
   }
 
-  // Pick highest quality natural English voice
+  // Prioritize premium natural voices
   const preferred = voices.find(v => 
-    v.lang.startsWith('en') && (
-      v.name.includes('Natural') || 
-      v.name.includes('Online (Natural)') ||
-      v.name.includes('Google US English') || 
-      v.name.includes('Samantha') || 
-      v.name.includes('Daniel') ||
-      v.name.includes('Guy') ||
-      v.name.includes('Aria')
-    )
-  ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Guy')) && 
+    (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB'))
+  ) || voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
 
   if (preferred) {
     lockedInterviewerVoice = preferred;
@@ -215,33 +205,118 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 }
 
 /**
- * Text-to-Speech (TTS) voice synthesizer using the locked interviewer voice.
+ * Robust Text-to-Speech (TTS) synthesizer with sentence-level chunking and Chrome keepalive.
+ * Prevents stalling on long technical explanations.
  */
 export function speakInterviewerText(text: string, onEnd?: () => void): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-  try {
-    window.speechSynthesis.cancel(); // Stop any pending utterances
-    const cleanText = text.replace(/```[\s\S]*?```/g, 'Code block provided in editor.').replace(/[*_#`]/g, '');
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.02;
-    utterance.pitch = 1.0;
+  stopInterviewerSpeech();
+  isSpeakingActive = true;
 
-    const voice = getOrLockInterviewerVoice();
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
+  try {
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, 'Code block provided in editor.')
+      .replace(/[*_#`~>]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim();
+
+    if (!cleanText) {
+      if (onEnd) onEnd();
+      return;
     }
 
-    if (onEnd) utterance.onend = onEnd;
-    window.speechSynthesis.speak(utterance);
+    // Split text into natural sentence chunks (max 140 chars each) to prevent Chromium TTS freeze
+    const rawSentences = cleanText.match(/[^.!?]+(?:[.!?]+|$)/g) || [cleanText];
+    const chunks: string[] = [];
+
+    for (const raw of rawSentences) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      if (trimmed.length <= 140) {
+        chunks.push(trimmed);
+      } else {
+        // Sub-split at commas or conjunctions
+        const subParts = trimmed.split(/,\s+/);
+        let current = '';
+        for (const sub of subParts) {
+          if ((current + ', ' + sub).length <= 140) {
+            current = current ? current + ', ' + sub : sub;
+          } else {
+            if (current) chunks.push(current);
+            current = sub;
+          }
+        }
+        if (current) chunks.push(current);
+      }
+    }
+
+    if (chunks.length === 0) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    const voice = getOrLockInterviewerVoice();
+    let chunkIndex = 0;
+
+    // Start Chrome Keepalive timer (toggles pause/resume every 6s to prevent 15s freeze bug)
+    if (speechKeepaliveTimer) clearInterval(speechKeepaliveTimer);
+    speechKeepaliveTimer = setInterval(() => {
+      if (isSpeakingActive && window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 6000);
+
+    const playNextChunk = () => {
+      if (!isSpeakingActive || chunkIndex >= chunks.length) {
+        stopInterviewerSpeech();
+        if (onEnd) onEnd();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
+      utterance.rate = 1.02;
+      utterance.pitch = 1.0;
+
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+
+      utterance.onend = () => {
+        chunkIndex++;
+        playNextChunk();
+      };
+
+      utterance.onerror = (e) => {
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.warn('Speech chunk error:', e.error);
+        }
+        chunkIndex++;
+        playNextChunk();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    playNextChunk();
   } catch (err) {
     console.warn('Speech synthesis error:', err);
+    stopInterviewerSpeech();
+    if (onEnd) onEnd();
   }
 }
 
 export function stopInterviewerSpeech(): void {
+  isSpeakingActive = false;
+  if (speechKeepaliveTimer) {
+    clearInterval(speechKeepaliveTimer);
+    speechKeepaliveTimer = null;
+  }
   if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch {}
   }
 }

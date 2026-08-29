@@ -115,7 +115,7 @@ const DEFAULT_RATES: SystemPlatformRates = {
   lld_ai_eval_cost: 0.75,
   hld_ai_eval_cost: 1.00,
 
-  mock_interview_cost: 50.00,
+  mock_interview_cost: 10.00,
   ai_chat_message_cost: 0.20,
   ai_optimal_solution_cost: 0.50,
   ai_quiz_gen_cost: 0.50,
