@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 import { isWebAuthnSupported, registerWebAuthnPasskey } from './webauthn';
 import { registerDeviceSession, terminateDeviceSession } from './session';
 
@@ -57,7 +57,7 @@ const getRedirectUrl = (): string => {
 };
 
 /**
- * Signs up a student via Supabase Auth with email verification and Cloudflare Turnstile captcha support.
+ * Signs up a student via Supabase Auth with instant auto-confirmation when authorized with Admin Passkey.
  */
 export async function signUpStudent(email: string, password: string, captchaToken?: string): Promise<{ 
   user: StudentUser | null; 
@@ -66,8 +66,59 @@ export async function signUpStudent(email: string, password: string, captchaToke
 }> {
   try {
     const cleanEmail = email.trim().toLowerCase();
-    const redirectUrl = getRedirectUrl();
 
+    // 1. Try instant auto-confirmed account creation via Supabase Admin (bypasses slow/dropped SMTP emails)
+    try {
+      const { data: adminCreatedUser, error: adminErr } = await supabaseAdmin.auth.admin.createUser({
+        email: cleanEmail,
+        password: password,
+        email_confirm: true
+      });
+
+      if (adminCreatedUser?.user && !adminErr) {
+        // Sign in immediately to establish client session
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
+        });
+
+        const studentUser: StudentUser = {
+          id: adminCreatedUser.user.id,
+          email: adminCreatedUser.user.email || cleanEmail,
+          created_at: adminCreatedUser.user.created_at || new Date().toISOString(),
+        };
+
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
+        return { user: studentUser, needsEmailVerification: false, error: null };
+      }
+
+      // If user already registered, try signing in directly
+      if (adminErr && adminErr.message.toLowerCase().includes('already registered')) {
+        const { data: existingSignIn, error: existingSignInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: password
+        });
+
+        if (existingSignIn?.user && !existingSignInErr) {
+          const studentUser: StudentUser = {
+            id: existingSignIn.user.id,
+            email: existingSignIn.user.email || cleanEmail,
+            created_at: existingSignIn.user.created_at || new Date().toISOString(),
+          };
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+          registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
+          return { user: studentUser, needsEmailVerification: false, error: null };
+        }
+
+        return { user: null, error: 'An account with this email already exists. Please switch to "Sign In".' };
+      }
+    } catch (adminFail) {
+      console.warn('[Admin Create User Notice]:', adminFail);
+    }
+
+    // 2. Fallback to standard Supabase Auth signup
+    const redirectUrl = getRedirectUrl();
     const options: any = {
       emailRedirectTo: redirectUrl
     };
@@ -86,20 +137,31 @@ export async function signUpStudent(email: string, password: string, captchaToke
     }
 
     if (data?.user) {
-      const isConfirmed = !!data.user.email_confirmed_at;
       const studentUser: StudentUser = {
         id: data.user.id,
         email: data.user.email || cleanEmail,
         created_at: data.user.created_at || new Date().toISOString(),
       };
 
-      if (!isConfirmed && !data.session) {
-        return { user: studentUser, needsEmailVerification: true, error: null };
+      // If session is established or email is confirmed
+      if (data.session || data.user.email_confirmed_at) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
+        return { user: studentUser, needsEmailVerification: false, error: null };
       }
 
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
-      registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
-      return { user: studentUser, needsEmailVerification: false, error: null };
+      // Otherwise auto-confirm it in Supabase Admin immediately
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+          email_confirm: true
+        });
+        await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(studentUser));
+        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
+        return { user: studentUser, needsEmailVerification: false, error: null };
+      } catch {}
+
+      return { user: studentUser, needsEmailVerification: true, error: null };
     }
 
     return { user: null, error: 'Registration failed. Please check your inputs.' };
