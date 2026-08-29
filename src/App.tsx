@@ -33,7 +33,6 @@ import { SDESheetExplorer, findMatchingDsaVideo } from './components/SDESheetExp
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
-import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { SystemDesignHub } from './components/SystemDesignHub';
 import { LLDHub } from './components/LLDHub';
 import { HLDHub } from './components/HLDHub';
@@ -82,7 +81,6 @@ export function App() {
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
@@ -955,7 +953,6 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         selectedChannel={selectedChannelId}
         setSelectedChannel={handleSelectChannel}
         user={user}
-        onOpenAdmin={() => setIsAdminModalOpen(true)}
         onOpenPotd={handleOpenPotdDirectly}
         onOpenSqlWorkspace={() => setIsSqlModalOpen(true)}
         onOpenAskAI={() => setIsAskAIOpen(true)}
@@ -1434,14 +1431,6 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           notes={videoArtifacts?.notes}
           onClose={() => setIsSqlModalOpen(false)}
           onCodeExecuted={handleQuestionSolved}
-        />
-      )}
-
-      {/* SuperAdmin Telemetry & User Analytics Portal */}
-      {isAdminModalOpen && (
-        <AdminDashboardModal
-          onClose={() => setIsAdminModalOpen(false)}
-          currentUserEmail={user?.email}
         />
       )}
 

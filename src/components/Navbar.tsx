@@ -38,7 +38,6 @@ interface NavbarProps {
   setSelectedChannel: (channelId: string) => void;
   user: any;
   onOpenAuthModal?: () => void;
-  onOpenAdmin?: () => void;
   onOpenPotd?: () => void;
   onOpenSqlWorkspace?: () => void;
   onOpenAskAI?: () => void;
@@ -52,7 +51,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   user,
   onOpenAuthModal,
-  onOpenAdmin,
   onOpenPotd,
   onOpenSqlWorkspace,
   onOpenAskAI,
@@ -317,18 +315,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <User className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Profile</span>
             </button>
-
-            {/* Admin Shield Button */}
-            {isAdminUser && onOpenAdmin && (
-              <button
-                onClick={onOpenAdmin}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600 hover:to-indigo-600 border border-purple-500/50 text-purple-200 hover:text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20 cursor-pointer animate-pulse"
-                title="SuperAdmin Portal"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-300" />
-                <span className="hidden sm:inline">Admin</span>
-              </button>
-            )}
 
             {/* User Account / Auth Dropdown */}
             {user ? (

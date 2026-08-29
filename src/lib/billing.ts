@@ -28,6 +28,28 @@ export const PRICING_CONFIG = {
   ANALYTICS_AI_REFRESH: 1.00,        // ₹1 for analytics AI diagnostic refresh
 };
 
+export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG> {
+  try {
+    const res = await fetch(`https://bbxwgezqiqjbmxthchfn.supabase.co/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0 && data[0].linked_profiles) {
+        const p = data[0].linked_profiles;
+        if (p.video_view_cost !== undefined) {
+          PRICING_CONFIG.VIDEO_FIRST_TIME = Number(p.video_view_cost);
+          PRICING_CONFIG.VIDEO_SUBSEQUENT = Number(p.video_view_cost);
+        }
+      }
+    }
+  } catch {}
+  return PRICING_CONFIG;
+}
+
 export const UPI_CONFIG = {
   PAYEE_NAME: 'md alam rahman',
   PAYEE_UPI_ID: 'mdalamrahman6@ptyes',

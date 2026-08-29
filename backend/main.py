@@ -5897,6 +5897,192 @@ async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
 
 
 # =========================================================================
+# SYSTEM CONFIGURATION & USER MODERATION (RATES, SUSPENSIONS, DOWNLOADS)
+# =========================================================================
+
+DEFAULT_SYSTEM_CONFIG = {
+    "video_view_cost": 5.0,
+    "allow_video_download": True,
+    "video_download_cost": 10.0,
+    "mock_interview_cost": 50.0,
+    "free_pass_duration_hours": 24,
+    "suspended_users": [],
+    "banned_users": []
+}
+
+def get_system_config_db() -> dict:
+    """Fetches real-time system configuration directly from Supabase (Zero browser cache)."""
+    config = dict(DEFAULT_SYSTEM_CONFIG)
+    # 1. Primary: Direct Supabase Fetch
+    try:
+        session = _supabase_conn_manager.get_session()
+        url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*"
+        res = session.get(url, timeout=4)
+        if res.status_code == 200:
+            rows = res.json()
+            if rows and len(rows) > 0 and "linked_profiles" in rows[0] and isinstance(rows[0]["linked_profiles"], dict):
+                config.update(rows[0]["linked_profiles"])
+                return config
+    except Exception as sb_err:
+        print(f"[Supabase System Config Fetch Notice]: {sb_err}")
+
+    # 2. Secondary: SQLite Local Cache
+    try:
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        cursor.execute("SELECT key, value FROM system_config")
+        rows = cursor.fetchall()
+        conn.close()
+        for k, v in rows:
+            try:
+                config[k] = json.loads(v)
+            except Exception:
+                config[k] = v
+    except Exception as e:
+        print(f"[System Config DB Read Notice]: {e}")
+    return config
+
+def save_system_config_db(config: dict):
+    """Persists real-time system configuration directly to Supabase & SQLite."""
+    # 1. Primary: Persist to Supabase
+    try:
+        session = _supabase_conn_manager.get_session()
+        upsert_url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress"
+        upsert_headers = {
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+        }
+        upsert_body = {
+            "user_email": "system_platform_config",
+            "linked_profiles": config,
+            "updated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        session.post(upsert_url, headers=upsert_headers, json=upsert_body, timeout=4)
+    except Exception as sb_err:
+        print(f"[Supabase System Config Save Notice]: {sb_err}")
+
+    # 2. Secondary: SQLite & R2
+    try:
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)")
+        for k, v in config.items():
+            cursor.execute("""
+                INSERT INTO system_config (key, value, updated_at) 
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+            """, (k, json.dumps(v)))
+        conn.commit()
+        conn.close()
+        try:
+            r2_storage.upload_json("config/system_config.json", config)
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[System Config DB Save Notice]: {e}")
+
+@app.get("/api/admin/config")
+async def get_admin_config_endpoint():
+    """Returns platform dynamic pricing, video download permissions, and moderation settings."""
+    cfg = get_system_config_db()
+    return {"status": "ok", "config": cfg}
+
+@app.post("/api/admin/config")
+async def update_admin_config_endpoint(req: Request):
+    """Admin updates platform rates, video download toggle, and system rules."""
+    try:
+        body = await req.json()
+        if not isinstance(body, dict):
+            return JSONResponse(status_code=400, content={"error": "Invalid configuration payload"})
+        
+        cfg = get_system_config_db()
+        for k, v in body.items():
+            if k in cfg:
+                cfg[k] = v
+        save_system_config_db(cfg)
+        return {"status": "ok", "config": cfg, "message": "System configuration updated successfully"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/admin/user/suspend")
+async def suspend_user_endpoint(req: Request):
+    """Bans or suspends a user account."""
+    try:
+        body = await req.json()
+        email = (body.get("email") or "").strip().lower()
+        action = body.get("action", "suspend") # "suspend", "unsuspend", "ban", "unban"
+        reason = body.get("reason", "Violation of platform terms")
+        
+        if not email:
+            return JSONResponse(status_code=400, content={"error": "Email is required"})
+            
+        cfg = get_system_config_db()
+        suspended = set(cfg.get("suspended_users") or [])
+        banned = set(cfg.get("banned_users") or [])
+        
+        if action == "suspend":
+            suspended.add(email)
+        elif action == "unsuspend":
+            suspended.discard(email)
+        elif action == "ban":
+            banned.add(email)
+            suspended.add(email)
+        elif action == "unban":
+            banned.discard(email)
+            suspended.discard(email)
+            
+        cfg["suspended_users"] = list(suspended)
+        cfg["banned_users"] = list(banned)
+        save_system_config_db(cfg)
+        
+        # Terminate active sessions in Supabase
+        try:
+            session = _supabase_conn_manager.get_session()
+            del_url = f"{SUPABASE_URL}/rest/v1/user_active_sessions?user_email=eq.{email}"
+            session.delete(del_url, timeout=3)
+        except Exception:
+            pass
+            
+        return {"status": "ok", "email": email, "action": action, "reason": reason}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/admin/user/remove")
+async def remove_user_endpoint(req: Request):
+    """Hard-deletes user progress and data from database."""
+    try:
+        body = await req.json()
+        email = (body.get("email") or "").strip().lower()
+        if not email:
+            return JSONResponse(status_code=400, content={"error": "Email is required"})
+            
+        # Delete from SQLite & Supabase
+        import sqlite3
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user_wallets WHERE user_email = ?", (email,))
+        cursor.execute("DELETE FROM billing_transactions WHERE user_email = ?", (email,))
+        cursor.execute("DELETE FROM topup_requests WHERE user_email = ?", (email,))
+        conn.commit()
+        conn.close()
+        
+        try:
+            session = _supabase_conn_manager.get_session()
+            session.delete(f"{SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.{email}", timeout=3)
+            session.delete(f"{SUPABASE_URL}/rest/v1/billing_transactions?user_email=eq.{email}", timeout=3)
+            session.delete(f"{SUPABASE_URL}/rest/v1/user_active_sessions?user_email=eq.{email}", timeout=3)
+        except Exception:
+            pass
+            
+        return {"status": "ok", "email": email, "message": "User data successfully removed"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# =========================================================================
 # PROBLEM, SUBMISSION, & USER CODE CLOUDFLARE R2 ENDPOINTS
 # =========================================================================
 
