@@ -275,6 +275,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const fallbackDirectStreamSrc = getDirectStreamUrl(video.channel_id, video.telegram_message_id || 0);
   const [activeStreamSrc, setActiveStreamSrc] = useState<string>(primaryStreamSrc);
   const [triedFallback, setTriedFallback] = useState<boolean>(false);
+  const [isBuffering, setIsBuffering] = useState<boolean>(false);
+  const [showResumeToast, setShowResumeToast] = useState<boolean>(false);
+  const [savedResumeTime, setSavedResumeTime] = useState<number>(0);
+  const bufferingWatchdogTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const progressStorageKey = `edustream_prog_${video.channel_id || 'ch'}_${video.telegram_message_id || video.id}`;
 
   // Reset player state strictly when video changes
   useEffect(() => {
@@ -282,13 +288,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setTriedFallback(false);
     setStreamError(false);
     setIsLoadingStream(true);
+    setIsBuffering(false);
     setIsPlaying(false);
     setCurrentTime(0);
+    setShowResumeToast(false);
     
     if (videoRef.current) {
       videoRef.current.load();
     }
+
+    return () => {
+      if (bufferingWatchdogTimer.current) clearTimeout(bufferingWatchdogTimer.current);
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+        } catch {}
+      }
+    };
   }, [video.id, primaryStreamSrc]);
+
+  // Watchdog to auto-unstuck buffering/frozen video frames
+  useEffect(() => {
+    if (isBuffering && isPlaying) {
+      bufferingWatchdogTimer.current = setTimeout(() => {
+        if (videoRef.current && !videoRef.current.paused) {
+          console.log('[EduStream] Nudging frozen video pipeline...');
+          try {
+            videoRef.current.currentTime += 0.05;
+            videoRef.current.play().catch(() => {});
+          } catch {}
+        }
+      }, 3500);
+    } else {
+      if (bufferingWatchdogTimer.current) clearTimeout(bufferingWatchdogTimer.current);
+    }
+    return () => {
+      if (bufferingWatchdogTimer.current) clearTimeout(bufferingWatchdogTimer.current);
+    };
+  }, [isBuffering, isPlaying]);
 
   useEffect(() => {
     if ('caches' in window && activeStreamSrc) {
@@ -305,6 +342,31 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       videoRef.current.muted = isMuted;
     }
   }, [isMuted]);
+
+  const handleLoadedMetadata = () => {
+    setIsLoadingStream(false);
+    setIsBuffering(false);
+    setStreamError(false);
+    if (videoRef.current) {
+      const vidDuration = videoRef.current.duration;
+      setDuration(vidDuration);
+
+      // Auto-resume from last cached playback position
+      try {
+        const saved = localStorage.getItem(progressStorageKey);
+        if (saved) {
+          const parsed = parseFloat(saved);
+          if (!isNaN(parsed) && parsed > 5 && parsed < vidDuration - 10) {
+            videoRef.current.currentTime = parsed;
+            setCurrentTime(parsed);
+            setSavedResumeTime(parsed);
+            setShowResumeToast(true);
+            setTimeout(() => setShowResumeToast(false), 3500);
+          }
+        }
+      } catch {}
+    }
+  };
 
   const handleVideoError = () => {
     // If edge proxy fails, attempt automatic failover to the direct Render backend before showing error screen
@@ -324,6 +386,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     console.warn(`[EduStream] Stream URL: ${activeStreamSrc}`);
     setStreamError(true);
     setIsLoadingStream(false);
+    setIsBuffering(false);
   };
 
   const togglePlay = () => {
@@ -707,16 +770,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               crossOrigin="anonymous"
               playsInline
               preload="metadata"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onTimeUpdate={() => {
-                if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-              }}
-              onLoadedMetadata={() => {
+              onPlay={() => {
+                setIsPlaying(true);
+                setIsBuffering(false);
                 setIsLoadingStream(false);
-                setStreamError(false);
-                if (videoRef.current) setDuration(videoRef.current.duration);
               }}
+              onPause={() => setIsPlaying(false)}
+              onWaiting={() => setIsBuffering(true)}
+              onStalled={() => setIsBuffering(true)}
+              onPlaying={() => {
+                setIsBuffering(false);
+                setIsLoadingStream(false);
+                setIsPlaying(true);
+              }}
+              onCanPlay={() => {
+                setIsBuffering(false);
+                setIsLoadingStream(false);
+              }}
+              onSeeked={() => {
+                setIsBuffering(false);
+              }}
+              onTimeUpdate={() => {
+                if (videoRef.current) {
+                  const t = videoRef.current.currentTime;
+                  setCurrentTime(t);
+                  if (t > 2) {
+                    try {
+                      localStorage.setItem(progressStorageKey, t.toFixed(1));
+                    } catch {}
+                  }
+                }
+              }}
+              onLoadedMetadata={handleLoadedMetadata}
               onError={(e) => {
                 console.warn('Video Stream error:', e);
                 handleVideoError();
@@ -725,10 +810,27 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             />
 
             {isLoadingStream && (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm pointer-events-none z-30">
                 <div className="flex flex-col items-center space-y-2">
                   <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-xs font-mono text-indigo-300 font-bold">SDETube Streaming Bytes...</span>
+                </div>
+              </div>
+            )}
+
+            {isBuffering && !isLoadingStream && (
+              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 backdrop-blur-[2px] pointer-events-none z-30 animate-fadeIn">
+                <div className="flex items-center space-x-2.5 px-4 py-2 rounded-xl bg-slate-900/90 border border-indigo-500/50 shadow-2xl backdrop-blur-md">
+                  <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs font-mono text-indigo-200 font-bold">Buffering stream...</span>
+                </div>
+              </div>
+            )}
+
+            {showResumeToast && (
+              <div className="absolute top-4 right-4 z-40 animate-slideDown pointer-events-none">
+                <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-indigo-600/90 text-white border border-indigo-400/50 shadow-2xl text-xs font-bold backdrop-blur-md">
+                  <span>⏩ Resumed from {formatTime(savedResumeTime)}</span>
                 </div>
               </div>
             )}

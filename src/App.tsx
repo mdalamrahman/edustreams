@@ -138,7 +138,35 @@ export function App() {
   // Synchronize state on browser back/forward or hash change
   useEffect(() => {
     const handleHashSync = () => {
-      const hash = window.location.hash || '#/dashboard';
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      const pathname = window.location.pathname || '';
+      const urlParams = new URLSearchParams(search);
+
+      // Check query param 'tab' first
+      const queryTab = urlParams.get('tab');
+      const queryChannel = urlParams.get('channel');
+      const queryMsg = urlParams.get('msg');
+      const queryVideo = urlParams.get('video');
+
+      if (queryChannel || queryMsg || queryVideo) {
+        const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+        const found = list.find(v => 
+          (queryMsg && v.telegram_message_id === Number(queryMsg)) || 
+          (queryVideo && (v.id === queryVideo || v.title.toLowerCase().includes(queryVideo.toLowerCase()))) ||
+          (queryChannel && v.channel_id === queryChannel)
+        );
+        if (found) {
+          setSelectedVideo(found);
+          if (found.channel_id) setSelectedChannelId(found.channel_id);
+        }
+      }
+
+      if (queryTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile'].includes(queryTab)) {
+        setActiveTab(queryTab as any);
+        return;
+      }
+
       if (hash.startsWith('#/problem/')) {
         const pIdStr = hash.replace('#/problem/', '').trim();
         const allProbs: DSAProblem[] = [
@@ -187,32 +215,34 @@ export function App() {
         setSdeFullscreenProblem(null);
         if (hash === '#/potd') {
           setIsPotdModalOpen(true);
-        } else if (hash.startsWith('#/dashboard')) {
+        } else if (hash.startsWith('#/dashboard') || pathname === '/dashboard') {
           setActiveTab('dashboard');
-        } else if (hash.startsWith('#/channel/')) {
-          const chId = hash.replace('#/channel/', '');
+        } else if (hash.startsWith('#/channel/') || pathname.startsWith('/channel/')) {
+          const chId = hash.replace('#/channel/', '').replace('/channel/', '');
           setSelectedChannelId(chId);
           setChannelViewMode('detail');
           setActiveTab('channels');
-        } else if (hash.startsWith('#/lesson/') || hash.startsWith('#/video/')) {
-          const vidId = decodeURIComponent(hash.replace(/^#\/(lesson|video)\//, ''));
+        } else if (hash.startsWith('#/lesson/') || hash.startsWith('#/video/') || pathname.startsWith('/lesson/') || pathname.startsWith('/video/')) {
+          const vidId = decodeURIComponent(hash.replace(/^#\/(lesson|video)\//, '').replace(/^\/(lesson|video)\//, ''));
           const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
-          const found = list.find((v) => v.id === vidId || v.title === vidId);
+          const found = list.find((v) => v.id === vidId || v.title === vidId || String(v.telegram_message_id) === vidId);
           if (found) setSelectedVideo(found);
           setActiveTab('lesson');
-        } else if (hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet')) {
+        } else if (hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet') || pathname.startsWith('/dsa-sheets') || pathname.startsWith('/sde-sheet')) {
           setActiveTab('sde_sheet');
-        } else if (hash.startsWith('#/lld')) {
+        } else if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) {
           setActiveTab('lld');
-        } else if (hash.startsWith('#/hld')) {
+        } else if (hash.startsWith('#/hld') || pathname.startsWith('/hld')) {
           setActiveTab('hld');
-        } else if (hash.startsWith('#/system-design')) {
+        } else if (hash.startsWith('#/system-design') || pathname.startsWith('/system-design')) {
           setActiveTab('hld');
-        } else if (hash.startsWith('#/profile') || hash.startsWith('#/user/')) {
+        } else if (hash.startsWith('#/interview') || pathname.startsWith('/interview')) {
+          setActiveTab('interview');
+        } else if (hash.startsWith('#/profile') || hash.startsWith('#/user/') || pathname.startsWith('/profile')) {
           setActiveTab('profile');
-        } else if (hash.startsWith('#/analytics')) {
+        } else if (hash.startsWith('#/analytics') || pathname.startsWith('/analytics')) {
           setActiveTab('analytics');
-        } else if (hash.startsWith('#/channels')) {
+        } else if (hash.startsWith('#/channels') || pathname.startsWith('/channels')) {
           setActiveTab('channels');
           setChannelViewMode('overview');
         } else {
@@ -230,6 +260,39 @@ export function App() {
       window.removeEventListener('hashchange', handleHashSync);
     };
   }, [dynamicVideos]);
+
+  // Synchronize state with URL hash and query so reloading preserves exact page and lecture
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Pause any background video if coding modal or fullscreen problem is open
+    if (sdeFullscreenProblem || isSqlModalOpen || isPotdModalOpen) {
+      const videos = document.querySelectorAll('video');
+      videos.forEach(v => {
+        try { v.pause(); } catch {}
+      });
+    }
+
+    if (sdeFullscreenProblem) {
+      const problemSlug = sdeFullscreenProblem.slug || sdeFullscreenProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const targetHash = `#/problem/${problemSlug}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+      return;
+    }
+
+    let targetHash = '#/' + activeTab;
+    if (activeTab === 'lesson' && selectedVideo) {
+      targetHash = `#/lesson/${selectedVideo.channel_id || 'ch'}/${selectedVideo.telegram_message_id || selectedVideo.id}`;
+    } else if (activeTab === 'channels' && channelViewMode === 'detail' && selectedChannelId) {
+      targetHash = `#/channel/${selectedChannelId}`;
+    }
+
+    if (window.location.hash !== targetHash) {
+      window.history.replaceState(null, '', targetHash);
+    }
+  }, [activeTab, selectedVideo, selectedChannelId, channelViewMode, sdeFullscreenProblem, isSqlModalOpen, isPotdModalOpen]);
 
   // Lecture completion tracking
   const [completedLectures, setCompletedLectures] = useState<Set<string>>(() => {

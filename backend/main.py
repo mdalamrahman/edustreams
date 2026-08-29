@@ -3948,8 +3948,8 @@ async def get_channel_catalog(chat_id: str, limit: int = 0):
 # TELEGRAM VIDEO STREAMING — Real bytes from Telegram Datacenters
 # -------------------------------------------------------------------
 
-REQUEST_SIZE = 128 * 1024  # 128KB per Telethon MTProto chunk (native alignment)
-DEFAULT_RANGE_SIZE = 2 * 1024 * 1024  # 2MB default response chunk
+REQUEST_SIZE = 512 * 1024  # 512KB per Telethon MTProto chunk (optimal throughput alignment)
+DEFAULT_RANGE_SIZE = 4 * 1024 * 1024  # 4MB default response chunk for smooth buffer
 
 
 @app.get("/stream/{chat_id}/{msg_id}")
@@ -3987,7 +3987,7 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
                 f.seek(start)
                 remaining = chunk_size
                 while remaining > 0:
-                    read_bytes = min(remaining, 64 * 1024)
+                    read_bytes = min(remaining, 128 * 1024)
                     chunk = f.read(read_bytes)
                     if not chunk:
                         break
@@ -4003,7 +4003,7 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
             "Accept-Ranges": "bytes",
             "Content-Length": str(chunk_size),
             "Content-Type": mime_type,
-            "Cache-Control": "public, max-age=86400",
+            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
             "X-EduStream-Source": "LocalDiskStorage",
         }
         return StreamingResponse(generate_from_disk(), status_code=206, headers=headers)
@@ -4078,35 +4078,47 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
 
         async def generate():
             bytes_sent = 0
-            skip = skip_bytes
-            try:
-                async for chunk in client.iter_download(
-                    doc,
-                    offset=aligned_start,
-                    request_size=REQUEST_SIZE,
-                    dc_id=getattr(doc, 'dc_id', None),
-                ):
-                    if skip > 0:
-                        if len(chunk) <= skip:
-                            skip -= len(chunk)
-                            continue
-                        chunk = chunk[skip:]
-                        skip = 0
+            retries = 3
+            current_target_start = start
+            
+            while bytes_sent < chunk_size and retries > 0:
+                current_offset = current_target_start + bytes_sent
+                aligned_curr = (current_offset // REQUEST_SIZE) * REQUEST_SIZE
+                curr_skip = current_offset - aligned_curr
+                
+                try:
+                    async for chunk in client.iter_download(
+                        doc,
+                        offset=aligned_curr,
+                        request_size=REQUEST_SIZE,
+                        dc_id=getattr(doc, 'dc_id', None),
+                    ):
+                        if curr_skip > 0:
+                            if len(chunk) <= curr_skip:
+                                curr_skip -= len(chunk)
+                                continue
+                            chunk = chunk[curr_skip:]
+                            curr_skip = 0
 
-                    remaining = chunk_size - bytes_sent
-                    if remaining <= 0:
-                        break
-                    if len(chunk) > remaining:
-                        chunk = chunk[:remaining]
+                        remaining = chunk_size - bytes_sent
+                        if remaining <= 0:
+                            break
+                        if len(chunk) > remaining:
+                            chunk = chunk[:remaining]
 
-                    yield bytes(chunk)
-                    bytes_sent += len(chunk)
-                    if bytes_sent >= chunk_size:
+                        yield bytes(chunk)
+                        bytes_sent += len(chunk)
+                        if bytes_sent >= chunk_size:
+                            break
+                    break
+                except GeneratorExit:
+                    break
+                except Exception as e:
+                    print(f"[Stream] iter_download retry at byte {bytes_sent}/{chunk_size}: {e}")
+                    retries -= 1
+                    if retries <= 0:
                         break
-            except GeneratorExit:
-                pass
-            except Exception as e:
-                print(f"[Stream] iter_download error for msg {msg_id}: {e}")
+                    await asyncio.sleep(0.1)
 
         headers = {
             "Access-Control-Allow-Origin": "*",
@@ -4117,7 +4129,7 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
             "Accept-Ranges": "bytes",
             "Content-Length": str(chunk_size),
             "Content-Type": mime_type,
-            "Cache-Control": "public, max-age=86400",
+            "Cache-Control": "public, max-age=2592000, s-maxage=2592000, immutable",
             "X-EduStream-Source": "TelegramMTProto",
         }
         return StreamingResponse(generate(), status_code=206, headers=headers)
