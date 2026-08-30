@@ -226,27 +226,108 @@ function generateCppParamExtractors(paramList: string[]): { declarations: string
   };
 }
 
+const CPP_RESERVED_KEYWORDS = new Set([
+  'for', 'while', 'if', 'else', 'switch', 'case', 'default', 'return',
+  'break', 'continue', 'goto', 'try', 'catch', 'throw', 'sizeof', 'decltype',
+  'typeid', 'alignof', 'alignas', 'static_assert', 'do', 'new', 'delete',
+  'typedef', 'using', 'template', 'typename', 'public', 'private', 'protected',
+  'class', 'struct', 'enum', 'union', 'auto', 'register', 'volatile', 'mutable',
+  'const', 'constexpr', 'inline', 'explicit', 'friend', 'virtual', 'override',
+  'final', 'operator', 'this', 'namespace', 'extern', 'static', 'int', 'void',
+  'bool', 'char', 'double', 'float', 'long', 'short', 'signed', 'unsigned'
+]);
+
 /**
  * Accurately finds the primary entrypoint method in C++ Solution class,
- * avoiding helper methods like dfs/bfs/backtrack/util.
+ * using brace-depth tracking at class scope and strictly filtering out
+ * C++ reserved keywords (such as 'for', 'while', 'if', 'switch') to prevent
+ * invalid driver code generation like 'sol.for(arg_0)'.
  */
 function findBestCppMethod(
   searchSection: string,
   problemTitle?: string
 ): { methodName: string; retType: string; paramsStr: string } | null {
   const normTitle = (problemTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const methodGlobalRegex = /(?:inline\s+|virtual\s+|static\s+)*([a-zA-Z0-9_<>,:\s\*]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{/g;
+
+  // Strip block and line comments to avoid false matches
+  const cleanCode = searchSection.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
 
   const matches: Array<{ methodName: string; retType: string; paramsStr: string }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = methodGlobalRegex.exec(searchSection)) !== null) {
-    const retType = m[1].trim();
-    const methodName = m[2].trim();
-    const paramsStr = m[3].trim();
-    if (methodName === 'Solution' || methodName.startsWith('~') || retType.includes('class') || retType.includes('struct')) {
+
+  // Parse methods at class-level depth (depth 0 of class body)
+  let depth = 0;
+  let buffer = '';
+  let inString = false;
+  let stringChar = '';
+
+  for (let i = 0; i < cleanCode.length; i++) {
+    const ch = cleanCode[i];
+    const prevCh = i > 0 ? cleanCode[i - 1] : '';
+
+    if (inString) {
+      if (ch === stringChar && prevCh !== '\\') {
+        inString = false;
+      }
       continue;
     }
-    matches.push({ methodName, retType, paramsStr });
+
+    if (ch === '"' || ch === '\'') {
+      inString = true;
+      stringChar = ch;
+      continue;
+    }
+
+    if (ch === '{') {
+      if (depth === 0) {
+        // Buffer right before this opening brace contains potential method header
+        const header = buffer.trim();
+        const methodMatch = header.match(/(?:inline\s+|virtual\s+|static\s+|constexpr\s+)*([a-zA-Z0-9_<>,:\s\*&]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\s*const)?(?:\s*noexcept)?$/);
+        
+        if (methodMatch) {
+          const retType = methodMatch[1].trim();
+          const methodName = methodMatch[2].trim();
+          const paramsStr = methodMatch[3].trim();
+
+          const isKeyword = CPP_RESERVED_KEYWORDS.has(methodName.toLowerCase());
+          const isClassOrCtor = methodName === 'Solution' || methodName.startsWith('~') || retType.includes('class') || retType.includes('struct');
+          const hasInvalidRetTokens = /[\;=\{\}\[\]]/.test(retType);
+
+          if (!isKeyword && !isClassOrCtor && !hasInvalidRetTokens) {
+            matches.push({ methodName, retType, paramsStr });
+          }
+        }
+        buffer = '';
+      }
+      depth++;
+    } else if (ch === '}') {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) {
+        buffer = '';
+      }
+    } else {
+      if (depth === 0) {
+        buffer += ch;
+      }
+    }
+  }
+
+  // Fallback: If brace parsing found 0 matches (e.g. malformed or single-line signatures), run filtered regex
+  if (matches.length === 0) {
+    const methodGlobalRegex = /(?:inline\s+|virtual\s+|static\s+)*([a-zA-Z0-9_<>,:\s\*&]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*(?:const\s*)?\{/g;
+    let m: RegExpExecArray | null;
+    while ((m = methodGlobalRegex.exec(cleanCode)) !== null) {
+      const retType = m[1].trim();
+      const methodName = m[2].trim();
+      const paramsStr = m[3].trim();
+
+      const isKeyword = CPP_RESERVED_KEYWORDS.has(methodName.toLowerCase());
+      const isClassOrCtor = methodName === 'Solution' || methodName.startsWith('~') || retType.includes('class') || retType.includes('struct');
+      const hasInvalidRetTokens = /[\;=\{\}\[\]]/.test(retType);
+
+      if (!isKeyword && !isClassOrCtor && !hasInvalidRetTokens) {
+        matches.push({ methodName, retType, paramsStr });
+      }
+    }
   }
 
   if (matches.length === 0) return null;

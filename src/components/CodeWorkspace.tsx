@@ -343,7 +343,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
       language,
       executionResult?.stdout || '',
       executionResult?.stderr || '',
-      question?.question || 'Algorithm Challenge'
+      question?.question || codingProblem?.title || 'Algorithm Challenge',
+      codingProblem?.problem_statement || question?.explanation || question?.question || '',
+      [],
+      question?.test_cases?.map(tc => ({ input: tc.input, expected: tc.expected_output })) || []
     );
 
     setAiReview(review);

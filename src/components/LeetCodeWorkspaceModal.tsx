@@ -1343,7 +1343,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         language,
         executionResult?.stdout || '',
         executionResult?.stderr || '',
-        cleanTitle
+        cleanTitle,
+        problemTemplate?.description || '',
+        problemTemplate?.constraints || [],
+        problemTemplate?.testCases || []
       );
       setAiReview(review);
     } catch (err) {
