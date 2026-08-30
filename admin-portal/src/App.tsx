@@ -685,14 +685,14 @@ export default function App() {
                       <span>Supabase Magic Link / OTP Dispatched</span>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      {otpSentFeedback || `A 6-digit verification code has been dispatched to mdalamrahman4@gmail.com. Please check your inbox or spam folder.`}
+                      {otpSentFeedback || `A verification code has been dispatched to mdalamrahman4@gmail.com. Please check your inbox or spam folder.`}
                     </p>
                     <span className="text-[10px] text-amber-400 block font-mono">⏱️ Expires in 10 minutes &bull; Single-use</span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-300">Enter 6-Digit Code:</label>
+                      <label className="text-xs font-bold text-slate-300">Enter Verification Code (6-8 Digits):</label>
                       <button
                         type="button"
                         onClick={handleRequestNewOtp}
@@ -704,18 +704,18 @@ export default function App() {
                     </div>
                     <input
                       type="text"
-                      maxLength={6}
+                      maxLength={12}
                       required
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="••••••"
-                      className="w-full px-3.5 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-2xl tracking-[0.3em] text-white focus:outline-none focus:border-teal-500"
+                      placeholder="e.g. 12345678"
+                      className="w-full px-3.5 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-2xl tracking-[0.25em] text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={isVerifyingOtp || otpCode.trim().length !== 6}
+                    disabled={isVerifyingOtp || otpCode.trim().length < 6}
                     className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-teal-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                   >
                     {isVerifyingOtp ? (

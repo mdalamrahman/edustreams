@@ -337,7 +337,7 @@ export async function generateAndDispatchAdminOtp(
 }
 
 /**
- * Verify SuperAdmin 6-digit OTP against Supabase Auth and platform vault.
+ * Verify SuperAdmin OTP against Supabase Auth (6 or 8 digits) and platform vault.
  * Automatically marks the token as used on successful verification to prevent replay attacks.
  */
 export async function verifyAdminOtp(
@@ -346,10 +346,10 @@ export async function verifyAdminOtp(
   try {
     const cleanInput = enteredCode.trim();
     if (!cleanInput || cleanInput.length < 6) {
-      return { success: false, message: 'Please enter a valid 6-digit verification code.' };
+      return { success: false, message: 'Please enter a valid verification code (at least 6 digits).' };
     }
 
-    // 1. Verify via Supabase Auth verifyOtp
+    // 1. Verify via Supabase Auth verifyOtp (supports 6 or 8-digit email tokens)
     try {
       const { data: sbData, error: sbError } = await supabaseAdmin.auth.verifyOtp({
         email: 'mdalamrahman4@gmail.com',
@@ -358,6 +358,17 @@ export async function verifyAdminOtp(
       });
       if (!sbError && sbData?.user) {
         return { success: true };
+      }
+      if (sbError) {
+        // Also try magiclink type if email type rejected
+        const { data: mlData, error: mlError } = await supabaseAdmin.auth.verifyOtp({
+          email: 'mdalamrahman4@gmail.com',
+          token: cleanInput,
+          type: 'magiclink'
+        });
+        if (!mlError && mlData?.user) {
+          return { success: true };
+        }
       }
     } catch (sbVerifyErr) {
       console.warn('Supabase Auth verifyOtp check:', sbVerifyErr);
