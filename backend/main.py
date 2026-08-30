@@ -1793,7 +1793,182 @@ Return ONLY valid JSON matching:
     return problem_data
 
 
-_PROBLEM_CACHE: dict = {}
+def fetch_gfg_problem_beautifulsoup(slug: str) -> Optional[dict]:
+    """
+    Scrapes authentic problem definition directly from GeeksforGeeks using
+    BeautifulSoup parsing and practice APIs.
+    """
+    clean_slug = re.sub(r'^https?://www\.geeksforgeeks\.org/problems/', '', slug, flags=re.IGNORECASE)
+    clean_slug = re.sub(r'/.*$', '', clean_slug)
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', clean_slug.lower()).strip('-')
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/html, */*",
+        "Referer": "https://www.geeksforgeeks.org/"
+    }
+
+    api_urls = [
+        f"https://practiceapi.geeksforgeeks.org/api/v1/problems/{clean_slug}/",
+        f"https://practiceapi.geeksforgeeks.org/api/vr/problems/{clean_slug}/"
+    ]
+
+    gfg_data = None
+    for ep in api_urls:
+        try:
+            r = requests.get(ep, headers=headers, timeout=8)
+            if r.ok:
+                j = r.json()
+                if j and j.get("results") and (j["results"].get("problem_name") or j["results"].get("problem_question")):
+                    gfg_data = j["results"]
+                    break
+        except Exception as e:
+            print(f"[GFG API Error {ep}]: {e}")
+
+    web_soup = None
+    if not gfg_data or not gfg_data.get("problem_question"):
+        try:
+            web_url = f"https://www.geeksforgeeks.org/problems/{clean_slug}/1"
+            web_r = requests.get(web_url, headers=headers, timeout=8)
+            if web_r.ok and web_r.text:
+                web_soup = BeautifulSoup(web_r.text, "html.parser")
+        except Exception as e:
+            print(f"[GFG Web Scrape Error]: {e}")
+
+    if not gfg_data and not web_soup:
+        return None
+
+    name = (gfg_data.get("problem_name") if gfg_data else None)
+    if not name and web_soup:
+        og_title = web_soup.find("meta", property="og:title")
+        if og_title and og_title.get("content"):
+            name = og_title["content"].split("|")[0].strip()
+        elif web_soup.title:
+            name = web_soup.title.string.split("|")[0].strip()
+
+    name = name or clean_slug.replace('-', ' ').title()
+    difficulty = (gfg_data.get("difficulty") if gfg_data else "Medium") or "Medium"
+
+    raw_html = (gfg_data.get("problem_question", "") if gfg_data else "")
+    if not raw_html and web_soup:
+        meta_desc = web_soup.find("meta", attrs={"name": "description"})
+        if meta_desc and meta_desc.get("content"):
+            raw_html = f"<p>{meta_desc['content']}</p>"
+
+    soup = BeautifulSoup(raw_html, "html.parser")
+    clean_text = soup.get_text(separator="\n").strip()
+
+    examples = []
+    ex_pattern = re.findall(r'Input:\s*([^\n\r]+(?:\n[^\n\r]+)*?)\s*Output:\s*([^\n\r]+)(?:\s*Explanation:\s*([^\n\r]+(?:\n[^\n\r]+)*?))?(?=(?:Input:|$))', clean_text, re.DOTALL | re.IGNORECASE)
+    for match in ex_pattern:
+        inp = match[0].strip()
+        outp = match[1].strip()
+        expl = match[2].strip() if len(match) > 2 and match[2] else ""
+        expl = re.sub(r'Example\s*\d+:\s*$', '', expl, flags=re.IGNORECASE).strip()
+        examples.append({
+            "input": inp,
+            "output": outp,
+            "explanation": expl
+        })
+
+    constraints = []
+    cons_match = re.search(r'Constraints:\s*([\s\S]+?)(?=(?:Company Tags|Topic Tags|Expected Time Complexity|$))', clean_text, re.IGNORECASE)
+    if cons_match:
+        cons_lines = [l.strip().lstrip('-*•').strip() for l in cons_match.group(1).split('\n') if l.strip()]
+        constraints.extend(cons_lines)
+    if not constraints and gfg_data and gfg_data.get("constraints_display"):
+        c_soup = BeautifulSoup(gfg_data["constraints_display"], "html.parser")
+        constraints = [l.strip().lstrip('-*•').strip() for l in c_soup.get_text(separator="\n").split('\n') if l.strip()]
+
+    tags = []
+    if gfg_data and isinstance(gfg_data.get("tags"), dict):
+        tags = gfg_data["tags"].get("topic_tags", [])
+    category = tags[0] if tags else "Algorithms"
+
+    test_cases = [e["input"] for e in examples if e.get("input")]
+    expected_outputs = [e["output"] for e in examples if e.get("output")]
+
+    if gfg_data and gfg_data.get("test_cases"):
+        raw_tcs = gfg_data["test_cases"].split("&!//!&")
+        for tc in raw_tcs:
+            tc_str = tc.strip()
+            if tc_str and tc_str not in test_cases:
+                test_cases.append(tc_str)
+
+    starters = {}
+    solutions = {}
+    try:
+        gen_prompt = f"""You are a senior algorithmic software engineer.
+Based on this official GeeksforGeeks problem scraped with BeautifulSoup:
+Problem Name: "{name}"
+Difficulty: "{difficulty}"
+Description:
+{clean_text}
+
+Constraints:
+{json.dumps(constraints)}
+
+Examples:
+{json.dumps(examples)}
+
+Generate exact starter code templates and optimal solutions in JSON:
+- starters: object with complete class/function signatures for cpp, python, java, javascript, go, rust
+- solutions: object with complete working solutions for cpp, python, java, javascript, go, rust
+- testCases: array of at least 10 comprehensive input strings
+- expectedOutputs: array of matching expected output strings for each test case"""
+
+        resp = requests.post(
+            "https://api.mistral.ai/v1/chat/completions",
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": gen_prompt}], "response_format": {"type": "json_object"}},
+            timeout=25
+        )
+        if resp.ok:
+            gen_data = resp.json()
+            parsed_gen = json.loads(gen_data["choices"][0]["message"]["content"])
+            if parsed_gen.get("starters"):
+                starters = parsed_gen["starters"]
+            if parsed_gen.get("solutions"):
+                solutions = parsed_gen["solutions"]
+            if parsed_gen.get("testCases") and len(parsed_gen["testCases"]) >= len(test_cases):
+                test_cases = parsed_gen["testCases"]
+                expected_outputs = parsed_gen.get("expectedOutputs", expected_outputs)
+    except Exception as me:
+        print(f"[GFG Starters Generation Warning for '{clean_slug}']: {me}")
+
+    result = {
+        "id": gfg_data.get("id") or 9999 if gfg_data else 9999,
+        "name": name,
+        "category": category,
+        "difficulty": difficulty,
+        "description": clean_text,
+        "descriptionHtml": raw_html,
+        "examples": examples,
+        "constraints": constraints,
+        "testCases": test_cases,
+        "expectedOutputs": expected_outputs,
+        "starters": starters,
+        "solutions": solutions,
+        "hints": [
+            "Consider how marks are distributed into disjoint intervals.",
+            "Use binary search or prefix sum accumulation over the intervals to map each rank to its exact mark."
+        ],
+        "approaches": [
+            {
+                "id": "binary-search",
+                "name": "Prefix Sum & Binary Search Interval Mapping",
+                "timeComplexity": "O(M log N)",
+                "spaceComplexity": "O(N)",
+                "description": "Calculate prefix sums of interval lengths, then binary search each query rank to pinpoint interval and offset."
+            }
+        ],
+        "topicTags": tags,
+        "companyTags": gfg_data.get("tags", {}).get("company_tags", []) if gfg_data and isinstance(gfg_data.get("tags"), dict) else [],
+        "url": f"https://www.geeksforgeeks.org/problems/{clean_slug}/1",
+        "slug": clean_slug,
+        "source": "geeksforgeeks"
+    }
+    return result
 
 
 @app.get("/api/problem/{slug}")
@@ -1801,13 +1976,17 @@ async def get_problem_route(slug: str, refresh: bool = False):
     """
     Fetches coding problem definition from Cloudflare R2 storage (fastest).
     If not yet stored in Cloudflare R2 or has < 10 test cases, fetches from
-    LeetCode GraphQL / Mistral AI, expands to min 10 testcases, persists
+    LeetCode GraphQL / GeeksforGeeks BeautifulSoup Scraper / Mistral AI, expands to min 10 testcases, persists
     permanently into Cloudflare R2 as both .json and .txt, and returns.
     """
     # Clean URL or title into standard slug
     raw_slug = slug.strip()
     if "leetcode.com/problems/" in raw_slug.lower():
         m = re.search(r'leetcode\.com/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
+        if m:
+            raw_slug = m.group(1)
+    elif "geeksforgeeks.org/problems/" in raw_slug.lower():
+        m = re.search(r'geeksforgeeks\.org/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
         if m:
             raw_slug = m.group(1)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
@@ -1855,7 +2034,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
                     _PROBLEM_CACHE[clean_slug] = problem_data
                     return problem_data
                 else:
-                    print(f"[R2 Problem Notice] Found corrupted placeholder problem for '{clean_slug}'. Refetching from LeetCode GraphQL...")
+                    print(f"[R2 Problem Notice] Found corrupted placeholder problem for '{clean_slug}'. Refetching...")
         except Exception as e:
             print(f"[R2 fetch notice for '{clean_slug}']: {e}")
 
@@ -1870,6 +2049,18 @@ async def get_problem_route(slug: str, refresh: bool = False):
         except Exception as e:
             print(f"[R2 upload error for '{clean_slug}']: {e}")
         return lc_data
+
+    # 3.5. If not on LeetCode, scrape directly from GeeksforGeeks using BeautifulSoup
+    gfg_data = fetch_gfg_problem_beautifulsoup(clean_slug)
+    if gfg_data and gfg_data.get("name") and gfg_data.get("description"):
+        gfg_data = sanitize_and_harden_testcases(gfg_data)
+        gfg_data = expand_problem_testcases_to_min_10(gfg_data)
+        _PROBLEM_CACHE[clean_slug] = gfg_data
+        try:
+            r2_storage.upload_problem(clean_slug, gfg_data)
+        except Exception as e:
+            print(f"[R2 upload error for GFG '{clean_slug}']: {e}")
+        return gfg_data
 
     # 4. If not found on LeetCode, generate authentic spec with Mistral AI (MIN 10 TEST CASES)
     try:
