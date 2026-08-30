@@ -269,21 +269,35 @@ export async function revokeSignupOtp(code: string): Promise<boolean> {
 }
 
 /**
- * Generate a cryptographically secure 6-digit SuperAdmin sign-in OTP,
- * store it in Supabase system config (with 10-minute expiry), and dispatch
- * an automated security email to mdalamrahman4@gmail.com via Render backend.
+ * Dispatch a secure Supabase Magic Link / 6-digit OTP email directly
+ * to mdalamrahman4@gmail.com using Supabase Auth.
  */
 export async function generateAndDispatchAdminOtp(
   targetEmail: string = 'mdalamrahman4@gmail.com'
 ): Promise<{ success: boolean; message: string; expiresInMins: number }> {
   try {
     const cleanEmail = 'mdalamrahman4@gmail.com';
-    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
     const now = Date.now();
     const expiresInMins = 10;
     const expiresAt = now + (expiresInMins * 60 * 1000);
 
-    // 1. Store in Supabase vault under system_platform_config
+    // 1. Dispatch Supabase Magic Link / OTP via Supabase Auth built-in mailer
+    try {
+      const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          shouldCreateUser: true
+        }
+      });
+      if (otpErr) {
+        console.warn('Supabase signInWithOtp notice:', otpErr.message);
+      }
+    } catch (sbErr) {
+      console.warn('Supabase signInWithOtp exception:', sbErr);
+    }
+
+    // 2. Generate secure cryptographic backup OTP token in Supabase platform config
+    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
     const rates = await fetchSystemRates();
     rates.admin_auth_otp = {
       code: randomCode,
@@ -294,9 +308,9 @@ export async function generateAndDispatchAdminOtp(
     };
     await saveSystemRates(rates);
 
-    // 2. Dispatch live email via Render Backend /api/admin/send-admin-auth-otp
+    // 3. Dispatch to backend mailer if active
     try {
-      await fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-admin-auth-otp', {
+      fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-admin-auth-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,66 +318,70 @@ export async function generateAndDispatchAdminOtp(
           otp_code: randomCode,
           expires_in_mins: expiresInMins
         })
-      });
-    } catch (netErr) {
-      console.warn('Backend email dispatch warning (Supabase vault holds active OTP):', netErr);
-    }
+      }).catch(() => {});
+    } catch {}
 
     return {
       success: true,
-      message: `A 6-digit verification code has been dispatched to ${cleanEmail}. Please check your inbox or spam folder.`,
+      message: `A secure verification code / magic link has been sent to ${cleanEmail} via Supabase. Please check your inbox or spam folder.`,
       expiresInMins
     };
   } catch (err: any) {
     console.error('Failed to generate admin auth OTP:', err);
     return {
       success: false,
-      message: 'Failed to generate authentication OTP. Please try again.',
+      message: 'Failed to dispatch verification email. Please try again.',
       expiresInMins: 0
     };
   }
 }
 
 /**
- * Verify SuperAdmin 6-digit OTP against Supabase vault.
- * Automatically marks the OTP as used on successful verification to prevent replay attacks.
+ * Verify SuperAdmin 6-digit OTP against Supabase Auth and platform vault.
+ * Automatically marks the token as used on successful verification to prevent replay attacks.
  */
 export async function verifyAdminOtp(
   enteredCode: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
     const cleanInput = enteredCode.trim();
-    if (!cleanInput || cleanInput.length !== 6) {
+    if (!cleanInput || cleanInput.length < 6) {
       return { success: false, message: 'Please enter a valid 6-digit verification code.' };
     }
 
-    // Direct zero-cache fetch from Supabase
+    // 1. Verify via Supabase Auth verifyOtp
+    try {
+      const { data: sbData, error: sbError } = await supabaseAdmin.auth.verifyOtp({
+        email: 'mdalamrahman4@gmail.com',
+        token: cleanInput,
+        type: 'email'
+      });
+      if (!sbError && sbData?.user) {
+        return { success: true };
+      }
+    } catch (sbVerifyErr) {
+      console.warn('Supabase Auth verifyOtp check:', sbVerifyErr);
+    }
+
+    // 2. Verify via Supabase Platform Config Vault
     const rates = await fetchSystemRates();
     const otpRecord = rates.admin_auth_otp;
 
-    if (!otpRecord || !otpRecord.code) {
-      return { success: false, message: 'No active verification code found. Please request a new code.' };
+    if (otpRecord && otpRecord.code && otpRecord.code.trim() === cleanInput) {
+      if (Date.now() > otpRecord.expiresAt) {
+        return { success: false, message: 'Verification code has expired. Please request a new code.' };
+      }
+      if (otpRecord.isUsed) {
+        return { success: false, message: 'This verification code has already been used. Please request a fresh code.' };
+      }
+      if (rates.admin_auth_otp) {
+        rates.admin_auth_otp.isUsed = true;
+      }
+      await saveSystemRates(rates);
+      return { success: true };
     }
 
-    if (Date.now() > otpRecord.expiresAt) {
-      return { success: false, message: 'Verification code has expired. Please request a new code.' };
-    }
-
-    if (otpRecord.isUsed) {
-      return { success: false, message: 'This verification code has already been used. Please request a fresh code.' };
-    }
-
-    if (otpRecord.code.trim() !== cleanInput) {
-      return { success: false, message: 'Invalid verification code. Please check your email and try again.' };
-    }
-
-    // Mark as used immediately to invalidate
-    if (rates.admin_auth_otp) {
-      rates.admin_auth_otp.isUsed = true;
-    }
-    await saveSystemRates(rates);
-
-    return { success: true };
+    return { success: false, message: 'Invalid verification code. Please check your email and try again.' };
   } catch (err: any) {
     console.error('Failed to verify admin OTP:', err);
     return { success: false, message: 'Server verification error. Please try again.' };

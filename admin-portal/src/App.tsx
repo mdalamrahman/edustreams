@@ -243,7 +243,7 @@ export default function App() {
     }
   };
 
-  // Generate and dispatch live 6-digit OTP to mdalamrahman4@gmail.com
+  // Dispatch live Supabase Magic Link / 6-digit OTP to mdalamrahman4@gmail.com
   const handleRequestNewOtp = async () => {
     setIsSendingOtp(true);
     setAuthError('');
@@ -682,15 +682,15 @@ export default function App() {
                   <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 space-y-1">
                     <div className="flex items-center space-x-2 font-bold text-indigo-300">
                       <Mail className="w-4 h-4 text-teal-400" />
-                      <span>Direct OTP Dispatched</span>
+                      <span>Supabase Magic Link / OTP Dispatched</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 font-mono">
-                      {otpSentFeedback || `Security code sent to mdalamrahman4@gmail.com`}
+                    <p className="text-[11px] text-slate-300">
+                      {otpSentFeedback || `A 6-digit verification code has been dispatched to mdalamrahman4@gmail.com. Please check your inbox or spam folder.`}
                     </p>
                     <span className="text-[10px] text-amber-400 block font-mono">⏱️ Expires in 10 minutes &bull; Single-use</span>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-slate-300">Enter 6-Digit Code:</label>
                       <button
@@ -708,8 +708,8 @@ export default function App() {
                       required
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="e.g. 849201"
-                      className="w-full px-3.5 py-3 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-xl tracking-widest text-white focus:outline-none focus:border-teal-500"
+                      placeholder="••••••"
+                      className="w-full px-3.5 py-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-2xl tracking-[0.3em] text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
 
