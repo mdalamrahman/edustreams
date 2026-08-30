@@ -53,13 +53,21 @@ import {
   toggleUserDownloadWhitelist,
   generateAdminSignupOtp,
   revokeSignupOtp,
+  generateAndDispatchAdminOtp,
+  verifyAdminOtp,
+  fetchAdminPasskey,
+  saveAdminPasskey,
+  removeAdminPasskey,
+  registerWebAuthnPasskey,
+  verifyWebAuthnPasskey,
   moderateUserInSupabase, 
   deleteUserFromSupabase, 
   adjustUserCreditsInSupabase, 
   SystemPlatformRates, 
   AdminUserRecord,
   PlatformAnalyticsSummary,
-  DynamicSignupOtp
+  DynamicSignupOtp,
+  AdminPasskeyRecord
 } from './lib/supabaseAdminClient';
 import confetti from 'canvas-confetti';
 
@@ -79,9 +87,19 @@ export default function App() {
   const [authStep, setAuthStep] = useState<'credentials' | 'mfa'>('credentials');
   const [mfaMethod, setMfaMethod] = useState<'passkey' | 'otp'>('passkey');
   const [otpCode, setOtpCode] = useState<string>('');
-  const [generatedMockOtp, setGeneratedMockOtp] = useState<string>('849201');
+  const [isSendingOtp, setIsSendingOtp] = useState<boolean>(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+  const [otpSentFeedback, setOtpSentFeedback] = useState<string>('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [registeredPasskey, setRegisteredPasskey] = useState<AdminPasskeyRecord | null>(null);
   const [isVerifyingPasskey, setIsVerifyingPasskey] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
+
+  // Passkey Settings Modal States (Inside SuperAdmin Dashboard)
+  const [showPasskeyModal, setShowPasskeyModal] = useState<boolean>(false);
+  const [passkeyDeviceInput, setPasskeyDeviceInput] = useState<string>('SuperAdmin Hardware Authenticator');
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState<boolean>(false);
+  const [passkeyModalStatus, setPasskeyModalStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   // Active Hub Tab
   const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits'>('analytics');
@@ -152,8 +170,25 @@ export default function App() {
   };
 
   useEffect(() => {
+    fetchAdminPasskey().then((pk) => {
+      setRegisteredPasskey(pk);
+      if (!pk) {
+        setMfaMethod('otp');
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  useEffect(() => {
     if (isAuthenticated) {
       loadAllData();
+      fetchAdminPasskey().then((pk) => setRegisteredPasskey(pk));
     }
   }, [isAuthenticated]);
 
@@ -168,7 +203,7 @@ export default function App() {
   };
 
   // Step 1: Verify Password & Captcha
-  const handleInitialCredentialsSubmit = (e: React.FormEvent) => {
+  const handleInitialCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
 
@@ -194,10 +229,38 @@ export default function App() {
       return;
     }
 
-    // Advance to Step 2: MFA Verification
-    const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedMockOtp(newOtp);
-    setAuthStep('mfa');
+    // Check if passkey is registered
+    const passkey = await fetchAdminPasskey();
+    setRegisteredPasskey(passkey);
+
+    if (passkey) {
+      setMfaMethod('passkey');
+      setAuthStep('mfa');
+    } else {
+      setMfaMethod('otp');
+      setAuthStep('mfa');
+      await handleRequestNewOtp();
+    }
+  };
+
+  // Generate and dispatch live 6-digit OTP to mdalamrahman4@gmail.com
+  const handleRequestNewOtp = async () => {
+    setIsSendingOtp(true);
+    setAuthError('');
+    setOtpSentFeedback('');
+    try {
+      const res = await generateAndDispatchAdminOtp('mdalamrahman4@gmail.com');
+      if (res.success) {
+        setOtpSentFeedback(res.message);
+        setResendCooldown(30);
+      } else {
+        setAuthError(res.message);
+      }
+    } catch (err: any) {
+      setAuthError('Failed to dispatch authentication OTP. Please try again.');
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   // Step 2A: WebAuthn Hardware Biometric Passkey
@@ -207,30 +270,85 @@ export default function App() {
 
     try {
       if (window.PublicKeyCredential) {
-        await new Promise((resolve) => setTimeout(resolve, 900));
-        sessionStorage.setItem('aspersde_admin_auth', 'true');
-        setIsAuthenticated(true);
-        confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+        const verified = await verifyWebAuthnPasskey(registeredPasskey);
+        if (verified) {
+          sessionStorage.setItem('aspersde_admin_auth', 'true');
+          setIsAuthenticated(true);
+          confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+        } else {
+          setAuthError('Hardware biometric verification was cancelled or failed.');
+        }
       } else {
         setAuthError('WebAuthn biometric not supported on this browser. Use Email OTP.');
       }
-    } catch (err) {
-      setAuthError('Passkey authentication failed.');
+    } catch (err: any) {
+      console.error('Passkey error:', err);
+      setAuthError(err.message || 'Passkey authentication failed. You can use Email OTP to sign in.');
     } finally {
       setIsVerifyingPasskey(false);
     }
   };
 
-  // Step 2B: Email OTP Verification
-  const handleOtpSubmit = (e: React.FormEvent) => {
+  // Step 2B: Email OTP Verification against Supabase
+  const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.trim() === generatedMockOtp || otpCode.trim() === '849201' || otpCode.trim() === '123456') {
-      sessionStorage.setItem('aspersde_admin_auth', 'true');
-      setIsAuthenticated(true);
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-    } else {
-      setAuthError('Invalid 6-Digit Verification Code.');
+    setAuthError('');
+    setIsVerifyingOtp(true);
+
+    try {
+      const result = await verifyAdminOtp(otpCode);
+      if (result.success) {
+        sessionStorage.setItem('aspersde_admin_auth', 'true');
+        setIsAuthenticated(true);
+        confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      } else {
+        setAuthError(result.message || 'Invalid 6-Digit Verification Code.');
+      }
+    } catch (err: any) {
+      setAuthError('Verification failed. Please try again.');
+    } finally {
+      setIsVerifyingOtp(false);
     }
+  };
+
+  // Hardware Passkey Registration / Update in Dashboard
+  const handleRegisterOrUpdatePasskey = async () => {
+    setIsRegisteringPasskey(true);
+    setPasskeyModalStatus(null);
+    try {
+      const newPasskey = await registerWebAuthnPasskey(passkeyDeviceInput.trim() || 'SuperAdmin Hardware Authenticator');
+      if (newPasskey) {
+        setRegisteredPasskey(newPasskey);
+        setPasskeyModalStatus({
+          success: true,
+          message: 'Hardware Passkey successfully registered and secured in Supabase vault!'
+        });
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
+      }
+    } catch (err: any) {
+      console.error('Passkey registration error:', err);
+      setPasskeyModalStatus({
+        success: false,
+        message: err.message || 'Failed to register hardware passkey. Make sure biometric/platform authenticator is available.'
+      });
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
+
+  // Hardware Passkey Revocation
+  const handleRevokePasskey = async () => {
+    if (!confirm('Are you sure you want to revoke this hardware passkey? You will need to sign in with Email OTP until a new passkey is registered.')) {
+      return;
+    }
+    setIsProcessingAction(true);
+    await removeAdminPasskey();
+    setRegisteredPasskey(null);
+    setPasskeyModalStatus({
+      success: true,
+      message: 'Hardware passkey successfully revoked from Supabase vault.'
+    });
+    setIsProcessingAction(false);
   };
 
   const handleAdminLogout = () => {
@@ -240,6 +358,7 @@ export default function App() {
     setAdminPassword('');
     setIsCaptchaVerified(false);
     setOtpCode('');
+    setOtpSentFeedback('');
   };
 
   // Generate Signup OTP in Supabase
@@ -522,24 +641,66 @@ export default function App() {
 
               {mfaMethod === 'passkey' ? (
                 <div className="space-y-4">
+                  {registeredPasskey ? (
+                    <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-200 space-y-1">
+                      <div className="flex items-center space-x-2 font-bold text-emerald-400">
+                        <Fingerprint className="w-4 h-4" />
+                        <span>Hardware Passkey Configured</span>
+                      </div>
+                      <p className="text-[11px] text-emerald-300/80 font-mono">
+                        {registeredPasskey.deviceLabel || 'Biometric Security Key'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 text-xs text-amber-200 space-y-1.5">
+                      <div className="flex items-center space-x-2 font-bold text-amber-400">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>No Hardware Passkey Registered</span>
+                      </div>
+                      <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                        No biometric security key is registered yet. Please click the <strong>Email 6-Digit OTP</strong> tab above to sign in, then register your Touch ID / Windows Hello in the Dashboard.
+                      </p>
+                    </div>
+                  )}
+
                   <p className="text-xs text-slate-400 text-center leading-relaxed">
-                    Authenticate using your hardware security key, TouchID, FaceID, or Windows Hello.
+                    Authenticate using your platform biometric sensor, Touch ID, Face ID, or Windows Hello.
                   </p>
+
                   <button
+                    type="button"
                     onClick={handlePasskeyVerification}
-                    disabled={isVerifyingPasskey}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+                    disabled={isVerifyingPasskey || !registeredPasskey}
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-emerald-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                   >
                     <Fingerprint className={`w-5 h-5 ${isVerifyingPasskey ? 'animate-pulse' : ''}`} />
-                    <span>{isVerifyingPasskey ? 'Scanning Biometrics...' : 'Authenticate with Passkey'}</span>
+                    <span>{isVerifyingPasskey ? 'Verifying Biometrics...' : 'Authenticate with Passkey'}</span>
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleOtpSubmit} className="space-y-4">
+                  <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 space-y-1">
+                    <div className="flex items-center space-x-2 font-bold text-indigo-300">
+                      <Mail className="w-4 h-4 text-teal-400" />
+                      <span>Direct OTP Dispatched</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 font-mono">
+                      {otpSentFeedback || `Security code sent to mdalamrahman4@gmail.com`}
+                    </p>
+                    <span className="text-[10px] text-amber-400 block font-mono">⏱️ Expires in 10 minutes &bull; Single-use</span>
+                  </div>
+
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-300">Enter 6-Digit OTP:</label>
-                      <span className="text-[10px] font-mono text-indigo-400">Sent to {adminEmail} (Code: {generatedMockOtp})</span>
+                      <label className="text-xs font-bold text-slate-300">Enter 6-Digit Code:</label>
+                      <button
+                        type="button"
+                        onClick={handleRequestNewOtp}
+                        disabled={isSendingOtp || resendCooldown > 0}
+                        className="text-[11px] font-mono text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSendingOtp ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : '🔄 Resend Code'}
+                      </button>
                     </div>
                     <input
                       type="text"
@@ -548,15 +709,26 @@ export default function App() {
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
                       placeholder="e.g. 849201"
-                      className="w-full px-3.5 py-3 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-lg tracking-widest text-white focus:outline-none focus:border-teal-500"
+                      className="w-full px-3.5 py-3 rounded-xl bg-slate-950 border border-slate-800 text-center font-mono font-black text-xl tracking-widest text-white focus:outline-none focus:border-teal-500"
                     />
                   </div>
+
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-teal-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2"
+                    disabled={isVerifyingOtp || otpCode.trim().length !== 6}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-teal-900/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Verify OTP & Launch Dashboard</span>
+                    {isVerifyingOtp ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                        <span>Verifying Security Code...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Verify OTP & Launch Dashboard</span>
+                      </>
+                    )}
                   </button>
                 </form>
               )}
@@ -570,8 +742,11 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => setAuthStep('credentials')}
-                className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                onClick={() => {
+                  setAuthStep('credentials');
+                  setAuthError('');
+                }}
+                className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
                 &larr; Back to password screen
               </button>
@@ -615,6 +790,23 @@ export default function App() {
         </div>
 
         <div className="flex items-center space-x-2.5">
+          <button
+            onClick={() => {
+              setShowPasskeyModal(true);
+              setPasskeyModalStatus(null);
+            }}
+            className={`p-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              registeredPasskey
+                ? 'bg-emerald-950/60 hover:bg-emerald-900/80 border-emerald-500/40 text-emerald-300 hover:text-white'
+                : 'bg-amber-950/60 hover:bg-amber-900/80 border-amber-500/40 text-amber-300 hover:text-white'
+            }`}
+            title="Manage SuperAdmin Biometric Passkey"
+          >
+            <Fingerprint className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Passkey Security</span>
+            <span className={`w-2 h-2 rounded-full ${registeredPasskey ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+          </button>
+
           <button
             onClick={loadAllData}
             disabled={isLoadingData}
@@ -1948,6 +2140,131 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* SuperAdmin Hardware Passkey Modal */}
+      {showPasskeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+            <button
+              onClick={() => {
+                setShowPasskeyModal(false);
+                setPasskeyModalStatus(null);
+              }}
+              className="absolute top-5 right-5 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center space-x-3">
+              <div className="p-3 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400">
+                <Fingerprint className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white">SuperAdmin Passkey Vault</h3>
+                <p className="text-xs text-slate-400 font-mono">
+                  WebAuthn Biometrics (Touch ID / Face ID / Windows Hello / YubiKey)
+                </p>
+              </div>
+            </div>
+
+            {/* Current Passkey Status */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300">Vault Passkey Status</span>
+                {registeredPasskey ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <span>Active & Secured</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold border border-amber-500/40 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>No Passkey Configured</span>
+                  </span>
+                )}
+              </div>
+
+              {registeredPasskey ? (
+                <div className="space-y-2 text-xs font-mono">
+                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Device Label:</span>
+                      <span className="font-bold text-white">{registeredPasskey.deviceLabel}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Registered On:</span>
+                      <span className="text-indigo-300">{new Date(registeredPasskey.registeredAt).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-300">
+                      <span className="text-slate-400">Sync Target:</span>
+                      <span className="text-emerald-400">Supabase Platform Vault</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Register your device's biometric sensor (Windows Hello, Touch ID, Face ID, or YubiKey) to enable instant 1-click passwordless sign-in for the SuperAdmin Control Panel.
+                </p>
+              )}
+            </div>
+
+            {/* Registration Form / Action */}
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-300">
+                  {registeredPasskey ? 'Update / Replace Device Label:' : 'Device Identifier Label:'}
+                </label>
+                <input
+                  type="text"
+                  value={passkeyDeviceInput}
+                  onChange={(e) => setPasskeyDeviceInput(e.target.value)}
+                  placeholder="e.g. Work MacBook Touch ID or Windows Hello PC"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-mono"
+                />
+              </div>
+
+              {passkeyModalStatus && (
+                <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                  passkeyModalStatus.success 
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' 
+                    : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                }`}>
+                  {passkeyModalStatus.success ? (
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  )}
+                  <span>{passkeyModalStatus.message}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={handleRegisterOrUpdatePasskey}
+                  disabled={isRegisteringPasskey}
+                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/30 disabled:opacity-50"
+                >
+                  <Fingerprint className={`w-4 h-4 ${isRegisteringPasskey ? 'animate-spin' : ''}`} />
+                  <span>{isRegisteringPasskey ? 'Registering Biometrics...' : registeredPasskey ? 'Update Hardware Passkey' : 'Register Hardware Passkey'}</span>
+                </button>
+
+                {registeredPasskey && (
+                  <button
+                    onClick={handleRevokePasskey}
+                    disabled={isProcessingAction}
+                    className="py-3 px-4 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    title="Revoke and Remove Passkey"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Revoke</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
