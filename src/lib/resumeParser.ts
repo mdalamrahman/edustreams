@@ -1,4 +1,4 @@
-import { MISTRAL_API_KEY } from './mistral';
+import { executeAIChatCascade } from './mistral';
 
 export interface ParsedCandidateProfile {
   name: string;
@@ -97,35 +97,21 @@ Respond STRICTLY in valid JSON matching this schema:
 }`;
 
   try {
-    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
+    const raw = await executeAIChatCascade([
+      { role: 'user', content: prompt }
+    ], { temperature: 0.1, responseFormatJson: true });
 
-    if (res.ok) {
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        return {
-          name: parsed.name || 'Candidate',
-          experienceYears: parsed.experienceYears || '2-4',
-          currentRole: parsed.currentRole || 'Software Engineer',
-          techStack: parsed.techStack || ['C++', 'Python', 'System Design'],
-          keyProjects: parsed.keyProjects || ['Scalable Backend Architecture'],
-          strengths: parsed.strengths || ['Problem Solving', 'Data Structures'],
-          rawResumeText: resumeText
-        };
-      }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        name: parsed.name || 'Candidate',
+        experienceYears: parsed.experienceYears || '2-4',
+        currentRole: parsed.currentRole || 'Software Engineer',
+        techStack: parsed.techStack || ['C++', 'Python', 'System Design'],
+        keyProjects: parsed.keyProjects || ['Scalable Backend Architecture'],
+        strengths: parsed.strengths || ['Problem Solving', 'Data Structures'],
+        rawResumeText: resumeText
+      };
     }
   } catch (err) {
     console.error('Resume AI analysis error:', err);

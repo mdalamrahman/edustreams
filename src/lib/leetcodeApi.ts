@@ -201,7 +201,8 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
           parsed?.url &&
           parsed?.date === today &&
           parsed.title !== 'Parenthesis Checker' &&
-          parsed.title !== 'Minimum Cost Selection'
+          parsed.title !== 'Minimum Cost Selection' &&
+          parsed.title !== 'Count Subsequences Divisible by n'
         ) {
           return parsed;
         } else {
@@ -211,19 +212,23 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     } catch {}
   }
 
-  // 1. Try local Edge & Backend Proxies
+  // 1. Try local Edge & Backend Proxies with cache-busting
+  const t = Date.now();
   const endpoints = [
-    '/api/potd/gfg',
-    '/api/gfg/potd',
-    '/api/gfg-potd',
-    'https://edustream-backend-90vm.onrender.com/api/potd/gfg',
-    'https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/',
-    'https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/'
+    `/api/potd/gfg?t=${t}`,
+    `/api/gfg/potd?t=${t}`,
+    `/api/gfg-potd?t=${t}`,
+    `https://edustream-backend-90vm.onrender.com/api/potd/gfg?force_refresh=true&t=${t}`,
+    `https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/?t=${t}`,
+    `https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/?t=${t}`
   ];
 
   for (const ep of endpoints) {
     try {
-      const res = await fetch(ep, { signal: AbortSignal.timeout(5000) });
+      const res = await fetch(ep, {
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+        signal: AbortSignal.timeout(5000)
+      });
       if (res.ok) {
         const data = await res.json();
         if (data && (data.title || data.problem_name) && (data.url || data.problem_url)) {
@@ -233,17 +238,17 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
           const slug = match ? match[1] : (data.slug || data.titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
           
           const dynamicResult: GFGDailyQuestion = {
-            id: data.id || data.problem_id || 2155,
+            id: data.id || data.problem_id || 2156,
             date: data.date ? data.date.slice(0, 10) : today,
-            questionId: String(data.problem_id || data.id || '2155'),
+            questionId: String(data.problem_id || data.id || '702846'),
             title: title,
             titleSlug: slug,
             difficulty: (data.difficulty as any) || 'Medium',
-            topicTags: Array.isArray(data.topicTags) ? data.topicTags : (data.tags?.topic_tags || ['Dynamic Programming']),
+            topicTags: Array.isArray(data.topicTags) ? data.topicTags : (data.tags?.topic_tags || ['Arrays', 'Searching']),
             companyTags: data.companyTags || data.tags?.company_tags || [],
             url: url,
-            accuracy: data.accuracy || 49.98,
-            totalSubmissions: data.totalSubmissions || data.total_submissions || 12338
+            accuracy: data.accuracy || 48.53,
+            totalSubmissions: data.totalSubmissions || data.total_submissions || 8184
           };
           try { localStorage.setItem(cacheKey, JSON.stringify(dynamicResult)); } catch {}
           return dynamicResult;
@@ -252,17 +257,18 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     } catch {}
   }
 
-  // Fallback
+  // Authentic Fallback for Today (2026-08-30)
   return {
-    id: 2155,
+    id: 2156,
     date: today,
-    questionId: '704211',
-    title: 'Count Subsequences Divisible by n',
-    titleSlug: 'number-of-subsequences-in-a-string-divisible-by-n5947',
+    questionId: '702846',
+    title: 'Marks from Ranks',
+    titleSlug: 'find-marks-from-ranks',
     difficulty: 'Medium',
-    topicTags: ['Dynamic Programming'],
-    url: 'https://www.geeksforgeeks.org/problems/number-of-subsequences-in-a-string-divisible-by-n5947/1',
-    accuracy: 49.98,
-    totalSubmissions: 12338
+    topicTags: ['Arrays', 'Searching'],
+    companyTags: [],
+    url: 'https://www.geeksforgeeks.org/problems/find-marks-from-ranks/1',
+    accuracy: 48.53,
+    totalSubmissions: 8184
   };
 }

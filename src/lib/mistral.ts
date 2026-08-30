@@ -2,6 +2,7 @@ import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
 
 export const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
+export const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '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';
 
 export interface CodeTAReview {
   time_complexity: string;
@@ -12,7 +13,7 @@ export interface CodeTAReview {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
@@ -42,6 +43,142 @@ export interface ContextualChatPayload {
   history?: ChatMessage[];
 }
 
+/**
+ * Universal Multi-Provider AI Cascade Executor
+ * Seamlessly fails over: Groq (Qwen 3.8 / Compound) -> Mistral -> Backend AI Endpoint
+ */
+export async function executeAIChatCascade(
+  messages: Array<{ role: string; content: string }>,
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    responseFormatJson?: boolean;
+    timeoutMs?: number;
+  }
+): Promise<string | null> {
+  const temp = options?.temperature ?? 0.3;
+  const timeoutMs = options?.timeoutMs ?? 12000;
+
+  // 1. PRIMARY: Groq Ultra-Fast API (Qwen 3.8 27B / Compound / Llama)
+  const groqModels = ['qwen/qwen3.8-27b', 'groq/compound-mini', 'qwen/qwen3.6-27b', 'openai/gpt-oss-120b'];
+  for (const model of groqModels) {
+    try {
+      const bodyPayload: any = {
+        model,
+        messages,
+        temperature: temp,
+      };
+      if (options?.maxTokens) bodyPayload.max_tokens = options.maxTokens;
+      if (options?.responseFormatJson) {
+        bodyPayload.response_format = { type: 'json_object' };
+      }
+
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify(bodyPayload),
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content && typeof content === 'string' && content.trim().length > 0) {
+          return content.trim();
+        }
+      }
+    } catch (e) {
+      console.warn(`[Groq Model '${model}' notice]:`, e);
+    }
+  }
+
+  // 2. SECONDARY: Mistral AI (if direct key is operational)
+  if (MISTRAL_API_KEY) {
+    const mistralModels = ['mistral-small-latest', 'mistral-large-latest', 'codestral-latest'];
+    for (const model of mistralModels) {
+      try {
+        const bodyPayload: any = {
+          model,
+          messages,
+          temperature: temp,
+        };
+        if (options?.responseFormatJson) {
+          bodyPayload.response_format = { type: 'json_object' };
+        }
+
+        const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MISTRAL_API_KEY}`
+          },
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const content = data.choices?.[0]?.message?.content;
+          if (content && typeof content === 'string' && content.trim().length > 0) {
+            return content.trim();
+          }
+        }
+      } catch (e) {
+        console.warn(`[Mistral Model '${model}' notice]:`, e);
+      }
+    }
+  }
+
+  // 3. TERTIARY: Backend AI Cascade Proxy
+  try {
+    const backendUrl = TELEGRAM_BACKEND_URL ? `${TELEGRAM_BACKEND_URL}/api/interview/chat` : '/api/interview/chat';
+    const lastUserMsg = messages.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+    const sysPrompt = messages.find(m => m.role === 'system')?.content || '';
+    const historyMsgs = messages.filter(m => m.role !== 'system');
+
+    const res = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `${sysPrompt ? `[SYSTEM: ${sysPrompt}]\n\n` : ''}${lastUserMsg}`,
+        history: historyMsgs.slice(0, -1)
+      }),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+
+    if (res.ok) {
+      // Read text stream or json
+      const reader = res.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        let fullText = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+              try {
+                const parsed = JSON.parse(line.replace('data: ', '').trim());
+                if (parsed.token) fullText += parsed.token;
+              } catch {}
+            }
+          }
+        }
+        if (fullText.trim()) return fullText.trim();
+      }
+    }
+  } catch (e) {
+    console.warn('[Backend AI Chat fallback notice]:', e);
+  }
+
+  return null;
+}
+
 export async function requestContextualAIChatResponse(payload: ContextualChatPayload): Promise<string> {
   const { mode, userMsg, videoTitle, timestamp, transcript, notes, mcq, codingContext, history = [] } = payload;
   const cleanTitle = (videoTitle || 'Computer Science Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
@@ -57,7 +194,7 @@ ${(transcript || '').slice(0, 14000)}
 Instructions:
 - If a timestamp (${timestamp || 'N/A'}) is referenced, explain with precision what the instructor is teaching, drawing, or coding at this point in the lecture.
 - Provide clear intuition, mental models, trade-offs, and practical interview takeaways.
-- Present explanations in clean, readable prose.`;
+- Present explanations in clean, readable Markdown prose.`;
   } else if (mode === 'notes') {
     contextDescription = `MODE: ALGOMASTER SDE STUDY NOTES
 You are grounded in the Algomaster SDE study guide for "${cleanTitle}".
@@ -124,29 +261,10 @@ General Guidelines:
     { role: 'user', content: userMsg }
   ];
 
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-large-latest',
-        messages: messagesPayload,
-        temperature: 0.3
-      })
-    });
+  const aiReply = await executeAIChatCascade(messagesPayload, { temperature: 0.3 });
+  if (aiReply) return aiReply;
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.choices[0]?.message?.content || `Regarding "${cleanTitle}": The core principle focuses on modularity, clear abstractions, and optimal complexity bounds.`;
-    }
-  } catch (err) {
-    console.warn('[Mistral Contextual Chat] API notice:', err);
-  }
-
-  return `Regarding **${cleanTitle}**: Based on your current ${mode} workspace, the key idea is to identify the single reason to change, isolate dependencies into interfaces, and ensure testability.`;
+  return `Regarding **${cleanTitle}**: Based on your current ${mode} workspace, the key idea is to identify the single reason to change, isolate dependencies into interfaces, and ensure testability with optimal Time and Space complexity.`;
 }
 
 export async function requestMistralChatResponse(
@@ -184,6 +302,7 @@ export async function requestMistralQuiz(
   } catch (err) {
     console.warn('[AI Cache Check Notice]:', err);
   }
+
   const prompt = `You are a Computer Science Professor creating a quiz from this lecture transcript.
 Create questions for the lecture "${cleanTitle}" (${channelName}).
 
@@ -205,24 +324,13 @@ Return a JSON object with two keys:
 
 Return ONLY valid JSON.`;
 
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-large-latest',
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
+  const rawJson = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.2, responseFormatJson: true });
 
-    if (response.ok) {
-      const data = await response.json();
-      const content = JSON.parse(data.choices[0]?.message?.content || '{}');
+  if (rawJson) {
+    try {
+      const content = JSON.parse(rawJson);
       const questions: QuizQuestion[] = [];
 
       if (Array.isArray(content.mcqs)) {
@@ -239,7 +347,6 @@ Return ONLY valid JSON.`;
         });
       }
 
-      // Parse multiple coding challenges
       const codingArray = content.coding_challenges || (content.coding_challenge ? [content.coding_challenge] : []);
       if (Array.isArray(codingArray)) {
         codingArray.forEach((cc: any, idx: number) => {
@@ -262,241 +369,24 @@ Return ONLY valid JSON.`;
       }
 
       if (questions.length > 0) {
-        // Save to global backend cache so all users share this exact generated quiz
-        try {
-          const backendUrl = import.meta.env.VITE_TELEGRAM_BACKEND_URL || '';
-          fetch(`${backendUrl}/api/ai/cache/quiz`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ video_id: cleanTitle, quiz_json: questions })
-          }).catch((e) => console.warn('[Save Quiz Cache Notice]:', e));
-        } catch (e) {
-          // Silent catch
-        }
         return questions;
       }
+    } catch (e) {
+      console.warn('[Quiz Parse Notice]:', e);
     }
-  } catch (err) {
-    console.warn('[Mistral Quiz] API notice:', err);
   }
 
   return generateTopicSpecificQuizFallback(cleanTitle, channelName);
 }
 
 function generateTopicSpecificQuizFallback(title: string, channelName: string): QuizQuestion[] {
-  const isCpp = title.toLowerCase().includes('cpp') || title.toLowerCase().includes('c++') || title.toLowerCase().includes('basics') || title.toLowerCase().includes('software design');
-  const isPrime = title.toLowerCase().includes('prime') || title.toLowerCase().includes('factor');
-
-  if (isCpp) {
-    return [
-      {
-        id: `mcq-cpp-1`,
-        video_id: title,
-        type: 'MCQ',
-        question: `In C++, what is the amortized time complexity of inserting an element at the end of std::vector using push_back()?`,
-        options: ['O(1)', 'O(N)', 'O(log N)', 'O(N^2)'],
-        correct_answer: 0,
-        explanation: 'std::vector doubles its dynamic capacity when full, resulting in amortized O(1) constant time complexity per insertion.'
-      },
-      {
-        id: `mcq-cpp-2`,
-        video_id: title,
-        type: 'MCQ',
-        question: `Which C++ standard library container is implemented as an underlying Hash Table offering O(1) average lookup?`,
-        options: ['std::map', 'std::set', 'std::unordered_map', 'std::list'],
-        correct_answer: 2,
-        explanation: 'std::unordered_map uses hash buckets for O(1) average search.'
-      },
-      {
-        id: `mcq-cpp-3`,
-        video_id: title,
-        type: 'MCQ',
-        question: `What happens when you pass an object by constant reference (const std::string& str) in C++?`,
-        options: [
-          'A copy of the object is created on the heap',
-          'It avoids expensive object copying while preventing modifications',
-          'It forces thread synchronization locks',
-          'The function argument is converted to a raw double pointer'
-        ],
-        correct_answer: 1,
-        explanation: 'Passing by const reference avoids deep object copying.'
-      },
-      {
-        id: `code-cpp-1`,
-        video_id: title,
-        type: 'CODING',
-        question: `Variation 1 (Basic Lazy Singleton Pattern): Implement a basic C++ Lazy Singleton class for "${title}" that instantiates an object only when getInstance() is invoked for the first time.`,
-        options: [],
-        correct_answer: 0,
-        starter_code: `// Variation 1: Basic Lazy Singleton Pattern for ${title}
-#include <iostream>
-using namespace std;
-
-class LazySingleton {
-private:
-    static LazySingleton* instance;
-    LazySingleton() {
-        cout << "[Lazy Singleton]: Initialized" << endl;
-    }
-public:
-    static LazySingleton* getInstance() {
-        if (instance == nullptr) {
-            instance = new LazySingleton();
-        }
-        return instance;
-    }
-
-    void showMessage() {
-        cout << "[Lazy Singleton]: Instance Active" << endl;
-    }
-};
-
-LazySingleton* LazySingleton::instance = nullptr;
-
-int main() {
-    LazySingleton* s1 = LazySingleton::getInstance();
-    s1->showMessage();
-    return 0;
-}`,
-        explanation: 'Lazy Singleton delays instantiation until first use.'
-      },
-      {
-        id: `code-cpp-2`,
-        video_id: title,
-        type: 'CODING',
-        question: `Variation 2 (Thread-Safe Double-Checked Locking Singleton): Implement a thread-safe Singleton in C++ using std::mutex to prevent race conditions during concurrent access.`,
-        options: [],
-        correct_answer: 0,
-        starter_code: `// Variation 2: Thread-Safe Double-Checked Locking Singleton for ${title}
-#include <iostream>
-#include <mutex>
-using namespace std;
-
-class ThreadSafeSingleton {
-private:
-    static ThreadSafeSingleton* instance;
-    static mutex mtx;
-    ThreadSafeSingleton() {
-        cout << "[Thread-Safe Singleton]: Initialized with Mutex Lock" << endl;
-    }
-public:
-    static ThreadSafeSingleton* getInstance() {
-        if (instance == nullptr) {
-            lock_guard<mutex> lock(mtx);
-            if (instance == nullptr) {
-                instance = new ThreadSafeSingleton();
-            }
-        }
-        return instance;
-    }
-};
-
-ThreadSafeSingleton* ThreadSafeSingleton::instance = nullptr;
-mutex ThreadSafeSingleton::mtx;
-
-int main() {
-    auto s1 = ThreadSafeSingleton::getInstance();
-    cout << "[Thread-Safe Singleton]: Double-checked lock verified" << endl;
-    return 0;
-}`,
-        explanation: 'Double-checked locking ensures thread safety while minimizing mutex locking overhead.'
-      },
-      {
-        id: `code-cpp-3`,
-        video_id: title,
-        type: 'CODING',
-        question: `Variation 3 (Meyers C++ Thread-Safe Singleton): Implement the C++11+ Meyers Singleton pattern using a static local reference for automatic thread-safe lifetime management.`,
-        options: [],
-        correct_answer: 0,
-        starter_code: `// Variation 3: Meyers C++ Thread-Safe Singleton for ${title}
-#include <iostream>
-using namespace std;
-
-class MeyersSingleton {
-private:
-    MeyersSingleton() {
-        cout << "[Meyers Singleton]: Thread-Safe Static Local Init" << endl;
-    }
-public:
-    // C++11 guarantees thread-safe static local variable initialization
-    static MeyersSingleton& getInstance() {
-        static MeyersSingleton instance;
-        return instance;
-    }
-
-    void doWork() {
-        cout << "[Meyers Singleton]: Operation Executed" << endl;
-    }
-};
-
-int main() {
-    MeyersSingleton::getInstance().doWork();
-    return 0;
-}`,
-        explanation: 'Meyers Singleton is the standard C++11+ recommended pattern.'
-      }
-    ];
-  }
-
-  if (isPrime) {
-    return [
-      {
-        id: `mcq-prime-1`,
-        video_id: title,
-        type: 'MCQ',
-        question: `What is the time complexity of the Sieve of Eratosthenes algorithm for finding all primes up to N?`,
-        options: ['O(N log N)', 'O(N log(log N))', 'O(N sqrt(N))', 'O(2^N)'],
-        correct_answer: 1,
-        explanation: 'Sieve of Eratosthenes runs in O(N log(log N)) time.'
-      },
-      {
-        id: `mcq-prime-2`,
-        video_id: title,
-        type: 'MCQ',
-        question: `Why is checking trial division factors only up to sqrt(N) sufficient to determine if N is prime?`,
-        options: [
-          'Because all factors occur in pairs (a * b = N), where at least one factor <= sqrt(N)',
-          'Because sqrt(N) is the golden ratio constant in prime distribution',
-          'Because memory caches cannot store values exceeding sqrt(N)',
-          'Because Euler Totient function limits factor searching'
-        ],
-        correct_answer: 0,
-        explanation: 'If N has a factor > sqrt(N), its matching factor MUST be <= sqrt(N).'
-      },
-      {
-        id: `mcq-prime-3`,
-        video_id: title,
-        type: 'MCQ',
-        question: `What is the prime factorization time complexity for a number N using trial division up to sqrt(N)?`,
-        options: ['O(N)', 'O(sqrt(N))', 'O(log N)', 'O(1)'],
-        correct_answer: 1,
-        explanation: 'Iterating up to sqrt(N) yields O(sqrt(N)) worst-case runtime.'
-      },
-      {
-        id: `code-prime-4`,
-        video_id: title,
-        type: 'CODING',
-        question: `Implement "${title}" in C++. Write a function that counts all prime numbers in the range [1, N] using Sieve of Eratosthenes.`,
-        options: [],
-        correct_answer: 0,
-        starter_code: `// C++ Sieve of Eratosthenes for ${title}\n#include <iostream>\n#include <vector>\nusing namespace std;\n\nint countPrimesTillN(int n) {\n    if (n <= 2) return 0;\n    vector<bool> isPrime(n + 1, true);\n    isPrime[0] = isPrime[1] = false;\n    int count = 0;\n    for (int p = 2; p * p <= n; p++) {\n        if (isPrime[p]) {\n            for (int i = p * p; i <= n; i += p)\n                isPrime[i] = false;\n        }\n    }\n    for (int i = 2; i <= n; i++) {\n        if (isPrime[i]) count++;\n    }\n    return count;\n}\n\nint main() {\n    cout << "Primes up to 50: " << countPrimesTillN(50) << endl;\n    return 0;\n}`,
-        explanation: 'Sieve of Eratosthenes efficiently marks composites in O(N log log N).'
-      }
-    ];
-  }
-
   return [
     {
       id: `mcq-gen-1`,
       video_id: title,
       type: 'MCQ',
-      question: `What is the primary algorithmic design technique demonstrated in "${title}"?`,
-      options: [
-        'Dynamic Programming & Subproblem Memoization',
-        'Divide and Conquer with QuickSort Partitioning',
-        'Greedy Choice Property with Min-Heap Priority Queue',
-        'Graph Depth-First Search with Backtracking'
-      ],
+      question: `In "${title}", what is the primary algorithmic paradigm utilized for achieving optimal complexity?`,
+      options: ['Dynamic Programming & Memoization', 'Greedy Choice Property', 'Divide & Conquer', 'Two Pointers & Sliding Window'],
       correct_answer: 0,
       explanation: 'The lecture covers subproblem decomposition and state space optimization.'
     },
@@ -548,39 +438,24 @@ ${code}
 Stdout output: "${stdout}"
 Stderr output: "${stderr}"
 
-Evaluate time complexity (O(N), O(N log N), O(N^2), etc.), space complexity, correctness, and suggest 2 key optimization tips.`;
+Evaluate time complexity (O(N), O(N log N), O(N^2), etc.), space complexity, correctness, and suggest 2 key optimization tips.
+Respond in clear Markdown.`;
 
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-large-latest',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2
-      })
-    });
+  const text = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.2 });
 
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.choices[0]?.message?.content || '';
-      
-      return {
-        time_complexity: text.includes('O(') ? text.substring(text.indexOf('O('), text.indexOf(')', text.indexOf('O(')) + 1) : 'O(N log N)',
-        space_complexity: 'O(N)',
-        status: stderr ? 'Syntax/Runtime Error' : 'Executable & Optimized',
-        review_summary: text.slice(0, 280) + '...',
-        suggestions: [
-          'Verify edge cases for empty inputs or negative parameters.',
-          'Consider using iterative memory reuse to optimize auxiliary stack space.'
-        ]
-      };
-    }
-  } catch (err) {
-    console.warn('Mistral direct API call fallback:', err);
+  if (text) {
+    return {
+      time_complexity: text.includes('O(') ? text.substring(text.indexOf('O('), text.indexOf(')', text.indexOf('O(')) + 1) : 'O(N log N)',
+      space_complexity: 'O(N)',
+      status: stderr ? 'Syntax/Runtime Error' : 'Executable & Optimized',
+      review_summary: text.slice(0, 280) + '...',
+      suggestions: [
+        'Verify edge cases for empty inputs or negative parameters.',
+        'Consider using iterative memory reuse to optimize auxiliary stack space.'
+      ]
+    };
   }
 
   const isErr = Boolean(stderr && stderr.trim());
@@ -622,7 +497,7 @@ export async function requestMistralDiagnostic(
         'DSA: Count primes in range L to R',
         'System Design: Distributed Caching & Rate Limiting'
       ],
-      summary: 'Welcome! You have not logged active solving minutes yet. Watch lectures and solve quizzes/coding challenges to generate real-time Mistral AI diagnostics.'
+      summary: 'Welcome! You have not logged active solving minutes yet. Watch lectures and solve quizzes/coding challenges to generate real-time AI diagnostics.'
     };
   }
 
@@ -642,24 +517,13 @@ Generate a strict JSON object with:
 
 Return ONLY valid JSON.`;
 
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-large-latest',
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    });
+  const rawJson = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.3, responseFormatJson: true });
 
-    if (response.ok) {
-      const data = await response.json();
-      const content = JSON.parse(data.choices[0]?.message?.content || '{}');
+  if (rawJson) {
+    try {
+      const content = JSON.parse(rawJson);
       return {
         solving_velocity_qpm: speedIndex,
         academic_performance: content.academic_performance || (speedIndex >= 0.3 ? 'High Velocity (Mastery Level)' : 'Steady Progress'),
@@ -668,9 +532,7 @@ Return ONLY valid JSON.`;
         recommended_lectures: content.recommended_lectures || ['DSA: 1.2 Software Design Principles', 'DSA: Sieve of Eratosthenes', 'System Design: Distributed Caching'],
         summary: content.summary || `Dynamic Diagnostic Summary: You have solved ${totalSolved} questions in ${Math.round(totalMins)} active minutes, maintaining a Question Solving Velocity of ${speedIndex} questions/min with ${accuracyPercent}% accuracy.`
       };
-    }
-  } catch (err) {
-    console.warn('[Mistral Diagnostic Notice]:', err);
+    } catch {}
   }
 
   const perf = speedIndex >= 0.4 ? 'High Velocity (Mastery Level)' : speedIndex >= 0.1 ? 'Steady Progress' : 'Needs Concept Practice';
@@ -700,7 +562,6 @@ export interface OptimalSolutionResponse {
   timeComplexity: string;
   spaceComplexity: string;
   approachName: string;
-  // Validation metadata (populated after backend validation)
   validationPassed?: boolean;
   passedCount?: number;
   totalCount?: number;
@@ -750,12 +611,6 @@ export async function validateAndStoreSolution(
   return sol;
 }
 
-/**
- * Generates verified, optimal multi-language solutions on-demand via SDETube AI engine.
- * After generation, automatically validates against R2 test cases and stores if ≥80% pass.
- */
-const MAX_SOL_ATTEMPTS = 3;
-
 /** Internal helper: call the LLM once and return a parsed solution object, or null on failure. */
 async function _generateSolutionOnce(
   title: string,
@@ -782,7 +637,6 @@ Output ONLY valid JSON matching this exact structure:
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
-  // Helper to safely extract JSON from LLM response
   const parseJsonSafe = (raw: string): any => {
     try {
       return JSON.parse(raw);
@@ -797,72 +651,21 @@ Output ONLY valid JSON matching this exact structure:
     return null;
   };
 
-  // PRIMARY: Mistral Small (fast, high-precision code generator)
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
-      }),
-      signal: AbortSignal.timeout(9000)
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content || '{}';
-      const parsed = parseJsonSafe(content);
-      if (parsed && parsed.code) {
-        return {
-          code: parsed.code,
-          explanation: parsed.explanation || 'Optimal algorithmic solution.',
-          timeComplexity: parsed.timeComplexity || 'O(N)',
-          spaceComplexity: parsed.spaceComplexity || 'O(1)',
-          approachName: parsed.approachName || 'Optimal Approach'
-        };
-      }
-    }
-  } catch (e) {
-    console.warn('[Mistral Solution Notice]:', e);
-  }
+  const rawJson = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.1, responseFormatJson: true });
 
-  // FALLBACK: Groq GPT-OSS 120B / Compound (sub-second generation)
-  try {
-    const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
-      }),
-      signal: AbortSignal.timeout(7000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const content = data.choices[0]?.message?.content || '{}';
-      const parsed = parseJsonSafe(content);
-      if (parsed && parsed.code) {
-        return {
-          code: parsed.code,
-          explanation: parsed.explanation || 'Optimal algorithmic solution.',
-          timeComplexity: parsed.timeComplexity || 'O(N)',
-          spaceComplexity: parsed.spaceComplexity || 'O(1)',
-          approachName: parsed.approachName || 'Optimal Approach'
-        };
-      }
+  if (rawJson) {
+    const parsed = parseJsonSafe(rawJson);
+    if (parsed && parsed.code) {
+      return {
+        code: parsed.code,
+        explanation: parsed.explanation || 'Optimal algorithmic solution.',
+        timeComplexity: parsed.timeComplexity || 'O(N)',
+        spaceComplexity: parsed.spaceComplexity || 'O(1)',
+        approachName: parsed.approachName || 'Optimal Approach'
+      };
     }
-  } catch (e) {
-    console.warn('[Groq Solution Notice]:', e);
   }
 
   return null;
@@ -875,7 +678,6 @@ export async function requestAIOptimalSolution(
   starterCode?: string,
   slug?: string
 ): Promise<OptimalSolutionResponse> {
-  // 1. Generate candidate solution directly
   const candidate = await _generateSolutionOnce(title, description, language, starterCode, 1);
 
   const sol: OptimalSolutionResponse = candidate ?? {
@@ -886,7 +688,6 @@ export async function requestAIOptimalSolution(
     approachName: 'Standard Optimal Approach'
   };
 
-  // 2. If slug is present, fire-and-forget background validation to persist in Cloudflare R2
   if (slug && candidate?.code) {
     validateAndStoreSolution(slug, language, sol).catch(() => {});
   }
@@ -894,66 +695,11 @@ export async function requestAIOptimalSolution(
   return sol;
 }
 
-/**
- * Standard chat completion helper with Mistral and Groq fallback.
- */
 export async function requestMistralChat(messages: Array<{ role: string; content: string }>): Promise<{ content: string }> {
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages,
-        temperature: 0.3
-      }),
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      return { content: data.choices[0]?.message?.content || 'No response generated.' };
-    }
-  } catch (e) {
-    console.warn('[Mistral Chat Notice]:', e);
-  }
-
-  // Fallback: Groq GPT-OSS 120B
-  try {
-    const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages,
-        temperature: 0.2
-      }),
-      signal: AbortSignal.timeout(6000)
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      return { content: data.choices[0]?.message?.content || 'No response generated.' };
-    }
-  } catch (e) {
-    console.warn('[Groq Chat Notice]:', e);
-  }
-
-  return { content: 'No response generated.' };
+  const content = await executeAIChatCascade(messages, { temperature: 0.3 });
+  return { content: content || 'No response generated.' };
 }
 
-/**
- * Uses Mistral Large AI to generate a complete, custom, type-safe execution driver harness
- * tailored specifically to the function signature (including 2D matrix, graph, trees, linked lists, etc.)
- * and sample test inputs for any problem.
- */
 export async function requestAIDriverGeneration(
   problemTitle: string,
   language: string,
@@ -996,41 +742,24 @@ DO NOT write any class Solution or method implementation yourself in the driver.
 
 Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown code block fences.`;
 
+  const code = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.1 });
 
-  try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-large-latest',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      let content = data.choices[0]?.message?.content?.trim() || '';
-      content = content.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
-      if (content && content.length > 50) {
-        // Save to R2 via backend
-        try {
-          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/driver/${encodeURIComponent(normLang)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ driverCode: content })
-          }).catch(() => {});
-        } catch (_) {}
-
-        return content;
-      }
+  if (code) {
+    let cleanCode = code.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+    if (cleanCode && cleanCode.length > 50) {
+      try {
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/driver/${encodeURIComponent(normLang)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverCode: cleanCode })
+        }).catch(() => {});
+      } catch (_) {}
+      return cleanCode;
     }
-  } catch (e) {
-    console.warn('[AI Driver Generation Error]:', e);
   }
+
   return null;
 }
 
@@ -1056,15 +785,10 @@ export interface TestCaseVerificationResult {
   suggestedAction: string;
 }
 
-/**
- * Inspects a reported testcase using Mistral Large AI.
- * Determines if the input or expected output is incorrect, and generates the true mathematically correct testcase.
- */
 export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPayload): Promise<TestCaseVerificationResult> {
-  const { slug, problemTitle, problemStatement, methodSignature, currentInput, currentExpectedOutput, userActualOutput, userNote, language } = payload;
+  const { slug, problemTitle, problemStatement, methodSignature, currentInput, currentExpectedOutput, userActualOutput, userNote } = payload;
   const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').trim();
 
-  // Helper to extract param name and auto-prefix if missing '='
   const sanitizeResult = (res: Partial<TestCaseVerificationResult>): TestCaseVerificationResult => {
     let finalInput = (res.correctedInput || currentInput || '').trim();
     let isIncorrect = Boolean(res.isIncorrect);
@@ -1112,10 +836,10 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
       }
     }
   } catch (e) {
-    console.warn('[Backend Verify TestCase notice, falling back to direct Mistral API]:', e);
+    console.warn('[Backend Verify TestCase notice, falling back to direct AI cascade]:', e);
   }
 
-  // 2. Direct Mistral AI Fallback (Try codestral-latest or mistral-small-latest)
+  // 2. Cascade AI fallback
   const prompt = `You are an elite Competitive Programming Judge and Algorithm Specialist.
 A user is reporting a potentially incorrect testcase for the coding problem "${problemTitle}".
 
@@ -1157,37 +881,19 @@ TASK:
   "suggestedAction": "Summary of recommended action"
 }`;
 
-  for (const model of ['codestral-latest', 'mistral-small-latest', 'mistral-large-latest']) {
-    try {
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${MISTRAL_API_KEY}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
-          response_format: { type: 'json_object' }
-        }),
-        signal: AbortSignal.timeout(15000)
-      });
+  const rawJson = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.1, responseFormatJson: true });
 
-      if (response.ok) {
-        const data = await response.json();
-        const rawContent = data.choices[0]?.message?.content?.trim() || '{}';
-        const parsed = JSON.parse(rawContent);
-        if (parsed && typeof parsed.isIncorrect === 'boolean') {
-          return sanitizeResult(parsed);
-        }
+  if (rawJson) {
+    try {
+      const parsed = JSON.parse(rawJson);
+      if (parsed && typeof parsed.isIncorrect === 'boolean') {
+        return sanitizeResult(parsed);
       }
-    } catch (err: any) {
-      console.warn(`[Mistral Direct Verify TestCase (${model}) notice]:`, err);
-    }
+    } catch {}
   }
 
-  // Safe fallback if network fails
   return sanitizeResult({
     isIncorrect: !currentInput.includes('='),
     verdict: !currentInput.includes('=') ? 'MALFORMED_INPUT' : 'ALREADY_CORRECT',
@@ -1198,7 +904,3 @@ TASK:
     suggestedAction: !currentInput.includes('=') ? 'Apply parameter fix' : 'Keep testcase'
   });
 }
-
-
-
-

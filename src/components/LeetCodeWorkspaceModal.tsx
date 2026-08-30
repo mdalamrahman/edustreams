@@ -47,7 +47,12 @@ import {
   Youtube,
   Wand2,
   AlertTriangle,
-  Zap
+  Zap,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Radio
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
@@ -66,6 +71,7 @@ import { ReportTestCaseModal } from './ReportTestCaseModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
+import { startSpeechRecognition, stopSpeechRecognition, speakText, stopSpeaking, isSpeaking, isSpeechRecognitionSupported, isSpeechSynthesisSupported } from '../lib/speechVoice';
 
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
@@ -697,6 +703,67 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [aiChatMessages, isRightAskAiOpen]);
+
+  // Speech & Voice State for Problem Discussion
+  const [isVoiceInputActive, setIsVoiceInputActive] = useState<boolean>(false);
+  const [isAutoSpeakEnabled, setIsAutoSpeakEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('sdetube_auto_speak_ai') === 'true';
+  });
+  const [speakingMessageIdx, setSpeakingMessageIdx] = useState<number | null>(null);
+
+  const toggleAutoSpeak = () => {
+    const nextVal = !isAutoSpeakEnabled;
+    setIsAutoSpeakEnabled(nextVal);
+    try {
+      localStorage.setItem('sdetube_auto_speak_ai', String(nextVal));
+    } catch {}
+    if (!nextVal) stopSpeaking();
+  };
+
+  const handleToggleVoiceInput = () => {
+    if (isVoiceInputActive) {
+      stopSpeechRecognition();
+      setIsVoiceInputActive(false);
+    } else {
+      setIsVoiceInputActive(true);
+      startSpeechRecognition({
+        onTranscript: (transcript, isFinal) => {
+          setAiInputText(transcript);
+          if (isFinal) {
+            setIsVoiceInputActive(false);
+          }
+        },
+        onError: (err) => {
+          console.warn('Voice input error:', err);
+          setIsVoiceInputActive(false);
+        },
+        onEnd: () => {
+          setIsVoiceInputActive(false);
+        }
+      });
+    }
+  };
+
+  const handleSpeakMessage = (text: string, idx: number) => {
+    if (speakingMessageIdx === idx) {
+      stopSpeaking();
+      setSpeakingMessageIdx(null);
+    } else {
+      setSpeakingMessageIdx(idx);
+      speakText(text, {
+        onEnd: () => setSpeakingMessageIdx(null),
+        onError: () => setSpeakingMessageIdx(null)
+      });
+    }
+  };
+
+  // Cleanup speech on unmount or Ask AI close
+  useEffect(() => {
+    return () => {
+      stopSpeaking();
+      stopSpeechRecognition();
+    };
+  }, []);
 
   // Submission History State with LocalStorage & Cloud Sync
   const [submissionsList, setSubmissionsList] = useState<{
@@ -1341,7 +1408,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         history: aiChatMessages
       });
 
-      setAiChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      setAiChatMessages(prev => {
+        const next: ChatMessage[] = [...prev, { role: 'assistant', content: reply }];
+        if (isAutoSpeakEnabled) {
+          const newIdx = next.length - 1;
+          setSpeakingMessageIdx(newIdx);
+          speakText(reply, {
+            onEnd: () => setSpeakingMessageIdx(null),
+            onError: () => setSpeakingMessageIdx(null)
+          });
+        }
+        return next;
+      });
     } catch (err) {
       setAiChatMessages(prev => [
         ...prev,
@@ -2951,7 +3029,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1.5">
+                {/* Voice Auto-Speak Toggle */}
+                {isSpeechSynthesisSupported() && (
+                  <button
+                    onClick={toggleAutoSpeak}
+                    className={`px-2 py-1 rounded-lg border text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isAutoSpeakEnabled
+                        ? 'bg-purple-900/50 border-purple-500/60 text-purple-200 shadow-sm shadow-purple-500/20'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title={isAutoSpeakEnabled ? "Auto-speak AI responses (Enabled)" : "Auto-speak AI responses (Disabled)"}
+                  >
+                    {isAutoSpeakEnabled ? <Volume2 className="w-3.5 h-3.5 text-purple-400 animate-pulse" /> : <VolumeX className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">{isAutoSpeakEnabled ? 'Voice On' : 'Voice Off'}</span>
+                  </button>
+                )}
+
                 {aiChatMessages.length > 0 && (
                   <button
                     onClick={handleClearChat}
@@ -2962,7 +3056,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   </button>
                 )}
                 <button
-                  onClick={() => setIsRightAskAiOpen(false)}
+                  onClick={() => {
+                    stopSpeaking();
+                    stopSpeechRecognition();
+                    setIsVoiceInputActive(false);
+                    setIsRightAskAiOpen(false);
+                  }}
                   className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors border border-slate-800 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
@@ -3010,21 +3109,40 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
                     }`}
                   >
-                    <div className="font-sans pr-6">
+                    <div className="font-sans pr-14">
                       <FormattedChatText text={msg.content} />
                     </div>
                     {msg.role === 'assistant' && (
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(msg.content);
-                          setCopiedMsgIdx(idx);
-                          setTimeout(() => setCopiedMsgIdx(null), 2000);
-                        }}
-                        className="absolute top-2 right-2 p-1 text-slate-500 hover:text-purple-300 transition-colors cursor-pointer"
-                        title="Copy message text"
-                      >
-                        {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
+                      <div className="absolute top-2 right-2 flex items-center space-x-1">
+                        {isSpeechSynthesisSupported() && (
+                          <button
+                            onClick={() => handleSpeakMessage(msg.content, idx)}
+                            className={`p-1 rounded transition-colors cursor-pointer ${
+                              speakingMessageIdx === idx 
+                                ? 'text-purple-400 bg-purple-950/60' 
+                                : 'text-slate-500 hover:text-purple-300'
+                            }`}
+                            title={speakingMessageIdx === idx ? "Stop speaking" : "Speak response aloud"}
+                          >
+                            {speakingMessageIdx === idx ? (
+                              <VolumeX className="w-3.5 h-3.5 animate-pulse" />
+                            ) : (
+                              <Volume2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(msg.content);
+                            setCopiedMsgIdx(idx);
+                            setTimeout(() => setCopiedMsgIdx(null), 2000);
+                          }}
+                          className="p-1 text-slate-500 hover:text-purple-300 transition-colors cursor-pointer"
+                          title="Copy message text"
+                        >
+                          {copiedMsgIdx === idx ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -3035,17 +3153,37 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <span>AI is thinking & analyzing code...</span>
                 </div>
               )}
+              {isVoiceInputActive && (
+                <div className="flex gap-2.5 items-center text-red-400 text-xs font-mono p-2 rounded-xl bg-red-950/30 border border-red-800/40 animate-pulse">
+                  <Radio className="w-4 h-4 animate-spin text-red-400" />
+                  <span>Listening... Speak your question into microphone</span>
+                </div>
+              )}
               <div ref={chatBottomRef} />
             </div>
 
             {/* Input Bar */}
             <div className="p-3 bg-slate-900 border-t border-slate-800 flex items-center space-x-2">
+              {isSpeechRecognitionSupported() && (
+                <button
+                  type="button"
+                  onClick={handleToggleVoiceInput}
+                  className={`p-2 rounded-xl transition-all cursor-pointer ${
+                    isVoiceInputActive
+                      ? 'bg-red-600 text-white animate-pulse shadow-md shadow-red-500/40'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-purple-300'
+                  }`}
+                  title={isVoiceInputActive ? "Click to stop listening" : "Speak your question (Voice Input)"}
+                >
+                  {isVoiceInputActive ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+              )}
               <input
                 type="text"
                 value={aiInputText}
                 onChange={(e) => setAiInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendAiMessage()}
-                placeholder="Ask about this problem, code, or testcases..."
+                placeholder={isVoiceInputActive ? "Listening to your voice..." : "Ask about this problem, code, or testcases..."}
                 className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-purple-500 font-sans"
               />
               <button

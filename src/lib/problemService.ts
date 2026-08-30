@@ -1,6 +1,6 @@
 import { SupportedLanguage } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
-import { MISTRAL_API_KEY, requestAIDriverGeneration } from './mistral';
+import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade } from './mistral';
 
 export interface ProblemApproach {
   id: string;
@@ -419,112 +419,86 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
   const slug = toSlug(slugOrUrl);
   if (!slug || slug === 'algorithm-problem') return null;
 
-  // 1. Try Backend LeetCode API Proxy (has full server-side parser + testcase expansion)
-  try {
-    const backendUrl = `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`;
-    const resp = await fetch(backendUrl, { signal: AbortSignal.timeout(10000) });
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data && data.name && !data.error && data.description) {
-        return repairAndHardenProblem(data as ProblemTemplate);
-      }
-    }
-  } catch (err) {
-    console.warn(`[Backend LeetCode endpoint notice for '${slug}']:`, err);
-  }
+  // 1. Try Local Cloudflare Pages Function Proxy & Backend LeetCode API Proxy
+  const endpoints = [
+    `/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
+    `/api/leetcode/${encodeURIComponent(slug)}`,
+    `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`,
+    `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`
+  ];
 
-  // 2. Fallback: Direct LeetCode GraphQL query from browser
-  try {
-    const query = `query questionData($titleSlug: String!) {
-      question(titleSlug: $titleSlug) {
-        questionId
-        questionFrontendId
-        title
-        titleSlug
-        content
-        difficulty
-        topicTags { name slug }
-        codeSnippets { lang langSlug code }
-        sampleTestCase
-        exampleTestcases
-        hints
-        categoryTitle
-      }
-    }`;
-    const resp = await fetch('https://leetcode.com/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { titleSlug: slug } }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (resp.ok) {
-      const json = await resp.json();
-      const q = json?.data?.question;
-      if (q && q.title && q.content) {
-        // Parse HTML to clean description
-        const contentHtml = q.content || '';
-        const cleanDesc = contentHtml
-          .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&amp;/g, '&')
-          .trim();
-
-        const starters: Record<SupportedLanguage, string> = {} as any;
-        const snippets: any[] = q.codeSnippets || [];
-        snippets.forEach(s => {
-          if (s.langSlug === 'cpp') starters.cpp = s.code;
-          else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
-          else if (s.langSlug === 'java') starters.java = s.code;
-          else if (s.langSlug === 'javascript') starters.javascript = s.code;
-          else if (s.langSlug === 'golang') starters.go = s.code;
-          else if (s.langSlug === 'rust') starters.rust = s.code;
-        });
-
-        // Extract examples
-        const examples: ProblemTemplate['examples'] = [];
-        const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-        for (const m of exMatches) {
-          const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
-          const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-          const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-          const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-          if (inM && outM) {
-            examples.push({
-              input: inM[1].trim(),
-              output: outM[1].trim(),
-              explanation: expM ? expM[1].trim() : undefined
-            });
+  for (const ep of endpoints) {
+    try {
+      const resp = await fetch(ep, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        // Check if data is wrapped in questionData GraphQL response or direct ProblemTemplate
+        const q = data?.data?.question || data?.question || (data?.name ? data : null);
+        if (q && q.title && (q.content || q.description)) {
+          if (data.name && data.starters && data.testCases) {
+            return repairAndHardenProblem(data as ProblemTemplate);
           }
+          const contentHtml = q.content || q.description || '';
+          const cleanDesc = contentHtml
+            .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, '&')
+            .trim();
+
+          const starters: Record<SupportedLanguage, string> = {} as any;
+          const snippets: any[] = q.codeSnippets || [];
+          snippets.forEach(s => {
+            if (s.langSlug === 'cpp') starters.cpp = s.code;
+            else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
+            else if (s.langSlug === 'java') starters.java = s.code;
+            else if (s.langSlug === 'javascript') starters.javascript = s.code;
+            else if (s.langSlug === 'golang') starters.go = s.code;
+            else if (s.langSlug === 'rust') starters.rust = s.code;
+          });
+
+          const examples: ProblemTemplate['examples'] = [];
+          const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+          for (const m of exMatches) {
+            const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+            const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+            const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+            const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+            if (inM && outM) {
+              examples.push({
+                input: inM[1].trim(),
+                output: outM[1].trim(),
+                explanation: expM ? expM[1].trim() : undefined
+              });
+            }
+          }
+
+          const tcs = examples.map(e => e.input).filter(Boolean);
+          const eos = examples.map(e => e.output).filter(Boolean);
+          const defaultStarters = generateDefaultStarters(q.title);
+
+          const template: ProblemTemplate = {
+            name: q.title,
+            category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
+            difficulty: q.difficulty || 'Medium',
+            description: cleanDesc || q.title,
+            examples,
+            constraints: [],
+            testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
+            expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
+            hints: q.hints || [],
+            starters: { ...defaultStarters, ...starters },
+            solutions: defaultStarters
+          };
+
+          return repairAndHardenProblem(template);
         }
-
-        const tcs = examples.map(e => e.input).filter(Boolean);
-        const eos = examples.map(e => e.output).filter(Boolean);
-        const defaultStarters = generateDefaultStarters(q.title);
-
-        const template: ProblemTemplate = {
-          name: q.title,
-          category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
-          difficulty: q.difficulty || 'Medium',
-          description: cleanDesc || q.title,
-          examples,
-          constraints: [],
-          testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
-          expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
-          hints: q.hints || [],
-          starters: { ...defaultStarters, ...starters },
-          solutions: defaultStarters
-        };
-
-        return repairAndHardenProblem(template);
       }
-    }
-  } catch (err) {
-    console.warn(`[Direct LeetCode GraphQL fetch notice for '${slug}']:`, err);
+    } catch {}
   }
 
   return null;
@@ -616,84 +590,37 @@ Return ONLY valid JSON matching this exact structure:
   }
 }`;
 
-  try {
-    const resp = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" }
-      }),
-      signal: AbortSignal.timeout(28000)
-    });
+  const rawContent = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.1, responseFormatJson: true, timeoutMs: 15000 });
 
-    if (resp.ok) {
-      const data = await resp.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content) as ProblemTemplate;
-        if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
-          const txtContent = formatProblemAsTxt(parsed);
-          try {
-            localStorage.setItem(`edustream_testcases_txt_${slug}`, txtContent);
-            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(parsed));
-          } catch (_) {}
+  if (rawContent) {
+    try {
+      const match = rawContent.match(/\{[\s\S]*\}/);
+      const jsonStr = match ? match[0] : rawContent;
+      const parsed = JSON.parse(jsonStr) as ProblemTemplate;
+      if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
+        const hardened = repairAndHardenProblem(parsed);
+        const txtContent = formatProblemAsTxt(hardened);
+        try {
+          localStorage.setItem(`edustream_testcases_txt_${slug}`, txtContent);
+          localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(hardened));
+        } catch (_) {}
 
-          // Attempt async upload to Cloudflare R2 backend
-          try {
-            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(parsed)
-            }).catch(() => {});
-          } catch (_) {}
+        // Attempt async upload to Cloudflare R2 backend
+        try {
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hardened)
+          }).catch(() => {});
+        } catch (_) {}
 
-          return parsed;
-        }
+        return hardened;
       }
+    } catch (err) {
+      console.warn(`[Problem Generation Parse Notice for '${cleanTitle}']:`, err);
     }
-  } catch (err) {
-    console.warn(`[Mistral Problem Generation Notice for '${cleanTitle}']:`, err);
-  }
-
-  // FALLBACK: Groq OpenAI GPT-OSS 120B (instant 1s generation)
-  try {
-    const groqKey = (import.meta.env.VITE_GROQ_API_KEY as string) || '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';
-    const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
-      }),
-      signal: AbortSignal.timeout(10000)
-    });
-
-    if (groqResp.ok) {
-      const gData = await groqResp.json();
-      const gContent = gData?.choices?.[0]?.message?.content || '';
-      const match = gContent.match(/\{[\s\S]*\}/);
-      if (match) {
-        const gParsed = JSON.parse(match[0]) as ProblemTemplate;
-        if (gParsed && gParsed.name && gParsed.testCases && gParsed.testCases.length >= 10) {
-          const hardened = repairAndHardenProblem(gParsed);
-          try {
-            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(hardened));
-          } catch (_) {}
-          return hardened;
-        }
-      }
-    }
-  } catch (gErr) {
-    console.warn(`[Groq Problem Generation Notice for '${cleanTitle}']:`, gErr);
   }
 
   // Fallback template if network/LLMs fail

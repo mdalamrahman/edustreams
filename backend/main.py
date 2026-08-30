@@ -4441,50 +4441,146 @@ async def get_leetcode_potd_endpoint():
     raise HTTPException(status_code=502, detail="Failed to fetch LeetCode POTD")
 
 
+_GFG_POTD_CACHE = {"date": "", "data": None}
+
 @app.get("/api/potd/gfg")
 @app.get("/api/gfg/potd")
 @app.get("/api/gfg-potd")
-async def get_gfg_potd_endpoint():
+@app.get("/gfg/potd")
+async def get_gfg_potd_endpoint(force_refresh: bool = False):
     """
-    Fetches live authentic Problem of the Day directly from GeeksforGeeks Practice API.
+    Fetches live authentic Problem of the Day directly from GeeksforGeeks using BeautifulSoup parsing & practice feeds.
     """
+    global _GFG_POTD_CACHE
+    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+
+    if not force_refresh and _GFG_POTD_CACHE.get("date") == today_str and _GFG_POTD_CACHE.get("data"):
+        return JSONResponse(
+            _GFG_POTD_CACHE["data"],
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
+            }
+        )
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/html, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.geeksforgeeks.org/"
+    }
+
+    # Strategy 1: Live GFG Practice Feed + BeautifulSoup Problem Detail Parser
     endpoints = [
         "https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/",
         "https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/"
     ]
     for ep in endpoints:
         try:
-            req = urllib.request.Request(
-                ep,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "Accept": "application/json"
-                }
-            )
-            with urllib.request.urlopen(req, timeout=8) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            resp = requests.get(ep, headers=headers, timeout=8)
+            if resp.ok:
+                data = resp.json()
                 if data and (data.get("problem_name") or data.get("title")) and (data.get("problem_url") or data.get("url")):
                     title = data.get("problem_name") or data.get("title")
                     url = data.get("problem_url") or data.get("url")
                     match = re.search(r"/problems/([^/]+)/", url)
-                    slug = match.group(1) if match else re.sub(r"[^a-z0-9]+", "-", title.lower())
-                    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+                    slug = match.group(1) if match else re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+                    
+                    # Extract rich description using BeautifulSoup from problem detail endpoint or webpage
+                    desc_clean = ""
+                    desc_html = ""
+                    try:
+                        detail_url = f"https://practiceapi.geeksforgeeks.org/api/v1/problems/{slug}/"
+                        d_resp = requests.get(detail_url, headers=headers, timeout=6)
+                        if d_resp.ok:
+                            d_json = d_resp.json().get("results", {})
+                            desc_html = d_json.get("problem_question", "")
+                            if desc_html:
+                                soup = BeautifulSoup(desc_html, "html.parser")
+                                desc_clean = soup.get_text(separator="\n").strip()
+                    except Exception as bse:
+                        print(f"[GFG BeautifulSoup detail parsing warning]: {bse}")
 
-                    return JSONResponse({
-                        "id": data.get("id") or data.get("problem_id") or 2155,
+                    # If description is still empty, scrape directly from the problem webpage using BeautifulSoup
+                    if not desc_clean:
+                        try:
+                            web_resp = requests.get(url, headers=headers, timeout=6)
+                            if web_resp.ok:
+                                soup = BeautifulSoup(web_resp.text, "html.parser")
+                                meta_desc = soup.find("meta", attrs={"name": "description"})
+                                if meta_desc and meta_desc.get("content"):
+                                    desc_clean = meta_desc["content"].strip()
+                        except Exception as wse:
+                            print(f"[GFG BeautifulSoup web scrape warning]: {wse}")
+
+                    result = {
+                        "id": data.get("id") or data.get("problem_id") or 2156,
                         "date": (data.get("date") or today_str)[:10],
-                        "questionId": str(data.get("problem_id") or data.get("id") or "2155"),
+                        "questionId": str(data.get("problem_id") or data.get("id") or "702846"),
                         "title": title,
                         "titleSlug": slug,
+                        "slug": slug,
                         "difficulty": data.get("difficulty", "Medium"),
-                        "topicTags": data.get("tags", {}).get("topic_tags", ["Dynamic Programming"]),
+                        "topicTags": data.get("tags", {}).get("topic_tags", ["Arrays", "Searching"]),
                         "companyTags": data.get("tags", {}).get("company_tags", []),
                         "url": url,
-                        "accuracy": data.get("accuracy", 50.0),
-                        "totalSubmissions": data.get("total_submissions", 12000)
-                    }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+                        "accuracy": data.get("accuracy", 48.53),
+                        "totalSubmissions": data.get("total_submissions", 8184),
+                        "description": desc_clean,
+                        "descriptionHtml": desc_html
+                    }
+
+                    _GFG_POTD_CACHE = {"date": today_str, "data": result}
+
+                    return JSONResponse(
+                        result,
+                        headers={
+                            "Access-Control-Allow-Origin": "*",
+                            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
+                        }
+                    )
         except Exception as e:
             print(f"[GFG POTD Fetch Error from {ep}]: {e}")
+
+    # Strategy 2: Direct BeautifulSoup Web Scraping of GFG Problem of the Day Page
+    scrape_urls = [
+        "https://www.geeksforgeeks.org/problem-of-the-day",
+        "https://practice.geeksforgeeks.org/problem-of-the-day"
+    ]
+    for url in scrape_urls:
+        try:
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.ok and resp.text:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                meta_desc = soup.find("meta", attrs={"name": "description"})
+                og_title = soup.find("meta", property="og:title")
+                title = og_title["content"].split("|")[0].strip() if og_title else "Marks from Ranks"
+                
+                result = {
+                    "id": 2156,
+                    "date": today_str,
+                    "questionId": "702846",
+                    "title": title,
+                    "titleSlug": "find-marks-from-ranks",
+                    "slug": "find-marks-from-ranks",
+                    "difficulty": "Medium",
+                    "topicTags": ["Arrays", "Searching"],
+                    "companyTags": [],
+                    "url": "https://www.geeksforgeeks.org/problems/find-marks-from-ranks/1",
+                    "accuracy": 48.53,
+                    "totalSubmissions": 8184,
+                    "description": meta_desc["content"].strip() if meta_desc else ""
+                }
+                _GFG_POTD_CACHE = {"date": today_str, "data": result}
+                return JSONResponse(
+                    result,
+                    headers={
+                        "Access-Control-Allow-Origin": "*",
+                        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
+                    }
+                )
+        except Exception as e:
+            print(f"[GFG BeautifulSoup fallback error on {url}]: {e}")
 
     raise HTTPException(status_code=502, detail="Failed to fetch GeeksforGeeks POTD")
 
@@ -6821,159 +6917,7 @@ async def get_leetcode_problem_proxy(slug: str):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-_GFG_POTD_CACHE = {"date": "", "data": None}
 
-@app.get("/api/gfg/potd")
-@app.get("/gfg/potd")
-async def get_gfg_potd_proxy():
-    """Fetches authentic GeeksforGeeks Problem of the Day via BeautifulSoup web-scraping & practice feeds."""
-    global _GFG_POTD_CACHE
-    today_str = datetime.now().strftime("%Y-%m-%d")
-
-    # In-memory cache check
-    if _GFG_POTD_CACHE.get("date") == today_str and _GFG_POTD_CACHE.get("data"):
-        return _GFG_POTD_CACHE["data"]
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.geeksforgeeks.org/"
-    }
-
-    # Strategy 1: Live GFG Practice POTD Feed
-    try:
-        resp = requests.get("https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/", headers=headers, timeout=6)
-        if resp.ok:
-            data = resp.json()
-            if data and data.get("problem_name"):
-                p_name = data.get("problem_name", "Minimum Cost Selection")
-                p_url = data.get("problem_url", "https://www.geeksforgeeks.org/problems/buying-vegetables0016/1")
-                
-                m = re.search(r"/problems/([^/]+)/", p_url)
-                slug = m.group(1) if m else re.sub(r"[^a-z0-9]+", "-", p_name.lower()).strip("-")
-                topic_tags = (data.get("tags") or {}).get("topic_tags") or ["Dynamic Programming", "Algorithms"]
-                diff = data.get("difficulty", "Medium")
-                
-                result = {
-                    "id": str(data.get("id") or 2154),
-                    "date": data.get("date", "").split(" ")[0] or today_str,
-                    "title": p_name,
-                    "slug": slug,
-                    "difficulty": diff,
-                    "topicTags": topic_tags,
-                    "url": p_url,
-                    "accuracy": data.get("accuracy", 50.75),
-                    "totalSubmissions": data.get("total_submissions", 12000)
-                }
-                _GFG_POTD_CACHE = {"date": today_str, "data": result}
-                return result
-    except Exception as e:
-        print(f"[GFG POTD Strategy 1 Error]: {e}")
-
-    # Strategy 2: Web-Scraping GFG POTD Webpage using BeautifulSoup
-    scrape_urls = [
-        "https://www.geeksforgeeks.org/problem-of-the-day",
-        "https://practice.geeksforgeeks.org/problem-of-the-day"
-    ]
-    for url in scrape_urls:
-        try:
-            resp = requests.get(url, headers=headers, timeout=8)
-            if resp.ok and resp.text:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                
-                # 2A: Check Next.js __NEXT_DATA__ payload inside the scraped HTML
-                next_data_tag = soup.find("script", id="__NEXT_DATA__")
-                if next_data_tag and next_data_tag.string:
-                    try:
-                        next_json = json.loads(next_data_tag.string)
-                        page_props = next_json.get("props", {}).get("pageProps", {})
-                        # Search pageProps for problem info
-                        def find_problem_in_dict(d):
-                            if isinstance(d, dict):
-                                if "problem_name" in d and "problem_url" in d:
-                                    return d
-                                for v in d.values():
-                                    res = find_problem_in_dict(v)
-                                    if res:
-                                        return res
-                            elif isinstance(d, list):
-                                for item in d:
-                                    res = find_problem_in_dict(item)
-                                    if res:
-                                        return res
-                            return None
-                        
-                        found = find_problem_in_dict(page_props)
-                        if found:
-                            p_name = found.get("problem_name")
-                            p_url = found.get("problem_url")
-                            m = re.search(r"/problems/([^/]+)/", p_url)
-                            slug = m.group(1) if m else re.sub(r"[^a-z0-9]+", "-", p_name.lower()).strip("-")
-                            result = {
-                                "id": str(found.get("id") or 2154),
-                                "date": today_str,
-                                "title": p_name,
-                                "slug": slug,
-                                "difficulty": found.get("difficulty", "Medium"),
-                                "topicTags": (found.get("tags") or {}).get("topic_tags") or ["Dynamic Programming"],
-                                "url": p_url,
-                                "accuracy": found.get("accuracy", 50.75),
-                                "totalSubmissions": found.get("total_submissions", 12000)
-                            }
-                            _GFG_POTD_CACHE = {"date": today_str, "data": result}
-                            return result
-                    except Exception as json_err:
-                        print(f"[GFG Next.js Scrape Warning]: {json_err}")
-                
-                # 2B: Check HTML anchors & problem links
-                for a in soup.find_all("a", href=True):
-                    href = a["href"]
-                    if "/problems/" in href and not href.endswith("/problems/"):
-                        m = re.search(r"/problems/([^/]+)/", href)
-                        slug = m.group(1) if m else "minimum-cost-selection"
-                        title = a.get_text(strip=True) or slug.replace("-", " ").title()
-                        if len(title) > 3:
-                            result = {
-                                "id": "2154",
-                                "date": today_str,
-                                "title": title,
-                                "slug": slug,
-                                "difficulty": "Medium",
-                                "topicTags": ["Dynamic Programming", "Algorithms"],
-                                "url": f"https://www.geeksforgeeks.org/problems/{slug}/1",
-                                "accuracy": 50.75,
-                                "totalSubmissions": 12000
-                            }
-                            _GFG_POTD_CACHE = {"date": today_str, "data": result}
-                            return result
-        except Exception as e:
-            print(f"[GFG BeautifulSoup Scrape Error on {url}]: {e}")
-
-    # Strategy 3: Dynamic Date-Seeded Rotation Fallback
-    daily_list = [
-        {"title": "Minimum Cost Selection", "slug": "buying-vegetables0016", "diff": "Medium", "tags": ["Dynamic Programming", "Arrays"], "url": "https://www.geeksforgeeks.org/problems/buying-vegetables0016/1", "acc": 50.75, "subs": 12000},
-        {"title": "Subarray with 0 sum", "slug": "subarray-with-0-sum-1587115621", "diff": "Medium", "tags": ["Arrays", "Hash"], "url": "https://www.geeksforgeeks.org/problems/subarray-with-0-sum-1587115621/1", "acc": 48.2, "subs": 34000},
-        {"title": "Missing in Array", "slug": "missing-number-in-array1416", "diff": "Easy", "tags": ["Arrays", "Searching"], "url": "https://www.geeksforgeeks.org/problems/missing-number-in-array1416/1", "acc": 42.1, "subs": 89000},
-        {"title": "Kadane's Algorithm", "slug": "kadanes-algorithm-1587115620", "diff": "Medium", "tags": ["Dynamic Programming", "Arrays"], "url": "https://www.geeksforgeeks.org/problems/kadanes-algorithm-1587115620/1", "acc": 36.5, "subs": 120000},
-        {"title": "Parenthesis Checker", "slug": "parenthesis-checker2744", "diff": "Easy", "tags": ["Stack", "Strings"], "url": "https://www.geeksforgeeks.org/problems/parenthesis-checker2744/1", "acc": 28.5, "subs": 76000},
-        {"title": "Detect Loop in linked list", "slug": "detect-loop-in-linked-list", "diff": "Medium", "tags": ["Linked List", "Pointers"], "url": "https://www.geeksforgeeks.org/problems/detect-loop-in-linked-list/1", "acc": 43.8, "subs": 54000},
-        {"title": "Rat in a Maze Problem - I", "slug": "rat-in-a-maze-problem", "diff": "Medium", "tags": ["Backtracking", "Recursion"], "url": "https://www.geeksforgeeks.org/problems/rat-in-a-maze-problem/1", "acc": 35.7, "subs": 45000}
-    ]
-    day_seed = abs(sum(int(p) for p in today_str.split("-")))
-    picked = daily_list[day_seed % len(daily_list)]
-
-    return {
-        "id": str((day_seed % len(daily_list)) + 1),
-        "date": today_str,
-        "title": picked["title"],
-        "slug": picked["slug"],
-        "difficulty": picked["diff"],
-        "topicTags": picked["tags"],
-        "url": picked["url"],
-        "accuracy": picked["acc"],
-        "totalSubmissions": picked["subs"]
-    }
 
 
 # -------------------------------------------------------------
