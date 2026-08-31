@@ -1,4 +1,4 @@
-import { MISTRAL_API_KEY } from './mistral';
+import { MISTRAL_API_KEY, executeAIChatCascade } from './mistral';
 import { InterviewMessage, InterviewContext } from './interviewService';
 
 export interface CompetencyScore {
@@ -217,56 +217,48 @@ Respond STRICTLY in valid JSON matching this schema:
 }`;
 
   try {
-    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: [{ role: 'user', content: evaluationPrompt }],
+    const rawJson = await executeAIChatCascade(
+      [{ role: 'user', content: evaluationPrompt }],
+      {
         temperature: 0.15,
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      const rawJson = data.choices?.[0]?.message?.content;
-      if (rawJson) {
-        const parsed = JSON.parse(rawJson);
-        const verdict = parsed.hiringVerdict || (parsed.overallScore >= 80 ? 'HIRE' : parsed.overallScore >= 65 ? 'LEAN HIRE' : 'LEAN NO HIRE');
-        
-        return {
-          overallScore: Math.min(100, Math.max(0, parsed.overallScore ?? 75)),
-          hiringVerdict: verdict,
-          hiringDecision: verdict,
-          verdictColor: getVerdictColor(verdict),
-          percentileRank: parsed.percentileRank || Math.round((parsed.overallScore || 75) * 0.95),
-          levelCalibration: parsed.levelCalibration || `Calibrated at ${ctx.level} Standards`,
-          roleLevel: ctx.level,
-          roundType: ctx.round,
-          testStyle: ctx.testStyle || 'faang_bar_raiser',
-          company: ctx.company,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          durationMinutes,
-          metrics: {
-            problemSolving: parsed.metrics?.problemSolving || { score: 7, rating: 'Adequate', feedback: 'Demonstrated viable intuition.' },
-            codeQuality: parsed.metrics?.codeQuality || { score: 7, rating: 'Adequate', feedback: 'Code was structured.' },
-            architectureDesign: parsed.metrics?.architectureDesign || { score: 7, rating: 'Adequate', feedback: 'Reasonable architectural bounds.' },
-            communication: parsed.metrics?.communication || { score: 8, rating: 'Strong', feedback: 'Articulated thought process clearly.' },
-            behavioralOwnership: parsed.metrics?.behavioralOwnership || { score: 8, rating: 'Strong', feedback: 'Good technical ownership.' }
-          },
-          complexityAnalysis: parsed.complexityAnalysis,
-          turnHighlights: parsed.turnHighlights || [],
-          strengths: parsed.strengths || ['Good high-level problem understanding', 'Proactive communication'],
-          areasOfImprovement: parsed.areasOfImprovement || ['Deepen boundary condition verification'],
-          sevenDayRoadmap: parsed.sevenDayRoadmap || [],
-          hiringCommitteeDebrief: parsed.hiringCommitteeDebrief || 'Candidate demonstrated solid fundamental problem-solving abilities.',
-          interviewerSummary: parsed.interviewerSummary || 'Candidate showed strong potential and clear communication.'
-        };
+        responseFormatJson: true,
+        timeoutMs: 15000
       }
+    );
+    if (rawJson) {
+      const match = rawJson.match(/\{[\s\S]*\}/);
+      const jsonStr = match ? match[0] : rawJson;
+      const parsed = JSON.parse(jsonStr);
+      const verdict = parsed.hiringVerdict || (parsed.overallScore >= 80 ? 'HIRE' : parsed.overallScore >= 65 ? 'LEAN HIRE' : 'LEAN NO HIRE');
+      
+      return {
+        overallScore: Math.min(100, Math.max(0, parsed.overallScore ?? 75)),
+        hiringVerdict: verdict,
+        hiringDecision: verdict,
+        verdictColor: getVerdictColor(verdict),
+        percentileRank: parsed.percentileRank || Math.round((parsed.overallScore || 75) * 0.95),
+        levelCalibration: parsed.levelCalibration || `Calibrated at ${ctx.level} Standards`,
+        roleLevel: ctx.level,
+        roundType: ctx.round,
+        testStyle: ctx.testStyle || 'faang_bar_raiser',
+        company: ctx.company,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        durationMinutes,
+        metrics: {
+          problemSolving: parsed.metrics?.problemSolving || { score: 7, rating: 'Adequate', feedback: 'Demonstrated viable intuition.' },
+          codeQuality: parsed.metrics?.codeQuality || { score: 7, rating: 'Adequate', feedback: 'Code was structured.' },
+          architectureDesign: parsed.metrics?.architectureDesign || { score: 7, rating: 'Adequate', feedback: 'Reasonable architectural bounds.' },
+          communication: parsed.metrics?.communication || { score: 8, rating: 'Strong', feedback: 'Articulated thought process clearly.' },
+          behavioralOwnership: parsed.metrics?.behavioralOwnership || { score: 8, rating: 'Strong', feedback: 'Good technical ownership.' }
+        },
+        complexityAnalysis: parsed.complexityAnalysis,
+        turnHighlights: parsed.turnHighlights || [],
+        strengths: parsed.strengths || ['Good high-level problem understanding', 'Proactive communication'],
+        areasOfImprovement: parsed.areasOfImprovement || ['Deepen boundary condition verification'],
+        sevenDayRoadmap: parsed.sevenDayRoadmap || [],
+        hiringCommitteeDebrief: parsed.hiringCommitteeDebrief || 'Candidate demonstrated solid fundamental problem-solving abilities.',
+        interviewerSummary: parsed.interviewerSummary || 'Candidate showed strong potential and clear communication.'
+      };
     }
   } catch (err) {
     console.error('Evaluation AI Error:', err);

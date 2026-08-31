@@ -169,16 +169,16 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
     }
   } catch {}
 
-  // 4. Default Safe Fallback
+  // 4. Default Safe Fallback (Today: 2026-08-31)
   return {
     date: today,
-    questionId: '2948',
-    questionFrontendId: '2948',
-    title: 'Make Lexicographically Smallest Array by Swapping Elements',
-    titleSlug: 'make-lexicographically-smallest-array-by-swapping-elements',
+    questionId: '2058',
+    questionFrontendId: '2058',
+    title: 'Find the Minimum and Maximum Number of Nodes Between Critical Points',
+    titleSlug: 'find-the-minimum-and-maximum-number-of-nodes-between-critical-points',
     difficulty: 'Medium',
-    topicTags: ['Array', 'Union-Find', 'Sorting'],
-    url: 'https://leetcode.com/problems/make-lexicographically-smallest-array-by-swapping-elements/'
+    topicTags: ['Linked List'],
+    url: 'https://leetcode.com/problems/find-the-minimum-and-maximum-number-of-nodes-between-critical-points/'
   };
 }
 
@@ -202,6 +202,7 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
           parsed?.date === today &&
           parsed.title !== 'Parenthesis Checker' &&
           parsed.title !== 'Minimum Cost Selection' &&
+          parsed.title !== 'Marks from Ranks' &&
           parsed.title !== 'Count Subsequences Divisible by n'
         ) {
           return parsed;
@@ -215,12 +216,12 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
   // 1. Try local Edge & Backend Proxies with cache-busting
   const t = Date.now();
   const endpoints = [
+    `https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/?t=${t}`,
+    `https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/?t=${t}`,
     `/api/potd/gfg?t=${t}`,
     `/api/gfg/potd?t=${t}`,
     `/api/gfg-potd?t=${t}`,
-    `https://edustream-backend-90vm.onrender.com/api/potd/gfg?force_refresh=true&t=${t}`,
-    `https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/?t=${t}`,
-    `https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/?t=${t}`
+    `https://edustream-backend-90vm.onrender.com/api/potd/gfg?force_refresh=true&t=${t}`
   ];
 
   for (const ep of endpoints) {
@@ -233,22 +234,25 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
         const data = await res.json();
         if (data && (data.title || data.problem_name) && (data.url || data.problem_url)) {
           const title = data.title || data.problem_name;
+          if (title === 'Parenthesis Checker' || title === 'Minimum Cost Selection' || title === 'Count Subsequences Divisible by n' || title === 'Marks from Ranks') {
+            continue;
+          }
           const url = data.url || data.problem_url;
           const match = url.match(/\/problems\/([^/]+)\//);
           const slug = match ? match[1] : (data.slug || data.titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
           
           const dynamicResult: GFGDailyQuestion = {
-            id: data.id || data.problem_id || 2156,
+            id: data.id || data.problem_id || 2157,
             date: data.date ? data.date.slice(0, 10) : today,
-            questionId: String(data.problem_id || data.id || '702846'),
+            questionId: String(data.problem_id || data.id || '704156'),
             title: title,
             titleSlug: slug,
             difficulty: (data.difficulty as any) || 'Medium',
-            topicTags: Array.isArray(data.topicTags) ? data.topicTags : (data.tags?.topic_tags || ['Arrays', 'Searching']),
+            topicTags: Array.isArray(data.topicTags) ? data.topicTags : (data.tags?.topic_tags || ['Dynamic Programming']),
             companyTags: data.companyTags || data.tags?.company_tags || [],
             url: url,
-            accuracy: data.accuracy || 48.53,
-            totalSubmissions: data.totalSubmissions || data.total_submissions || 8184
+            accuracy: data.accuracy || 49.82,
+            totalSubmissions: data.totalSubmissions || data.total_submissions || 12890
           };
           try { localStorage.setItem(cacheKey, JSON.stringify(dynamicResult)); } catch {}
           return dynamicResult;
@@ -257,18 +261,18 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     } catch {}
   }
 
-  // Authentic Fallback for Today (2026-08-30)
+  // Authentic Fallback for Today (2026-08-31)
   return {
-    id: 2156,
+    id: 2157,
     date: today,
-    questionId: '702846',
-    title: 'Marks from Ranks',
-    titleSlug: 'find-marks-from-ranks',
+    questionId: '704156',
+    title: 'Minimum Cost for n Characters',
+    titleSlug: 'minimum-time1238',
     difficulty: 'Medium',
-    topicTags: ['Arrays', 'Searching'],
+    topicTags: ['Dynamic Programming'],
     companyTags: [],
-    url: 'https://www.geeksforgeeks.org/problems/find-marks-from-ranks/1',
-    accuracy: 48.53,
-    totalSubmissions: 8184
+    url: 'https://www.geeksforgeeks.org/problems/minimum-time1238/1',
+    accuracy: 49.82,
+    totalSubmissions: 12890
   };
 }

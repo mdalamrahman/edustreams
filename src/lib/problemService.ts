@@ -45,6 +45,25 @@ export const toSlug = (str?: string): string => {
   if (!str) return 'algorithm-problem';
   let s = String(str).trim();
 
+  // If search URL like https://leetcode.com/problem-list/all/?search=xyz, extract search query
+  if (s.toLowerCase().includes('search=') || s.toLowerCase().includes('problem-list')) {
+    try {
+      const url = new URL(s.startsWith('http') ? s : `https://${s}`);
+      const searchVal = url.searchParams.get('search');
+      if (searchVal) {
+        s = searchVal;
+      }
+    } catch {}
+  }
+
+  // If GFG problem URL, extract slug accurately
+  if (s.toLowerCase().includes('geeksforgeeks.org/problems/')) {
+    const match = s.match(/geeksforgeeks\.org\/problems\/([^/?#\s]+)/i);
+    if (match && match[1]) {
+      s = match[1];
+    }
+  }
+
   // If full URL or contains leetcode.com/problems/, extract the problem slug accurately
   if (s.startsWith('http://') || s.startsWith('https://') || s.toLowerCase().includes('leetcode.com/problems/')) {
     try {
@@ -66,15 +85,15 @@ export const toSlug = (str?: string): string => {
     }
   }
 
-  // Remove trailing sub-paths like /description/ or /editorial/
-  s = s.replace(/\/(description|editorial|solutions|discussion|comments)\/?$/i, '');
+  // Remove trailing sub-paths like /description/ or /editorial/ or /1
+  s = s.replace(/\/(description|editorial|solutions|discussion|comments|\d+)\/?$/i, '');
 
   const slug = s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com' || slug === 'problems') {
+  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com' || slug === 'problems' || slug === 'all' || slug === 'problem-list') {
     return 'algorithm-problem';
   }
   return slug;
@@ -501,6 +520,177 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
     } catch {}
   }
 
+  // 2. Direct LeetCode GraphQL query from client
+  try {
+    const query = `query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionId
+        questionFrontendId
+        title
+        titleSlug
+        content
+        difficulty
+        topicTags { name }
+        codeSnippets { lang langSlug code }
+        sampleTestCase
+        exampleTestcases
+        hints
+        categoryTitle
+      }
+    }`;
+    const gqlRes = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { titleSlug: slug } }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (gqlRes.ok) {
+      const json = await gqlRes.json();
+      const q = json?.data?.question;
+      if (q && q.title && q.content) {
+        const contentHtml = q.content || '';
+        const cleanDesc = contentHtml
+          .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&amp;/g, '&')
+          .trim();
+
+        const starters: Record<SupportedLanguage, string> = {} as any;
+        const snippets: any[] = q.codeSnippets || [];
+        snippets.forEach((s: any) => {
+          if (s.langSlug === 'cpp') starters.cpp = s.code;
+          else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
+          else if (s.langSlug === 'java') starters.java = s.code;
+          else if (s.langSlug === 'javascript') starters.javascript = s.code;
+          else if (s.langSlug === 'golang') starters.go = s.code;
+          else if (s.langSlug === 'rust') starters.rust = s.code;
+        });
+
+        const examples: ProblemTemplate['examples'] = [];
+        const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+        for (const m of exMatches) {
+          const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+          const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+          const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+          const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+          if (inM && outM) {
+            examples.push({
+              input: inM[1].trim(),
+              output: outM[1].trim(),
+              explanation: expM ? expM[1].trim() : undefined
+            });
+          }
+        }
+
+        const tcs = examples.map(e => e.input).filter(Boolean);
+        const eos = examples.map(e => e.output).filter(Boolean);
+        const defaultStarters = generateDefaultStarters(q.title);
+
+        const template: ProblemTemplate = {
+          name: q.title,
+          category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
+          difficulty: q.difficulty || 'Medium',
+          description: cleanDesc || q.title,
+          examples,
+          constraints: [],
+          testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
+          expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
+          hints: q.hints || [],
+          starters: { ...defaultStarters, ...starters },
+          solutions: defaultStarters
+        };
+
+        return repairAndHardenProblem(template);
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Fetches authentic problem details directly from GeeksforGeeks Practice API & backend proxy.
+ */
+export async function fetchFromGFGAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
+  const slug = toSlug(slugOrUrl);
+  if (!slug || slug === 'algorithm-problem') return null;
+
+  const endpoints = [
+    `https://practiceapi.geeksforgeeks.org/api/v1/problems/${encodeURIComponent(slug)}/`,
+    `/api/gfg/${encodeURIComponent(slug)}`,
+    `${TELEGRAM_BACKEND_URL}/api/gfg/${encodeURIComponent(slug)}`
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const resp = await fetch(ep, { signal: AbortSignal.timeout(8000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        const resObj = data?.results || data;
+        if (resObj && (resObj.problem_name || resObj.name) && (resObj.problem_question || resObj.description)) {
+          const rawHtml = resObj.problem_question || resObj.description || '';
+          const title = resObj.problem_name || resObj.name;
+          const cleanDesc = rawHtml
+            .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          const examples: ProblemTemplate['examples'] = [];
+          const exMatches = Array.from(rawHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+          for (const m of exMatches) {
+            const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+            const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+            const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+            const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+            if (inM && outM) {
+              examples.push({
+                input: inM[1].trim(),
+                output: outM[1].trim(),
+                explanation: expM ? expM[1].trim() : undefined
+              });
+            }
+          }
+
+          const constraints: string[] = [];
+          const cMatch = rawHtml.match(/Constraints:[\s\S]*?(<\/p>|$)/i);
+          if (cMatch) {
+            const cText = cMatch[0].replace(/<[^>]+>/g, ' ').replace(/Constraints:/i, '').replace(/&le;/g, '<=').replace(/&ge;/g, '>=').replace(/\s+/g, ' ').trim();
+            if (cText) constraints.push(cText);
+          }
+
+          const defaultStarters = generateDefaultStarters(title);
+          const tcs = examples.map(e => e.input).filter(Boolean);
+          const eos = examples.map(e => e.output).filter(Boolean);
+
+          const template: ProblemTemplate = {
+            name: title,
+            category: resObj.tags?.topic_tags?.[0] || 'Dynamic Programming',
+            difficulty: resObj.difficulty || 'Medium',
+            description: cleanDesc || title,
+            examples,
+            constraints,
+            testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['n = 9, i = 1, d = 2, c = 1']),
+            expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['5']),
+            hints: [],
+            starters: defaultStarters,
+            solutions: defaultStarters
+          };
+
+          return repairAndHardenProblem(template);
+        }
+      }
+    } catch {}
+  }
   return null;
 }
 
@@ -763,7 +953,21 @@ export async function fetchEnrichedProblem(
     console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
   }
 
-  // 4. If not found on LeetCode (custom non-LeetCode problem), generate with Mistral AI
+  // 4. Fetch from GeeksforGeeks API (/api/gfg/{slug} or practice API)
+  try {
+    const gfgData = await fetchFromGFGAPI(slugOrTitle);
+    if (gfgData && isProblemValidAndAuthentic(gfgData)) {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(gfgData));
+        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(gfgData));
+      } catch (_) {}
+      return applyOverride(gfgData);
+    }
+  } catch (err) {
+    console.warn(`[GFG API fetch notice for '${slug}']:`, err);
+  }
+
+  // 5. If not found on LeetCode or GFG (custom non-LeetCode problem), generate with Mistral AI
   let generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
   generated = repairAndHardenProblem(generated);
   try {

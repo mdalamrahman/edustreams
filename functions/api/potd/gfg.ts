@@ -70,17 +70,17 @@ export const onRequest: PagesFunction = async (context) => {
 
   const today = new Date().toISOString().slice(0, 10);
   return new Response(JSON.stringify({
-    id: 2156,
+    id: 2157,
     date: today,
-    questionId: '702846',
-    title: 'Marks from Ranks',
-    titleSlug: 'find-marks-from-ranks',
+    questionId: '704156',
+    title: 'Minimum Cost for n Characters',
+    titleSlug: 'minimum-time1238',
     difficulty: 'Medium',
-    topicTags: ['Arrays', 'Searching'],
+    topicTags: ['Dynamic Programming'],
     companyTags: [],
-    url: 'https://www.geeksforgeeks.org/problems/find-marks-from-ranks/1',
-    accuracy: 48.53,
-    totalSubmissions: 8184
+    url: 'https://www.geeksforgeeks.org/problems/minimum-time1238/1',
+    accuracy: 49.82,
+    totalSubmissions: 12890
   }), {
     status: 200,
     headers: {

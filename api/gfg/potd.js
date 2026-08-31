@@ -54,14 +54,14 @@ export default async function handler(req, res) {
 
   // Guaranteed fallback: Today's verified problem
   return res.status(200).json({
-    id: '2154',
+    id: '2157',
     date: today,
-    title: 'Minimum Cost Selection',
-    slug: 'buying-vegetables0016',
+    title: 'Minimum Cost for n Characters',
+    slug: 'minimum-time1238',
     difficulty: 'Medium',
-    topicTags: ['Dynamic Programming', 'Arrays'],
-    url: 'https://www.geeksforgeeks.org/problems/buying-vegetables0016/1',
-    accuracy: 50.75,
-    totalSubmissions: 12000
+    topicTags: ['Dynamic Programming'],
+    url: 'https://www.geeksforgeeks.org/problems/minimum-time1238/1',
+    accuracy: 49.82,
+    totalSubmissions: 12890
   });
 }

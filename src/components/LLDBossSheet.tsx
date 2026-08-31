@@ -565,30 +565,45 @@ class Car {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { id: 'parking_lot', title: '1. Parking Lot System', patterns: 'Factory, Strategy (Fee calculation)', entities: 'Vehicle, ParkingSpot (Compact, Large), Ticket, Terminal', companies: ['Amazon', 'Flipkart', 'Uber'] },
-              { id: 'tic_tac_toe', title: '2. Tic-Tac-Toe Game', patterns: 'State, Strategy (Win checker)', entities: 'Board, Piece (X, O), Player, GameController', companies: ['Microsoft', 'Google', 'PhonePe'] },
-              { id: 'snake_ladder', title: '3. Snake & Ladder Game', patterns: 'Strategy, Observer', entities: 'Board, Cell, Jump (Snake, Ladder), Dice, Player', companies: ['Swiggy', 'Razorpay', 'Atlassian'] },
-              { id: 'rate_limiter', title: '4. Token Bucket Rate Limiter', patterns: 'Strategy (Sliding Window, Leaky Bucket)', entities: 'RateLimiter, TokenBucket, ClientIdentifier', companies: ['Stripe', 'Uber', 'Zomato'] },
-              { id: 'splitwise', title: '5. Expense Sharing App (Splitwise)', patterns: 'Strategy (Equal, Exact, Percent Split), Factory', entities: 'User, Expense, Split, BalanceSheet, Group', companies: ['Cred', 'PhonePe', 'DeShaw'] },
-              { id: 'bookmyshow', title: '6. Movie Ticket Booking (BookMyShow)', patterns: 'Observer (Notify seat release), State (Seat lock)', entities: 'City, Cinema, Screen, Show, Seat, Booking, Payment', companies: ['Flipkart', 'MakeMyTrip', 'Oracle'] },
-              { id: 'elevator', title: '7. Elevator Management System', patterns: 'State (Idle, MovingUp, MovingDown), Strategy (LOOK)', entities: 'ElevatorCar, Floor, InternalButton, Dispatcher', companies: ['Amazon', 'Salesforce', 'Adobe'] },
-              { id: 'vending_machine', title: '8. Vending Machine', patterns: 'State Pattern (Idle, HasMoney, Dispensing, SoldOut)', entities: 'Inventory, Item, Coin, State, VendingMachine', companies: ['Microsoft', 'Cisco', 'Samsung'] },
+              { id: 'lld-parking-lot', title: '1. Parking Lot System', patterns: 'Factory, Strategy (Fee calculation)', entities: 'Vehicle, ParkingSpot (Compact, Large), Ticket, Terminal', companies: ['Amazon', 'Flipkart', 'Uber'] },
+              { id: 'lld-tic-tac-toe', title: '2. Tic-Tac-Toe Game', patterns: 'State, Strategy (Win checker)', entities: 'Board, Piece (X, O), Player, GameController', companies: ['Microsoft', 'Google', 'PhonePe'] },
+              { id: 'lld-snake-ladder', title: '3. Snake & Ladder Game', patterns: 'Strategy, Observer', entities: 'Board, Cell, Jump (Snake, Ladder), Dice, Player', companies: ['Swiggy', 'Razorpay', 'Atlassian'] },
+              { id: 'lld-rate-limiter', title: '4. Token Bucket Rate Limiter', patterns: 'Strategy (Sliding Window, Leaky Bucket)', entities: 'RateLimiter, TokenBucket, ClientIdentifier', companies: ['Stripe', 'Uber', 'Zomato'] },
+              { id: 'lld-splitwise', title: '5. Expense Sharing App (Splitwise)', patterns: 'Strategy (Equal, Exact, Percent Split), Factory', entities: 'User, Expense, Split, BalanceSheet, Group', companies: ['Cred', 'PhonePe', 'DeShaw'] },
+              { id: 'lld-bookmyshow', title: '6. Movie Ticket Booking (BookMyShow)', patterns: 'Observer (Notify seat release), State (Seat lock)', entities: 'City, Cinema, Screen, Show, Seat, Booking, Payment', companies: ['Flipkart', 'MakeMyTrip', 'Oracle'] },
+              { id: 'lld-elevator', title: '7. Elevator Management System', patterns: 'State (Idle, MovingUp, MovingDown), Strategy (LOOK)', entities: 'ElevatorCar, Floor, InternalButton, Dispatcher', companies: ['Amazon', 'Salesforce', 'Adobe'] },
+              { id: 'lld-vending-machine', title: '8. Vending Machine', patterns: 'State Pattern (Idle, HasMoney, Dispensing, SoldOut)', entities: 'Inventory, Item, Coin, State, VendingMachine', companies: ['Microsoft', 'Cisco', 'Samsung'] },
             ].map((prob) => (
-              <div key={prob.id} className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <strong className="text-sm font-bold text-amber-300">{prob.title}</strong>
+              <div key={prob.id} className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between space-y-3 shadow-lg">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <strong className="text-sm font-bold text-amber-300">{prob.title}</strong>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div><span className="text-slate-400 font-medium">Patterns:</span> <span className="text-teal-300 font-mono">{prob.patterns}</span></div>
+                    <div><span className="text-slate-400 font-medium">Entities:</span> <span className="text-slate-200">{prob.entities}</span></div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {prob.companies.map(c => (
+                      <span key={c} className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-400">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-1.5 text-xs">
-                  <div><span className="text-slate-400 font-medium">Patterns:</span> <span className="text-teal-300 font-mono">{prob.patterns}</span></div>
-                  <div><span className="text-slate-400 font-medium">Entities:</span> <span className="text-slate-200">{prob.entities}</span></div>
-                </div>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {prob.companies.map(c => (
-                    <span key={c} className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-400">
-                      {c}
-                    </span>
-                  ))}
-                </div>
+
+                {onOpenCodingProblem && (
+                  <div className="pt-2 border-t border-slate-800/80 flex justify-end">
+                    <button
+                      onClick={() => onOpenCodingProblem(prob.id)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600 border border-purple-500/40 text-purple-200 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm group"
+                    >
+                      <Code2 className="w-3.5 h-3.5 text-purple-300 group-hover:scale-110 transition-transform" />
+                      <span>Solve in LLD Studio</span>
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

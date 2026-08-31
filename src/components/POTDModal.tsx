@@ -465,7 +465,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                         name: gfgPotd.title,
                         difficulty: (gfgPotd.difficulty as any) || 'Medium',
                         rating: '5.0 / 5',
-                        leetcode: `https://leetcode.com/problem-list/all/?search=${encodeURIComponent(gfgPotd.title)}`,
+                        leetcode: gfgPotd.url,
                         gfg: gfgPotd.url,
                         companies: ['Amazon', 'Microsoft', 'Flipkart'],
                         slug: gfgPotd.titleSlug

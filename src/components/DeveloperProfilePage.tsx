@@ -859,17 +859,33 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                     <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
                       <div className={`h-2 rounded-full ${track.isEligible ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-indigo-600'}`} style={{ width: `${track.percentage}%` }} />
                     </div>
-                    <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
                       <span className="text-[11px] font-mono text-slate-500">{track.solvedItems} / {track.totalItems} solved</span>
-                      {track.isEligible ? (
-                        <button onClick={() => handleOpenCert(track)} className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-md">
-                          <Award className="w-3.5 h-3.5" /><span>View Certificate</span>
-                        </button>
-                      ) : (
-                        <button onClick={() => handleOpenCert(track)} className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold cursor-pointer flex items-center gap-1">
-                          <span>Preview</span><Eye className="w-3 h-3" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {onNavigateToTab && (
+                          <button
+                            onClick={() => {
+                              const targetTab = track.trackId.includes('lld') ? 'lld' :
+                                track.trackId.includes('hld') || track.trackId.includes('system') ? 'hld' :
+                                track.trackId.includes('interview') ? 'interview' : 'sde_sheet';
+                              onNavigateToTab(targetTab);
+                            }}
+                            className="px-3 py-1 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/50 text-purple-300 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                          >
+                            <span>Practice</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        )}
+                        {track.isEligible ? (
+                          <button onClick={() => handleOpenCert(track)} className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-md">
+                            <Award className="w-3.5 h-3.5" /><span>View Certificate</span>
+                          </button>
+                        ) : (
+                          <button onClick={() => handleOpenCert(track)} className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold cursor-pointer flex items-center gap-1">
+                            <span>Preview</span><Eye className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}

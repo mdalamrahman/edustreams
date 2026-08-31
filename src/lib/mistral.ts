@@ -59,8 +59,8 @@ export async function executeAIChatCascade(
   const temp = options?.temperature ?? 0.3;
   const timeoutMs = options?.timeoutMs ?? 12000;
 
-  // 1. PRIMARY: Groq Ultra-Fast API (Qwen 3.8 27B / Compound / Llama)
-  const groqModels = ['qwen/qwen3.8-27b', 'groq/compound-mini', 'qwen/qwen3.6-27b', 'openai/gpt-oss-120b'];
+  // 1. PRIMARY: Groq Ultra-Fast API (Llama 3.3 70B / Llama 3.1 8B / Mixtral / Gemma 2)
+  const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
   for (const model of groqModels) {
     try {
       const bodyPayload: any = {
@@ -421,6 +421,13 @@ function generateTopicSpecificQuizFallback(title: string, channelName: string): 
   ];
 }
 
+export interface CodeReviewContext {
+  approaches?: Array<{ id?: string; name: string; time?: string; space?: string; description?: string }>;
+  starterCode?: string;
+  hints?: string[];
+  examples?: Array<{ input?: string; output?: string; explanation?: string }>;
+}
+
 export async function requestMistralCodeReview(
   code: string,
   language: string,
@@ -429,7 +436,8 @@ export async function requestMistralCodeReview(
   problemTitle: string,
   problemStatement?: string,
   constraints?: string[],
-  testCases?: any[]
+  testCases?: any[],
+  context?: CodeReviewContext
 ): Promise<CodeTAReview> {
   const constraintsText = (constraints && constraints.length > 0)
     ? `Constraints:\n${constraints.map(c => `- ${c}`).join('\n')}`
@@ -439,12 +447,22 @@ export async function requestMistralCodeReview(
     ? `Sample Test Cases:\n${testCases.slice(0, 3).map((tc, i) => `Case ${i + 1}: Input: ${JSON.stringify(tc.input || tc)} => Expected: ${JSON.stringify(tc.expected_output || tc.output || '')}`).join('\n')}`
     : '';
 
+  const hintsText = (context?.hints && context.hints.length > 0)
+    ? `Algorithmic Hints / Key Invariants:\n${context.hints.map((h, i) => `${i + 1}. ${h}`).join('\n')}`
+    : '';
+
+  const approachesText = (context?.approaches && context.approaches.length > 0)
+    ? `Optimal Reference Approaches:\n${context.approaches.map(a => `- ${a.name} [Time: ${a.time || 'N/A'}, Space: ${a.space || 'N/A'}]`).join('\n')}`
+    : '';
+
   const prompt = `You are a Senior Principal Software Engineer & FAANG Technical Interviewer conducting a rigorous code review.
 
 PROBLEM: "${problemTitle}"
 ${problemStatement ? `PROBLEM DESCRIPTION:\n${problemStatement.slice(0, 3000)}` : ''}
 ${constraintsText}
 ${testCasesText}
+${hintsText}
+${approachesText}
 
 STUDENT'S SUBMITTED CODE:
 Language: ${language}
@@ -634,6 +652,16 @@ export interface OptimalSolutionResponse {
   fromR2Cache?: boolean;
 }
 
+export interface SolutionGenerationContext {
+  approaches?: Array<{ id?: string; name: string; time?: string; space?: string; description?: string }>;
+  starterCode?: string;
+  constraints?: string[];
+  examples?: any[];
+  hints?: string[];
+  targetApproachId?: string;
+  existingSolutions?: Record<string, string>;
+}
+
 export async function validateAndStoreSolution(
   slug: string,
   language: string,
@@ -678,8 +706,26 @@ async function _generateSolutionOnce(
   description: string,
   language: string,
   starterCode?: string,
+  context?: SolutionGenerationContext,
   attempt = 1
 ): Promise<OptimalSolutionResponse | null> {
+  // Find targeted approach if specified
+  const targetApproach = context?.approaches?.find(
+    a => a.id === context?.targetApproachId || a.name.toLowerCase().includes(context?.targetApproachId?.toLowerCase() || '')
+  ) || context?.approaches?.[0];
+
+  const approachDirective = targetApproach
+    ? `Target Approach Paradigm: "${targetApproach.name}" (Target Time: ${targetApproach.time || 'Optimal'}, Target Space: ${targetApproach.space || 'Optimal'})\n${targetApproach.description ? `Approach Intuition: ${targetApproach.description}\n` : ''}`
+    : '';
+
+  const constraintsText = (context?.constraints && context.constraints.length > 0)
+    ? `Constraints:\n${context.constraints.map(c => `- ${c}`).join('\n')}\n`
+    : '';
+
+  const hintsText = (context?.hints && context.hints.length > 0)
+    ? `Key Hints:\n${context.hints.map((h, i) => `${i + 1}. ${h}`).join('\n')}\n`
+    : '';
+
   const prompt = `You are a Principal Software Engineer and Competitive Programming Master.
 Generate an optimal, verified, production-grade solution for the following coding problem in ${language}.
 
@@ -687,14 +733,15 @@ Problem: ${title}
 Description:
 ${(description || '').slice(0, 3000)}
 
-${starterCode ? `Starter Signature Reference:\n\`\`\`\n${starterCode}\n\`\`\`` : ''}
+${constraintsText}${hintsText}${approachDirective}
+${starterCode ? `Starter Signature Reference (MUST match exact class name, method name, and types):\n\`\`\`\n${starterCode}\n\`\`\`` : ''}
 
 Output ONLY valid JSON matching this exact structure:
 {
-  "approachName": "Optimal Approach",
+  "approachName": "${targetApproach?.name || 'Optimal Approach'}",
   "code": "<Complete, clean, and optimal ${language} code matching class/function signature>",
-  "timeComplexity": "O(N)",
-  "spaceComplexity": "O(1)",
+  "timeComplexity": "${targetApproach?.time || 'O(N)'}",
+  "spaceComplexity": "${targetApproach?.space || 'O(1)'}",
   "explanation": "<Step-by-step intuition, state invariants, and algorithmic breakdown>"
 }`;
 
@@ -722,9 +769,9 @@ Output ONLY valid JSON matching this exact structure:
       return {
         code: parsed.code,
         explanation: parsed.explanation || 'Optimal algorithmic solution.',
-        timeComplexity: parsed.timeComplexity || 'O(N)',
-        spaceComplexity: parsed.spaceComplexity || 'O(1)',
-        approachName: parsed.approachName || 'Optimal Approach'
+        timeComplexity: parsed.timeComplexity || targetApproach?.time || 'O(N)',
+        spaceComplexity: parsed.spaceComplexity || targetApproach?.space || 'O(1)',
+        approachName: parsed.approachName || targetApproach?.name || 'Optimal Approach'
       };
     }
   }
@@ -737,9 +784,10 @@ export async function requestAIOptimalSolution(
   description: string,
   language: string,
   starterCode?: string,
-  slug?: string
+  slug?: string,
+  context?: SolutionGenerationContext
 ): Promise<OptimalSolutionResponse> {
-  const candidate = await _generateSolutionOnce(title, description, language, starterCode, 1);
+  const candidate = await _generateSolutionOnce(title, description, language, starterCode, context, 1);
 
   const sol: OptimalSolutionResponse = candidate ?? {
     code: starterCode || `// Solution for ${title}`,

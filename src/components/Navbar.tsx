@@ -43,6 +43,7 @@ interface NavbarProps {
   onOpenAskAI?: () => void;
   onOpenWallet?: () => void;
   onOpenProfile?: () => void;
+  onOpenAdmin?: () => void;
   onSignOut: () => void;
 }
 
@@ -56,6 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAskAI,
   onOpenWallet,
   onOpenProfile,
+  onOpenAdmin,
   onSignOut,
 }) => {
   const { isMobile } = useDevice();
@@ -347,6 +349,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>LeetCode Profile & Heatmap</span>
                     </button>
 
+                    {isAdminUser && onOpenAdmin && (
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          onOpenAdmin();
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-amber-300 hover:bg-amber-950/50 flex items-center gap-2 transition-all cursor-pointer"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-amber-400" />
+                        <span>Admin Command Portal</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => {
                         handleAddPasskey();
@@ -540,6 +555,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Drawer Footer */}
             {user && (
               <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
+                {isAdminUser && onOpenAdmin && (
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      onOpenAdmin();
+                    }}
+                    className="w-full p-2.5 rounded-xl bg-amber-950/40 hover:bg-amber-950/70 border border-amber-800/60 text-amber-300 text-xs font-bold flex items-center justify-between cursor-pointer transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-amber-400" />
+                      <span>Admin Command Portal</span>
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     setIsDrawerOpen(false);

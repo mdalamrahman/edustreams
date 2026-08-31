@@ -1,4 +1,4 @@
-import { MISTRAL_API_KEY } from './mistral';
+import { MISTRAL_API_KEY, executeAIChatCascade } from './mistral';
 import { SdeLevel, InterviewRound, TestStyle, CuratedInterviewQuestion } from './githubInterviewData';
 
 export interface InterviewMessage {
@@ -134,27 +134,16 @@ export async function sendInterviewerMessage(
   }
 
   try {
-    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: formattedMessages,
-        temperature: 0.6,
-        max_tokens: 350
-      })
+    const reply = await executeAIChatCascade(formattedMessages, {
+      temperature: 0.6,
+      maxTokens: 350,
+      timeoutMs: 10000
     });
-
-    if (response.ok) {
-      const data = await response.json();
-      const rawReply = data.choices?.[0]?.message?.content || '';
-      return rawReply.trim();
+    if (reply && reply.trim().length > 0) {
+      return reply.trim();
     }
   } catch (err) {
-    console.error('Mistral interview API error:', err);
+    console.error('Interviewer AI API error:', err);
   }
 
   return "Thank you for explaining that. Let's dig deeper into the trade-offs. How do you plan to scale this under high concurrency?";

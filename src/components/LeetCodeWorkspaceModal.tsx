@@ -181,7 +181,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   }, [problemTitle, codingProblem]);
 
   const currentProblemSlug = useMemo(() => {
-    return toSlug(codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || codingProblem?.title || cleanTitle);
+    if (codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()) {
+      return toSlug(codingProblem.slug);
+    }
+    if (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && !codingProblem.leetcode.includes('problem-list') && !codingProblem.leetcode.includes('search=')) {
+      return toSlug(codingProblem.leetcode);
+    }
+    if (codingProblem?.gfg && typeof codingProblem.gfg === 'string') {
+      return toSlug(codingProblem.gfg);
+    }
+    return toSlug(codingProblem?.name || codingProblem?.title || cleanTitle);
   }, [codingProblem, cleanTitle]);
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
@@ -210,7 +219,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
-    const rawTarget = codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle;
+    const rawTarget = (codingProblem?.slug && typeof codingProblem.slug === 'string')
+      ? codingProblem.slug
+      : (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && !codingProblem.leetcode.includes('problem-list') && !codingProblem.leetcode.includes('search='))
+      ? codingProblem.leetcode
+      : (codingProblem?.gfg || codingProblem?.name || cleanTitle);
     const targetSlug = currentProblemSlug;
 
     fetchEnrichedProblem(

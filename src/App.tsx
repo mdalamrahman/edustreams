@@ -53,6 +53,7 @@ import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { InterviewCompanion } from './components/InterviewCompanion';
+import { AdminDashboardModal } from './components/AdminDashboardModal';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -138,6 +139,7 @@ export function App() {
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState<boolean>(false);
   const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState<boolean>(false);
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 2.0, action: 'Accessing Video Lecture' });
 
@@ -347,7 +349,11 @@ export function App() {
       } catch {}
     }
 
-    let targetHash = '#/' + activeTab;
+    let targetHash = '#/' + (
+      activeTab === 'sde_sheet' ? 'dsa-sheets' :
+      activeTab === 'system_design' ? 'system-design' :
+      activeTab
+    );
     if (activeTab === 'lesson' && selectedVideo) {
       targetHash = `#/lesson/${selectedVideo.channel_id || 'ch'}/${selectedVideo.telegram_message_id || selectedVideo.id}`;
     } else if (activeTab === 'channels' && channelViewMode === 'detail' && selectedChannelId) {
@@ -1106,6 +1112,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         onOpenAskAI={() => setIsAskAIOpen(true)}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onOpenProfile={() => setIsProfileModalOpen(true)}
+        onOpenAdmin={() => setIsAdminDashboardOpen(true)}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
@@ -1670,6 +1677,14 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           setIsWalletModalOpen(true);
         }}
       />
+
+      {/* Admin Command Portal Modal */}
+      {isAdminDashboardOpen && (
+        <AdminDashboardModal
+          onClose={() => setIsAdminDashboardOpen(false)}
+          currentUserEmail={user?.email}
+        />
+      )}
 
     </div>
   );
