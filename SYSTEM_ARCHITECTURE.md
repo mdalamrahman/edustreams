@@ -1,6 +1,6 @@
-# SDETube Platform Architecture & System Design Document
+# SDETube Platform Architecture & System Design Document (HLD & LLD)
 
-**SDETube** (Live Production: [https://sdetube.pages.dev](https://sdetube.pages.dev)) is an enterprise-grade, full-stack educational and engineering interview preparation platform designed specifically for Software Development Engineers in Test (SDET) and Backend Software Engineers.
+**SDETube (EduStream)** (Live Production: [https://sdetube.pages.dev](https://sdetube.pages.dev) | Backend Gateway: `https://edustream-backend-90vm.onrender.com`) is an enterprise-grade, full-stack educational and engineering interview preparation platform designed specifically for Software Development Engineers in Test (SDET) and Backend Software Engineers.
 
 ---
 
@@ -8,58 +8,60 @@
 
 ```mermaid
 graph TB
-    subgraph Client & Edge Layer "Cloudflare Anycast Global Edge"
-        SPA[React 18 + Vite SPA Client]
-        RTE[_routes.json - Routing Engine]
-        CF_EDGE[Cloudflare Pages Functions Proxy - /api/*]
-        CF_CACHE[(Edge Cache - 30 Days TTL / Immutable)]
+    subgraph ClientLayer ["Client & Edge Layer (Cloudflare Anycast CDN)"]
+        SPA["React 18 + Vite SPA Client (sdetube.pages.dev)"]
+        CF_RTE["_routes.json - Routing Rules"]
+        CF_FUNC["Cloudflare Pages Functions (/api/*)"]
+        CF_CACHE[("Edge Cache (30-Day TTL / Immutable)")]
+        WASM_SQL["In-Browser SQLite WASM Engine"]
     end
 
-    subgraph Backend Microservices "Render Web Service"
-        FA[FastAPI Gateway]
-        TEL[Telethon MTProto Async Client]
-        AI_ROUTER[Multi-LLM 3-Tier Cascade Engine]
-        PING[/healthz - Uptime Keepalive]
+    subgraph BackendLayer ["Backend Microservices (Render Web Service)"]
+        FASTAPI["FastAPI Gateway (main.py)"]
+        TELETHON["Telethon MTProto Async Client Engine"]
+        AI_CASCADE["Multi-LLM 3-Tier Router"]
+        HEALTHZ["/healthz Background Uptime Daemon"]
     end
 
-    subgraph Storage Layer "$0 Cloud"
-        TG[(Telegram Private Channels - MTProto Origin)]
-        R2[(Cloudflare R2 - Testcases, Drivers & Notes)]
+    subgraph StorageLayer ["Zero-Cost Storage Layer"]
+        TG_DATACENTERS[("Telegram Datacenters (MTProto Video Origin)")]
+        CF_R2[("Cloudflare R2 (sdestream Bucket)")]
     end
 
-    subgraph Data & Auth "Supabase PostgreSQL"
-        AUTH[Supabase Auth & FIDO2 Passkeys]
-        DB[(PostgreSQL - Supavisor Port 6543)]
-        RPC[deduct_wallet_credits - Atomic Transaction RPC]
+    subgraph DatabaseLayer ["Database & Identity Layer (Supabase)"]
+        AUTH_PASSKEY["Supabase Auth + WebAuthn FIDO2 Passkeys"]
+        PG_DB[("PostgreSQL Database (Supavisor Port 6543)")]
+        RPC_WALLET["deduct_wallet_credits (Pessimistic Locking RPC)"]
     end
 
-    subgraph AI Inference Providers
-        GRQ[Tier 1: Groq Llama-3.3-70B - SSE Streaming]
-        GEM[Tier 2: Google Gemini 2.5 Flash]
-        MST[Tier 3: Mistral Codestral / Large]
+    subgraph AIProviders ["AI Inference Cascade"]
+        LLM_GROQ["Tier 1: Groq Llama-3.3-70B (Sub-Second SSE Stream)"]
+        LLM_GEMINI["Tier 2: Google Gemini 2.5 Flash"]
+        LLM_MISTRAL["Tier 3: Mistral Codestral & Large"]
     end
 
-    subgraph Code Execution Sandbox
-        J0[Judge0 / Piston Multi-Lang Execution API]
-        WASM[In-Browser SQLite WASM Compiler]
+    subgraph CodeSandboxes ["Code Execution Sandboxes"]
+        JUDGE0["Judge0 / Piston Multi-Language Execution API"]
     end
 
-    SPA --> RTE
-    SPA --> CF_EDGE
-    CF_EDGE --> CF_CACHE
-    CF_EDGE --> FA
-    FA --> TEL
-    TEL --> TG
-    FA --> AI_ROUTER
-    AI_ROUTER --> GRQ
-    AI_ROUTER --> GEM
-    AI_ROUTER --> MST
-    SPA --> DB
-    SPA --> AUTH
-    SPA --> RPC
-    SPA --> R2
-    SPA --> J0
-    SPA --> WASM
+    SPA --> CF_RTE
+    SPA --> CF_FUNC
+    CF_FUNC --> CF_CACHE
+    CF_FUNC --> FASTAPI
+    SPA --> WASM_SQL
+    SPA --> PG_DB
+    SPA --> AUTH_PASSKEY
+    SPA --> RPC_WALLET
+    SPA --> JUDGE0
+    SPA --> CF_R2
+
+    FASTAPI --> TELETHON
+    TELETHON --> TG_DATACENTERS
+    FASTAPI --> CF_R2
+    FASTAPI --> AI_CASCADE
+    AI_CASCADE --> LLM_GROQ
+    AI_CASCADE --> LLM_GEMINI
+    AI_CASCADE --> LLM_MISTRAL
 ```
 
 ---
@@ -69,176 +71,82 @@ graph TB
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Student Browser (<video>)
-    participant CF as Cloudflare Anycast Edge (/api/video/*)
-    participant Origin as Render Backend (/stream/*)
+    actor Student as Student Browser (<VideoPlayer />)
+    participant Edge as Cloudflare Anycast Edge (/api/video/*)
+    participant Origin as FastAPI Backend (/stream/*)
     participant MTProto as Telegram Datacenters (MTProto)
 
-    User->>CF: HTTP GET /api/video/-1004329144420/5998 (Range: bytes=0-4194303)
-    alt Edge Cache Hit (30-day TTL)
-        CF-->>User: 206 Partial Content (Cached MP4 Byte Slice)
+    Student->>Edge: HTTP GET /api/video/-1004329144420/5998 (Range: bytes=0-4194303)
+    alt Edge Cache Hit (30-Day TTL)
+        Edge-->>Student: 206 Partial Content (Cached MP4 Byte Slice)
     else Edge Cache Miss
-        CF->>Origin: Proxy Stream Request to https://edustream-backend-90vm.onrender.com
-        Origin->>MTProto: client.iter_download(doc, offset, 512KB chunks)
-        MTProto-->>Origin: 512KB Native MTProto Binary Slices
-        Origin-->>CF: 206 Partial Content + Content-Range: bytes 0-4194303/86961595
-        CF->>CF: Cache Byte Slice (cf: { cacheEverything: true, cacheTtl: 2592000 })
-        CF-->>User: 206 Partial Content (Streaming Byte Stream)
+        Edge->>Origin: Proxy Stream Request to https://edustream-backend-90vm.onrender.com
+        Origin->>MTProto: client.iter_download(doc, offset=0, chunk_size=512KB)
+        MTProto-->>Origin: 512KB Native MTProto Slices
+        Origin-->>Edge: 206 Partial Content + Content-Range: bytes 0-4194303/86961595
+        Edge->>Edge: Cache Byte Slice (cf: { cacheEverything: true, cacheTtl: 2592000 })
+        Edge-->>Student: 206 Partial Content (Streaming Byte Stream)
     end
-    Note over User: LocalStorage auto-caches playback progress every 2s
+    Note over Student: LocalStorage auto-caches playback progress every 2s
 ```
 
-### 2.1 Video Pipeline Specifications
-
-1. **Cloudflare Catch-All Edge Proxy (`functions/api/[[catchall]].ts`)**:
-   - Runs on Cloudflare V8 Workers at Anycast edge locations worldwide.
-   - Automatically rewrites `/api/video/{channel}/{msgId}` to `/stream/{channel}/{msgId}` on the Render backend.
-   - Locks byte-range responses into Cloudflare Edge Cache for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
-2. **Telethon MTProto Native Alignment (`backend/main.py`)**:
-   - MTProto request chunk size: **512 KB** (`REQUEST_SIZE = 512 * 1024`), the native maximum throughput part size for Telegram datacenters.
-   - Default range window: **4 MB** (`DEFAULT_RANGE_SIZE = 4 * 1024 * 1024`) to ensure deep client buffer ahead of playback.
-   - **Byte-Offset Retry Loop**: If MTProto drops a socket connection mid-stream (`0 bytes read on total of 8 expected bytes`), the generator automatically re-authenticates and continues from the exact byte offset without dropping the HTTP stream.
-3. **Player Buffering Watchdog & Multi-Tier Failover (`src/components/VideoPlayer.tsx`)**:
-   - **Origin Failover**: If the edge proxy experiences cold start or network failure, the player seamlessly falls back to the direct Render origin (`https://edustream-backend-90vm.onrender.com/stream/...`).
-   - **Frozen Decoder Watchdog**: If playback stalls for $> 3.5\text{s}$ while in playing state, the player nudges `currentTime` by $+0.05\text{s}$ to unstuck the HTML5 media decoder pipeline.
-   - **Progress Caching & Auto-Resume**: `localStorage` records video progress under `edustream_prog_{channelId}_{msgId}`. Reopening any lecture automatically resumes from the saved second with a `"⏩ Resumed from MM:SS"` notification.
+### Video Pipeline Specifications:
+1. **Cloudflare Catch-All Edge Proxy (`functions/api/[[catchall]].ts`)**: Rewrites `/api/video/{channel}/{msgId}` to `/stream/{channel}/{msgId}` and locks byte slices in edge cache for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
+2. **Telethon MTProto Native Alignment (`backend/main.py`)**: 512 KB request parts (`REQUEST_SIZE = 512 * 1024`) with 4 MB range window (`DEFAULT_RANGE_SIZE = 4 * 1024 * 1024`).
+3. **Byte-Offset Resumption Loop**: Automatically catches connection interruptions and resumes from the exact byte offset without dropping the HTTP stream.
+4. **Player Buffering Watchdog (`src/components/VideoPlayer.tsx`)**: Unfreezes HTML5 decoder stalls by nudging `currentTime` $+0.05\text{s}$ after $3.5\text{s}$ stall.
 
 ---
 
-## 3. Student Portal Architecture & Subsystems
+## 3. Low-Level Design (LLD): Pages, Routes & Component Subsystems
 
-The Student Portal (`src/`) is built on React 18, TypeScript, TailwindCSS/Vanilla CSS, and Monaco Editor.
+### 3.1 Routing & URL Hash Specification
 
-### 3.1 Component & Service Map
+| Tab / Mode | Route / Hash | Associated React Component | Description |
+|---|---|---|---|
+| **Dashboard** | `#/dashboard` | `DashboardLandingPage.tsx` | Central platform hub with POTD cards, progress summary, and resume banner. |
+| **DSA Sheets** | `#/dsa-sheets`, `#/sde-sheet` | `SDESheetExplorer.tsx` | Striver 191, A2Z 474, SDETube 79, Blind 75, Mik Sheet with search and filters. |
+| **Coding IDE** | `#/problem/:slug` | `LeetCodeWorkspaceModal.tsx` | Fullscreen Monaco workspace, multi-language driver runner, custom test cases. |
+| **SQL IDE** | `#/problem/:slug` (SQL) | `LeetCodeSQLWorkspaceModal.tsx` | SQLite WASM database workspace with table schemas, mock data, query runner. |
+| **Video Channel** | `#/channel/:id` | `App.tsx` (channel overview/detail) | Lecture playlist browser with completion indicators and search. |
+| **Video Lesson** | `#/lesson/:videoId` | `VideoPlayer.tsx` | MTProto video player with in-tab/floating notes, audio booster, and quiz. |
+| **HLD Hub** | `#/hld`, `#/system-design` | `HLDHub.tsx`, `HLDBossSheet.tsx` | System Design master sheets and interactive architecture canvas. |
+| **LLD Hub** | `#/lld` | `LLDHub.tsx`, `LLDBossSheet.tsx` | Low-Level Design patterns, UML class diagrams, and machine coding problems. |
+| **Mock Interview** | `#/interview` | `InterviewCompanion.tsx` | AI Lead Bar Raiser voice simulator, Socratic guide, live canvas & scorecard. |
+| **User Profile** | `#/profile`, `#/user/:id` | `DeveloperProfilePage.tsx` | Student velocity heatmap, solved challenges, badges, certificates. |
+| **Admin Portal** | `#/admin` | `AdminDashboardModal.tsx` | Operator telemetry, token usage, R2 problem testcase editor, and user credits. |
+
+---
+
+## 4. Frontend Core Services (`src/lib/`)
 
 ```mermaid
 graph TD
-    subgraph Student Portal Core
-        App[App.tsx - Route Sync & State]
-        Auth[AuthModal.tsx - Supabase Auth & Passkeys]
-        Nav[Navbar.tsx - Navigation & Wallet Status]
+    subgraph FrontendServices ["Frontend Service Layer (src/lib/)"]
+        PS["problemService.ts - GraphQL Proxies, Testcase Sanitizer & Mistral Fallback"]
+        CMP["compiler.ts - Multi-Language Drivers & Judge0 Execution Payload"]
+        SQLJ["sqlJudge.ts - SQLite WASM In-Memory DB & Schema Validator"]
+        IS["interviewService.ts - Web Speech TTS Utterance Queue & STT Listener"]
+        IE["interviewEvaluator.ts - Bar Raiser Rubric Parser & Scorecard Synthesizer"]
+        VNS["videoNotesService.ts - Dual-Mode Student Notes & Cloudflare R2 Sync"]
+        BILL["billing.ts - Client Wallet Validation, 24h Passes & Optimistic Updates"]
+        AUTH["auth.ts / passkey.ts - Supabase Session & FIDO2 WebAuthn Passkeys"]
+        KROK["kroki.ts - PlantUML, Mermaid & C4 Architecture Compression"]
     end
-
-    subgraph Learning & Video Subsystem
-        VP[VideoPlayer.tsx - Stream & Audio Boost]
-        STN[StudentVideoNotesTab.tsx - In-Tab Notes]
-        FON[FloatingVideoNotesOverlay.tsx - Draggable Canvas]
-        ANS[AINotesAndSimulation.tsx - Visual Simulators]
-        VNS[videoNotesService.ts - Cloudflare R2 Sync]
-    end
-
-    subgraph DSA & Coding Workspace
-        LWM[LeetCodeWorkspaceModal.tsx - Monaco Workspace]
-        SQL[LeetCodeSQLWorkspaceModal.tsx - SQLite WASM]
-        CMP[compiler.ts & Judge0 Piston API]
-        SDE[SDESheetExplorer.tsx - Striver / NeetCode / Mik]
-        DRV[problemService.ts - R2 Test Suite Ingestion]
-    end
-
-    subgraph System Design & Mock Interviews
-        IC[InterviewCompanion.tsx - Voice Bar Raiser]
-        HLD[HLDArchitectureCanvas.tsx - Drag-and-Drop Canvas]
-        HLDB[HLDBossSheet.tsx - High Level Design]
-        LLDB[LLDBossSheet.tsx - Low Level Design]
-        TTS[interviewService.ts - Web Speech Synthesis Engine]
-    end
-
-    App --> VP
-    VP --> STN
-    VP --> FON
-    VP --> ANS
-    STN --> VNS
-    FON --> VNS
-    App --> LWM
-    App --> SQL
-    App --> SDE
-    App --> IC
-    IC --> HLD
-    IC --> TTS
 ```
 
 ---
 
-### 3.2 Key Capabilities & Modules
+## 5. Cloudflare R2 Storage Schema (`sdestream` Bucket)
 
-#### A. Full Multi-Language DSA Workspace
-- **Monaco Editor Environment**:
-  - Languages supported: **TypeScript, JavaScript, Python, Java, C++**.
-  - Intelligent Driver Injection (`compiler.ts`): Combines student class/method solutions with hidden competitive test harnesses.
-  - Live execution via Judge0 / Piston sandboxes with custom testcase execution.
-  - In-browser SQLite WASM compiler for real-time SQL problem evaluation.
-- **Curated DSA Sheets**:
-  - Striver SDE Sheet (191), Striver A2Z (474), SDETube 79, NeetCode Blind 75, and CodeStoryWithMIK.
-  - Real-time company tags (Google, Amazon, Meta, Microsoft, Apple, Uber) and difficulty filtering.
-
-#### B. AI Mock Interview Room (Lead Bar Raiser Engine)
-- **Chromium-Optimized Web Speech Synthesis (TTS)**:
-  - 60ms cancel debounce, GC audio retention queue, and 5-second keepalive heartbeats.
-  - Automatic user-gesture audio unlock upon entering the room.
-  - Technical acronym expansion (`QPS` $\to$ `Q P S`, `HLD` $\to$ `high level design`).
-- **Socratic System Design (HLD) Canvas**:
-  - Drag-and-drop architectural diagramming canvas.
-  - Strict Socratic constraint (prevents the AI from prematurely leaking architectural solutions).
-- **Multi-LLM 3-Tier Cascade**:
-  - **Tier 1 (Groq Llama-3.3-70B)**: Sub-second Server-Sent Events (SSE) streaming token output.
-  - **Tier 2 (Google Gemini 2.5 Flash)**: Complex contextual and architectural evaluation.
-  - **Tier 3 (Mistral Codestral)**: Code syntax and algorithmic correctness analysis.
-
-#### C. Student Personal Video Notes System
-- **Dual-Mode Taking**:
-  - **In-Tab View**: Full markdown notes editor below the lecture player.
-  - **Floating Draggable Overlay**: Glassmorphic overlay inside video viewport (`FloatingVideoNotesOverlay.tsx`), enabling notes taking during native **Fullscreen** mode.
-- **Persistence & Cloud Backup**:
-  - Local caching via `localStorage`.
-  - Automatic cloud synchronization to Cloudflare R2 every 60 seconds.
-  - One-click timestamp bookmarks (`@ MM:SS`) that jump directly to video timestamps.
-
----
-
-## 4. Admin Portal Architecture
-
-The Admin Portal (`admin-portal/`) is an isolated, secure administrative suite for platform operators to manage curriculum, video feeds, testcase suites, pricing, and system-wide telemetry.
-
-```mermaid
-graph TD
-    subgraph Admin Portal Core
-        AppA[App.tsx - Admin Shell]
-        AdminClient[supabaseAdminClient.ts]
-    end
-
-    subgraph Management Modules
-        VM[Video & Channel Management]
-        DM[DSA Problem & Testcase Suite Editor]
-        PM[Pricing & Model Cascade Config]
-        UM[User & Credit Administration]
-        AM[Analytics & Token Telemetry]
-    end
-
-    AppA --> VM
-    AppA --> DM
-    AppA --> PM
-    AppA --> UM
-    AppA --> AM
-    AdminClient --> VM
-    AdminClient --> DM
-    AdminClient --> PM
-    AdminClient --> UM
-```
-
----
-
-## 5. Cloudflare R2 Storage Schema
-
-Cloudflare R2 provides sub-millisecond, globally distributed object storage for persistent notes, problem drivers, test cases, and transcripts:
-
-| R2 Key Pattern | Purpose | Format |
-|---|---|---|
-| `vnotes_{user_email}_{video_id}` | Student Personal Video Notes | Raw Text / Markdown |
-| `notes/{doc_id}` | System Design Boss Sheets (LLD/HLD) | Markdown Document |
-| `problems/{slug}/metadata.json` | DSA Problem Details & Constraints | JSON |
-| `problems/{slug}/testcases.json` | Complete Test Case Suite | JSON Array |
-| `problems/{slug}/driver.{lang}` | Hidden Multi-Language Test Harness | Python, Java, C++, TS, JS |
-| `transcripts/{channel_id}_{msg_id}.txt` | Verbatim Speech-to-Text Transcript | Plain Text |
+| Key Pattern | Purpose | Format | Access Mode |
+|---|---|---|---|
+| `problems/{slug}.json` | Problem definition, metadata, constraints, examples | JSON | REST / SigV4 S3 |
+| `problems/{slug}.txt` | Formatted plain-text test case suite | Plain Text | REST / SigV4 S3 |
+| `drivers/{slug}_{lang}.txt` | Multi-language execution driver code (C++, Python, Java, JS, Go, Rust) | Source Code | REST / SigV4 S3 |
+| `notes/{doc_id}.md` | System Design HLD/LLD Boss Sheet guides | Markdown | REST / SigV4 S3 |
+| `vnotes/{user_email}_{video_id}.md` | Student personal video notes | Markdown | REST / SigV4 S3 |
+| `transcripts/{channel_id}_{msg_id}.txt` | Speech-to-Text lecture transcripts | Plain Text | REST / SigV4 S3 |
 
 ---
 
@@ -250,6 +158,7 @@ erDiagram
     PROFILES ||--o{ INTERVIEW_SESSIONS : completes
     PROFILES ||--o{ DSA_PROGRESS : tracks
     PROFILES ||--o{ USER_PASSKEYS : registers
+    PROFILES ||--o{ PROBLEM_REPORTS : files
 
     PROFILES {
         uuid id PK
@@ -257,6 +166,7 @@ erDiagram
         string display_name
         numeric wallet_balance
         boolean is_admin
+        jsonb preferences
         timestamp created_at
     }
 
@@ -276,8 +186,9 @@ erDiagram
         string company
         string round
         string level
+        jsonb transcript
         jsonb scorecard
-        numeric score
+        numeric overall_score
         timestamp completed_at
     }
 
@@ -287,7 +198,17 @@ erDiagram
         string problem_slug
         string sheet_name
         string status
+        numeric solve_time_seconds
         timestamp last_solved_at
+    }
+
+    PROBLEM_REPORTS {
+        uuid id PK
+        uuid user_id FK
+        string problem_slug
+        string issue_type
+        text description
+        timestamp created_at
     }
 
     SYSTEM_CONFIG {
@@ -298,8 +219,6 @@ erDiagram
 ```
 
 ### 6.1 Atomic Concurrency Protection (`deduct_wallet_credits`)
-
-All wallet deductions execute through a PostgreSQL transaction with pessimistic row-level locking (`SELECT ... FOR UPDATE`):
 
 ```sql
 CREATE OR REPLACE FUNCTION public.deduct_wallet_credits(
@@ -317,7 +236,7 @@ DECLARE
   v_current_balance NUMERIC;
   v_new_balance NUMERIC;
 BEGIN
-  -- Check for duplicate idempotency key
+  -- Idempotency protection
   IF p_idempotency_key IS NOT NULL THEN
     IF EXISTS (SELECT 1 FROM public.wallet_transactions WHERE idempotency_key = p_idempotency_key) THEN
       SELECT wallet_balance INTO v_current_balance FROM public.profiles WHERE id = p_user_id;
@@ -325,7 +244,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- Acquire pessimistic lock on profile row
+  -- Acquire pessimistic row lock
   SELECT wallet_balance INTO v_current_balance 
   FROM public.profiles 
   WHERE id = p_user_id 
@@ -336,7 +255,6 @@ BEGIN
   END IF;
 
   v_new_balance := v_current_balance - p_amount;
-
   UPDATE public.profiles SET wallet_balance = v_new_balance WHERE id = p_user_id;
 
   INSERT INTO public.wallet_transactions (user_id, action_type, amount, description, idempotency_key)
@@ -349,15 +267,19 @@ $$;
 
 ---
 
-## 7. Security, Authentication & Performance Design
+## 7. Complete API Route Reference
 
-1. **Authentication & Identity**:
-   - Supabase Auth with email confirmation / OTP verification prior to session grant.
-   - WebAuthn / FIDO2 Passkey biometric authentication support for passwordless login.
-2. **Session Isolation & Rate Limiting**:
-   - Token-bucket rate limiting across all AI chat and code execution endpoints.
-   - Cloudflare Turnstile bot protection on authentication and wallet top-ups.
-3. **Edge Optimization**:
-   - Cloudflare Pages Anycast global edge network with gzip and Brotli compression.
-   - Automatic route and state synchronization across browser reloads via `window.history.replaceState`.
-   - LocalStorage client caching with cross-tab broadcast synchronization.
+| Route | Method | Layer | Description | Response / Headers |
+|---|---|---|---|---|
+| `/stream/{channel}/{msgId}` | `GET` | Backend (FastAPI) | Direct MTProto streaming slice | `206 Partial Content`, Range-based |
+| `/api/video/{channel}/{msgId}` | `GET` | Edge (Cloudflare) | Anycast video stream proxy | `Cache-Control: public, max-age=2592000, immutable` |
+| `/api/catalog` | `GET` | Backend | Ingested video lecture channel catalog | `public, max-age=3600` |
+| `/api/leetcode/{slug}` | `GET` | Backend & Edge | LeetCode GraphQL question proxy | `no-cache, must-revalidate` |
+| `/api/gfg/{slug}` | `GET` | Backend & Edge | GeeksforGeeks Practice API proxy | `no-cache, must-revalidate` |
+| `/api/potd/leetcode` | `GET` | Backend & Edge | Current authentic LeetCode Daily Challenge | `no-cache, max-age=0` |
+| `/api/potd/gfg` | `GET` | Backend & Edge | Current authentic GFG Problem of the Day | `no-cache, max-age=0` |
+| `/api/problem/{slug}` | `DELETE` | Backend | Purges stored problem JSON, testcases, and drivers from R2 | `200 OK` |
+| `/api/potd/clear` | `POST` | Backend | Invalidates backend in-memory POTD caches | `200 OK` |
+| `/api/chat` | `POST` | Backend | Multi-tier AI streaming endpoint (Groq/Gemini/Mistral) | SSE Token Stream |
+| `/api/hld/simulate` | `POST` | Backend | Simulates traffic load, latency, and failure on HLD canvas | JSON simulation telemetry |
+| `/healthz` | `GET` | Backend | Uptime keepalive endpoint for Render instance | `200 OK` |
