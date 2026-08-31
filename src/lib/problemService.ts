@@ -454,6 +454,7 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
   // Check for hallucinated / placeholder artifact strings
   if (
     desc.includes('Given the problem constraints for **') ||
+    desc.includes('An optimal algorithm is required to solve the') ||
     desc.includes('httpsleetcodecom') ||
     startersStr.includes('httpsleetcodecom') ||
     driversStr.includes('httpsleetcodecom') ||
@@ -464,7 +465,7 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
     return false;
   }
 
-  return Array.isArray(p.testCases) && p.testCases.length >= 10;
+  return Array.isArray(p.testCases) && p.testCases.length >= 1;
 }
 
 /**
@@ -473,6 +474,89 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
 export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
   const slug = toSlug(slugOrUrl);
   if (!slug || slug === 'algorithm-problem') return null;
+
+  const parseLeetCodeQuestion = (q: any): ProblemTemplate | null => {
+    if (!q || !q.title || (!q.content && !q.description)) return null;
+
+    const contentHtml = q.content || q.description || '';
+
+    // Extract clean markdown-formatted description
+    const cleanDesc = contentHtml
+      .replace(/<p><strong class="example">[\s\S]*?<\/p>/gi, '')
+      .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
+      .replace(/<p><strong>Constraints:<\/strong><\/p>[\s\S]*?<\/ul>/gi, '')
+      .replace(/<img[^>]*>/gi, '')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li>/gi, '• ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const starters: Record<SupportedLanguage, string> = {} as any;
+    const snippets: any[] = q.codeSnippets || [];
+    snippets.forEach((s: any) => {
+      if (s.langSlug === 'cpp') starters.cpp = s.code;
+      else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
+      else if (s.langSlug === 'java') starters.java = s.code;
+      else if (s.langSlug === 'javascript') starters.javascript = s.code;
+      else if (s.langSlug === 'golang') starters.go = s.code;
+      else if (s.langSlug === 'rust') starters.rust = s.code;
+    });
+
+    const examples: ProblemTemplate['examples'] = [];
+    const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+    for (const m of exMatches) {
+      const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+      const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+      const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+      const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+      if (inM && outM) {
+        examples.push({
+          input: inM[1].trim(),
+          output: outM[1].trim(),
+          explanation: expM ? expM[1].trim() : undefined
+        });
+      }
+    }
+
+    const constraints: string[] = [];
+    const cListMatch = contentHtml.match(/<p><strong>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i) || contentHtml.match(/Constraints:[\s\S]*?<ul>([\s\S]*?)<\/ul>/i);
+    if (cListMatch && cListMatch[1]) {
+      const liMatches = Array.from(cListMatch[1].matchAll(/<li>([\s\S]*?)<\/li>/gi)) as RegExpMatchArray[];
+      for (const li of liMatches) {
+        const cStr = li[1].replace(/<[^>]+>/g, '').replace(/&le;/g, '<=').replace(/&ge;/g, '>=').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+        if (cStr) constraints.push(cStr);
+      }
+    }
+
+    const tcs = examples.map(e => e.input).filter(Boolean);
+    const eos = examples.map(e => e.output).filter(Boolean);
+    const defaultStarters = generateDefaultStarters(q.title);
+
+    const template: ProblemTemplate = {
+      name: q.title,
+      category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
+      difficulty: q.difficulty || 'Medium',
+      description: cleanDesc || q.title,
+      examples,
+      constraints,
+      testCases: tcs.length > 0 ? tcs : ['nums = [1, 2, 3]'],
+      expectedOutputs: eos.length > 0 ? eos : ['0'],
+      hints: q.hints || [],
+      starters: { ...defaultStarters, ...starters },
+      solutions: defaultStarters
+    };
+
+    return repairAndHardenProblem(template);
+  };
 
   // 1. Try Local Cloudflare Pages Function Proxy & Backend LeetCode API Proxy
   const endpoints = [
@@ -487,70 +571,13 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       const resp = await fetch(ep, { signal: AbortSignal.timeout(8000) });
       if (resp.ok) {
         const data = await resp.json();
-        // Check if data is wrapped in questionData GraphQL response or direct ProblemTemplate
         const q = data?.data?.question || data?.question || (data?.name ? data : null);
         if (q && q.title && (q.content || q.description)) {
-          if (data.name && data.starters && data.testCases) {
+          if (data.name && data.starters && data.testCases && data.description && !data.description.includes('An optimal algorithm is required')) {
             return repairAndHardenProblem(data as ProblemTemplate);
           }
-          const contentHtml = q.content || q.description || '';
-          const cleanDesc = contentHtml
-            .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-            .replace(/<[^>]+>/g, '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&amp;/g, '&')
-            .trim();
-
-          const starters: Record<SupportedLanguage, string> = {} as any;
-          const snippets: any[] = q.codeSnippets || [];
-          snippets.forEach(s => {
-            if (s.langSlug === 'cpp') starters.cpp = s.code;
-            else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
-            else if (s.langSlug === 'java') starters.java = s.code;
-            else if (s.langSlug === 'javascript') starters.javascript = s.code;
-            else if (s.langSlug === 'golang') starters.go = s.code;
-            else if (s.langSlug === 'rust') starters.rust = s.code;
-          });
-
-          const examples: ProblemTemplate['examples'] = [];
-          const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-          for (const m of exMatches) {
-            const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
-            const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-            const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-            const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-            if (inM && outM) {
-              examples.push({
-                input: inM[1].trim(),
-                output: outM[1].trim(),
-                explanation: expM ? expM[1].trim() : undefined
-              });
-            }
-          }
-
-          const tcs = examples.map(e => e.input).filter(Boolean);
-          const eos = examples.map(e => e.output).filter(Boolean);
-          const defaultStarters = generateDefaultStarters(q.title);
-
-          const template: ProblemTemplate = {
-            name: q.title,
-            category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
-            difficulty: q.difficulty || 'Medium',
-            description: cleanDesc || q.title,
-            examples,
-            constraints: [],
-            testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
-            expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
-            hints: q.hints || [],
-            starters: { ...defaultStarters, ...starters },
-            solutions: defaultStarters
-          };
-
-          return repairAndHardenProblem(template);
+          const parsed = parseLeetCodeQuestion(q);
+          if (parsed) return parsed;
         }
       }
     } catch {}
@@ -584,64 +611,8 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       const json = await gqlRes.json();
       const q = json?.data?.question;
       if (q && q.title && q.content) {
-        const contentHtml = q.content || '';
-        const cleanDesc = contentHtml
-          .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-          .replace(/<[^>]+>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&amp;/g, '&')
-          .trim();
-
-        const starters: Record<SupportedLanguage, string> = {} as any;
-        const snippets: any[] = q.codeSnippets || [];
-        snippets.forEach((s: any) => {
-          if (s.langSlug === 'cpp') starters.cpp = s.code;
-          else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
-          else if (s.langSlug === 'java') starters.java = s.code;
-          else if (s.langSlug === 'javascript') starters.javascript = s.code;
-          else if (s.langSlug === 'golang') starters.go = s.code;
-          else if (s.langSlug === 'rust') starters.rust = s.code;
-        });
-
-        const examples: ProblemTemplate['examples'] = [];
-        const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-        for (const m of exMatches) {
-          const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
-          const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-          const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-          const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-          if (inM && outM) {
-            examples.push({
-              input: inM[1].trim(),
-              output: outM[1].trim(),
-              explanation: expM ? expM[1].trim() : undefined
-            });
-          }
-        }
-
-        const tcs = examples.map(e => e.input).filter(Boolean);
-        const eos = examples.map(e => e.output).filter(Boolean);
-        const defaultStarters = generateDefaultStarters(q.title);
-
-        const template: ProblemTemplate = {
-          name: q.title,
-          category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
-          difficulty: q.difficulty || 'Medium',
-          description: cleanDesc || q.title,
-          examples,
-          constraints: [],
-          testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['nums = [1, 2, 3]']),
-          expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['0']),
-          hints: q.hints || [],
-          starters: { ...defaultStarters, ...starters },
-          solutions: defaultStarters
-        };
-
-        return repairAndHardenProblem(template);
+        const parsed = parseLeetCodeQuestion(q);
+        if (parsed) return parsed;
       }
     }
   } catch {}
@@ -943,6 +914,8 @@ export async function fetchEnrichedProblem(
       parsed = repairAndHardenProblem(parsed);
       if (isProblemValidAndAuthentic(parsed)) {
         return applyOverride(parsed);
+      } else {
+        localStorage.removeItem(cacheKey);
       }
     }
   } catch (_) {}

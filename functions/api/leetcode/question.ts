@@ -22,6 +22,15 @@ export const onRequest: PagesFunction = async (context) => {
       } catch {}
     }
 
+    if (slug) {
+      slug = slug
+        .replace(/^https?:\/\/[^/]+\/problems\//i, '')
+        .replace(/\/(description|editorial|solutions|discussion|comments|\d+)\/?$/i, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .toLowerCase()
+        .replace(/(^-|-$)/g, '');
+    }
+
     if (!slug) {
       return new Response(JSON.stringify({ error: 'Missing slug parameter' }), {
         status: 400,
