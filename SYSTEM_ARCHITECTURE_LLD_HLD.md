@@ -1,65 +1,67 @@
-# SDETube / EduStream: Comprehensive High-Level & Low-Level System Design Document (HLD & LLD)
+# SDETube / EduStream: Comprehensive High-Level & Low-Level Design (HLD & LLD)
 
 **Live Production Platform**: [https://sdetube.pages.dev](https://sdetube.pages.dev)  
-**Backend Origin Gateway**: `https://edustream-backend-90vm.onrender.com`  
-**Target Audience**: Software Development Engineers in Test (SDET), Distributed Backend Engineers, Full-Stack Developers.
+**Backend API Gateway**: `https://edustream-backend-90vm.onrender.com`  
+**GitHub Repository**: `mdalamrahman/edustreams`
 
 ---
 
 # Table of Contents
-1. [Executive Summary & Product Vision](#1-executive-summary--product-vision)
-2. [High-Level Design (HLD)](#2-high-level-design-hld)
-   - 2.1 [End-to-End System Architecture](#21-end-to-end-system-architecture)
-   - 2.2 [Edge Video Delivery & Streaming Engine ($0 Cloud Storage)](#22-edge-video-delivery--streaming-engine-0-cloud-storage)
-   - 2.3 [AI Mock Interview Engine (Lead Bar Raiser)](#23-ai-mock-interview-engine-lead-bar-raiser)
-   - 2.4 [Multi-Tier AI Inference Cascade](#24-multi-tier-ai-inference-cascade)
-   - 2.5 [Atomic Concurrency & Wallet Transaction Ledger](#25-atomic-concurrency--wallet-transaction-ledger)
-3. [Low-Level Design (LLD)](#3-low-level-design-lld)
-   - 3.1 [Frontend Architecture & Module Hierarchy](#31-frontend-architecture--module-hierarchy)
-   - 3.2 [Pages, Views & Modal Systems](#32-pages-views--modal-systems)
-   - 3.3 [Routing Engine & Hash Navigation Specification](#33-routing-engine--hash-navigation-specification)
-   - 3.4 [State Management, Browser Storage & Custom Events](#34-state-management-browser-storage--custom-events)
-   - 3.5 [Frontend Core Services Deep Dive (`src/lib/`)](#35-frontend-core-services-deep-dive-srclib)
-4. [Backend Architecture Deep Dive (`backend/` & `functions/`)](#4-backend-architecture-deep-dive-backend--functions)
-   - 4.1 [FastAPI Gateway (`backend/main.py`)](#41-fastapi-gateway-backendmainpy)
-   - 4.2 [Cloudflare R2 Object Storage Manager (`backend/r2_storage.py`)](#42-cloudflare-r2-object-storage-manager-backendr2_storagepy)
-   - 4.3 [Cloudflare Edge Functions (`functions/api/`)](#43-cloudflare-edge-functions-functionsapi)
-5. [Database & Storage Data Models](#5-database--storage-data-models)
-   - 5.1 [Supabase PostgreSQL Entity Relationship (ER) Diagram](#51-supabase-postgresql-entity-relationship-er-diagram)
-   - 5.2 [Cloudflare R2 Object Storage Key Hierarchy](#52-cloudflare-r2-object-storage-key-hierarchy)
-6. [API Route Specifications (Backend & Edge)](#6-api-route-specifications-backend--edge)
-7. [DevOps, CI/CD & Deployment Pipeline](#7-devops-cicd--deployment-pipeline)
+1. [System High-Level Design (HLD)](#1-system-high-level-design-hld)
+   - 1.1 [End-to-End System Architecture](#11-end-to-end-system-architecture)
+   - 1.2 [Zero-Cost Edge Video Delivery Engine](#12-zero-cost-edge-video-delivery-engine)
+   - 1.3 [Multi-Tier AI Inference Cascade](#13-multi-tier-ai-inference-cascade)
+   - 1.4 [Lead Bar Raiser Voice Mock Interview Subsystem](#14-lead-bar-raiser-voice-mock-interview-subsystem)
+   - 1.5 [Atomic Concurrency & Wallet Ledger](#15-atomic-concurrency--wallet-ledger)
+2. [Full Platform User & Data Flow](#2-full-platform-user--data-flow)
+   - 2.1 [Student Onboarding & Passwordless Passkey Flow](#21-student-onboarding--passwordless-passkey-flow)
+   - 2.2 [DSA Problem Solving & Code Execution Flow](#22-dsa-problem-solving--code-execution-flow)
+   - 2.3 [SQL Challenge & In-Browser WASM Execution Flow](#23-sql-challenge--in-browser-wasm-execution-flow)
+   - 2.4 [Video Lecture Streaming & Dual-Mode Notes Sync Flow](#24-video-lecture-streaming--dual-mode-notes-sync-flow)
+   - 2.5 [Lead Bar Raiser Voice Interview & Scorecard Flow](#25-lead-bar-raiser-voice-interview--scorecard-flow)
+   - 2.6 [Wallet Billing, 24-Hour Passes & Top-Up Flow](#26-wallet-billing-24-hour-passes--top-up-flow)
+3. [Low-Level Design (LLD): Component Architecture (`src/components/`)](#3-low-level-design-lld-component-architecture-srccomponents)
+   - 3.1 [Master Shell & Routing Controller (`App.tsx`)](#31-master-shell--routing-controller-apptsx)
+   - 3.2 [Coding & Algorithm Workspaces](#32-coding--algorithm-workspaces)
+   - 3.3 [System Design & Mock Interview Rooms](#33-system-design--mock-interview-rooms)
+   - 3.4 [Video Streaming & Notes Subsystem](#34-video-streaming--notes-subsystem)
+   - 3.5 [Identity, Wallet & Admin Portals](#35-identity-wallet--admin-portals)
+   - 3.6 [Diagramming, Quizzes & Supporting UI Components](#36-diagramming-quizzes--supporting-ui-components)
+4. [Low-Level Design (LLD): Core Services Deep Dive (`src/lib/`)](#4-low-level-design-lld-core-services-deep-dive-srclib)
+   - 4.1 [Problem & Execution Pipeline (`problemService.ts`, `compiler.ts`, `sqlJudge.ts`)](#41-problem--execution-pipeline-problemservicets-compilerts-sqljudgets)
+   - 4.2 [AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `mistral.ts`, `groq.ts`)](#42-ai--voice-engines-interviewservicets-interviewevaluatorts-mistralts-groqts)
+   - 4.3 [Storage, Notes & Boss Sheets (`videoNotesService.ts`, `notesService.ts`, `kroki.ts`)](#43-storage-notes--boss-sheets-videonotesservicets-notesservicets-krokits)
+   - 4.4 [Billing, Auth & Security (`billing.ts`, `auth.ts`, `passkey.ts`, `webauthn.ts`)](#44-billing-auth--security-billingts-authts-passkeyts-webauthnts)
+   - 4.5 [Curated Datasets & Catalogs (`dsaSheetsData.ts`, `lldData.ts`, `supabase.ts`)](#45-curated-datasets--catalogs-dsasheetsdatats-llddatats-supabasets)
+5. [Backend Microservices Low-Level Design (`backend/` & `functions/`)](#5-backend-microservices-low-level-design-backend--functions)
+   - 5.1 [FastAPI Gateway & Route Handlers (`backend/main.py`)](#51-fastapi-gateway--route-handlers-backendmainpy)
+   - 5.2 [Cloudflare R2 SigV4 Storage Manager (`backend/r2_storage.py`)](#52-cloudflare-r2-sigv4-storage-manager-backendr2_storagepy)
+   - 5.3 [Edge Functions & Proxy Layer (`functions/api/`)](#53-edge-functions--proxy-layer-functionsapi)
+6. [Database Schema, RPC Functions & Storage Architecture](#6-database-schema-rpc-functions--storage-architecture)
+   - 6.1 [PostgreSQL Table Schemas & Relationships](#61-postgresql-table-schemas--relationships)
+   - 6.2 [Stored Procedures & Concurrency Locks](#62-stored-procedures--concurrency-locks)
+   - 6.3 [Cloudflare R2 Object Hierarchy](#63-cloudflare-r2-object-hierarchy)
+7. [API Route Specifications & Contracts](#7-api-route-specifications--contracts)
 
 ---
 
-# 1. Executive Summary & Product Vision
+# 1. System High-Level Design (HLD)
 
-**SDETube (EduStream)** is an enterprise-grade educational ecosystem engineered for Software Engineers and SDETs. It combines:
-1. **Interactive Coding & Problem Workspace**: Real-time multi-language code execution (C++, Python, Java, JavaScript, Go, Rust) with Monaco Editor, automatic driver synthesis, and hidden test harnesses.
-2. **In-Browser SQL WASM Sandbox**: Zero-latency SQLite WebAssembly database simulation for SQL challenge validation without server overhead.
-3. **Voice-Driven AI Mock Interview Room**: Lead Bar Raiser interview companion with real-time speech synthesis (TTS), speech recognition (STT), Socratic constraint checking, interactive HLD drag-and-drop architecture canvas, and automated rubric scoring.
-4. **Zero-Cost Edge Video Streaming Engine**: Streams high-definition video directly from Telegram MTProto datacenters through Cloudflare Anycast edge caching with byte-range slicing and 30-day immutable caching.
-5. **System Design & DSA Master Sheets**: Complete curated collections including Striver SDE 191, Striver A2Z 474, SDETube 79, Blind 75, and CodeStoryWithMIK, paired with HLD/LLD Boss Sheets and interactive Kroki/PlantUML diagrams.
-
----
-
-# 2. High-Level Design (HLD)
-
-## 2.1 End-to-End System Architecture
+## 1.1 End-to-End System Architecture
 
 ```mermaid
 graph TB
-    subgraph ClientLayer ["Client & Edge Layer (Cloudflare Anycast CDN)"]
-        SPA["React 18 + Vite SPA Client (sdetube.pages.dev)"]
-        CF_RTE["_routes.json - Edge Route Rules"]
+    subgraph ClientLayer ["Client & Anycast Edge Layer (Cloudflare CDN)"]
+        SPA["React 18 + Vite SPA (sdetube.pages.dev)"]
+        CF_RTE["_routes.json - Edge Rules"]
         CF_FUNC["Cloudflare Pages Functions (/api/*)"]
         CF_CACHE[("Cloudflare Edge Cache (30-Day TTL / Immutable)")]
         WASM_SQL["In-Browser SQLite WASM Engine"]
     end
 
     subgraph BackendLayer ["Backend Microservices (Render Web Service)"]
-        FASTAPI["FastAPI Application Gateway (main.py)"]
-        TELETHON["Telethon Async MTProto Client Engine"]
+        FASTAPI["FastAPI Gateway (backend/main.py)"]
+        TELETHON["Telethon MTProto Async Client Engine"]
         AI_CASCADE["Multi-LLM 3-Tier Router"]
         HEALTHZ["/healthz Background Uptime Daemon"]
     end
@@ -76,7 +78,7 @@ graph TB
     end
 
     subgraph AIProviders ["AI Inference Cascade"]
-        LLM_GROQ["Tier 1: Groq Llama-3.3-70B (Ultra-Low Latency SSE)"]
+        LLM_GROQ["Tier 1: Groq Llama-3.3-70B (Sub-Second SSE Stream)"]
         LLM_GEMINI["Tier 2: Google Gemini 2.5 Flash"]
         LLM_MISTRAL["Tier 3: Mistral Codestral & Large"]
     end
@@ -85,7 +87,6 @@ graph TB
         JUDGE0["Judge0 / Piston Multi-Language Execution API"]
     end
 
-    %% Client Connections
     SPA --> CF_RTE
     SPA --> CF_FUNC
     CF_FUNC --> CF_CACHE
@@ -97,7 +98,6 @@ graph TB
     SPA --> JUDGE0
     SPA --> CF_R2
 
-    %% Backend Connections
     FASTAPI --> TELETHON
     TELETHON --> TG_DATACENTERS
     FASTAPI --> CF_R2
@@ -109,9 +109,7 @@ graph TB
 
 ---
 
-## 2.2 Edge Video Delivery & Streaming Engine ($0 Cloud Storage)
-
-The platform delivers high-definition lecture videos with $0 recurring storage and bandwidth costs by utilizing Telegram's distributed MTProto datacenters as the origin media repository and Cloudflare Pages Functions as an Anycast caching proxy.
+## 1.2 Zero-Cost Edge Video Delivery Engine
 
 ```mermaid
 sequenceDiagram
@@ -122,7 +120,7 @@ sequenceDiagram
     participant MTProto as Telegram Datacenters (MTProto)
 
     Student->>Edge: HTTP GET /api/video/-1004329144420/5998 (Range: bytes=0-4194303)
-    alt Edge Cache Hit (30-Day Immutable TTL)
+    alt Edge Cache Hit (30-Day TTL)
         Edge-->>Student: 206 Partial Content (Cached MP4 Byte Slice)
     else Edge Cache Miss
         Edge->>Origin: Proxy Stream Request to https://edustream-backend-90vm.onrender.com
@@ -132,18 +130,27 @@ sequenceDiagram
         Edge->>Edge: Cache Byte Slice (cf: { cacheEverything: true, cacheTtl: 2592000 })
         Edge-->>Student: 206 Partial Content (Streaming Byte Stream)
     end
-    Note over Student: Browser local storage auto-records playback position every 2s
+    Note over Student: LocalStorage auto-caches playback progress every 2s
 ```
-
-### Key Technical Specifications:
-1. **512 KB MTProto Alignment**: Requests to Telegram are chunked in `512 * 1024` bytes, exactly matching MTProto datacenter packet boundaries.
-2. **4 MB Sliding Range Window**: Range responses default to a 4 MB window (`DEFAULT_RANGE_SIZE = 4 * 1024 * 1024`) to provide deep player buffers.
-3. **Byte-Offset Resumption**: If MTProto drops mid-stream, the generator re-authenticates and resumes from the exact byte offset without terminating the HTTP stream.
-4. **Frozen Decoder Watchdog**: If the HTML5 video element stalls for $> 3.5\text{s}$, the player micro-nudges `currentTime` by $+0.05\text{s}$ to unstuck the browser hardware decoder.
 
 ---
 
-## 2.3 AI Mock Interview Engine (Lead Bar Raiser)
+## 1.3 Multi-Tier AI Inference Cascade
+
+```mermaid
+graph TD
+    REQ[Student AI Request / Ask AI / Mock Interview] --> T1{Tier 1: Groq Llama-3.3-70B}
+    T1 -- "Success (< 500ms TTFT)" --> STREAM[SSE Token Stream to Browser]
+    T1 -- "Rate Limited / Error" --> T2{Tier 2: Google Gemini 2.5 Flash}
+    T2 -- "Success" --> STREAM
+    T2 -- "Quota Exceeded / Error" --> T3{Tier 3: Mistral Codestral / Large}
+    T3 -- "Success" --> STREAM
+    T3 -- "Fallback" --> ERR[Graceful Error Response with Retry]
+```
+
+---
+
+## 1.4 Lead Bar Raiser Voice Mock Interview Subsystem
 
 ```mermaid
 graph LR
@@ -179,26 +186,7 @@ graph LR
 
 ---
 
-## 2.4 Multi-Tier AI Inference Cascade
-
-When students interact with Ask AI, Mock Interviews, or AI Problem Synthesis, queries are routed through a 3-tier cascade to maximize speed and ensure 100% uptime:
-
-```mermaid
-graph TD
-    REQ[Student AI Request] --> T1{Tier 1: Groq Llama-3.3-70B}
-    T1 -- "Success (< 500ms TTFT)" --> STREAM[SSE Token Stream to Browser]
-    T1 -- "Rate Limited / Error" --> T2{Tier 2: Google Gemini 2.5 Flash}
-    T2 -- "Success" --> STREAM
-    T2 -- "Quota Exceeded / Error" --> T3{Tier 3: Mistral Codestral / Large}
-    T3 -- "Success" --> STREAM
-    T3 -- "Fallback" --> ERR[Graceful Error Response with Retry]
-```
-
----
-
-## 2.5 Atomic Concurrency & Wallet Transaction Ledger
-
-To prevent double-spending and race conditions when unlocking video lectures, mock interview credits, or AI queries, all balance operations execute through a PostgreSQL transaction with pessimistic row-level locking (`SELECT ... FOR UPDATE`):
+## 1.5 Atomic Concurrency & Wallet Ledger
 
 ```mermaid
 sequenceDiagram
@@ -231,226 +219,308 @@ sequenceDiagram
 
 ---
 
-# 3. Low-Level Design (LLD)
+# 2. Full Platform User & Data Flow
 
-## 3.1 Frontend Architecture & Module Hierarchy
+## 2.1 Student Onboarding & Passwordless Passkey Flow
+1. **Initial Visit**: User navigates to `https://sdetube.pages.dev`. `auth.ts` checks `edustream_student_session` in `localStorage` or initiates `checkAndAutoLogin()`.
+2. **Registration / Login (`AuthModal.tsx`)**:
+   - **Email + Password**: Authenticates via `supabase.auth.signInWithPassword()` / `signUp()`.
+   - **Biometric Passkey (`passkey.ts` & `webauthn.ts`)**: Invokes `navigator.credentials.get({ publicKey: ... })` using WebAuthn FIDO2 standards. Authenticates without password entry.
+3. **Session Activation**: Student profile is pulled from PostgreSQL `profiles` table. Wallet balance is cached in `localStorage` and synced with `deduct_wallet_credits`.
 
-```
-src/
-├── App.tsx                           # Master application controller, hash-router & global state
-├── main.tsx                          # React 18 DOM root mount
-├── index.css                         # Tailored dark-mode glassmorphic design system
-│
-├── components/                       # 44 Modular React UI Components
-│   ├── DashboardLandingPage.tsx      # Main platform dashboard & quick-access cards
-│   ├── SDESheetExplorer.tsx          # Multi-sheet DSA explorer (1000+ problems, company tags)
-│   ├── LeetCodeWorkspaceModal.tsx    # Monaco-based coding IDE, custom testcases, driver runner
-│   ├── LeetCodeSQLWorkspaceModal.tsx # In-browser SQLite WASM SQL challenge IDE
-│   ├── POTDModal.tsx                 # Problem of the Day modal (LeetCode & GFG daily challenges)
-│   ├── VideoPlayer.tsx               # MTProto video player, 16-band audio boost, timestamp bookmarking
-│   ├── StudentVideoNotesTab.tsx      # In-tab markdown personal video notes editor
-│   ├── FloatingVideoNotesOverlay.tsx # Draggable glassmorphic notes overlay for fullscreen video mode
-│   ├── InterviewCompanion.tsx        # Voice-driven Lead Bar Raiser mock interview companion
-│   ├── InterviewScorecardModal.tsx   # Detailed rubric evaluation & interview scorecard modal
-│   ├── HLDHub.tsx                    # System Design / HLD module directory & curated roadmaps
-│   ├── HLDBossSheet.tsx              # Deep-dive High-Level Design architectural guides
-│   ├── HLDArchitectureCanvas.tsx     # Interactive drag-and-drop architecture diagramming canvas
-│   ├── LLDHub.tsx                    # Low-Level Design directory & design pattern catalog
-│   ├── LLDBossSheet.tsx              # Comprehensive Object-Oriented Design & LLD guides
-│   ├── DeveloperProfilePage.tsx      # Student velocity tracker, solved problems & achievements
-│   ├── UserProfileModal.tsx          # Passkey management, wallet history & personal settings
-│   ├── AdminDashboardModal.tsx       # Operator dashboard: metrics, token usage, testcase manager
-│   ├── WalletTopupModal.tsx          # Credit recharge modal with Turnstile captcha
-│   ├── InsufficientCreditsModal.tsx  # Dynamic credit gate popup with one-click topup
-│   ├── AskAIChatModal.tsx            # Context-aware floating AI mentor with multi-tier streaming
-│   ├── KrokiDiagramModal.tsx         # Interactive PlantUML / Mermaid / C4 diagram viewer
-│   ├── QuizModule.tsx                # Auto-generated lecture video comprehension quiz
-│   └── MobileGatedOverlay.tsx        # Desktop-first gating banner for mobile screen viewports
-│
-└── lib/                              # Core Frontend Services & Data Modules
-    ├── problemService.ts             # LeetCode/GFG GraphQL proxies, testcase repair, AI synthesis
-    ├── compiler.ts                   # Multi-language Judge0 payload synthesis & driver injection
-    ├── sqlJudge.ts                   # In-browser SQLite WASM compiler & query validator
-    ├── leetcodeApi.ts                # Direct LeetCode API client & POTD scrapers
-    ├── interviewService.ts           # Speech synthesis (TTS) & Web Speech recognition (STT)
-    ├── interviewEvaluator.ts         # Bar Raiser rubric scoring & feedback parser
-    ├── interviewHistoryService.ts    # Past interview session persistence (Supabase + LocalStorage)
-    ├── videoNotesService.ts          # Dual-mode student video notes sync with Cloudflare R2
-    ├── notesService.ts               # LLD/HLD Boss Sheet R2 synchronization
-    ├── billing.ts                    # Client-side wallet checks, video view billing & pricing config
-    ├── auth.ts                       # Supabase auth session, auto-login & student profile
-    ├── passkey.ts & webauthn.ts      # FIDO2 WebAuthn credential registration & verification
-    ├── supabase.ts                   # Supabase client singleton, mock channels & video catalog
-    ├── analytics.ts                  # Velocity tracking, problem solved metrics & heatmaps
-    ├── kroki.ts                      # Kroki diagram compression & SVG generation
-    ├── mistral.ts & groq.ts          # AI client connectors with streaming support
-    └── dsaSheetsData.ts              # Striver 191, A2Z 474, SDETube 79, Blind 75, Mik Sheet datasets
-```
+## 2.2 DSA Problem Solving & Code Execution Flow
+1. **Selection**: Student selects a problem from `SDESheetExplorer.tsx` or clicks the POTD modal (`POTDModal.tsx`).
+2. **Routing**: App updates URL hash to `#/problem/{slug}`. `LeetCodeWorkspaceModal.tsx` opens.
+3. **Spec Retrieval (`fetchEnrichedProblem`)**:
+   - Checks `localStorage` cache `edustream_problem_spec_{slug}`.
+   - If missing, queries `/api/leetcode/question?slug={slug}` (or `/api/problem/{slug}`).
+   - Parses authentic description, constraints, and multi-language snippets.
+   - Hardens testcase signatures via `repairAndHardenProblem()`.
+4. **Coding & Execution (`compiler.ts`)**:
+   - Student enters solution in Monaco Editor.
+   - Clicking **"Run Code"**: Combines student's class with driver harness (`drivers/{slug}_{lang}.txt`), packages JSON, and dispatches to Judge0 API.
+   - Displays real-time stdout, stderr, execution time, and memory usage.
+5. **Submission**: Compares output against all hidden testcases in R2. Marks problem completed in `dsa_progress` table and updates `VelocityTracker.tsx`.
+
+## 2.3 SQL Challenge & In-Browser WASM Execution Flow
+1. **Opening SQL Mode**: Student opens a database problem (e.g. `duplicate-emails`).
+2. **WASM Initialization (`sqlJudge.ts`)**: Loads `@sqlite.org/sqlite-wasm` Web Worker into memory.
+3. **Table Setup**: Executes pre-configured schema DDL and inserts mock rows.
+4. **Execution**: Student writes SQL query (`SELECT ...`). The worker executes query and compares output matrix against expected dataset with zero server overhead.
+
+## 2.4 Video Lecture Streaming & Dual-Mode Notes Sync Flow
+1. **Lecture Selection**: Student selects a lecture from `App.tsx` channel overview.
+2. **Access Pass Check (`billing.ts`)**: Verifies active 24-hour pass (`edustream_video_passes`). If expired, deducts ₹2.00 (or ₹1.00 for re-watch) via `deduct_wallet_credits`.
+3. **Streaming (`VideoPlayer.tsx`)**: Sends HTTP GET with `Range: bytes=0-4194303` to `/api/video/{channel}/{msgId}`. Cloudflare Anycast edge serves cached slice or fetches from Render MTProto backend.
+4. **Notes Taking**:
+   - **In-Tab Editor (`StudentVideoNotesTab.tsx`)**: Markdown notes below the video.
+   - **Floating Canvas (`FloatingVideoNotesOverlay.tsx`)**: Glassmorphic draggable overlay inside video viewport during Fullscreen.
+   - **Cloud Sync (`videoNotesService.ts`)**: Auto-syncs notes to Cloudflare R2 (`vnotes_{email}_{videoId}.md`) every 60 seconds.
+
+## 2.5 Lead Bar Raiser Voice Interview & Scorecard Flow
+1. **Setup (`InterviewCompanion.tsx`)**: Candidate selects target company (Google, Amazon, Meta), role level (L4, L5, L6), and round (HLD, LLD, Coding, Behavioral).
+2. **Voice Interaction (`interviewService.ts`)**:
+   - Candidate speaks into microphone; Web Speech STT streams transcript.
+   - AI Lead Bar Raiser asks Socratic architectural questions.
+   - Web Speech TTS synthesizes voice responses with keepalive protection.
+3. **Architecture Diagramming (`HLDArchitectureCanvas.tsx`)**: Candidate drags load balancers, microservices, caches, and databases onto the canvas.
+4. **Scorecard Generation (`interviewEvaluator.ts`)**: Upon interview completion, AI evaluates transcript and outputs a structured scorecard with rubric ratings (1-10) and actionable improvement feedback.
 
 ---
 
-## 3.2 Pages, Views & Modal Systems
+# 3. Low-Level Design (LLD): Component Architecture (`src/components/`)
 
-| View / Component | URL Hash / Route | Description | Key Subcomponents |
+## 3.1 Master Shell & Routing Controller (`App.tsx`)
+
+| File / Component | State & Props | Submodules & Services | Purpose & Integration |
 |---|---|---|---|
-| **Dashboard** | `#/dashboard` | Central hub displaying POTDs, video lectures, progress stats, and quick resume. | `DashboardLandingPage.tsx`, `POTDModal.tsx` |
-| **DSA Sheets Explorer** | `#/dsa-sheets` or `#/sde-sheet` | 5 curated DSA sheets with company tags, difficulty filters, and search. | `SDESheetExplorer.tsx`, `SubmissionVisualizer.tsx` |
-| **Coding IDE** | `#/problem/:slug` | Fullscreen Monaco coding workspace with multi-lang drivers and testcase execution. | `LeetCodeWorkspaceModal.tsx`, `CodeWorkspace.tsx`, `ReportTestCaseModal.tsx` |
-| **SQL IDE** | `#/problem/:slug` (SQL) | SQLite WASM database workspace with table schemas, sample data, and query runner. | `LeetCodeSQLWorkspaceModal.tsx`, `sqlJudge.ts` |
-| **Video Lectures** | `#/channel/:id` & `#/lesson/:videoId` | Course channel catalog and video player with personal notes and quizzes. | `VideoPlayer.tsx`, `StudentVideoNotesTab.tsx`, `FloatingVideoNotesOverlay.tsx`, `QuizModule.tsx` |
-| **HLD Hub** | `#/hld` or `#/system-design` | High-Level Design roadmaps, system architectures, and interactive diagramming. | `HLDHub.tsx`, `HLDBossSheet.tsx`, `HLDArchitectureCanvas.tsx` |
-| **LLD Hub** | `#/lld` | Low-Level Design, design patterns, UML class diagrams, and machine coding problems. | `LLDHub.tsx`, `LLDBossSheet.tsx`, `KrokiDiagramViewer.tsx` |
-| **Mock Interview Room** | `#/interview` | Voice-driven AI Lead Bar Raiser interview simulator with live HLD canvas and scoring. | `InterviewCompanion.tsx`, `InterviewScorecardModal.tsx` |
-| **Developer Profile** | `#/profile` or `#/user/:id` | Student portfolio, coding velocity heatmap, solved problem history, and certificates. | `DeveloperProfilePage.tsx`, `VelocityTracker.tsx`, `CertificateModal.tsx` |
-| **Admin Portal** | `#/admin` | Operator dashboard for telemetry, token cost tracking, R2 testcase suite editor, and user credits. | `AdminDashboardModal.tsx`, `supabaseAdmin.ts` |
+| **`App.tsx`** | `activeTab`: `'dashboard' \| 'channels' \| 'lesson' \| 'sde_sheet' \| 'lld' \| 'hld' \| 'interview' \| 'profile' \| 'admin'`<br>`selectedVideo`: `Video`<br>`selectedChannelId`: `string`<br>`sdeFullscreenProblem`: `SDEProblem \| null` | `Navbar.tsx`<br>`VideoPlayer.tsx`<br>`SDESheetExplorer.tsx`<br>`POTDModal.tsx`<br>`AskAIChatModal.tsx` | Master routing hub. Listens to `window.location.hash` and `window.history.pushState`. Handles pause/resume video global custom events. |
 
 ---
 
-## 3.3 Routing Engine & Hash Navigation Specification
+## 3.2 Coding & Algorithm Workspaces
 
-The routing engine in `src/App.tsx` handles browser back/forward history, query parameters, and direct deep-linking through URL hashes:
-
-```ts
-// Hash & Route Resolution Hierarchy (App.tsx)
-const getInitialTab = (): TabType => {
-  const hash = window.location.hash || '';
-  const pathname = window.location.pathname || '';
-  const params = new URLSearchParams(window.location.search);
-
-  // 1. Explicit query parameter (?tab=...)
-  const qTab = params.get('tab');
-  if (qTab && VALID_TABS.includes(qTab)) return qTab;
-
-  // 2. Hash-based routing
-  if (hash.startsWith('#/problem/') || hash.startsWith('#/dsa-sheets')) return 'sde_sheet';
-  if (hash.startsWith('#/lld')) return 'lld';
-  if (hash.startsWith('#/hld') || hash.startsWith('#/system-design')) return 'hld';
-  if (hash.startsWith('#/interview')) return 'interview';
-  if (hash.startsWith('#/profile') || hash.startsWith('#/user/')) return 'profile';
-  if (hash.startsWith('#/analytics')) return 'analytics';
-  if (hash.startsWith('#/channels') || hash.startsWith('#/channel/')) return 'channels';
-  if (hash.startsWith('#/lesson') || hash.startsWith('#/video/')) return 'lesson';
-
-  return 'dashboard';
-};
-```
+| Component | Props & State | Key Methods / Handlers | Purpose |
+|---|---|---|---|
+| **`LeetCodeWorkspaceModal.tsx`** | `codingProblem`: `SDEProblem`<br>`isOpen`: `boolean`<br>`onClose`: `() => void`<br>`problemTemplate`: `ProblemTemplate`<br>`activeLang`: `SupportedLanguage` | `handleRun()`, `handleSubmit()`, `handleResetCode()`, `handleReportTestCase()` | Fullscreen Monaco coding IDE. Dynamically loads authentic problem specs and testcases from R2 / LeetCode GraphQL, executes code via `compiler.ts`, and displays execution results. |
+| **`LeetCodeSQLWorkspaceModal.tsx`** | `problem`: `SQLProblem`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `handleExecuteSQL()`, `handleResetSchema()` | Monaco-based SQL challenge IDE powered by in-browser SQLite WASM (`sqlJudge.ts`). Displays table schemas, expected outputs, and diff visualizers. |
+| **`CodeWorkspace.tsx`** | `code`: `string`<br>`language`: `string`<br>`onChange`: `(val: string) => void` | `monaco.editor.create()`, `onDidChangeModelContent()` | Embedded Monaco code editor container with syntax highlighting, IntelliSense, theme customization, and keyboard shortcuts (`Ctrl+Enter` to run). |
+| **`POTDModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`onOpenProblem`: `(prob: DSAProblem) => void` | `fetchPOTDData()`, `handleSolveDaily()` | Modal displaying daily challenges for both LeetCode and GeeksforGeeks with streak counters, company tags, and instant IDE launch. |
+| **`ReportTestCaseModal.tsx`** | `problemSlug`: `string`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `handleSubmitReport()` | Enables students to report mismatched testcases or buggy problem descriptions, persisting reports in Supabase `problem_reports`. |
+| **`SubmissionVisualizer.tsx`** | `testResults`: `TestCaseResult[]`<br>`status`: `'accepted' \| 'failed'` | `renderDiff()`, `formatExecutionMetrics()` | Visual testcase matrix showing pass/fail status, expected vs actual outputs, execution time, and memory usage. |
 
 ---
 
-## 3.4 State Management, Browser Storage & Custom Events
+## 3.3 System Design & Mock Interview Rooms
 
-### LocalStorage Schema:
-| LocalStorage Key | Purpose |
+| Component | Props & State | Key Methods / Handlers | Purpose |
+|---|---|---|---|
+| **`InterviewCompanion.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`sessionStage`: `InterviewStage`<br>`transcript`: `ChatMessage[]` | `startListening()`, `stopListening()`, `speakResponse()`, `handleCompleteInterview()` | Voice-driven Lead Bar Raiser mock interview simulator. Manages real-time Web Speech STT/TTS, Socratic dialogue constraints, and stage progression. |
+| **`InterviewScorecardModal.tsx`** | `scorecard`: `InterviewScorecard`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `downloadReport()`, `handleRetake()` | Renders comprehensive interview scorecards with spider charts, rubric ratings (Communication, Architecture, Coding), and actionable feedback. |
+| **`HLDArchitectureCanvas.tsx`** | `nodes`: `CanvasNode[]`<br>`edges`: `CanvasEdge[]`<br>`onExportDiagram`: `() => void` | `handleDropNode()`, `handleConnectEdge()`, `simulateTraffic()` | Drag-and-drop interactive architectural diagramming canvas for Microservices, Load Balancers, Message Queues, Caches, and Databases. |
+| **`HLDBossSheet.tsx`** | `selectedTopic`: `string`<br>`viewMode`: `'notes' \| 'canvas'` | `fetchDocFromR2()`, `renderMarkdown()` | Curated High-Level Design guides (Distributed Caching, Rate Limiters, URL Shorteners, Video Transcoding, Kafka Streaming) with Kroki diagrams. |
+| **`LLDBossSheet.tsx`** | `selectedDesign`: `string` | `renderUML()`, `renderDesignPatterns()` | Low-Level Design master guides covering SOLID principles, Design Patterns, Class Diagrams, and Machine Coding challenges (Parking Lot, Elevator). |
+| **`HLDHub.tsx` & `LLDHub.tsx`** | None | `handleSelectTrack()` | Directory hubs showcasing curated learning roadmaps, system design tracks, and interview preparation guides. |
+
+---
+
+## 3.4 Video Streaming & Notes Subsystem
+
+| Component | Props & State | Key Methods / Handlers | Purpose |
+|---|---|---|---|
+| **`VideoPlayer.tsx`** | `video`: `Video`<br>`onTimeUpdate`: `(t: number) => void`<br>`playbackRate`: `number` | `handleSeek()`, `toggleAudioBoost()`, `handleUnfreezeStall()` | Custom MTProto HTML5 video player with 16-band audio booster, frozen decoder watchdog, and playback speed controls ($0.5\times$ to $2.5\times$). |
+| **`StudentVideoNotesTab.tsx`** | `videoId`: `string`<br>`currentTime`: `number` | `insertTimestampTag()`, `saveNotesToR2()` | Full markdown personal notes editor below the lecture player. Auto-syncs to Cloudflare R2 every 60s and allows clickable timestamp bookmarks. |
+| **`FloatingVideoNotesOverlay.tsx`** | `videoId`: `string`<br>`currentTime`: `number`<br>`isVisible`: `boolean` | `handleDrag()`, `handleResize()` | Draggable, resizable glassmorphic notes canvas positioned directly inside the video viewport during native browser Fullscreen mode. |
+| **`AINotesAndSimulation.tsx`** | `video`: `Video`<br>`transcript`: `string` | `generateSummary()`, `launchVisualSimulation()` | Generates AI lecture summaries, key architectural takeaways, and interactive algorithmic simulations from lecture transcripts. |
+
+---
+
+## 3.5 Identity, Wallet & Admin Portals
+
+| Component | Props & State | Key Methods / Handlers | Purpose |
+|---|---|---|---|
+| **`AuthModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handlePasswordAuth()`, `handlePasskeyAuth()`, `handleOTP()` | Modal handling Supabase Auth and WebAuthn FIDO2 biometric passkey registration and login. |
+| **`UserProfileModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handleRegisterPasskey()`, `handleUpdateProfile()` | Manages user passkeys, wallet transaction history, display name, and notification preferences. |
+| **`DeveloperProfilePage.tsx`** | `user`: `Student` | `calculateStreak()`, `generateCert()` | Portfolio dashboard featuring coding velocity heatmaps, problem completion stats, badges, and verified completion certificates. |
+| **`WalletTopupModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handleTopup()`, `verifyTurnstile()` | Secure credit recharge modal protected by Cloudflare Turnstile bot verification. |
+| **`InsufficientCreditsModal.tsx`** | `cost`: `number`<br>`action`: `string`<br>`isOpen`: `boolean` | `handleOneClickRecharge()` | Credit gating modal that triggers when a student attempts an action exceeding their balance. |
+| **`AdminDashboardModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `loadMetrics()`, `editR2Problem()`, `grantCredits()` | Restricted operator portal for monitoring platform telemetry, AI token consumption, and editing Cloudflare R2 test suites. |
+
+---
+
+## 3.6 Diagramming, Quizzes & Supporting UI Components
+
+| Component | Purpose |
 |---|---|
-| `edustream_student_session` | Authenticated student profile session payload |
-| `edustream_prog_{channelId}_{msgId}` | Video playback progress in seconds for auto-resume |
-| `edustream_problem_spec_{slug}` | Cached authentic problem specification (description, examples, constraints) |
-| `edustream_testcases_txt_{slug}` | Formatted plain-text test case suite |
-| `edustream_driver_{slug}_{lang}` | Cached multi-language execution driver code |
-| `edustream_saved_code_{slug}_{lang}` | Student's in-progress solution code per problem & language |
-| `vnotes_{email}_{videoId}` | Student's personal lecture video notes |
-| `edustream_interview_history` | History of completed mock interview scorecards |
-| `edustream_video_passes` | Active 24-hour video lecture access passes |
-
-### Global Window Custom Events:
-- `sdetube_pause_video`: Pauses active video playback when opening modals (e.g. Ask AI, POTD, Workspace).
-- `sdetube_resume_video`: Resumes playback upon modal dismissal.
-- `edustream_wallet_updated`: Broadcasts real-time wallet balance changes to all navbar and modal listeners.
+| **`AskAIChatModal.tsx`** | Floating AI mentor with multi-tier streaming (Groq/Gemini/Mistral) for contextual code, video, and notes queries. |
+| **`KrokiDiagramViewer.tsx` / `KrokiDiagramModal.tsx`** | Renders compressed PlantUML, Mermaid, and C4 architecture diagrams via Kroki API. |
+| **`QuizModule.tsx`** | Generates real-time 5-question comprehension quizzes from video transcripts via Mistral AI. |
+| **`CertificateModal.tsx`** | Generates downloadable SVG/PDF course completion certificates with verifiable credentials. |
+| **`VelocityTracker.tsx`** | Visual GitHub-style coding velocity tracker and difficulty distribution charts. |
+| **`Navbar.tsx`** | Navigation header displaying active tab, search bar, wallet credit counter, and user profile avatar. |
+| **`TurnstileCaptcha.tsx`** | Cloudflare Turnstile zero-friction widget for bot prevention on wallet recharges. |
+| **`MobileGatedOverlay.tsx`** | Informative banner gating desktop-first coding environments on mobile viewports. |
 
 ---
 
-## 3.5 Frontend Core Services Deep Dive (`src/lib/`)
+# 4. Low-Level Design (LLD): Core Services Deep Dive (`src/lib/`)
 
-### 1. `problemService.ts` (Problem Enrichment & Testcase Repair)
-- **LeetCode GraphQL Integration**: Fetches problem specifications via `/api/leetcode/question?slug={slug}` or direct GraphQL query.
-- **GFG Practice API Integration**: Fetches problem details via `/api/gfg/{slug}` and practice API.
-- **Sanitization & Hardening (`repairAndHardenProblem`)**:
-  - Automatically identifies single-parameter vs multi-parameter functions.
-  - Formats parameter names (e.g. `nums = [1, 2, 3]`, `target = 9`).
-  - Guards against hallucinated AI templates with strict signature matching.
-- **Cache Eviction**: Automatically purges stale placeholder descriptions from `localStorage`.
-
-### 2. `compiler.ts` (Multi-Language Execution Engine)
-- Combines student's class/method solution with language-specific driver code.
-- Serializes payloads for the Judge0 / Piston execution sandboxes:
-  - **C++**: Injects `<iostream>`, `<vector>`, `<string>`, `<algorithm>`, parsing stdin into inputs and printing structured outputs.
-  - **Python**: Injects `json` parser and custom test harness.
-  - **Java**: Wraps solution inside `public class Main` with stdin parser.
-  - **JavaScript / TypeScript**: Wraps solution with Node.js `readline` parser.
-
-### 3. `sqlJudge.ts` (In-Browser SQLite WASM Sandbox)
-- Initializes `@sqlite.org/sqlite-wasm` inside the browser Web Worker.
-- Executes DDL schema statements, inserts mock table records, runs student's SQL query, and compares output matrices with expected SQL tables.
-
-### 4. `interviewService.ts` & `interviewEvaluator.ts` (Bar Raiser Voice Engine)
-- **Speech Synthesis (TTS)**: Utterance queue manager with GC retention to prevent Chrome TTS stuttering.
-- **Speech Recognition (STT)**: Continuous speech recognition with silence detection.
-- **Socratic Prompting**: Ensures the AI acts as a Senior Staff Bar Raiser, asking probing architectural questions without revealing answers prematurely.
-- **Rubric Evaluator**: Analyzes transcript against 4 criteria (Communication, Problem Solving, System Design, Coding) and outputs structured JSON scorecards.
-
----
-
-# 4. Backend Architecture Deep Dive (`backend/` & `functions/`)
-
-## 4.1 FastAPI Gateway (`backend/main.py`)
-
-The backend is an asynchronous FastAPI application running on Render:
+## 4.1 Problem & Execution Pipeline (`problemService.ts`, `compiler.ts`, `sqlJudge.ts`)
 
 ```mermaid
 graph TD
-    subgraph FastAPIEndpoints ["FastAPI Endpoints (main.py)"]
-        STREAM["GET /stream/{channel}/{msgId} - MTProto Byte Range Stream"]
-        CATALOG["GET /api/catalog - Dynamic Video Catalog"]
-        LC_API["GET /api/leetcode/{slug} - LeetCode GraphQL Proxy"]
-        GFG_API["GET /api/gfg/{slug} - GeeksforGeeks Practice Proxy"]
-        POTD_LC["GET /api/potd/leetcode - Daily LeetCode Challenge"]
-        POTD_GFG["GET /api/potd/gfg - Daily GFG Challenge"]
-        DEL_PROB["DELETE /api/problem/{slug} - R2 Problem Purge"]
-        CLR_POTD["POST /api/potd/clear - Cache Invalidation"]
-        AI_CHAT["POST /api/chat - 3-Tier Multi-LLM Cascade"]
-        HLD_SIM["POST /api/hld/simulate - Architecture Load Simulator"]
-        STT_AUDIO["POST /api/extract-audio - Whisper Speech-to-Text"]
+    subgraph ProblemService ["problemService.ts Pipeline"]
+        INPUT[Slug / URL] --> C_CHK{Check LocalStorage}
+        C_CHK -- "Valid Authentic" --> RETURN[Return ProblemTemplate]
+        C_CHK -- "Missing / Placeholder" --> PURGE[Purge Stale Cache Entry]
+        PURGE --> FETCH_LC[Fetch /api/leetcode/question?slug=]
+        FETCH_LC -- "200 OK" --> PARSE_LC[parseLeetCodeQuestion]
+        FETCH_LC -- "404 / Fail" --> FETCH_GFG[Fetch /api/gfg/]
+        FETCH_GFG -- "200 OK" --> PARSE_GFG[parseGFGQuestion]
+        FETCH_GFG -- "Fail" --> GEN_AI[Generate with Mistral AI]
+        PARSE_LC --> REPAIR[repairAndHardenProblem]
+        PARSE_GFG --> REPAIR
+        GEN_AI --> REPAIR
+        REPAIR --> SAVE_CACHE[Save to LocalStorage & R2]
+        SAVE_CACHE --> RETURN
     end
 ```
 
-### Core Backend Modules:
-1. **Telethon MTProto Streamer**:
-   - Maintains an authenticated Telegram client session (`edustream_session`).
-   - Streams video files directly from Telegram datacenters using `client.iter_download()`.
-   - Supports HTTP `Range` headers for seeking and progressive download.
-2. **Dynamic POTD Scraper & Proxy**:
-   - Scrapes daily challenges from LeetCode GraphQL and GFG.
-   - Automatically cleans problem HTML, extracts example test cases, and caches results.
-3. **Multi-LLM Inference Cascade**:
-   - Dispatches prompts to Groq (Llama-3.3-70B), Gemini 2.5 Flash, or Mistral with automatic fallback.
+### 1. `problemService.ts`
+- **`isProblemValidAndAuthentic(p)`**: Validates that problem definitions contain valid descriptions, authentic testcases ($N \ge 1$), and no hallucinated placeholders (`"An optimal algorithm is required to solve the..."`).
+- **`repairAndHardenProblem(p)`**:
+  - Examines starter signatures (e.g. `def twoSum(self, nums: List[int], target: int)`).
+  - Ensures multi-parameter testcases are correctly structured as comma-separated pairs (`nums = [2,7,11,15], target = 9`) rather than broken across separate array elements.
+- **`fetchFromLeetCodeAPI(slug)`**: Proxies GraphQL queries to LeetCode, parses `<pre>` example blocks, and extracts constraints and multi-language snippets.
+- **`fetchFromGFGAPI(slug)`**: Queries GeeksforGeeks Practice API and extracts problem statements, examples, and constraints.
+
+### 2. `compiler.ts`
+- **`runMultiLanguageCode(source, lang, slug, testcases)`**:
+  - Injects student method into driver harness:
+    - **C++**: Generates `#include <iostream>`, `#include <vector>`, instantiation of `Solution`, and stdin parser.
+    - **Python**: Injects `json` parser and custom test harness.
+    - **Java**: Wraps solution in `public class Main` with stdin parser.
+    - **JavaScript**: Wraps solution with Node.js `readline` parser.
+  - Sends payload to Judge0 API and parses stdout/stderr and execution time.
+
+### 3. `sqlJudge.ts`
+- **`runSQLChallenge(query, schemaSql, expectedRows)`**:
+  - Spawns `@sqlite.org/sqlite-wasm` worker.
+  - Executes schema DDL and mock row insertion.
+  - Runs student query and performs matrix comparison with expected results.
 
 ---
 
-## 4.2 Cloudflare R2 Object Storage Manager (`backend/r2_storage.py`)
+## 4.2 AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `mistral.ts`, `groq.ts`)
 
-Provides native AWS SigV4 signed REST and Boto3 operations for Cloudflare R2 bucket `sdestream`:
-- **Zero Third-Party Dependency SigV4 Implementation**: Computes SHA256 HMAC authorization headers natively using Python `hashlib` and `hmac`.
-- **Upload & Retrieval**:
-  - `upload_problem(slug, data)`: Stores `problems/{slug}.json`.
-  - `upload_testcases_txt(slug, text)`: Stores `problems/{slug}.txt`.
-  - `upload_driver(slug, lang, code)`: Stores `drivers/{slug}_{lang}.txt`.
-- **Purge & Deletion**:
-  - `delete_problem(slug)`: Deletes JSON specs, text testcases, and multi-language drivers for clean regeneration.
+### 1. `interviewService.ts`
+- **`speakUtterance(text, onEnd)`**:
+  - Manages browser `window.speechSynthesis` queue.
+  - Expands technical acronyms (`QPS` $\to$ `"Q P S"`, `HLD` $\to$ `"high level design"`, `API` $\to$ `"A P I"`).
+  - Maintains a 5-second keepalive timer to prevent Chrome's Web Speech engine from garbage-collecting active utterances mid-sentence.
+- **`startSpeechRecognition(onResult, onError)`**: Initializes `webkitSpeechRecognition` with continuous listening and automatic silence detection.
+
+### 2. `interviewEvaluator.ts`
+- **`generateInterviewScorecard(transcript, roundType, level)`**:
+  - Prompts Tier 1 Groq / Tier 2 Gemini with the full interview transcript.
+  - Generates numerical rubric ratings (1 to 10) across:
+    1. **Communication & Clarification**
+    2. **Problem Solving & Scoping**
+    3. **Architecture & Scalability**
+    4. **Code Quality & Edge Cases**
+  - Outputs structured JSON scorecards with specific strengths and areas for improvement.
+
+### 3. `mistral.ts` & `groq.ts`
+- Direct connectors to Groq (Llama-3.3-70B) and Mistral (Codestral/Large) with streaming Server-Sent Events (SSE) support.
 
 ---
 
-## 4.3 Cloudflare Edge Functions (`functions/api/`)
+## 4.3 Storage, Notes & Boss Sheets (`videoNotesService.ts`, `notesService.ts`, `kroki.ts`)
 
-Cloudflare Pages Functions execute at 300+ Anycast edge datacenters:
-- **`[[catchall]].ts`**: Intercepts `/api/video/*` and proxies to the Render backend, caching 206 Partial Content video slices for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
+- **`videoNotesService.ts`**:
+  - Manages student video notes in `localStorage` under `vnotes_{email}_{videoId}`.
+  - Syncs notes to Cloudflare R2 bucket `sdestream` under `vnotes/{email}_{videoId}.md`.
+- **`notesService.ts`**: Retrieves curated HLD/LLD Boss Sheet markdown files from Cloudflare R2 (`notes/{docId}.md`).
+- **`kroki.ts`**: Encodes PlantUML, Mermaid, and C4 diagram strings using `pako` deflate compression and generates SVG diagram URLs from `https://kroki.io`.
+
+---
+
+## 4.4 Billing, Auth & Security (`billing.ts`, `auth.ts`, `passkey.ts`, `webauthn.ts`)
+
+- **`billing.ts`**:
+  - **`PRICING_CONFIG`**:
+    - Video Lecture First-Time 24h Pass: **₹2.00**
+    - Video Lecture Re-Watch 24h Pass: **₹1.00**
+    - AI Mock Interview Session: **₹10.00**
+    - Ask AI Deep Query: **₹0.50**
+  - **`canAffordAction(cost, email)`**: Validates wallet balance before triggering gated operations.
+  - **`deductCredits(amount, action, description)`**: Invokes PostgreSQL RPC `deduct_wallet_credits`.
+- **`passkey.ts` & `webauthn.ts`**:
+  - Implements FIDO2 WebAuthn credential creation (`navigator.credentials.create`) and assertion (`navigator.credentials.get`).
+  - Stores public key credentials in Supabase `user_passkeys` table.
+
+---
+
+## 4.5 Curated Datasets & Catalogs (`dsaSheetsData.ts`, `lldData.ts`, `supabase.ts`)
+
+- **`dsaSheetsData.ts`**:
+  - **Striver SDE Sheet**: 191 curated interview problems.
+  - **Striver A2Z DSA Sheet**: 474 comprehensive problems.
+  - **SDETube 79 Sheet**: 79 core SDET/Automation coding challenges.
+  - **Blind 75 Sheet**: NeetCode / Blind 75 algorithmic staples.
+  - **CodeStoryWithMIK Sheet**: Daily challenge and algorithmic patterns dataset.
+- **`lldData.ts`**: Low-Level Design problem catalog, UML schemas, and design pattern challenges.
+- **`supabase.ts`**: Supabase client initialization, mock channel catalogs, and fallback video feeds.
+
+---
+
+# 5. Backend Microservices Low-Level Design (`backend/` & `functions/`)
+
+## 5.1 FastAPI Gateway & Route Handlers (`backend/main.py`)
+
+### 1. MTProto Video Streaming Generator (`/stream/{channel_id}/{msg_id}`)
+```python
+@app.get("/stream/{channel_id}/{msg_id}")
+async def stream_telegram_video(channel_id: str, msg_id: int, request: Request):
+    """
+    Asynchronously streams video from Telegram MTProto datacenters with HTTP 206 Range support.
+    """
+    # 1. Resolve channel peer and message document
+    message = await client.get_messages(peer, ids=msg_id)
+    doc = message.media.document
+    file_size = doc.size
+
+    # 2. Parse HTTP Range header (e.g. bytes=0-4194303)
+    range_header = request.headers.get("Range")
+    start, end = parse_range(range_header, file_size)
+
+    # 3. Stream 512KB chunks via MTProto iter_download
+    async def video_generator():
+        async for chunk in client.iter_download(doc, offset=start, request_size=512*1024):
+            yield chunk
+
+    return StreamingResponse(
+        video_generator(),
+        status_code=206,
+        headers={
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(end - start + 1),
+            "Content-Type": "video/mp4",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
+```
+
+### 2. LeetCode & GFG Daily Problem Proxies
+- **`GET /api/potd/leetcode`**: Scrapes today's LeetCode challenge using official GraphQL queries.
+- **`GET /api/potd/gfg`**: Scrapes GeeksforGeeks POTD from Practice API.
+- **`POST /api/potd/clear`**: Purges in-memory POTD state to trigger immediate live fetching.
+- **`DELETE /api/problem/{slug}`**: Deletes stored problem JSON, testcases, and drivers from Cloudflare R2.
+
+---
+
+## 5.2 Cloudflare R2 SigV4 Storage Manager (`backend/r2_storage.py`)
+
+Provides native SigV4 REST operations against Cloudflare R2 bucket `sdestream`:
+- **`_get_sigv4_headers(method, key, payload)`**: Generates AWS SigV4 signed headers (`Authorization: AWS4-HMAC-SHA256 ...`) using Python's native `hmac` and `hashlib` libraries without requiring external SDKs.
+- **`fetch_problem(slug)`**: Reads `problems/{slug}.json`.
+- **`upload_problem(slug, data)`**: Stores `problems/{slug}.json`.
+- **`delete_problem(slug)`**: Removes all problem JSON, testcase TXT, and multi-language driver files for a problem.
+
+---
+
+## 5.3 Edge Functions & Proxy Layer (`functions/api/`)
+
+- **`[[catchall]].ts`**: Intercepts `/api/video/*` requests at Cloudflare edge, proxies them to Render backend, and caches 206 partial responses for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
 - **`potd/leetcode.ts` & `potd/gfg.ts`**: Edge proxies for daily challenges with zero-cache headers.
-- **`leetcode/question.ts`**: Sanitizes problem slugs and proxies GraphQL requests to LeetCode with zero-cache headers.
+- **`leetcode/question.ts`**: Edge proxy that sanitizes problem slugs and queries LeetCode GraphQL with zero-cache headers.
 
 ---
 
-# 5. Database & Storage Data Models
+# 6. Database Schema, RPC Functions & Storage Architecture
 
-## 5.1 Supabase PostgreSQL Entity Relationship (ER) Diagram
+## 6.1 PostgreSQL Table Schemas & Relationships
 
 ```mermaid
 erDiagram
@@ -520,7 +590,57 @@ erDiagram
 
 ---
 
-## 5.2 Cloudflare R2 Object Storage Key Hierarchy
+## 6.2 Stored Procedures & Concurrency Locks
+
+```sql
+-- Atomic wallet deduction with pessimistic row locking
+CREATE OR REPLACE FUNCTION public.deduct_wallet_credits(
+  p_user_id UUID,
+  p_amount NUMERIC,
+  p_action_type TEXT,
+  p_description TEXT,
+  p_idempotency_key TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_current_balance NUMERIC;
+  v_new_balance NUMERIC;
+BEGIN
+  -- Idempotency check
+  IF p_idempotency_key IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM public.wallet_transactions WHERE idempotency_key = p_idempotency_key) THEN
+      SELECT wallet_balance INTO v_current_balance FROM public.profiles WHERE id = p_user_id;
+      RETURN jsonb_build_object('success', true, 'balance', v_current_balance, 'duplicate', true);
+    END IF;
+  END IF;
+
+  -- Acquire pessimistic row lock
+  SELECT wallet_balance INTO v_current_balance 
+  FROM public.profiles 
+  WHERE id = p_user_id 
+  FOR UPDATE;
+
+  IF v_current_balance < p_amount THEN
+    RETURN jsonb_build_object('success', false, 'error', 'INSUFFICIENT_FUNDS', 'balance', v_current_balance);
+  END IF;
+
+  v_new_balance := v_current_balance - p_amount;
+  UPDATE public.profiles SET wallet_balance = v_new_balance WHERE id = p_user_id;
+
+  INSERT INTO public.wallet_transactions (user_id, action_type, amount, description, idempotency_key)
+  VALUES (p_user_id, p_action_type, p_amount, p_description, p_idempotency_key);
+
+  RETURN jsonb_build_object('success', true, 'balance', v_new_balance);
+END;
+$$;
+```
+
+---
+
+## 6.3 Cloudflare R2 Object Hierarchy
 
 ```
 sdestream (R2 Bucket)
@@ -542,62 +662,19 @@ sdestream (R2 Bucket)
 
 ---
 
-# 6. API Route Specifications (Backend & Edge)
+# 7. API Route Specifications & Contracts
 
-| Endpoint | Method | Layer | Description | Cache Policy |
-|---|---|---|---|---|
-| `/stream/{channel}/{msgId}` | `GET` | Backend (FastAPI) | Streams MP4 video chunk directly from Telegram MTProto | `206 Partial Content`, Range-based |
-| `/api/video/{channel}/{msgId}` | `GET` | Edge (Cloudflare) | Anycast video proxy with immutable edge caching | `public, max-age=2592000, immutable` |
-| `/api/catalog` | `GET` | Backend | Ingested video lecture channel catalog & message IDs | `public, max-age=3600` |
-| `/api/leetcode/{slug}` | `GET` | Backend & Edge | LeetCode GraphQL problem spec proxy | `no-cache, must-revalidate` |
-| `/api/gfg/{slug}` | `GET` | Backend & Edge | GeeksforGeeks Practice API problem spec proxy | `no-cache, must-revalidate` |
-| `/api/potd/leetcode` | `GET` | Backend & Edge | Current authentic LeetCode Daily Challenge | `no-cache, max-age=0` |
-| `/api/potd/gfg` | `GET` | Backend & Edge | Current authentic GFG Problem of the Day | `no-cache, max-age=0` |
-| `/api/problem/{slug}` | `DELETE` | Backend | Purges stored problem JSON, testcases, and drivers from R2 | No cache |
-| `/api/potd/clear` | `POST` | Backend | Invalidates backend in-memory POTD caches | No cache |
-| `/api/chat` | `POST` | Backend | Multi-tier AI streaming endpoint (Groq/Gemini/Mistral) | SSE Stream |
-| `/api/hld/simulate` | `POST` | Backend | Simulates traffic load, latency, and failure on HLD canvas | No cache |
-| `/healthz` | `GET` | Backend | Uptime keepalive endpoint for Render free tier | `200 OK` |
-
----
-
-# 7. DevOps, CI/CD & Deployment Pipeline
-
-```mermaid
-graph LR
-    subgraph GitRepo ["GitHub Repository (mdalamrahman/edustreams)"]
-        MAIN[Branch: main]
-    end
-
-    subgraph FrontendCI ["Frontend Pipeline (Cloudflare Pages)"]
-        BUILD["tsc && vite build"]
-        DIST["dist/ Distribution Bundle"]
-        WRANGLER["npx wrangler pages deploy dist --project-name sdetube"]
-        CF_LIVE["Live: https://sdetube.pages.dev"]
-    end
-
-    subgraph BackendCI ["Backend Pipeline (Render)"]
-        WEBHOOK["GitHub Push Webhook"]
-        DOCKER["Docker Build & Python 3.11 Runtime"]
-        RENDER_LIVE["Live: https://edustream-backend-90vm.onrender.com"]
-    end
-
-    MAIN --> BUILD
-    BUILD --> DIST
-    DIST --> WRANGLER
-    WRANGLER --> CF_LIVE
-    MAIN --> WEBHOOK
-    WEBHOOK --> DOCKER
-    DOCKER --> RENDER_LIVE
-```
-
-### Production Deployment Commands:
-- **Frontend Build & Deploy**:
-  ```bash
-  npm run build
-  npx wrangler pages deploy dist --project-name sdetube --branch main
-  ```
-- **Backend Deploy**:
-  ```bash
-  git push origin main  # Automatic Render build trigger via Webhook
-  ```
+| Route | Method | Layer | Description | Request Payload | Response / Headers |
+|---|---|---|---|---|---|
+| `/stream/{channel}/{msgId}` | `GET` | Backend (FastAPI) | Direct MTProto streaming slice | `Range: bytes=0-4194303` | `206 Partial Content`, `Content-Range` |
+| `/api/video/{channel}/{msgId}` | `GET` | Edge (Cloudflare) | Anycast video stream proxy | `Range: bytes=0-4194303` | `Cache-Control: public, max-age=2592000, immutable` |
+| `/api/catalog` | `GET` | Backend | Ingested video lecture channel catalog | None | `200 OK` + JSON catalog |
+| `/api/leetcode/{slug}` | `GET` | Backend & Edge | LeetCode GraphQL question proxy | None | `no-cache, must-revalidate` |
+| `/api/gfg/{slug}` | `GET` | Backend & Edge | GeeksforGeeks Practice API proxy | None | `no-cache, must-revalidate` |
+| `/api/potd/leetcode` | `GET` | Backend & Edge | Current authentic LeetCode Daily Challenge | None | `no-cache, max-age=0` |
+| `/api/potd/gfg` | `GET` | Backend & Edge | Current authentic GFG Problem of the Day | None | `no-cache, max-age=0` |
+| `/api/problem/{slug}` | `DELETE` | Backend | Purges stored problem JSON, testcases, and drivers from R2 | None | `200 OK` + Status JSON |
+| `/api/potd/clear` | `POST` | Backend | Invalidates backend in-memory POTD caches | None | `200 OK` + Status JSON |
+| `/api/chat` | `POST` | Backend | Multi-tier AI streaming endpoint (Groq/Gemini/Mistral) | `{ messages, model, stream }` | SSE Token Stream |
+| `/api/hld/simulate` | `POST` | Backend | Simulates traffic load, latency, and failure on HLD canvas | `{ nodes, edges, rps }` | JSON simulation metrics |
+| `/healthz` | `GET` | Backend | Uptime keepalive endpoint for Render instance | None | `200 OK` |
