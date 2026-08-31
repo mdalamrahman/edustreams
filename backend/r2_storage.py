@@ -556,6 +556,47 @@ class CloudflareR2Storage:
         except Exception:
             pass
 
+    def delete_object(self, key: str) -> bool:
+        """Deletes an object from Cloudflare R2 bucket."""
+        clean_key = key.lstrip('/')
+        if self._boto_client:
+            try:
+                self._boto_client.delete_object(Bucket=R2_BUCKET_NAME, Key=clean_key)
+                print(f"[R2 Delete Boto3] Successfully removed '{clean_key}' from '{R2_BUCKET_NAME}'")
+                return True
+            except Exception as e:
+                print(f"[R2 Delete Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("DELETE", clean_key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.delete(url, headers=headers, timeout=10)
+            if resp.status_code in [200, 204]:
+                print(f"[R2 Delete SigV4] Successfully removed '{clean_key}' from '{R2_BUCKET_NAME}'")
+                return True
+            else:
+                print(f"[R2 Delete SigV4 Status]: {resp.status_code} {resp.text}")
+        except Exception as e:
+            print(f"[R2 Delete SigV4 Error]: {e}")
+        return False
+
+    def delete_problem(self, slug: str) -> bool:
+        """Deletes all problem, testcase, and driver artifacts for a given slug from Cloudflare R2."""
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        keys_to_delete = [
+            f"problems/{clean_slug}.json",
+            f"problems/{clean_slug}.txt",
+            f"payloads/{clean_slug}.json",
+            f"drivers/{clean_slug}_cpp.txt",
+            f"drivers/{clean_slug}_python.txt",
+            f"drivers/{clean_slug}_java.txt",
+            f"drivers/{clean_slug}_javascript.txt",
+            f"drivers/{clean_slug}_go.txt",
+            f"drivers/{clean_slug}_rust.txt"
+        ]
+        for k in keys_to_delete:
+            self.delete_object(k)
         return True
 
 

@@ -4859,6 +4859,37 @@ async def get_gfg_problem_endpoint(slug: str):
     raise HTTPException(status_code=404, detail=f"GFG problem '{clean_slug}' not found")
 
 
+@app.delete("/api/problem/{slug}")
+async def delete_problem_endpoint(slug: str):
+    """
+    Deletes problem from Cloudflare R2 object storage so it can be cleanly regenerated.
+    """
+    clean_slug = re.sub(r"^/+|/+$", "", slug).strip()
+    try:
+        from r2_storage import CloudflareR2Storage
+        r2 = CloudflareR2Storage()
+        r2.delete_problem(clean_slug)
+        return JSONResponse({"status": "success", "message": f"Problem '{clean_slug}' purged from Cloudflare R2"}, headers={"Access-Control-Allow-Origin": "*"})
+    except Exception as e:
+        print(f"[R2 Purge Error for '{clean_slug}']: {e}")
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500, headers={"Access-Control-Allow-Origin": "*"})
+
+
+@app.post("/api/potd/clear")
+@app.get("/api/potd/clear")
+async def clear_potd_endpoint():
+    """
+    Clears in-memory and Cloudflare R2 POTD caches for LeetCode & GFG.
+    """
+    global _GFG_POTD_CACHE, _LEETCODE_POTD_CACHE
+    _GFG_POTD_CACHE = {"date": "", "data": None}
+    try:
+        _LEETCODE_POTD_CACHE = {"date": "", "data": None}
+    except Exception:
+        pass
+    return JSONResponse({"status": "success", "message": "POTD in-memory and edge caches purged"}, headers={"Access-Control-Allow-Origin": "*"})
+
+
 # -------------------------------------------------------------------
 # AUDIO EXTRACTION, CHUNKING & STT PIPELINE
 # -------------------------------------------------------------------
