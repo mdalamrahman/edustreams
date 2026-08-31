@@ -62,7 +62,9 @@ export const onRequest: PagesFunction = async (context) => {
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=3600, s-maxage=3600'
+          'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       });
     }

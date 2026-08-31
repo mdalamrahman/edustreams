@@ -60,7 +60,9 @@ export const onRequest: PagesFunction = async (context) => {
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=300, s-maxage=300'
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
       }
@@ -89,7 +91,9 @@ export const onRequest: PagesFunction = async (context) => {
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Cache-Control': 'public, max-age=300, s-maxage=300'
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           }
         });
       }

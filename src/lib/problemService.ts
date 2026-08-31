@@ -100,6 +100,42 @@ export const toSlug = (str?: string): string => {
 };
 
 /**
+ * Deletes cached problem specifications, test cases, and drivers so they can be regenerated.
+ */
+export const clearProblemCache = (slugOrTitle?: string): void => {
+  try {
+    if (slugOrTitle) {
+      const slug = toSlug(slugOrTitle);
+      localStorage.removeItem(`edustream_problem_spec_${slug}`);
+      localStorage.removeItem(`edustream_testcases_txt_${slug}`);
+      localStorage.removeItem(`edustream_editorial_${slug}`);
+      localStorage.removeItem(`edustream_problem_override_${slug}`);
+      const langs = ['cpp', 'python', 'java', 'javascript', 'go', 'rust'];
+      langs.forEach(lang => {
+        localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
+      });
+    } else {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (
+          key &&
+          (key.startsWith('edustream_problem_spec_') ||
+            key.startsWith('edustream_testcases_txt_') ||
+            key.startsWith('edustream_driver_') ||
+            key.startsWith('edustream_editorial_'))
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
+  } catch (e) {
+    console.warn('[clearProblemCache]:', e);
+  }
+};
+
+/**
  * Extracts a human-friendly clean title (e.g. "https://leetcode.com/problems/assign-cookies/" -> "Assign Cookies")
  */
 export const getCleanTitle = (str?: string): string => {

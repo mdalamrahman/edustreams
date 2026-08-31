@@ -30,20 +30,33 @@ export interface GFGDailyQuestion {
 }
 
 /**
- * Clears all POTD client-side caches to force clean live reloads.
+ * Clears all POTD and generated problem caches to force clean live reloads and regenerations.
  */
 export function clearPOTDCache(): void {
   try {
     const today = new Date().toISOString().slice(0, 10);
     localStorage.removeItem(`sdetube_leetcode_potd_${today}`);
     localStorage.removeItem(`sdetube_gfg_potd_${today}`);
-    // Also clear any previous legacy keys
+    localStorage.removeItem(`sdetube_sde_potd_${today}`);
+    
+    // Clear all POTD, problem spec, testcases, driver, and editorial cache keys
+    const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('sdetube_gfg_potd_') || key.startsWith('sdetube_leetcode_potd_'))) {
-        localStorage.removeItem(key);
+      if (
+        key &&
+        (key.startsWith('sdetube_gfg_potd_') ||
+          key.startsWith('sdetube_leetcode_potd_') ||
+          key.startsWith('sdetube_sde_potd_') ||
+          key.startsWith('edustream_problem_spec_') ||
+          key.startsWith('edustream_testcases_txt_') ||
+          key.startsWith('edustream_driver_') ||
+          key.startsWith('edustream_editorial_'))
+      ) {
+        keysToRemove.push(key);
       }
     }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
   } catch (e) {
     console.warn('[POTD Cache Clear]:', e);
   }
