@@ -7237,7 +7237,7 @@ class InterviewChatRequest(BaseModel):
 
 
 async def cascade_interview_stream(prompt: str, history: list):
-    # Tier 1: Groq Llama-3.3-70B / Llama-3.1-8b (Fastest)
+    # Tier 1: Groq Models (Qwen 3.8 / GPT OSS 120B / Compound)
     if GROQ_API_KEY:
         try:
             import groq
@@ -7245,17 +7245,22 @@ async def cascade_interview_stream(prompt: str, history: list):
             messages = [{"role": m.get("role", "user"), "content": m.get("content", "")} for m in (history or [])]
             messages.append({"role": "user", "content": prompt})
             
-            stream = await groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages,
-                stream=True,
-                temperature=0.4
-            )
-            async for chunk in stream:
-                content = chunk.choices[0].delta.content or ""
-                if content:
-                    yield f"data: {json.dumps({'token': content})}\n\n"
-            return
+            for g_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound", "groq/compound-mini"]:
+                try:
+                    stream = await groq_client.chat.completions.create(
+                        model=g_model,
+                        messages=messages,
+                        stream=True,
+                        temperature=0.4
+                    )
+                    async for chunk in stream:
+                        content = chunk.choices[0].delta.content or ""
+                        if content:
+                            yield f"data: {json.dumps({'token': content})}\n\n"
+                    return
+                except Exception as inner_e:
+                    print(f"[Groq Model {g_model} Notice]: {inner_e}")
+                    continue
         except Exception as e:
             print(f"[AI Cascade: Groq Tier 1 Notice]: {e}")
 

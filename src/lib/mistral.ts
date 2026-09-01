@@ -59,8 +59,8 @@ export async function executeAIChatCascade(
   const temp = options?.temperature ?? 0.3;
   const timeoutMs = options?.timeoutMs ?? 12000;
 
-  // 1. PRIMARY: Groq Ultra-Fast API (Llama 3.3 70B / Llama 3.1 8B / Mixtral / Gemma 2)
-  const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'];
+  // 1. PRIMARY: Groq Ultra-Fast API (Qwen 3.8 / GPT OSS 120B / Compound)
+  const groqModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
   for (const model of groqModels) {
     try {
       const bodyPayload: any = {
@@ -85,9 +85,10 @@ export async function executeAIChatCascade(
 
       if (res.ok) {
         const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (content && typeof content === 'string' && content.trim().length > 0) {
-          return content.trim();
+        const rawContent = data.choices?.[0]?.message?.content;
+        if (rawContent && typeof rawContent === 'string' && rawContent.trim().length > 0) {
+          const cleanContent = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+          return cleanContent || rawContent.trim();
         }
       }
     } catch (e) {
@@ -95,9 +96,9 @@ export async function executeAIChatCascade(
     }
   }
 
-  // 2. SECONDARY: Mistral AI (if direct key is operational)
+  // 2. SECONDARY: Mistral AI (mistral-small, codestral)
   if (MISTRAL_API_KEY) {
-    const mistralModels = ['mistral-small-latest', 'mistral-large-latest', 'codestral-latest'];
+    const mistralModels = ['mistral-small-latest', 'codestral-latest', 'mistral-large-latest'];
     for (const model of mistralModels) {
       try {
         const bodyPayload: any = {
@@ -264,7 +265,19 @@ General Guidelines:
   const aiReply = await executeAIChatCascade(messagesPayload, { temperature: 0.3 });
   if (aiReply) return aiReply;
 
-  return `Regarding **${cleanTitle}**: Based on your current ${mode} workspace, the key idea is to identify the single reason to change, isolate dependencies into interfaces, and ensure testability with optimal Time and Space complexity.`;
+  if (mode === 'code') {
+    return `Regarding **${cleanTitle}**: For this algorithmic problem, carefully consider the core invariant, optimal data structure (e.g., using a **stack** for matching brackets/parentheses, hash maps for lookups, or two pointers), and trace your algorithm through the example inputs step-by-step to verify $O(N)$ time and $O(1)$/$O(N)$ space complexity.`;
+  }
+
+  if (mode === 'quiz') {
+    return `Regarding **${cleanTitle}**: Review the options and the underlying algorithmic concepts from the lecture to identify the most optimal, correct choice and eliminate distractors.`;
+  }
+
+  if (mode === 'notes') {
+    return `Regarding **${cleanTitle}**: Review the key architectural principles, system invariants, and trade-off matrices outlined in the study notes.`;
+  }
+
+  return `Regarding **${cleanTitle}**: Based on your current lecture context, focus on the core intuitions, trade-offs, and practical interview takeaways discussed in this topic.`;
 }
 
 export async function requestMistralChatResponse(
