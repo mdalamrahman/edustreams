@@ -74,10 +74,24 @@ export class VoiceActivityController {
       }
 
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+
+      // Vocal Formant Bandpass Filter (300 Hz - 3,400 Hz)
+      // Damps low-frequency desk vibrations (< 300 Hz) and rejects high-frequency mechanical keyboard clicks (> 3,400 Hz)
+      const highpass = this.audioContext.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 300;
+
+      const lowpass = this.audioContext.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = 3400;
+
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = this.config.fftSize;
       this.analyser.smoothingTimeConstant = 0.4;
-      source.connect(this.analyser);
+
+      source.connect(highpass);
+      highpass.connect(lowpass);
+      lowpass.connect(this.analyser);
 
       this.startVADLoop();
       return true;

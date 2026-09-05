@@ -152,6 +152,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isHandsFreeMode, setIsHandsFreeMode] = useState<boolean>(true);
   const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
+  const [isSpeechSupported, setIsSpeechSupported] = useState<boolean>(true);
 
   // Timer State (45 mins default)
   const [secondsRemaining, setSecondsRemaining] = useState<number>(45 * 60);
@@ -661,8 +662,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
+      if (!SpeechRecognition) {
+        setIsSpeechSupported(false);
+        setIsHandsFreeMode(false);
+        return;
+      }
+      setIsSpeechSupported(true);
+      const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
@@ -742,7 +748,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         };
 
         recognitionRef.current = recognition;
-      }
     }
 
     return () => {
@@ -989,6 +994,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto custom-scrollbar p-4 sm:p-8">
         <div className="max-w-4xl mx-auto w-full space-y-8 animate-fadeIn">
           
+          {/* Safari / Firefox Web Speech API Non-Blocking Fallback Notice */}
+          {!isSpeechSupported && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
+              <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-amber-300">Spoken Voice Recognition Fallback: </span> 
+                Speech recognition is not natively supported on this browser (Safari/Firefox). Text input mode has been automatically enabled. For the optimal hands-free spoken experience, Chromium-based browsers (Google Chrome, Brave, Microsoft Edge) are recommended.
+              </div>
+            </div>
+          )}
+
           {/* Header Banner */}
           <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-500/40 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div className="space-y-2">
@@ -1648,6 +1664,18 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 <span>Re-Enter Fullscreen & Resume Interview</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safari / Firefox Live Room Speech Fallback Banner */}
+      {!isSpeechSupported && (
+        <div className="px-4 py-2 bg-amber-950/70 border-b border-amber-500/30 text-xs text-amber-200 flex items-center justify-between gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span>
+              <strong>Browser Fallback Notice:</strong> Spoken voice recognition is unavailable in Safari/Firefox. Text-assisted mode is active. Chromium browsers (Chrome, Edge, Brave) are recommended for hands-free spoken dialogue.
+            </span>
           </div>
         </div>
       )}

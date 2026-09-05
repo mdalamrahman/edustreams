@@ -127,10 +127,16 @@ int main() {
     auto executeCase = [&](int idx, const string& input) {
         cout << "---TEST_START_" << idx << "---\\n";
         auto t0 = chrono::high_resolution_clock::now();
-        // Solution invocation
-        #ifdef SOLUTION_EXISTS
-        Solution sol;
-        #endif
+        try {
+            // Solution invocation
+            #ifdef SOLUTION_EXISTS
+            Solution sol;
+            #endif
+        } catch (const exception& e) {
+            cout << "__ERROR__:" << e.what() << "\\n";
+        } catch (...) {
+            cout << "__ERROR__:Unknown Runtime Exception\\n";
+        }
         auto t1 = chrono::high_resolution_clock::now();
         double ms = chrono::duration<double, milli>(t1 - t0).count();
         cout << "\\n---TIME_MS:" << ms << "---\\n";
@@ -149,6 +155,56 @@ int main() {
         executeCase(caseIdx++, currentCase);
     }
     return 0;
+}
+`;
+    return { wrappedCode, stdinPayload };
+  }
+
+  if (language === 'java') {
+    const wrappedCode = `
+import java.io.*;
+import java.util.*;
+
+// === CANDIDATE SOLUTION ===
+${candidateCode}
+
+// === DETERMINISTIC TEST HARNESS ===
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        StringBuilder currentCase = new StringBuilder();
+        int caseIdx = 0;
+
+        while (scanner.hasNextLine()) {
+            String line = scanner.nextLine();
+            if (line.contains("${TEST_CASE_DELIMITER}")) {
+                executeCase(caseIdx++, currentCase.toString());
+                currentCase = new StringBuilder();
+            } else {
+                currentCase.append(line).append("\\n");
+            }
+        }
+        if (currentCase.length() > 0) {
+            executeCase(caseIdx++, currentCase.toString());
+        }
+    }
+
+    private static void executeCase(int idx, String input) {
+        System.out.println("---TEST_START_" + idx + "---");
+        long t0 = System.nanoTime();
+        try {
+            // Solution instantiation and execution
+            Solution sol = new Solution();
+        } catch (Exception e) {
+            System.out.println("__ERROR__:" + e.getMessage());
+        } catch (Throwable t) {
+            System.out.println("__ERROR__:Fatal " + t.getClass().getSimpleName());
+        }
+        long t1 = System.nanoTime();
+        double ms = (t1 - t0) / 1000000.0;
+        System.out.printf(Locale.US, "---TIME_MS:%.2f---\\n", ms);
+        System.out.println("---TEST_END_" + idx + "---");
+    }
 }
 `;
     return { wrappedCode, stdinPayload };
