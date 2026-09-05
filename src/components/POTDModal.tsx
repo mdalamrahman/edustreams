@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers } from 'lucide-react';
 import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
-import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
+import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
 import { getSolvedIds } from '../lib/progressService';
 
@@ -20,8 +20,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   // Today's Curated SDETube POTD
   const sdePotd: SDEProblem = useMemo(() => {
-    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
-    return SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    return getUniversalSdePotd();
   }, [today]);
 
   const [isSolvedEventTriggered, setIsSolvedEventTriggered] = useState(0);

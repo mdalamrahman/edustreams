@@ -40,7 +40,8 @@ import {
   DSA_SHEETS_CONFIG, 
   getSheetData, 
   SDE_SHEET_191_DATA,
-  SDEProblem
+  SDEProblem,
+  getUniversalSdePotd
 } from '../lib/dsaSheetsData';
 import { ProblemNotesModal } from './ProblemNotesModal';
 import { getLocalProblemNote } from '../lib/notesService';
@@ -220,26 +221,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
 
   // SINGLE UNIVERSAL POTD: Strictly from SDETube's SDE Sheet (191 Questions)
   const potdProblem = useMemo<DSAProblem>(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const savedDate = localStorage.getItem(STORAGE_POTD_DATE_KEY);
-    const savedId = localStorage.getItem(STORAGE_POTD_ID_KEY);
-
-    if (savedDate === today && savedId) {
-      const p = SDE_SHEET_191_DATA.find((item) => item.id === Number(savedId));
-      if (p) return p;
-    }
-
-    let hash = 0;
-    for (let i = 0; i < today.length; i++) {
-      hash = (hash * 31 + today.charCodeAt(i)) % SDE_SHEET_191_DATA.length;
-    }
-    const selected = SDE_SHEET_191_DATA[Math.abs(hash) % SDE_SHEET_191_DATA.length] || SDE_SHEET_191_DATA[0];
-
-    try {
-      localStorage.setItem(STORAGE_POTD_DATE_KEY, today);
-      localStorage.setItem(STORAGE_POTD_ID_KEY, selected.id.toString());
-    } catch {}
-    return selected;
+    return getUniversalSdePotd();
   }, []);
 
   // Solved status for SDE POTD (checks SDE solved list + POTD today key)

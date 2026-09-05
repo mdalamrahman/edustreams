@@ -15183,3 +15183,10 @@ export const ALL_SHEETS_MAP: Record<DSASheetType, DSAProblem[]> = {
 export function getSheetData(sheetType: DSASheetType): DSAProblem[] {
   return ALL_SHEETS_MAP[sheetType] || SDE_SHEET_191_DATA;
 }
+
+export function getUniversalSdePotd(): DSAProblem {
+  const today = new Date().toISOString().slice(0, 10);
+  const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
+  return SDE_SHEET_191_DATA[daySeed % SDE_SHEET_191_DATA.length] || SDE_SHEET_191_DATA[0];
+}
+

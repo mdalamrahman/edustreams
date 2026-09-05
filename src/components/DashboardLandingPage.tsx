@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { getRealAnalytics, RealAnalyticsMetrics } from '../lib/analytics';
 import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
-import { SDEProblem, SDE_SHEET_DATA } from '../lib/sdeSheetData';
+import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 
 interface DashboardLandingPageProps {
   user: any;
@@ -77,9 +77,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   // SDETube Curated POTD
   const sdePotd: SDEProblem = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
-    return SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    return getUniversalSdePotd();
   }, []);
 
   // LeetCode Official Daily POTD

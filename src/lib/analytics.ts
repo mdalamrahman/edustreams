@@ -1,4 +1,4 @@
-import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug } from './dsaSheetsData';
+import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug, getUniversalSdePotd } from './dsaSheetsData';
 import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
@@ -169,8 +169,7 @@ export function isPotdSolvedToday(): boolean {
 
   // Check today's SDE POTD seed
   try {
-    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
-    const sdePotd = SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    const sdePotd = getUniversalSdePotd();
     if (sdePotd) {
       const sdeSaved = localStorage.getItem('sdetube_dsa_sheet_solved_sde') || localStorage.getItem('sdetube_sde_sheet_solved_ids');
       const list: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
@@ -280,8 +279,7 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
   // 4. POTD Solved Detection: Auto-tick POTD if today's challenge is solved
   const today = new Date().toISOString().slice(0, 10);
   try {
-    const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
-    const sdePotd = SDE_SHEET_DATA[daySeed % SDE_SHEET_DATA.length] || SDE_SHEET_DATA[0];
+    const sdePotd = getUniversalSdePotd();
     const potdName = (sdePotd?.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const potdSlug = (sdePotd?.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
