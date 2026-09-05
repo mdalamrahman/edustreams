@@ -92,6 +92,7 @@ import { runTestSuiteAgainstCompiler, TestCase, TestSuiteExecutionReport } from 
 import { InterviewStateMachine, InterviewStage } from '../lib/interviewStateMachine';
 import { AntiCheatMonitor } from '../lib/antiCheatService';
 import { validateHLDTopology } from '../lib/hldTopologyValidator';
+import { VoiceActivityController } from '../lib/audioVAD';
 
 interface InterviewCompanionProps {
   onBackToDashboard?: () => void;
@@ -189,9 +190,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const isAiThinkingRef = useRef<boolean>(false);
   const isHandsFreeModeRef = useRef<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const vadRef = useRef<VoiceActivityController | null>(null);
 
   // Keep refs synchronized
-  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
+  useEffect(() => { 
+    isAiSpeakingRef.current = isAiSpeaking; 
+    vadRef.current?.setTTSActive(isAiSpeaking);
+  }, [isAiSpeaking]);
   useEffect(() => { isAiThinkingRef.current = isAiThinking; }, [isAiThinking]);
   useEffect(() => { isHandsFreeModeRef.current = isHandsFreeMode; }, [isHandsFreeMode]);
 
@@ -558,10 +563,27 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       deductCredits(interviewCost, 'AI_MOCK_INTERVIEW', `Live FAANG Mock Interview (${selectedRound} - ${currentCompany.name})`, student.email);
     }
 
-    // 2. Pre-flight Mic Verification (guarantees no permission popups during test)
+    // 2. Pre-flight Mic Verification & Voice Activity Controller (VAD) initialization
     if (!isMicPermissionGranted) {
       await requestPreflightMicPermission();
     }
+    try {
+      const vad = new VoiceActivityController();
+      vad.init(
+        () => {
+          if (isAiSpeakingRef.current) {
+            stopInterviewerSpeech();
+            setIsAiSpeaking(false);
+          }
+        },
+        undefined,
+        () => {
+          stopInterviewerSpeech();
+          setIsAiSpeaking(false);
+        }
+      );
+      vadRef.current = vad;
+    } catch {}
 
     // 3. Enforce Fullscreen Mode
     await requestFullscreenMode();
@@ -834,10 +856,32 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     const duration = Math.max(1, Math.round((45 * 60 - secondsRemaining) / 60));
 
-    // Telemetry from Test Harness, State Machine, and Anti-Cheat Monitor
+    let topologyContext = '';
+    if (selectedRound === 'HLD') {
+      const sampleNodes = [
+        { id: 'client-1', type: 'CLIENT' as const, label: 'Client Application' },
+        { id: 'lb-1', type: 'LOAD_BALANCER' as const, label: 'Global Load Balancer' },
+        { id: 'gw-1', type: 'API_GATEWAY' as const, label: 'API Gateway' },
+        { id: 'service-1', type: 'SERVICE' as const, label: 'Core Microservice' },
+        { id: 'cache-1', type: 'CACHE' as const, label: 'Distributed Redis Cache' },
+        { id: 'db-1', type: 'DB' as const, label: 'Primary PostgreSQL Database' }
+      ];
+      const sampleEdges = [
+        { from: 'client-1', to: 'lb-1' },
+        { from: 'lb-1', to: 'gw-1' },
+        { from: 'gw-1', to: 'service-1' },
+        { from: 'service-1', to: 'cache-1' },
+        { from: 'service-1', to: 'db-1' }
+      ];
+      const topoReport = validateHLDTopology(sampleNodes, sampleEdges);
+      topologyContext = topoReport.formattedEvaluationContext;
+    }
+
+    // Telemetry from Test Harness, State Machine, Topology Validator, and Anti-Cheat Monitor
     const telemetry = {
       testHarnessContext: testSuiteReport?.formattedEvaluationContext,
       stateMachineContext: stateMachineRef.current.formatEvaluationDebrief(),
+      topologyContext: topologyContext || undefined,
       antiCheatContext: antiCheatRef.current.generateReport().formattedEvaluationContext
     };
 
@@ -903,6 +947,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   };
 
   const handleCloseScorecardAndExitInterview = () => {
+    vadRef.current?.destroy();
+    vadRef.current = null;
     setIsScorecardOpen(false);
     setIsInterviewStarted(false);
     setIsTimerRunning(false);

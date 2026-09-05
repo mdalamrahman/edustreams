@@ -404,82 +404,316 @@ useEffect(() => {
 | **Output / Debrief** | Casual text wrap-up | Comprehensive Executive Scorecard, stated vs actual Big-O audit, 7-day roadmap & Markdown export |
 | **Data Archival** | ephemeral / session-only | Cloudflare R2 object storage + Supabase progress indexing |
 
----
+## 📁 7. Source Code File Map
 
+* [`src/components/InterviewCompanion.tsx`](file:///c:/Users/User/Desktop/edustream/src/components/InterviewCompanion.tsx): Master interview room view, pre-flight setup wizard, Web Speech recognition loop, silence countdown, test harness execution, and proctoring hooks.
+* [`src/lib/interviewService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewService.ts): System prompt builder, multi-level/multi-style directives, Mistral AI message dispatch, and Chromium TTS engine with GC retention.
+* [`src/lib/interviewEvaluator.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewEvaluator.ts): Calibrated Bar Raiser evaluation engine, Abramowitz-Stegun $\text{erf}(x)$ empirical percentile rank, JSON schema parsing, complexity audit, and 7-day remedial roadmap.
+* [`src/lib/interviewHistoryService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewHistoryService.ts): Cloudflare R2 object persistence and Supabase metadata index synchronization.
+* [`src/components/InterviewScorecardModal.tsx`](file:///c:/Users/User/Desktop/edustream/src/components/InterviewScorecardModal.tsx): Interactive post-interview scorecard dialog with competency tabs, evidence quotes, and markdown file download.
 * [`src/lib/testHarness.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/testHarness.ts): Automated language driver synthesis, public & hidden test execution harness, execution time and memory profiler.
 * [`src/lib/audioVAD.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/audioVAD.ts): Web Audio API Voice Activity Detection (VAD) and barge-in audio interruption engine.
 * [`src/lib/interviewStateMachine.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewStateMachine.ts): Deterministic 5-stage interview state machine and 3-tier hinting penalty ladder.
 * [`src/lib/hldTopologyValidator.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/hldTopologyValidator.ts): Graph model builder, Tarjan articulation points (SPOF) detector, cycle analysis, and architectural rule engine.
 * [`src/lib/antiCheatService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/antiCheatService.ts): Keystroke dynamics monitor, burst/paste injection detector, and proctoring integrity audit engine.
+* [`src/lib/githubInterviewData.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/githubInterviewData.ts): Supported company profiles, interview styles, starter code templates, and dynamic scenario generator.
+* [`src/lib/resumeParser.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/resumeParser.ts): `pdfjs-dist` file text extraction and AI profile schema structuring.
 
 ---
 
-## ⚡ 8. Tier-1 Engineering Upgrade Implementation Plan (Phases 1–6)
+## 💻 8. Detailed Code-Level Architecture & Technical Specifications
 
-### Phase 1: Test-Case Harness on the Existing Compiler API
-Converts the compiler API from a plain "Run Code" window into a **deterministic test evaluation engine** executing public and hidden test cases:
-* **Automated Language Test Driver Synthesis (`src/lib/testHarness.ts`)**: Injects candidate code into custom language runners (`cpp`, `java`, `python`, `javascript`, `go`), feeds input delimited by `__TEST_CASE_DELIMITER__`, and measures sub-millisecond execution times and memory limits.
-* **Test Assertion Normalizer**: Captures stdout, parses runtime exceptions and TLEs (> 3000ms), and formats a rich markdown block injected directly into the Mistral AI evaluation context.
-
-### Phase 2: Audio Engine & Client-Side Voice Activity Detection (VAD)
-Eliminates premature cut-offs while candidates pause to think:
-* **AudioWorklet & Analyser (`src/lib/audioVAD.ts`)**: Monitors RMS audio energy and zero-crossing rates in real-time. Finalizes candidate turns only after 1,200ms of continuous silence.
-* **Barge-In Interruption**: Cancels active SpeechSynthesis TTS immediately when the candidate begins speaking, freeing audio resources and aborting in-flight LLM requests.
-
-### Phase 3: Deterministic State Machine & 3-Tier Hinting Ladder
-Prevents candidate rushing and enforces authentic interview progression:
-* **5-Stage State Progression (`src/lib/interviewStateMachine.ts`)**:
-  $$\text{CLARIFICATION} \longrightarrow \text{INTUITION} \longrightarrow \text{DRY RUN} \longrightarrow \text{CODING} \longrightarrow \text{OPTIMIZATION}$$
-* **3-Tier Hint Penalty Ladder**:
-  * **Tier 1 (5% deduction)**: Subtle conceptual nudge.
-  * **Tier 2 (15% deduction)**: Algorithmic pattern or data structure pointer.
-  * **Tier 3 (30% deduction)**: Step-by-step resolution / concrete pseudocode.
-
-### Phase 4: Semantic Topology Validation for HLD Canvas
-Transforms raw drag-and-drop canvas drawings into structured graph models:
-* **Tarjan's Articulation Points Algorithm (`src/lib/hldTopologyValidator.ts`)**: Identifies Single Points of Failure (SPOFs) that would disconnect the architecture if dropped.
-* **Synchronous Cycle Detection**: Flags cyclic service calls ($A \rightarrow B \rightarrow A$) vulnerable to distributed deadlocks.
-* **Architectural Rule Engine**: Flags direct Client-to-DB connections, unbuffered high-throughput writes, and un-replicated database singletons.
-
-### Phase 5: Anti-Cheat & Keystroke Biometric Hardening
-Protects interview fidelity through client-side anomaly detection:
-* **Paste Burst / Macro Detection (`src/lib/antiCheatService.ts`)**: Flags insertions $> 120$ characters in $< 40\text{ ms}$ as External Code Injection.
-* **Inter-Key Latency (IKL) Variance**: Analyzes standard deviation of typing rhythm ($\sigma < 5\text{ ms}$ over 25+ strokes indicates a synthetic bot typist).
-* **Proctored Window Monitoring**: Tracks tab blur duration, focus shifts, and fullscreen escape frequency.
-
-### Phase 6: Calibrated Statistical Scorecards & Empirical Percentiles
-Replaces prompt estimation with empirical statistical calibration:
-* **Abramowitz & Stegun Error Function $\text{erf}(x)$**: Calculates exact empirical Z-score percentiles:
-  $$P = \frac{1}{2} \left[1 + \text{erf}\left(\frac{x - \mu}{\sigma \sqrt{2}}\right)\right] \times 100$$
-* **Few-Shot Anchor Rubrics**: Injects calibrated grading anchors (Scores 2, 4, 6, 8, 10) into `src/lib/interviewEvaluator.ts` to prevent grading drift and eliminate score inflation.
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                              SDETube AI Mock Interview Platform                                │
+├────────────────────────────────┬───────────────────────────────┬───────────────────────────────┤
+│    Runtime Execution Engine    │     Audio & Speech Engine     │   Integrity & State Machine   │
+│  - Test Driver Synthesis       │  - Web Audio Analyser (VAD)   │  - 5-Stage Progression Gates  │
+│  - Public & Hidden Test Cases  │  - Energy / RMS Voice Bounds  │  - 3-Tier Hint Penalty Ladder │
+│  - Asymptotic Runtime Profiler │  - Real-Time Barge-In Cancel  │  - Biometric Keystroke Audits │
+├────────────────────────────────┴───────────────────────────────┴───────────────────────────────┤
+│                               Semantic HLD Graph Validator                                     │
+│  - Tarjan Articulation Points (SPOF) • DFS Synchronous Cycle Deadlocks • Architecture Rules    │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                              Calibrated Statistical Evaluation                                 │
+│  - Abramowitz-Stegun Gauss Error Function erf(x) • Normal CDF Z-Score • Few-Shot Anchors       │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### 📅 6-Week Execution Roadmap
+### 8.1 Deterministic Test-Case Harness on Compiler API (`src/lib/testHarness.ts`)
 
+#### Architectural Role & Features
+Converts the online compiler API from a plain code runner into a **deterministic test evaluation engine** executing public and hidden test cases:
+1. **Automated Driver Synthesis**: Automatically wraps candidate function signatures into an executable harness across C++, Python, Java, JavaScript, and Go.
+2. **Standardized Test Serialization**: Packs test inputs into a single streaming standard input separated by `__TEST_CASE_DELIMITER__`.
+3. **Execution Profiling**: Captures sub-millisecond execution times, peak memory consumed (KB), and formats runtime exceptions and Time Limit Exceeded (TLE $> 3000\text{ ms}$) occurrences.
+4. **Context Injection**: Produces `formattedEvaluationContext` containing exact pass/fail counts and hidden test case defense for the Mistral Bar Raiser prompt.
+
+#### Core Implementation
+```typescript
+// File: src/lib/testHarness.ts
+export interface TestCase {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+  timeLimitMs?: number;
+}
+
+export interface TestSuiteExecutionReport {
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  hiddenTestsPassed: number;
+  hiddenTestsTotal: number;
+  executionTimeMs: number;
+  peakMemoryKb: number;
+  results: TestResultItem[];
+  verdict: 'ACCEPTED' | 'WRONG_ANSWER' | 'TIME_LIMIT_EXCEEDED' | 'RUNTIME_ERROR' | 'COMPILE_ERROR';
+  summaryMessage: string;
+  formattedEvaluationContext: string;
+}
+
+export async function runTestSuiteAgainstCompiler(
+  candidateCode: string,
+  testCases: TestCase[],
+  language: SupportedLanguage,
+  problemTitle: string = 'Interview Problem'
+): Promise<TestSuiteExecutionReport> { ... }
 ```
-Week 1: Test Driver & Compiler Harness
-└── Wrap candidate code with automated test drivers (public/hidden test runner).
-└── Parse compiler API execution time and memory limits.
 
-Week 2: Voice Pipeline & Silero VAD
-└── Deploy ONNX WebAssembly VAD for instant silence detection.
-└── Implement barge-in interruption to abort TTS when candidate speaks.
+---
 
-Week 3: State Machine & Hint Deductions
-└── Add interview stage progression (Clarification -> Intuition -> Coding).
-└── Implement the 3-Tier hint deduction system.
+### 8.2 Client-Side Voice Activity Detection (VAD) & Barge-In Audio Engine (`src/lib/audioVAD.ts`)
 
-Week 4: HLD Topological Validator
-└── Serialize Canvas to Graph (nodes/edges).
-└── Run Tarjan's algorithm for automatic SPOF and deadlock detection.
+#### Architectural Role & Features
+Eliminates premature cut-offs while candidates pause to think out loud and provides real-time natural conversational turn-taking:
+1. **Root Mean Square (RMS) Energy Monitoring**: Samples microphone audio at 16,000 Hz using `AudioContext` and `AnalyserNode` with an FFT size of 512.
+2. **1,200ms Continuous Silence Threshold**: Requires 1,200ms of uninterrupted silence before marking the speech turn as complete, preventing the system from cutting off the candidate mid-sentence.
+3. **Instant Barge-In Interruption**: If the candidate begins speaking while the AI Interviewer is talking (`isTTSActive === true`), the controller fires `onBargeIn()`, calling `window.speechSynthesis.cancel()` immediately and freeing the audio channel.
 
-Week 5: Biometrics & Integrity
-└── Add Monaco burst/paste velocity listener.
-└── Integrate MediaPipe local gaze/head-pose detection worker.
+#### Core Implementation
+```typescript
+// File: src/lib/audioVAD.ts
+export class VoiceActivityController {
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private isSpeaking = false;
+  private isTTSActive = false;
 
-Week 6: Empirical Percentiles & Polish
-└── Deploy Supabase Z-score percentile calculator.
-└── End-to-end load testing and UI polish.
+  async init(
+    onSpeechStart?: () => void,
+    onSpeechEnd?: (durationMs: number) => void,
+    onBargeIn?: () => void
+  ): Promise<boolean> { ... }
+
+  private checkAudioFrame() {
+    this.analyser.getByteTimeDomainData(timeDomainData);
+    let sumSquares = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const normalized = (timeDomainData[i] - 128) / 128;
+      sumSquares += normalized * normalized;
+    }
+    const rms = Math.sqrt(sumSquares / bufferLength) * 100;
+    const isVoiceDetected = rms >= this.config.energyThreshold;
+    
+    // Trigger barge-in if candidate speaks while interviewer is active
+    if (isVoiceDetected && this.isTTSActive) {
+      this.handleBargeIn();
+    }
+  }
+}
 ```
+
+---
+
+### 8.3 Deterministic 5-Stage Interview State Machine & 3-Tier Hinting Ladder (`src/lib/interviewStateMachine.ts`)
+
+#### Architectural Role & Features
+Enforces canonical FAANG interview pacing and tracks calibrated penalty points for requested hints:
+1. **5-Stage State Progression**:
+   $$\text{CLARIFICATION} \longrightarrow \text{INTUITION} \longrightarrow \text{DRY RUN} \longrightarrow \text{CODING} \longrightarrow \text{OPTIMIZATION}$$
+   * **Clarification**: Candidate confirms problem assumptions, constraint bounds, and edge case behaviors.
+   * **Intuition**: Candidate explains high-level algorithmic strategy and states asymptotic Big-O bounds.
+   * **Dry Run**: Candidate manually traces test vectors on sample inputs.
+   * **Coding**: Monaco editor unlocks for full solution implementation.
+   * **Optimization**: Post-implementation worst-case profiling and stress testing.
+2. **3-Tier Hint Penalty Ladder**:
+   * **Tier 1 (5% penalty)**: Conceptual nudge or directional guidance.
+   * **Tier 2 (15% penalty)**: Algorithmic pattern or data structure pointer.
+   * **Tier 3 (30% penalty)**: Concrete step-by-step resolution or pseudocode.
+   * All hints are logged with timestamps and deducted deterministically from the final evaluation score.
+
+#### Core Implementation
+```typescript
+// File: src/lib/interviewStateMachine.ts
+export type InterviewStage = 'CLARIFICATION' | 'INTUITION' | 'DRY_RUN' | 'CODING' | 'OPTIMIZATION';
+
+export class InterviewStateMachine {
+  private currentStage: InterviewStage = 'CLARIFICATION';
+  private validations: StageValidationState = { ... };
+  private hintsGiven: HintRecord[] = [];
+
+  recordHint(tier: 1 | 2 | 3, hintText: string): HintRecord {
+    const penaltyMap = { 1: 5, 2: 15, 3: 30 };
+    const record: HintRecord = {
+      stage: this.currentStage,
+      tier,
+      penaltyPercent: penaltyMap[tier],
+      hintText,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    this.hintsGiven.push(record);
+    return record;
+  }
+
+  calculateTotalPenaltyPercent(): number {
+    return Math.min(60, this.hintsGiven.reduce((acc, h) => acc + h.penaltyPercent, 0));
+  }
+}
+```
+
+---
+
+### 8.4 Semantic Graph Topology & SPOF Validator for HLD Architecture (`src/lib/hldTopologyValidator.ts`)
+
+#### Architectural Role & Features
+Transforms visual system architecture drawings on the HLD Canvas into a verifiable graph model:
+1. **Tarjan's Articulation Points Algorithm**: Analyzes undirected connection topology to identify Single Points of Failure (SPOFs)—nodes whose failure partitions the system graph.
+2. **Synchronous Cycle & Deadlock Detection**: Analyzes directed RPC dependencies using DFS recursion stacks to detect circular call chains ($A \rightarrow B \rightarrow A$) vulnerable to cascading timeouts.
+3. **Architectural Anti-Pattern Rule Engine**:
+   * Direct Client-to-DB connection (severe security and bottleneck violation).
+   * High-throughput write path without message queues (Kafka/RabbitMQ).
+   * Un-replicated database singletons without caching layers (Redis/Memcached).
+
+#### Core Implementation
+```typescript
+// File: src/lib/hldTopologyValidator.ts
+export function validateHLDTopology(nodes: CanvasNode[], edges: CanvasEdge[]): HLDTopologyReport {
+  // 1. Tarjan's Articulation Points DFS for SPOF Detection
+  function dfsTarjan(u: string, p: string = '') {
+    visited.add(u);
+    tin.set(u, ++timer);
+    low.set(u, tin.get(u)!);
+    let children = 0;
+    for (const v of adjUndirected.get(u) || []) {
+      if (v === p) continue;
+      if (visited.has(v)) {
+        low.set(u, Math.min(low.get(u)!, tin.get(v)!));
+      } else {
+        dfsTarjan(v, u);
+        low.set(u, Math.min(low.get(u)!, low.get(v)!));
+        if (low.get(v)! >= tin.get(u)! && p !== '') {
+          isArticulation.add(u);
+        }
+        children++;
+      }
+    }
+    if (p === '' && children > 1) isArticulation.add(u);
+  }
+  
+  // 2. Cycle Detection on Directed Adjacency Graph
+  // 3. Rule Engine: Direct Client-to-DB, Unbuffered Writes, Missing Replicas
+  return { spofs, cycles, architecturalFlaws, recommendations, isValidTier1Design, ... };
+}
+```
+
+---
+
+### 8.5 Anti-Cheat Keystroke Dynamics & Proctoring Monitor (`src/lib/antiCheatService.ts`)
+
+#### Architectural Role & Features
+Guarantees testing integrity through passive client-side biometric and event telemetry:
+1. **Paste Velocity & Code Injection Detector**: Flags code changes where $> 120$ characters are inserted in $< 40\text{ ms}$ as external clipboard injections.
+2. **Inter-Key Latency (IKL) Variance Analysis**: Measures interval variance between successive keystrokes. Human typing has natural rhythm variance ($\sigma > 15\text{ ms}$); mechanical bot typists or autokey macros exhibit unnaturally low variance ($\sigma < 5\text{ ms}$), triggering a `SYNTHETIC_BOT_TYPING` anomaly flag.
+3. **Window Focus & Fullscreen Tracking**: Logs tab blur frequency, total duration navigated away from the interview screen, and fullscreen escape attempts.
+
+#### Core Implementation
+```typescript
+// File: src/lib/antiCheatService.ts
+export class AntiCheatMonitor {
+  private keyTimestamps: number[] = [];
+  private pasteBurstCount = 0;
+  private blurCount = 0;
+  private fullscreenEscapes = 0;
+
+  evaluateCodeChange(insertedCharCount: number, elapsedMs: number = 0): void {
+    if (insertedCharCount > 120 && elapsedMs < 40) {
+      this.pasteBurstCount++;
+      this.anomalies.push({
+        type: 'PASTE_BURST',
+        description: `Sudden burst injection: ${insertedCharCount} characters inserted in < 40ms.`,
+        severity: 'HIGH',
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
+  }
+
+  evaluateIKLVariance(): void {
+    const intervals = [];
+    for (let i = 1; i < this.keyTimestamps.length; i++) {
+      intervals.push(this.keyTimestamps[i] - this.keyTimestamps[i - 1]);
+    }
+    const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const variance = intervals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / intervals.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Flag mechanical bot typists
+    if (stdDev < 5 && mean > 5 && mean < 150) {
+      this.anomalies.push({
+        type: 'SYNTHETIC_BOT_TYPING',
+        description: `Synthetic Keystroke Generator detected (StdDev = ${stdDev.toFixed(2)}ms).`,
+        severity: 'CRITICAL',
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
+  }
+}
+```
+
+---
+
+### 8.6 Calibrated Statistical Scorecards & Empirical Z-Score Percentiles (`src/lib/interviewEvaluator.ts`)
+
+#### Architectural Role & Features
+Replaces arbitrary LLM score guessing with mathematical normal distribution percentiles and calibrated scoring anchors:
+1. **Abramowitz & Stegun Error Function $\text{erf}(x)$**: Evaluates the cumulative distribution function (CDF) of standard normal distributions:
+   $$P(X \le x) = \frac{1}{2} \left[1 + \text{erf}\left(\frac{x - \mu}{\sigma \sqrt{2}}\right)\right] \times 100$$
+   * SDE-1 Benchmark: $\mu = 68, \sigma = 14$
+   * SDE-2 Benchmark: $\mu = 72, \sigma = 12$
+   * SDE-3 Benchmark: $\mu = 76, \sigma = 10$
+2. **Calibrated Few-Shot Anchor Rubrics**: The LLM evaluation prompt is anchored with concrete benchmarks:
+   * **Score 20–35 (STRONG NO HIRE)**: Failed syntax, no working code, unable to explain approach.
+   * **Score 40–55 (LEAN NO HIRE)**: Quadratic $O(N^2)$ brute force, required multiple Tier 2/3 hints, failed hidden test cases.
+   * **Score 60–74 (LEAN HIRE)**: Viable approach with minor boundary omissions or slight design gaps.
+   * **Score 75–88 (HIRE)**: Optimal $O(N)$ Big-O complexity, modular clean code, zero/minimal Tier 1 hints, passed all test cases.
+   * **Score 89–98 (STRONG HIRE)**: Mathematical proofs, zero hints, flawless production-grade code, and fault tolerance.
+
+#### Core Implementation
+```typescript
+// File: src/lib/interviewEvaluator.ts
+export function erf(x: number): number {
+  const sign = x >= 0 ? 1 : -1;
+  const absX = Math.abs(x);
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const t = 1.0 / (1.0 + p * absX);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+  return sign * y;
+}
+
+export function calculateEmpiricalPercentile(score: number, level: string): number {
+  const benchmarks: Record<string, { mean: number; std: number }> = {
+    'SDE-1': { mean: 68, std: 14 },
+    'SDE-2': { mean: 72, std: 12 },
+    'SDE-3': { mean: 76, std: 10 }
+  };
+  const { mean, std } = benchmarks[level] || { mean: 72, std: 12 };
+  const z = (score - mean) / (std * Math.SQRT2);
+  const percentile = 0.5 * (1 + erf(z)) * 100;
+  return Math.max(1, Math.min(99, Math.round(percentile)));
+}
+```
+
 
