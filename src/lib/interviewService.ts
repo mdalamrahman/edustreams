@@ -212,9 +212,15 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
   };
 }
 
+// Watchdog timer reference to prevent audio stalls
+let utteranceWatchdogTimer: any = null;
+
 /**
- * Robust Text-to-Speech (TTS) synthesizer with sentence-level chunking, Chrome keepalive,
- * asynchronous cancel debounce, and GC retention.
+ * Robust, realistic Text-to-Speech (TTS) synthesizer:
+ * - Thorough natural text preprocessing (expanding Big-O, technical acronyms, stripping emojis/code fences)
+ * - Complete sentence phrasing (prevents choppy comma-splitting)
+ * - Per-chunk watchdog timer (bypasses Chromium dropped onend events)
+ * - V8 GC retention and non-destructive Chrome keepalive
  */
 export function speakInterviewerText(text: string, onEnd?: () => void): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) {
@@ -226,26 +232,54 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
   isSpeakingActive = true;
 
   try {
-    // 1. Clean markdown & expand technical abbreviations for natural pronunciation
+    // 1. Clean markdown & expand technical terms for natural spoken cadence
     let cleanText = text
-      .replace(/```[\s\S]*?```/g, 'Code block provided in editor.')
+      // Replace code blocks with spoken notice
+      .replace(/```[\s\S]*?```/g, 'I have updated the code editor with the relevant template. ')
       .replace(/`([^`]+)`/g, '$1')
-      .replace(/[*_#~>]/g, '')
-      .replace(/https?:\/\/\S+/g, '')
-      .replace(/Dr\./g, 'Doctor')
-      .replace(/Mr\./g, 'Mister')
-      .replace(/Ms\./g, 'Miss')
-      .replace(/e\.g\./gi, 'for example')
-      .replace(/i\.e\./gi, 'that is')
-      .replace(/vs\./gi, 'versus')
-      .replace(/\bQPS\b/g, 'Q P S')
+      // Strip emojis (both surrogate pairs and standard ranges)
+      .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+      // Expand Big-O asymptotic notations
+      .replace(/\bO\(1\)\b/g, 'O of 1')
+      .replace(/\bO\(log\s*n\)\b/gi, 'O of log N')
+      .replace(/\bO\(n\)\b/gi, 'O of N')
+      .replace(/\bO\(n\s*log\s*n\)\b/gi, 'O of N log N')
+      .replace(/\bO\(n\^?2\)\b/gi, 'O of N squared')
+      .replace(/\bO\(2\^?n\)\b/gi, 'O of 2 to the N')
+      .replace(/\bO\(V\s*\+\s*E\)\b/gi, 'O of V plus E')
+      .replace(/\bO\(n!\)\b/gi, 'O of N factorial')
+      // Expand technical abbreviations & acronyms
+      .replace(/\bQPS\b/g, 'queries per second')
+      .replace(/\bTPS\b/g, 'transactions per second')
       .replace(/\bSPOF\b/g, 'single point of failure')
-      .replace(/\bTPS\b/g, 'T P S')
       .replace(/\bAPI\b/g, 'A P I')
+      .replace(/\bAPIs\b/g, 'A P I s')
       .replace(/\bDB\b/g, 'database')
+      .replace(/\bDBs\b/g, 'databases')
       .replace(/\bLLD\b/g, 'low level design')
       .replace(/\bHLD\b/g, 'high level design')
       .replace(/\bDSA\b/g, 'D S A')
+      .replace(/\bSTAR\b/g, 'STAR method')
+      .replace(/\bFIFO\b/g, 'first in first out')
+      .replace(/\bLRU\b/g, 'L R U')
+      .replace(/\bCRUD\b/g, 'C R U D')
+      .replace(/\bRPC\b/g, 'R P C')
+      .replace(/\bgRPC\b/g, 'G R P C')
+      .replace(/\bJSON\b/gi, 'Jason')
+      .replace(/\bSQL\b/g, 'sequel')
+      .replace(/\bNoSQL\b/gi, 'no sequel')
+      .replace(/\bCDN\b/g, 'C D N')
+      .replace(/\bDNS\b/g, 'D N S')
+      .replace(/\bK\/V\b/g, 'key value')
+      .replace(/\bDr\./g, 'Doctor')
+      .replace(/\bMr\./g, 'Mister')
+      .replace(/\bMs\./g, 'Miss')
+      .replace(/\be\.g\./gi, 'for example')
+      .replace(/\bi\.e\./gi, 'that is')
+      .replace(/\bvs\.?\b/gi, 'versus')
+      // Strip remaining markdown formatting symbols
+      .replace(/[*_#~>]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
       .trim();
 
     if (!cleanText) {
@@ -254,21 +288,22 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
       return;
     }
 
-    // 2. Split text into clean, natural sentence chunks (max 150 chars each)
+    // 2. Segment by true sentence boundaries (preserving natural comma cadence)
     const rawSentences = cleanText.match(/[^.!?\n]+(?:[.!?\n]+|$)/g) || [cleanText];
     const chunks: string[] = [];
 
     for (const raw of rawSentences) {
       const trimmed = raw.trim();
       if (!trimmed) continue;
-      if (trimmed.length <= 150) {
+      // If a sentence is manageable in length (< 250 chars), keep it intact for natural inflection
+      if (trimmed.length <= 250) {
         chunks.push(trimmed);
       } else {
-        // Sub-split long sentences at commas, semicolons, or colons
-        const subParts = trimmed.split(/[,;:–—]\s+/);
+        // Only split very long sentences at natural conjunctions
+        const subParts = trimmed.split(/,\s+(?=and|but|while|so|however|or|because|then)\b/i);
         let current = '';
         for (const sub of subParts) {
-          if ((current + ', ' + sub).length <= 150) {
+          if ((current + ', ' + sub).length <= 250) {
             current = current ? current + ', ' + sub : sub;
           } else {
             if (current) chunks.push(current);
@@ -285,7 +320,7 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
       return;
     }
 
-    // 3. Unfreeze browser speech engine and wait 50ms for asynchronous cancel to clear
+    // 3. Resume audio engine if paused
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
@@ -299,10 +334,9 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
         }
 
         const voice = getOrLockInterviewerVoice();
-        let chunkIndex = 0;
         activeUtteranceQueue = [];
 
-        // Pre-create and retain all utterances in memory to prevent GC collection bug
+        // Pre-create and store utterances in memory (prevents Chromium V8 GC sweep)
         for (let i = 0; i < chunks.length; i++) {
           const utt = new SpeechSynthesisUtterance(chunks[i]);
           utt.rate = 1.0;
@@ -317,16 +351,22 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
           activeUtteranceQueue.push(utt);
         }
 
-        // Start Keepalive Heartbeat (prevents Chrome 15s freeze bug)
+        // Non-destructive Chrome keepalive (only resumes if browser paused; never pauses active audio)
         if (speechKeepaliveTimer) clearInterval(speechKeepaliveTimer);
         speechKeepaliveTimer = setInterval(() => {
-          if (isSpeakingActive && window.speechSynthesis && window.speechSynthesis.speaking) {
-            window.speechSynthesis.pause();
-            window.speechSynthesis.resume();
+          if (isSpeakingActive && typeof window !== 'undefined' && window.speechSynthesis) {
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
           }
-        }, 5000);
+        }, 1500);
 
         const playChunk = (index: number) => {
+          if (utteranceWatchdogTimer) {
+            clearTimeout(utteranceWatchdogTimer);
+            utteranceWatchdogTimer = null;
+          }
+
           if (!isSpeakingActive || index >= activeUtteranceQueue.length) {
             stopInterviewerSpeech();
             if (onEnd) onEnd();
@@ -334,36 +374,55 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
           }
 
           const currentUtt = activeUtteranceQueue[index];
+          let chunkDone = false;
 
-          currentUtt.onstart = () => {
-            // Keep alive check
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-          };
-
-          currentUtt.onend = () => {
-            playChunk(index + 1);
-          };
-
-          currentUtt.onerror = (e) => {
-            if (e.error !== 'interrupted' && e.error !== 'canceled') {
-              console.warn('Speech chunk playback error:', e.error);
+          const advanceToNextChunk = () => {
+            if (chunkDone) return;
+            chunkDone = true;
+            if (utteranceWatchdogTimer) {
+              clearTimeout(utteranceWatchdogTimer);
+              utteranceWatchdogTimer = null;
             }
             if (isSpeakingActive) {
               playChunk(index + 1);
             }
           };
 
+          currentUtt.onstart = () => {
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
+          };
+
+          currentUtt.onend = () => {
+            advanceToNextChunk();
+          };
+
+          currentUtt.onerror = (e) => {
+            if (e.error !== 'interrupted' && e.error !== 'canceled') {
+              console.warn('Speech chunk playback notice:', e.error);
+            }
+            advanceToNextChunk();
+          };
+
+          // Watchdog safety timer: if Chromium drops onend, force advance to next chunk
+          const wordCount = currentUtt.text.split(/\s+/).length;
+          const expectedMs = Math.max(3000, wordCount * 550 + 2500);
+          utteranceWatchdogTimer = setTimeout(() => {
+            if (!chunkDone && isSpeakingActive) {
+              console.warn('[TTS Watchdog] Advance stalled chunk:', index);
+              advanceToNextChunk();
+            }
+          }, expectedMs);
+
           try {
             window.speechSynthesis.speak(currentUtt);
-            // In case browser is in paused state:
             if (window.speechSynthesis.paused) {
               window.speechSynthesis.resume();
             }
           } catch (speakErr) {
-            console.warn('Failed to speak chunk:', speakErr);
-            playChunk(index + 1);
+            console.warn('Speech chunk exception:', speakErr);
+            advanceToNextChunk();
           }
         };
 
@@ -373,7 +432,7 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
         stopInterviewerSpeech();
         if (onEnd) onEnd();
       }
-    }, 60);
+    }, 40);
 
   } catch (err) {
     console.warn('Speech synthesis general error:', err);
@@ -385,6 +444,10 @@ export function speakInterviewerText(text: string, onEnd?: () => void): void {
 export function stopInterviewerSpeech(): void {
   isSpeakingActive = false;
   activeUtteranceQueue = [];
+  if (utteranceWatchdogTimer) {
+    clearTimeout(utteranceWatchdogTimer);
+    utteranceWatchdogTimer = null;
+  }
   if (speechKeepaliveTimer) {
     clearInterval(speechKeepaliveTimer);
     speechKeepaliveTimer = null;

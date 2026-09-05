@@ -497,9 +497,14 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
       if (!isVoiceMuted) {
         setIsAiSpeaking(true);
+        vadRef.current?.setTTSActive(true);
+        stopListening();
         speakInterviewerText(switchMsg.content, () => {
           setIsAiSpeaking(false);
-          if (isHandsFreeModeRef.current) startListening();
+          vadRef.current?.setTTSActive(false);
+          setTimeout(() => {
+            if (isHandsFreeModeRef.current) startListening();
+          }, 350);
         });
       }
     } catch (err) {
@@ -572,13 +577,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       const vad = new VoiceActivityController();
       vad.init(
         () => {
-          if (isAiSpeakingRef.current) {
-            stopInterviewerSpeech();
-            setIsAiSpeaking(false);
-          }
+          // Candidate active speech onset
         },
         undefined,
         () => {
+          // Explicit candidate interruption
           stopInterviewerSpeech();
           setIsAiSpeaking(false);
         }
@@ -624,16 +627,21 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setTimeout(() => {
       if (!isVoiceMuted) {
         setIsAiSpeaking(true);
+        vadRef.current?.setTTSActive(true);
+        stopListening();
         speakInterviewerText(initialGreeting, () => {
           setIsAiSpeaking(false);
-          if (isHandsFreeModeRef.current) {
-            startListening();
-          }
+          vadRef.current?.setTTSActive(false);
+          setTimeout(() => {
+            if (isHandsFreeModeRef.current) {
+              startListening();
+            }
+          }, 350);
         });
       } else if (isHandsFreeModeRef.current) {
         startListening();
       }
-    }, 150);
+    }, 200);
   };
 
   // Auto-scroll transcript on new messages
@@ -822,11 +830,16 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
+      vadRef.current?.setTTSActive(true);
+      stopListening();
       speakInterviewerText(aiReply, () => {
         setIsAiSpeaking(false);
-        if (isHandsFreeModeRef.current) {
-          startListening();
-        }
+        vadRef.current?.setTTSActive(false);
+        setTimeout(() => {
+          if (isHandsFreeModeRef.current) {
+            startListening();
+          }
+        }, 350);
       });
     } else if (isHandsFreeModeRef.current) {
       startListening();
@@ -1885,10 +1898,28 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             {/* Right: Speaking Waves or Replay Button */}
             <div className="flex items-center space-x-2">
               {isAiSpeaking ? (
-                <div className="flex items-center space-x-1">
-                  <span className="w-1 h-4 bg-cyan-400 rounded-full animate-bounce" />
-                  <span className="w-1 h-6 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.15s]" />
-                  <span className="w-1 h-3 bg-purple-400 rounded-full animate-bounce [animation-delay:0.3s]" />
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 px-3 py-1 rounded-full bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 text-xs">
+                    <span className="w-1 h-3 bg-indigo-400 rounded-full animate-bounce" />
+                    <span className="w-1 h-5 bg-indigo-400 rounded-full animate-bounce [animation-delay:0.15s]" />
+                    <span className="w-1 h-3 bg-purple-400 rounded-full animate-bounce [animation-delay:0.3s]" />
+                    <span className="ml-1 text-[11px] font-bold text-indigo-300">Speaking...</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      stopInterviewerSpeech();
+                      setIsAiSpeaking(false);
+                      vadRef.current?.setTTSActive(false);
+                      setTimeout(() => {
+                        if (isHandsFreeModeRef.current) startListening();
+                      }, 200);
+                    }}
+                    className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 hover:bg-rose-900 border border-rose-500/60 text-rose-300 text-xs font-bold transition-all cursor-pointer shadow-lg shadow-rose-950/50 hover:scale-105"
+                    title="Interrupt the interviewer and take your turn"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                    <span>Interrupt</span>
+                  </button>
                 </div>
               ) : (
                 <button

@@ -120,6 +120,14 @@ export class VoiceActivityController {
     const checkAudioFrame = () => {
       if (!this.analyser) return;
 
+      // When the AI interviewer is actively speaking (isTTSActive), suppress acoustic
+      // loopback from device loudspeakers to prevent the AI from self-cancelling.
+      if (this.isTTSActive) {
+        this.isSpeaking = false;
+        this.animationFrameId = requestAnimationFrame(checkAudioFrame);
+        return;
+      }
+
       this.analyser.getByteTimeDomainData(timeDomainData);
 
       // Compute Root Mean Square (RMS) energy
