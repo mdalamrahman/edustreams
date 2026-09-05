@@ -93,6 +93,18 @@ import { InterviewStateMachine, InterviewStage } from '../lib/interviewStateMach
 import { AntiCheatMonitor } from '../lib/antiCheatService';
 import { validateHLDTopology } from '../lib/hldTopologyValidator';
 import { VoiceActivityController } from '../lib/audioVAD';
+import { 
+  InterviewExecutionMode, 
+  RoundDefinition, 
+  CompletedRoundRecord, 
+  OfferPacket, 
+  getCompanyRoundSchedule, 
+  evaluateRoundElimination, 
+  generateFinalOfferPacket 
+} from '../lib/multiRoundLoopService';
+import { MultiRoundAdvanceModal } from './MultiRoundAdvanceModal';
+import { MultiRoundEliminationModal } from './MultiRoundEliminationModal';
+import { MultiRoundOfferModal } from './MultiRoundOfferModal';
 
 interface InterviewCompanionProps {
   onBackToDashboard?: () => void;
@@ -174,6 +186,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [scorecard, setScorecard] = useState<InterviewScorecard | null>(null);
   const [isScorecardOpen, setIsScorecardOpen] = useState<boolean>(false);
+
+  // Multi-Round Elimination Loop State
+  const [interviewMode, setInterviewMode] = useState<InterviewExecutionMode>('single');
+  const [currentRoundIndex, setCurrentRoundIndex] = useState<number>(0);
+  const [completedRoundRecords, setCompletedRoundRecords] = useState<CompletedRoundRecord[]>([]);
+  const [advanceModalData, setAdvanceModalData] = useState<{ roundRecord: CompletedRoundRecord; nextRound: RoundDefinition } | null>(null);
+  const [eliminationModalData, setEliminationModalData] = useState<{ roundRecord: CompletedRoundRecord } | null>(null);
+  const [finalOfferPacket, setFinalOfferPacket] = useState<OfferPacket | null>(null);
+
+  const companySchedule = useMemo(() => getCompanyRoundSchedule(selectedCompanyId, selectedLevel), [selectedCompanyId, selectedLevel]);
+  const activeRoundDef = useMemo(() => companySchedule[currentRoundIndex] || companySchedule[0], [companySchedule, currentRoundIndex]);
 
   // History Drawer / Modal State
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
@@ -596,19 +619,30 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     resetInterviewerVoiceLock();
     getOrLockInterviewerVoice();
 
+    if (interviewMode === 'full_loop') {
+      setCurrentRoundIndex(0);
+      setCompletedRoundRecords([]);
+      setSelectedRound(companySchedule[0].roundType);
+    }
+
     // 5. Tab routing according to round
-    if (selectedRound === 'HLD') {
+    const effectiveRound = interviewMode === 'full_loop' ? companySchedule[0].roundType : selectedRound;
+    if (effectiveRound === 'HLD') {
       setRightTab('hld_canvas');
-    } else if (selectedRound === 'Behavioral') {
+    } else if (effectiveRound === 'Behavioral') {
       setRightTab('star');
     } else {
       setRightTab('code');
     }
 
     const candidateGreetingName = candidateName.trim() || 'Candidate';
-    const interviewerName = currentCompany.name === 'Google' ? 'Dr. Sarah Chen' : currentCompany.name === 'Amazon' ? 'David Miller' : currentCompany.name === 'Meta' ? 'Alex Rivera' : 'Michael Zhang';
+    const activeRound = interviewMode === 'full_loop' ? companySchedule[0] : null;
+    const interviewerName = activeRound ? activeRound.interviewerName : (currentCompany.name === 'Google' ? 'Dr. Sarah Chen' : currentCompany.name === 'Amazon' ? 'David Miller' : currentCompany.name === 'Meta' ? 'Alex Rivera' : 'Michael Zhang');
+    const interviewerTitle = activeRound ? activeRound.interviewerTitle : 'Principal Bar Raiser';
 
-    const initialGreeting = `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
+    const initialGreeting = interviewMode === 'full_loop' && activeRound
+      ? `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. Welcome to your ${currentCompany.name} ${selectedLevel} Full Virtual Onsite Loop. We are commencing with ${activeRound.title}. Focus area: ${activeRound.focusDescription}.\n\nHere is your technical scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nWhenever you are ready, please walk me through your clarifying questions and architectural/algorithmic approach.`
+      : `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -906,20 +940,151 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     const result = await evaluateInterview(messages, ctx, duration, telemetry);
     setIsEvaluating(false);
     setScorecard(result);
-    setIsScorecardOpen(true);
 
     // Save full session payload to Cloudflare R2 and scorecard index to Supabase
     saveInterviewSession(messages, ctx, result, duration).then(res => {
       console.log('[Interview History] Saved session to Cloudflare R2 & Supabase:', res);
     });
 
-    if (result.overallScore >= 75) {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+    if (interviewMode === 'full_loop') {
+      const elim = evaluateRoundElimination(result);
+      const currentRecord: CompletedRoundRecord = {
+        roundIndex: currentRoundIndex,
+        roundDefinition: activeRoundDef,
+        scorecard: result,
+        passed: elim.passed,
+        eliminationReason: elim.passed ? undefined : elim.reason,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      const updatedHistory = [...completedRoundRecords, currentRecord];
+      setCompletedRoundRecords(updatedHistory);
+
+      if (!elim.passed) {
+        // Eliminated at this round
+        setEliminationModalData({ roundRecord: currentRecord });
+        setIsScorecardOpen(false);
+      } else if (currentRoundIndex + 1 < companySchedule.length) {
+        // Cleared this round, advance to next
+        setAdvanceModalData({
+          roundRecord: currentRecord,
+          nextRound: companySchedule[currentRoundIndex + 1]
+        });
+        setIsScorecardOpen(false);
+      } else {
+        // Cleared ALL rounds in the loop! OFFER EXTENDED!
+        const offer = generateFinalOfferPacket(updatedHistory, currentCompany.name, selectedLevel);
+        setFinalOfferPacket(offer);
+        setIsScorecardOpen(false);
+      }
+    } else {
+      setIsScorecardOpen(true);
+      if (result.overallScore >= 75) {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
     }
+  };
+
+  const handleProceedToNextRound = async () => {
+    const nextIdx = currentRoundIndex + 1;
+    if (nextIdx >= companySchedule.length) return;
+
+    setCurrentRoundIndex(nextIdx);
+    const nextDef = companySchedule[nextIdx];
+    setSelectedRound(nextDef.roundType);
+
+    // Update workspace tab according to next round
+    if (nextDef.roundType === 'HLD') {
+      setRightTab('hld_canvas');
+    } else if (nextDef.roundType === 'Behavioral') {
+      setRightTab('star');
+    } else {
+      setRightTab('code');
+    }
+
+    setAdvanceModalData(null);
+    setIsEvaluating(false);
+    setScorecard(null);
+    setTestSuiteReport(null);
+    stateMachineRef.current.reset();
+    setCurrentStage('CLARIFICATION');
+
+    // Generate fresh question for next round
+    setIsGeneratingCustomQuestion(true);
+    try {
+      const newQ = await generateDynamicInterviewQuestion(
+        currentCompany.name,
+        nextDef.roundType,
+        selectedLevel,
+        selectedTestStyle,
+        {
+          name: candidateName,
+          techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+          experienceYears: candidateExpYears,
+          currentRole: candidateRole,
+          resumeText: resumeText,
+          customGoals: candidateGoals
+        }
+      );
+      setActiveQuestion(newQ);
+      if (newQ.starterCode && newQ.starterCode[language]) {
+        setEditorCode(newQ.starterCode[language]);
+      } else {
+        setEditorCode('// Write your optimal solution here\n\n');
+      }
+
+      const candidateGreetingName = candidateName.trim() || 'Candidate';
+      const roundIntro = `Welcome to Round ${nextIdx + 1} (${nextDef.title}), ${candidateGreetingName}! I am ${nextDef.interviewerName}, ${nextDef.interviewerTitle}. We will be focusing on ${nextDef.focusDescription}.\n\nHere is your technical scenario:\n**${newQ.title}**\n\n${newQ.description}\n\nWhenever you are ready, please walk me through your initial thoughts, verify any edge conditions, and structure your approach.`;
+
+      const nextMsg: InterviewMessage = {
+        id: `msg-r${nextIdx + 1}-init`,
+        role: 'interviewer',
+        content: roundIntro,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        stage: 'problem'
+      };
+
+      setMessages([nextMsg]);
+      setSecondsRemaining((nextDef.durationMinutes || 45) * 60);
+      setIsTimerRunning(true);
+
+      setTimeout(() => {
+        if (!isVoiceMuted) {
+          setIsAiSpeaking(true);
+          vadRef.current?.setTTSActive(true);
+          stopListening();
+          speakInterviewerText(roundIntro, () => {
+            setIsAiSpeaking(false);
+            vadRef.current?.setTTSActive(false);
+            setTimeout(() => {
+              if (isHandsFreeModeRef.current) startListening();
+            }, 350);
+          });
+        } else if (isHandsFreeModeRef.current) {
+          startListening();
+        }
+      }, 300);
+    } catch (err) {
+      console.warn('Next round generation error:', err);
+    } finally {
+      setIsGeneratingCustomQuestion(false);
+    }
+  };
+
+  const handleRestartLoop = () => {
+    setEliminationModalData(null);
+    setAdvanceModalData(null);
+    setFinalOfferPacket(null);
+    setCompletedRoundRecords([]);
+    setCurrentRoundIndex(0);
+    setIsInterviewStarted(false);
+    setIsTimerRunning(false);
+    setScorecard(null);
+    stopInterviewerSpeech();
+    stopListening();
   };
 
   const handleRunTestSuite = async () => {
@@ -1194,7 +1359,95 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
           </div>
 
-          {/* SECTION 2: TEST STYLES SELECTION */}
+          {/* INTERVIEW EXECUTION MODE: SINGLE ROUND vs FULL VIRTUAL ONSITE LOOP */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  2. Select Interview Format
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-slate-400">Simulation Depth</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setInterviewMode('single')}
+                className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  interviewMode === 'single'
+                    ? 'bg-indigo-950/70 border-indigo-500 shadow-xl shadow-indigo-500/20 ring-1 ring-indigo-500'
+                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-sm text-white">Single Round Deep-Dive</span>
+                    {interviewMode === 'single' && <Check className="w-4 h-4 text-indigo-400" />}
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-300 font-mono text-[10px] font-bold inline-block mt-1">
+                    Focused Practice • 45 Mins
+                  </span>
+                  <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
+                    Drill specifically on one round of your choice: DSA Coding, LLD Machine Coding, HLD Distributed Systems, or STAR Behavioral.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setInterviewMode('full_loop')}
+                className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  interviewMode === 'full_loop'
+                    ? 'bg-gradient-to-br from-amber-950/80 via-slate-900 to-indigo-950/80 border-amber-500 shadow-xl shadow-amber-500/20 ring-1 ring-amber-500'
+                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-400" />
+                      <span className="font-black text-sm text-white">Full Virtual Onsite Loop</span>
+                    </div>
+                    {interviewMode === 'full_loop' && <Check className="w-4 h-4 text-amber-400" />}
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-bold inline-block mt-1">
+                    Multi-Stage Elimination • 4 Rounds • FAANG Job Offer
+                  </span>
+                  <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
+                    Face the authentic company hiring gauntlet: DSA $\rightarrow$ LLD $\rightarrow$ HLD $\rightarrow$ Behavioral. Each round has an elimination gate. Clear all rounds to earn an official FAANG Job Offer!
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* If Full Loop is active, render the company round timeline */}
+            {interviewMode === 'full_loop' && (
+              <div className="mt-4 p-5 rounded-2xl bg-slate-950 border border-amber-500/30 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono">
+                    {currentCompany.name} {selectedLevel} Onsite Round Pipeline:
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Stage Elimination at each gate</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  {companySchedule.map((round, idx) => (
+                    <div key={round.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
+                        <span>STAGE {idx + 1}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 font-bold">{round.roundType}</span>
+                      </div>
+                      <h5 className="text-xs font-bold text-white truncate">{round.title.replace(/^Round \d+:\s*/, '')}</h5>
+                      <p className="text-[10px] text-slate-400 truncate">Interviewer: {round.interviewerName}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 3: TEST STYLES SELECTION */}
           <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -1309,38 +1562,57 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
             {/* Step 3C: Round Type */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-              <div className="flex items-center space-x-2">
-                <Layers className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Technical Round Track</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Technical Round Track</h3>
+                </div>
+                {interviewMode === 'full_loop' && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[9px] font-bold border border-amber-500/40">
+                    Full Onsite Loop Active
+                  </span>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { id: 'DSA', name: 'DSA & Algorithms', desc: 'Monaco Code IDE, Big-O' },
-                  { id: 'LLD', name: 'LLD Machine Coding', desc: 'OOP Design Patterns' },
-                  { id: 'HLD', name: 'HLD System Design', desc: 'Interactive Architecture Canvas' },
-                  { id: 'Behavioral', name: 'Behavioral (STAR)', desc: 'Leadership & Conflict' }
-                ].map((rd) => {
-                  const isSelected = rd.id === selectedRound;
-                  return (
-                    <button
-                      key={rd.id}
-                      onClick={() => setSelectedRound(rd.id as InterviewRound)}
-                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        isSelected
-                          ? 'bg-cyan-950/80 border-cyan-500 shadow-md shadow-cyan-500/20'
-                          : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-white">{rd.name}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">{rd.desc}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              {interviewMode === 'full_loop' ? (
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1">
+                  <p className="font-bold text-white flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                    <span>Automated Sequential Progression</span>
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    In Full Onsite Loop mode, rounds are sequentially cleared: Round 1 (DSA) &rarr; Round 2 (LLD) &rarr; Round 3 (HLD) &rarr; Round 4 (Behavioral).
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'DSA', name: 'DSA & Algorithms', desc: 'Monaco Code IDE, Big-O' },
+                    { id: 'LLD', name: 'LLD Machine Coding', desc: 'OOP Design Patterns' },
+                    { id: 'HLD', name: 'HLD System Design', desc: 'Interactive Architecture Canvas' },
+                    { id: 'Behavioral', name: 'Behavioral (STAR)', desc: 'Leadership & Conflict' }
+                  ].map((rd) => {
+                    const isSelected = rd.id === selectedRound;
+                    return (
+                      <button
+                        key={rd.id}
+                        onClick={() => setSelectedRound(rd.id as InterviewRound)}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-cyan-950/80 border-cyan-500 shadow-md shadow-cyan-500/20'
+                            : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-white">{rd.name}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">{rd.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Step 3D: Language, Voice & Pre-Flight Mic Check */}
@@ -1711,6 +1983,31 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           <span className="px-2.5 py-1 rounded-lg bg-cyan-950 border border-cyan-700/60 text-cyan-300 text-xs font-mono font-bold">
             {selectedRound}
           </span>
+
+          {interviewMode === 'full_loop' && (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-xs overflow-x-auto">
+              {companySchedule.map((r, i) => {
+                const isDone = i < currentRoundIndex;
+                const isCurrent = i === currentRoundIndex;
+                return (
+                  <div key={r.id} className="flex items-center gap-1 flex-shrink-0">
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold ${
+                      isCurrent
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
+                        : isDone
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-slate-900 text-slate-500 border border-slate-800'
+                    }`}>
+                      <span>R{i + 1}: {r.roundType}</span>
+                      {isDone && <Check className="w-2.5 h-2.5 text-emerald-400" />}
+                      {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+                    </div>
+                    {i < companySchedule.length - 1 && <ChevronRight className="w-3 h-3 text-slate-600 flex-shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <span className="px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-700/60 text-amber-300 text-xs font-mono font-bold hidden sm:inline">
             🎯 {SUPPORTED_TEST_STYLES.find(s => s.id === selectedTestStyle)?.name || 'Bar Raiser'}
@@ -2711,6 +3008,46 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           onClose={() => setIsWalletOpen(false)}
           userEmail={getCurrentStudent()?.email || undefined}
           initialAmount={100}
+        />
+      )}
+
+      {/* 5. MULTI-ROUND ADVANCE MODAL */}
+      {advanceModalData && (
+        <MultiRoundAdvanceModal
+          isOpen={!!advanceModalData}
+          roundRecord={advanceModalData.roundRecord}
+          nextRound={advanceModalData.nextRound}
+          totalRoundsCount={companySchedule.length}
+          onProceedToNextRound={handleProceedToNextRound}
+          onClose={() => {
+            setAdvanceModalData(null);
+            setIsScorecardOpen(true);
+          }}
+        />
+      )}
+
+      {/* 6. MULTI-ROUND ELIMINATION MODAL */}
+      {eliminationModalData && (
+        <MultiRoundEliminationModal
+          isOpen={!!eliminationModalData}
+          roundRecord={eliminationModalData.roundRecord}
+          totalRoundsCount={companySchedule.length}
+          onRestartLoop={handleRestartLoop}
+          onReviewScorecard={() => {
+            setEliminationModalData(null);
+            setIsScorecardOpen(true);
+          }}
+          onExit={handleRestartLoop}
+        />
+      )}
+
+      {/* 7. MULTI-ROUND FINAL OFFER MODAL */}
+      {finalOfferPacket && (
+        <MultiRoundOfferModal
+          isOpen={!!finalOfferPacket}
+          offerPacket={finalOfferPacket}
+          candidateName={candidateName}
+          onClose={handleRestartLoop}
         />
       )}
 

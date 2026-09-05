@@ -186,25 +186,34 @@ if (ctx.candidateCode && ctx.candidateCode.trim().length > 0) {
 
 ### 5.2 Resilient Web Speech Engine (TTS & STT)
 
-Standard browser `SpeechSynthesis` and `SpeechRecognition` implementations suffer from known Chromium bugs:
-1. **Chromium GC Bug**: Long utterances get garbage collected mid-speech, cutting audio short.
-2. **Chrome 15-Second Freeze**: Chrome silently kills audio playback after ~15 seconds without firing `onend`.
-3. **AudioContext Unlock**: Modern browsers block audio until an explicit user interaction.
+Standard browser `SpeechSynthesis` and `SpeechRecognition` implementations suffer from known Chromium bugs and acoustic feedback loops:
+1. **Chromium GC Bug**: Long utterances get garbage collected mid-speech, cutting audio short after a few words.
+2. **Chrome 15-Second Freeze**: Chrome silently freezes audio playback after ~15 seconds without firing `onend`.
+3. **Acoustic Speaker Feedback (Barge-in False Positives)**: When the AI speaks through laptop loudspeakers, the microphone captures the speaker output. If the VAD detects RMS above threshold, it assumes the candidate interrupted and aborts AI speech after 1–2 words.
+4. **Abrupt Utterance Boundary Clipping**: Fragmenting text arbitrarily mid-phrase creates robotic cadences and missing words.
 
-#### The Solutions Implemented in `src/lib/interviewService.ts`:
+#### The Solutions Implemented in `src/lib/interviewService.ts` & `src/lib/audioVAD.ts`:
+* **Acoustic Speaker Echo Suppression (`audioVAD.ts`)**: When `isTTSActive === true`, the VAD suppresses all voice detection frames and halts barge-in triggers until the AI completes its utterance, accompanied by a 350ms acoustic dissipation cooldown.
 * **Global Voice Locking & Utterance Retention**: `activeUtteranceQueue` keeps active utterance references alive in JavaScript memory so the V8 garbage collector never unloads them.
-* **Keepalive Heartbeat**: An interval fires every 5,000ms calling `window.speechSynthesis.pause()` followed immediately by `window.speechSynthesis.resume()` to reset Chrome's internal 15s watchdog timer.
-* **Technical Abbreviation Expansion**: Regular expressions rewrite acronyms so synthesis reads naturally:
+* **Non-Destructive Keepalive Heartbeat**: A 5-second interval checks `window.speechSynthesis.paused`. If true, it calls `resume()` without destructively resetting active synthesis.
+* **Per-Utterance Watchdog Fallback**: Each spoken chunk sets an automatic watchdog timer (`wordCount * 550ms + 2500ms`). If Chromium fails to dispatch an `onend` event, the watchdog safely forces queue progression.
+* **Natural Spoken Normalization**: Regular expressions expand mathematical notations, Big-O notations, and technical acronyms:
   ```typescript
   let cleanText = text
-    .replace(/```[\s\S]*?```/g, 'Code block provided in editor.')
+    .replace(/```[\s\S]*?```/g, 'Code snippet provided in the editor.')
+    .replace(/\bO\(1\)/g, 'O of 1')
+    .replace(/\bO\(log\s*n\)/gi, 'O of log n')
+    .replace(/\bO\(n\s*\*\s*log\s*n\)/gi, 'O of n log n')
+    .replace(/\bO\(n\)/gi, 'O of n')
+    .replace(/\bO\(n\^2\)/gi, 'O of n squared')
     .replace(/\bQPS\b/g, 'Q P S')
     .replace(/\bSPOF\b/g, 'single point of failure')
     .replace(/\bLLD\b/g, 'low level design')
     .replace(/\bHLD\b/g, 'high level design')
-    .replace(/\bDSA\b/g, 'D S A');
+    .replace(/\bJSON\b/gi, 'Jason')
+    .replace(/\bSQL\b/gi, 'sequel');
   ```
-* **Sentence Chunking**: Sentences are segmented into $\le 150$-character chunks using punctuation boundaries (`.`, `!`, `?`, `,`, `;`), feeding the utterance queue sequentially via recursive `playChunk(index + 1)`.
+* **True Sentence-Level Segmentation**: Splits strictly at sentence boundaries (`.`, `!`, `?`) keeping clauses under 250 characters while retaining internal commas for natural human breathing cadences.
 
 #### Hands-Free Silence Detection in `src/components/InterviewCompanion.tsx`:
 ```typescript
@@ -814,3 +823,201 @@ A 2-stage **Biquad Bandpass Filter** (`createBiquadFilter()`) is inserted into t
 | **HLD Canvas** | ✅ Verified | Graph Serializer + Tarjan Articulation Points (SPOF) & Synchronous Cycle Detection |
 | **Integrity & Proctoring** | ✅ Verified | Fullscreen / Tab Blur Guardrails + Monaco Burst Paste & Keystroke IKL Biometrics |
 | **Scoring & Storage** | ✅ Verified | Abramowitz-Stegun $\text{erf}(x)$ Z-Score Percentiles + Cloudflare R2 / Supabase sync |
+| **Multi-Round Loop** | ✅ Verified | Full Virtual Onsite Pipeline + Elimination Gates + FAANG Offer Synthesis (`multiRoundLoopService.ts`) |
+
+---
+
+## 🏢 10. Full Virtual Onsite Multi-Round Elimination Loop Architecture
+
+In top-tier tech hiring (Google, Amazon, Meta, Microsoft, Uber, Stripe, Netflix, Atlassian), candidates do not take disconnected one-off practice tests. They undergo a rigorous, multi-stage **Virtual Onsite Hiring Loop** consisting of 3 to 4 sequential rounds spanning Algorithmic Coding (DSA), Object-Oriented Architecture (LLD / Machine Coding), Large-Scale Distributed Architecture (HLD), and Company Leadership / Cultural Bar Raiser.
+
+The platform provides a first-class **Full Stage-Based Multi-Round Elimination Loop** mode governed by deterministic elimination gates, interactive break countdowns, dynamic workspace transitions, and automated Hiring Committee Offer Dossier generation.
+
+```
+                                VIRTUAL ONSITE PIPELINE (ELIMINATION MODE)
+  
+  ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+  │ Round 1: DSA    │       │ Round 2: LLD    │       │ Round 3: HLD    │       │ Round 4: Bar    │
+  │ Algorithmic &   │ ───>  │ Machine Coding  │ ───>  │ System Design & │ ───>  │ Raiser / Values │
+  │ Data Structures │       │ & Clean OOP     │       │ Failure Modes   │       │ & Behavioral    │
+  └────────┬────────┘       └────────┬────────┘       └────────┬────────┘       └────────┬────────┘
+           │                         │                         │                         │
+           ▼                         ▼                         ▼                         ▼
+   Score >= 60 &             Score >= 60 &             Score >= 60 &             Score >= 60 &
+   Hire Decision?            Hire Decision?            Hire Decision?            Hire Decision?
+      │        │                │        │                │        │                │        │
+     YES       NO              YES       NO              YES       NO              YES       NO
+      │        │                │        │                │        │                │        │
+      ▼        ▼                ▼        ▼                ▼        ▼                ▼        ▼
+   Advance  Eliminated       Advance  Eliminated       Advance  Eliminated        OFFER   Eliminated
+    Modal    Audit            Modal    Audit            Modal    Audit          EXTENDED    Audit
+```
+
+---
+
+### 10.1 Company-Calibrated Schedule Matrices (`src/lib/multiRoundLoopService.ts`)
+
+Each target organization enforces distinct round structures, interviewer personas, and focus areas tailored by engineering level (SDE-1, SDE-2, SDE-3):
+
+```typescript
+// File: src/lib/multiRoundLoopService.ts
+
+export interface RoundStageConfig {
+  stageNumber: number;
+  roundType: 'DSA' | 'LLD' | 'HLD' | 'Behavioral';
+  name: string;
+  durationMinutes: number;
+  focusAreas: string[];
+  interviewerPersona: {
+    name: string;
+    title: string;
+    personality: string;
+  };
+  minimumPassingScore: number; // 60/100 threshold
+}
+
+export interface CompanyLoopConfig {
+  company: Company;
+  companyName: string;
+  logo: string;
+  level: SdeLevel;
+  totalStages: number;
+  stages: RoundStageConfig[];
+}
+```
+
+#### Supported Company Configurations:
+1. **Google (L3 / L4 / L5)**:
+   * *R1*: Data Structures & Algorithms (Graph Algorithms, DP, Mathematical Big-O proofs)
+   * *R2*: Advanced Coding / Concurrency (Lock-free queues, Thread pools, Edge-case proofs)
+   * *R3*: Distributed Systems Design (Planetary scale, Spanner/BigTable, CAP theorem trade-offs)
+   * *R4*: Googleyness & Leadership (Navigating ambiguity, Intellectual humility, Cross-team impact)
+2. **Amazon (SDE-1 / SDE-2 / SDE-3)**:
+   * *R1*: DSA & Problem Solving (Trees, Heaps, Hash Tables, String manipulation)
+   * *R2*: Object-Oriented Design (Amazon Locker / Parking Lot / Order Fulfillment clean LLD)
+   * *R3*: Distributed Systems Design (DynamoDB partitioning, Consistent hashing, Idempotency)
+   * *R4*: Bar Raiser & Leadership Principles (Customer Obsession, Bias for Action, Ownership)
+3. **Meta (E3 / E4 / E5)**:
+   * *R1*: Speed & Algorithmic Coding (2 DSA problems in 45m, BFS/DFS, Two Pointers)
+   * *R2*: Algorithmic Systems Coding (Intervals, Sliding Windows, Tries, Dynamic Programming)
+   * *R3*: Systems Architecture (News Feed, Messenger, Distributed Caching, Sharding)
+   * *R4*: Meta Culture & Behavioral (Move Fast, Openness, High-agency problem solving)
+4. **Uber, Stripe, Microsoft, Netflix, Atlassian**: Tailored schedules emphasizing API design, low-latency financial idempotency, microservices resilience, and team collaboration.
+
+---
+
+### 10.2 Deterministic Elimination Gate Engine
+
+At the conclusion of each round, candidate performance is evaluated not by subjective impression, but through the calibrated scorecard. The **Elimination Engine** executes a two-factor verification:
+
+1. **Numerical Benchmark**: $\text{Overall Score} \ge 60$
+2. **Recommendation Filter**: Decision must NOT be `LEAN NO HIRE` or `STRONG NO HIRE`
+
+```typescript
+// File: src/lib/multiRoundLoopService.ts
+
+export function evaluateRoundElimination(scorecard: InterviewScorecard): {
+  passed: boolean;
+  score: number;
+  recommendation: string;
+  primaryRejectionReasons: string[];
+  deficitAreas: string[];
+  recommendedDrills: string[];
+} {
+  const score = scorecard.overallScore;
+  const rec = scorecard.recommendation;
+
+  const isPassingScore = score >= 60;
+  const isPassingRec = rec === 'STRONG HIRE' || rec === 'HIRE' || rec === 'LEAN HIRE';
+  const passed = isPassingScore && isPassingRec;
+
+  const deficitAreas: string[] = [];
+  const primaryRejectionReasons: string[] = [];
+  const recommendedDrills: string[] = [];
+
+  // Sub-dimension diagnostic breakdown
+  if (scorecard.metrics.problemSolving < 60) {
+    deficitAreas.push('Algorithmic Formulation & Approach Strategy');
+    primaryRejectionReasons.push('Struggled to translate problem statement into optimal algorithmic logic.');
+    recommendedDrills.push('Top-150 Blind LeetCode pattern drill (Sliding Window, Binary Search, Graphs)');
+  }
+  if (scorecard.metrics.codeQuality < 60) {
+    deficitAreas.push('Code Robustness, Syntax & Cleanliness');
+    primaryRejectionReasons.push('Code contained syntax defects, unhandled null pointers, or non-idiomatic structure.');
+    recommendedDrills.push('Refactor brute-force scripts into modular classes with strict type signatures');
+  }
+  if (scorecard.metrics.systemDesign < 60) {
+    deficitAreas.push('Distributed System Architecture & Reliability');
+    primaryRejectionReasons.push('Unaddressed single points of failure, missing cache policies, or unbounded DB queries.');
+    recommendedDrills.push('Design Twitter/Rate Limiter whiteboards emphasizing sharding and async message queues');
+  }
+  if (scorecard.metrics.communication < 60) {
+    deficitAreas.push('Technical Articulation & Active Thinking Aloud');
+    primaryRejectionReasons.push('Did not communicate trade-offs before jumping to code; silent during key decisions.');
+    recommendedDrills.push('Record 5-minute STAR method breakdowns and verbal architectural walk-throughs');
+  }
+
+  return { passed, score, recommendation: rec, primaryRejectionReasons, deficitAreas, recommendedDrills };
+}
+```
+
+---
+
+### 10.3 Dynamic Round Transition & Workspace State Machine
+
+When a candidate clears a round, `handleProceedToNextRound()` in `src/components/InterviewCompanion.tsx` coordinates a zero-flicker state transition:
+
+```
+[Round N Scorecard Cleared] ──> [MultiRoundAdvanceModal (Break Timer)] ──> [Proceed Clicked]
+                                                                                  │
+  ┌───────────────────────────────────────────────────────────────────────────────┘
+  ▼
+1. Advance activeRoundStageIndex (N ──> N + 1)
+2. Switch Workspace Mode:
+   - If Next Round is 'HLD': Activate Whiteboard Architecture Canvas
+   - If Next Round is 'Behavioral': Activate STAR Method Worksheet
+   - If Next Round is 'DSA' / 'LLD': Activate Monaco Code Editor
+3. Fetch / Generate Next Stage Problem Context (Company-specific question)
+4. Initialize New Interviewer Persona (e.g., Sarah Chen, Staff Distributed Systems Architect)
+5. Synthesize Contextual Welcome Spoken Greeting:
+   "Hello candidate, congratulations on advancing past Round 1. I'm Sarah Chen,
+    and I'll be evaluating your Distributed Systems Architecture in this session..."
+6. Reset Stopwatch & State Machine Gate to CLARIFICATION
+```
+
+---
+
+### 10.4 Final Hiring Committee Dossier & Compensation Synthesis
+
+Upon successfully clearing all stages of the loop, the system synthesizes a comprehensive FAANG Job Offer Packet:
+
+```typescript
+// File: src/lib/multiRoundLoopService.ts
+
+export interface FinalOfferPacket {
+  company: Company;
+  companyName: string;
+  level: SdeLevel;
+  calibratedTitle: string;        // e.g. "Google L4 Software Engineer III"
+  baseSalary: string;             // e.g. "$182,000 / yr"
+  equityRSU: string;              // e.g. "$160,000 (over 4 years)"
+  signOnBonus: string;            // e.g. "$35,000 (first year)"
+  totalFirstYearComp: string;     // e.g. "$257,000"
+  compositeScore: number;         // Average across all stages
+  compositePercentile: number;    // Abramowitz-Stegun erf(z) percentile
+  roundSummaries: {
+    stageNumber: number;
+    roundName: string;
+    score: number;
+    recommendation: string;
+    highlight: string;
+  }[];
+  hiringCommitteeSummary: string;
+}
+```
+
+The offer packet includes:
+* **Interactive Celebration**: Full-screen confetti via `canvas-confetti`.
+* **Official FAANG Offer Letter**: Rendered in a glassmorphic card with gold badges and verified compensation bands.
+* **Round-by-Round Breakdown**: Side-by-side comparison of DSA, LLD, HLD, and Bar Raiser scores.
+* **Downloadable Dossier**: Generates a clean Markdown candidate packet (`FAANG_OFFER_DOSSIER.md`) for candidate records.

@@ -64,6 +64,23 @@ export class InterviewStateMachine {
   }
 
   /**
+   * Resets state machine for new interview round
+   */
+  reset(): void {
+    this.currentStage = 'CLARIFICATION';
+    this.validations = {
+      assumptionsConfirmed: false,
+      constraintsClarified: false,
+      timeComplexityStated: false,
+      spaceComplexityStated: false,
+      dryRunPassed: false,
+      codeCompiled: false,
+      testCasesPassed: false
+    };
+    this.hintsGiven = [];
+  }
+
+  /**
    * Monaco Code Editor lock status based on active stage
    */
   isEditorLocked(): boolean {
