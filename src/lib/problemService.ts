@@ -561,6 +561,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
   // 1. Try Local Cloudflare Pages Function Proxy & Backend LeetCode API Proxy
   const endpoints = [
     `/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
+    `https://sdetube.pages.dev/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
     `/api/leetcode/${encodeURIComponent(slug)}`,
     `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`,
     `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`
@@ -793,10 +794,16 @@ Return ONLY valid JSON matching this exact structure:
 
   if (rawContent) {
     try {
-      const match = rawContent.match(/\{[\s\S]*\}/);
-      const jsonStr = match ? match[0] : rawContent;
+      let cleaned = rawContent
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .replace(/```(?:json)?/gi, '')
+        .trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      let jsonStr = match ? match[0] : cleaned;
+      jsonStr = jsonStr.replace(/,\s*([}\]])/g, '$1');
+
       const parsed = JSON.parse(jsonStr) as ProblemTemplate;
-      if (parsed && parsed.name && parsed.testCases && parsed.testCases.length >= 10) {
+      if (parsed && parsed.name && Array.isArray(parsed.testCases) && parsed.testCases.length >= 1) {
         const hardened = repairAndHardenProblem(parsed);
         const txtContent = formatProblemAsTxt(hardened);
         try {

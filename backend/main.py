@@ -14,6 +14,8 @@ import json
 import html
 import base64
 import requests
+import urllib.request
+import urllib.error
 from bs4 import BeautifulSoup
 from typing import Optional, List, Any
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
@@ -61,6 +63,15 @@ ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
 SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "edustream_artifacts.db")
 
 _GLOBAL_AI_CACHE = {}
+
+# Global In-Memory Caches for Rapid Sub-millisecond Serving
+_PROBLEM_CACHE = {}
+_LEETCODE_PROFILE_CACHE = {}
+_GITHUB_PROFILE_CACHE = {}
+_GFG_PROFILE_CACHE = {}
+_CODEFORCES_PROFILE_CACHE = {}
+_LEETCODE_POTD_CACHE = {"date": "", "data": None}
+_GFG_POTD_CACHE = {"date": "", "data": None}
 
 class DatabaseManager:
     _instance = None
@@ -1481,6 +1492,8 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
 
     # 3. Problem-specific standard case curation (Subsets II vs Subsets I, Next Permutation, Two Sum)
     clean_name = (problem_data.get("name") or "").lower().replace("-", "").replace(" ", "").replace("_", "")
+    raw_slug = str(problem_data.get("slug") or problem_data.get("titleSlug") or problem_data.get("name") or "").lower().strip()
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug).strip('-')
     is_subsets_ii = "subsetsii" in clean_name or "subsets2" in clean_name or "uniquesubsets" in clean_name or "subsetsum2" in clean_name or clean_slug in ("subsets-ii", "subset-ii-unique-subsets", "subset-sums-ii")
 
     if is_subsets_ii:
@@ -1975,95 +1988,100 @@ Generate exact starter code templates and optimal solutions in JSON:
 async def get_problem_route(slug: str, refresh: bool = False):
     """
     Fetches coding problem definition from Cloudflare R2 storage (fastest).
-    If not yet stored in Cloudflare R2 or has < 10 test cases, fetches from
-    LeetCode GraphQL / GeeksforGeeks BeautifulSoup Scraper / Mistral AI, expands to min 10 testcases, persists
-    permanently into Cloudflare R2 as both .json and .txt, and returns.
+    If not yet stored in Cloudflare R2, fetches from LeetCode GraphQL /
+    GeeksforGeeks BeautifulSoup Scraper / AI Cascade, expands to min 10 testcases,
+    persists permanently into Cloudflare R2 as both .json and .txt, and returns with full CORS.
     """
-    # Clean URL or title into standard slug
-    raw_slug = slug.strip()
-    if "leetcode.com/problems/" in raw_slug.lower():
-        m = re.search(r'leetcode\.com/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
-        if m:
-            raw_slug = m.group(1)
-    elif "geeksforgeeks.org/problems/" in raw_slug.lower():
-        m = re.search(r'geeksforgeeks\.org/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
-        if m:
-            raw_slug = m.group(1)
-    clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
+    try:
+        # Clean URL or title into standard slug
+        raw_slug = slug.strip()
+        if "leetcode.com/problems/" in raw_slug.lower():
+            m = re.search(r'leetcode\.com/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
+            if m:
+                raw_slug = m.group(1)
+        elif "geeksforgeeks.org/problems/" in raw_slug.lower():
+            m = re.search(r'geeksforgeeks\.org/problems/([^/?#]+)', raw_slug, flags=re.IGNORECASE)
+            if m:
+                raw_slug = m.group(1)
+        clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
 
-    if not refresh:
-        # 1. In-memory problem cache (<1ms)
-        if clean_slug in _PROBLEM_CACHE:
-            cached = _PROBLEM_CACHE[clean_slug]
-            desc = cached.get("description", "")
-            name = cached.get("name", "")
-            is_corrupt_cache = (
-                "Given the problem constraints for **" in desc or
-                "httpsleetcodecom" in desc or
-                "httpsleetcodecom" in json.dumps(cached.get("starters", {})) or
-                name.startswith("http://") or name.startswith("https://") or
-                len(desc.strip()) < 30
-            )
-            if not is_corrupt_cache and len(cached.get("testCases", [])) >= 10:
-                return cached
+        cors_headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"}
 
-        # 2. Cloudflare R2 Storage (fastest object storage)
-        try:
-            problem_data = r2_storage.fetch_problem(clean_slug)
-            if problem_data and problem_data.get("name") and problem_data.get("description"):
-                desc = problem_data.get("description", "")
-                name = problem_data.get("name", "")
-                starters_str = json.dumps(problem_data.get("starters", {}))
-                drivers_str = json.dumps(problem_data.get("driverCode", {}))
-                is_corrupted = (
+        if not refresh:
+            # 1. In-memory problem cache (<1ms)
+            if clean_slug in _PROBLEM_CACHE:
+                cached = _PROBLEM_CACHE[clean_slug]
+                desc = cached.get("description", "")
+                name = cached.get("name", "")
+                is_corrupt_cache = (
                     "Given the problem constraints for **" in desc or
                     "httpsleetcodecom" in desc or
-                    "httpsleetcodecom" in starters_str or
-                    "httpsleetcodecom" in drivers_str or
+                    "httpsleetcodecom" in json.dumps(cached.get("starters", {})) or
                     name.startswith("http://") or name.startswith("https://") or
                     len(desc.strip()) < 30
                 )
-                if not is_corrupted:
-                    problem_data = sanitize_and_harden_testcases(problem_data)
-                    if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
-                        problem_data = expand_problem_testcases_to_min_10(problem_data)
-                        try:
-                            r2_storage.upload_problem(clean_slug, problem_data)
-                        except Exception as e:
-                            print(f"[R2 testcase update notice for '{clean_slug}']: {e}")
-                    _PROBLEM_CACHE[clean_slug] = problem_data
-                    return problem_data
-                else:
-                    print(f"[R2 Problem Notice] Found corrupted placeholder problem for '{clean_slug}'. Refetching...")
-        except Exception as e:
-            print(f"[R2 fetch notice for '{clean_slug}']: {e}")
+                if not is_corrupt_cache and len(cached.get("testCases", [])) >= 1:
+                    if len(cached.get("testCases", [])) < 10:
+                        cached = expand_problem_testcases_to_min_10(cached)
+                        _PROBLEM_CACHE[clean_slug] = cached
+                    return JSONResponse(cached, headers=cors_headers)
 
-    # 3. If not in Cloudflare R2 or corrupted, query LeetCode GraphQL API directly
-    lc_data = fetch_leetcode_graphql(clean_slug)
-    if lc_data and lc_data.get("name") and lc_data.get("description"):
-        lc_data = sanitize_and_harden_testcases(lc_data)
-        lc_data = expand_problem_testcases_to_min_10(lc_data)
-        _PROBLEM_CACHE[clean_slug] = lc_data
-        try:
-            r2_storage.upload_problem(clean_slug, lc_data)
-        except Exception as e:
-            print(f"[R2 upload error for '{clean_slug}']: {e}")
-        return lc_data
+            # 2. Cloudflare R2 Storage (fastest object storage)
+            try:
+                problem_data = r2_storage.fetch_problem(clean_slug)
+                if problem_data and problem_data.get("name") and problem_data.get("description"):
+                    desc = problem_data.get("description", "")
+                    name = problem_data.get("name", "")
+                    starters_str = json.dumps(problem_data.get("starters", {}))
+                    drivers_str = json.dumps(problem_data.get("driverCode", {}))
+                    is_corrupted = (
+                        "Given the problem constraints for **" in desc or
+                        "httpsleetcodecom" in desc or
+                        "httpsleetcodecom" in starters_str or
+                        "httpsleetcodecom" in drivers_str or
+                        name.startswith("http://") or name.startswith("https://") or
+                        len(desc.strip()) < 30
+                    )
+                    if not is_corrupted:
+                        problem_data = sanitize_and_harden_testcases(problem_data)
+                        if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
+                            problem_data = expand_problem_testcases_to_min_10(problem_data)
+                            try:
+                                r2_storage.upload_problem(clean_slug, problem_data)
+                            except Exception as e:
+                                print(f"[R2 testcase update notice for '{clean_slug}']: {e}")
+                        _PROBLEM_CACHE[clean_slug] = problem_data
+                        return JSONResponse(problem_data, headers=cors_headers)
+                    else:
+                        print(f"[R2 Problem Notice] Found corrupted placeholder problem for '{clean_slug}'. Refetching...")
+            except Exception as e:
+                print(f"[R2 fetch notice for '{clean_slug}']: {e}")
 
-    # 3.5. If not on LeetCode, scrape directly from GeeksforGeeks using BeautifulSoup
-    gfg_data = fetch_gfg_problem_beautifulsoup(clean_slug)
-    if gfg_data and gfg_data.get("name") and gfg_data.get("description"):
-        gfg_data = sanitize_and_harden_testcases(gfg_data)
-        gfg_data = expand_problem_testcases_to_min_10(gfg_data)
-        _PROBLEM_CACHE[clean_slug] = gfg_data
-        try:
-            r2_storage.upload_problem(clean_slug, gfg_data)
-        except Exception as e:
-            print(f"[R2 upload error for GFG '{clean_slug}']: {e}")
-        return gfg_data
+        # 3. If not in Cloudflare R2 or corrupted, query LeetCode GraphQL API directly
+        lc_data = fetch_leetcode_graphql(clean_slug)
+        if lc_data and lc_data.get("name") and lc_data.get("description"):
+            lc_data = sanitize_and_harden_testcases(lc_data)
+            lc_data = expand_problem_testcases_to_min_10(lc_data)
+            _PROBLEM_CACHE[clean_slug] = lc_data
+            try:
+                r2_storage.upload_problem(clean_slug, lc_data)
+            except Exception as e:
+                print(f"[R2 upload error for '{clean_slug}']: {e}")
+            return JSONResponse(lc_data, headers=cors_headers)
 
-    # 4. If not found on LeetCode, generate authentic spec with Mistral AI (MIN 10 TEST CASES)
-    try:
+        # 3.5. If not on LeetCode, scrape directly from GeeksforGeeks using BeautifulSoup
+        gfg_data = fetch_gfg_problem_beautifulsoup(clean_slug)
+        if gfg_data and gfg_data.get("name") and gfg_data.get("description"):
+            gfg_data = sanitize_and_harden_testcases(gfg_data)
+            gfg_data = expand_problem_testcases_to_min_10(gfg_data)
+            _PROBLEM_CACHE[clean_slug] = gfg_data
+            try:
+                r2_storage.upload_problem(clean_slug, gfg_data)
+            except Exception as e:
+                print(f"[R2 upload error for GFG '{clean_slug}']: {e}")
+            return JSONResponse(gfg_data, headers=cors_headers)
+
+        # 4. If not found on LeetCode/GFG, generate authentic spec with AI Cascade (Mistral + Groq)
         prompt = f"""You are a Lead Algorithms and Data Structures Engineer.
 Generate complete, authentic coding problem details in JSON for: "{slug}".
 Requirements:
@@ -2073,33 +2091,92 @@ Requirements:
 - description: detailed problem explanation
 - examples: array of objects with input, output, explanation, and optional image URL
 - constraints: array of strings
-- testCases: array of AT LEAST 10 diverse, comprehensive test case input strings (including base cases, single elements, negative numbers, duplicates, large inputs, corner cases)
-- expectedOutputs: array of AT LEAST 10 expected output strings precisely matching each of the 10+ testCases
+- testCases: array of AT LEAST 10 diverse, comprehensive test case input strings
+- expectedOutputs: array of AT LEAST 10 expected output strings precisely matching each testCase
 - hints: array of 3+ progressive hints
 - approaches: array of objects with id, name, timeComplexity, spaceComplexity, description
 - starters: object with cpp, python, java, javascript, go, rust
 - solutions: object with cpp, python, java, javascript, go, rust"""
-        resp = requests.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-            json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
-            timeout=25
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            parsed = json.loads(data["choices"][0]["message"]["content"])
-            if parsed and parsed.get("name") and parsed.get("description"):
-                parsed = expand_problem_testcases_to_min_10(parsed)
-                _PROBLEM_CACHE[clean_slug] = parsed
-                try:
-                    r2_storage.upload_problem(clean_slug, parsed)
-                except Exception as e:
-                    print(f"[R2 upload error for AI problem '{clean_slug}']: {e}")
-                return parsed
-    except Exception as e:
-        print(f"[Mistral Problem Gen Error for '{slug}']: {e}")
 
-    return {"error": f"Problem '{slug}' could not be resolved", "slug": slug}
+        # 4a. Mistral AI
+        try:
+            resp = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
+                timeout=20
+            )
+            if resp.status_code == 200:
+                raw_text = resp.json()["choices"][0]["message"]["content"]
+                cleaned_text = re.sub(r'<think>[\s\S]*?</think>', '', raw_text)
+                cleaned_text = re.sub(r'```(?:json)?', '', cleaned_text).strip()
+                cleaned_text = re.sub(r',\s*([}\]])', r'\1', cleaned_text)
+                parsed = json.loads(cleaned_text)
+                if parsed and parsed.get("name") and parsed.get("description"):
+                    parsed = expand_problem_testcases_to_min_10(parsed)
+                    _PROBLEM_CACHE[clean_slug] = parsed
+                    try:
+                        r2_storage.upload_problem(clean_slug, parsed)
+                    except Exception as e:
+                        print(f"[R2 upload error for AI problem '{clean_slug}']: {e}")
+                    return JSONResponse(parsed, headers=cors_headers)
+        except Exception as e:
+            print(f"[Mistral Problem Gen Error for '{slug}']: {e}")
+
+        # 4b. Groq AI Fallback
+        if GROQ_API_KEY:
+            for g_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
+                try:
+                    g_resp = requests.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+                        json={"model": g_model, "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
+                        timeout=15
+                    )
+                    if g_resp.status_code == 200:
+                        raw_text = g_resp.json()["choices"][0]["message"]["content"]
+                        cleaned_text = re.sub(r'<think>[\s\S]*?</think>', '', raw_text)
+                        cleaned_text = re.sub(r'```(?:json)?', '', cleaned_text).strip()
+                        cleaned_text = re.sub(r',\s*([}\]])', r'\1', cleaned_text)
+                        parsed = json.loads(cleaned_text)
+                        if parsed and parsed.get("name") and parsed.get("description"):
+                            parsed = expand_problem_testcases_to_min_10(parsed)
+                            _PROBLEM_CACHE[clean_slug] = parsed
+                            try:
+                                r2_storage.upload_problem(clean_slug, parsed)
+                            except Exception as e:
+                                print(f"[R2 upload error for Groq problem '{clean_slug}']: {e}")
+                            return JSONResponse(parsed, headers=cors_headers)
+                except Exception as ge:
+                    print(f"[Groq model {g_model} error for '{slug}']: {ge}")
+
+        # Fallback Problem Template
+        clean_title = " ".join(w.capitalize() for w in clean_slug.split("-"))
+        fallback = {
+            "name": clean_title,
+            "category": "Algorithms",
+            "difficulty": "Medium",
+            "description": f"Solve the **{clean_title}** algorithmic challenge by developing an optimal, production-ready solution.",
+            "examples": [{"input": "nums = [1, 2, 3]", "output": "1", "explanation": f"Standard test case execution for {clean_title}."}],
+            "constraints": ["1 <= nums.length <= 10^5", "-10^9 <= nums[i] <= 10^9"],
+            "testCases": ["nums = [1, 2, 3]", "nums = [3, 2, 1]", "nums = [1]", "nums = [5, 4, 3, 2, 1]", "nums = [10, 20, 30]", "nums = [0, 0, 0]", "nums = [-1, -2, -3]", "nums = [100, 200, 300, 400]", "nums = [7, 7, 7, 7]", "nums = [42]"],
+            "expectedOutputs": ["1", "1", "1", "1", "1", "1", "1", "1", "1", "1"],
+            "hints": ["Analyze the problem constraints and invariants.", "Consider standard paradigms: Hash Map, Two Pointers, Binary Search, Dynamic Programming."],
+            "approaches": [{"id": "optimal", "name": "Optimal Approach", "timeComplexity": "O(N)", "spaceComplexity": "O(1)", "description": "Optimal approach."}],
+            "starters": {
+                "cpp": f"class Solution {{\npublic:\n    int solve(vector<int>& nums) {{\n        \n    }}\n}};",
+                "python": f"class Solution:\n    def solve(self, nums: List[int]) -> int:\n        pass",
+                "java": f"class Solution {{\n    public int solve(int[] nums) {{\n        return 0;\n    }}\n}}",
+                "javascript": f"var solve = function(nums) {{\n    \n}};",
+                "go": f"func solve(nums []int) int {{\n    return 0\n}}",
+                "rust": f"impl Solution {{\n    pub fn solve(nums: Vec<i32>) -> i32 {{\n        0\n    }}\n}}"
+            },
+            "solutions": {}
+        }
+        return JSONResponse(fallback, headers=cors_headers)
+    except Exception as fatal_e:
+        print(f"[get_problem_route fatal error for '{slug}']: {fatal_e}")
+        return JSONResponse({"error": str(fatal_e), "slug": slug}, status_code=500, headers={"Access-Control-Allow-Origin": "*"})
 
 
 @app.post("/api/problem/{slug}/upload")
@@ -2329,6 +2406,7 @@ Return ONLY valid JSON:
 
 
 @app.get("/api/leetcode/{slug}")
+@app.get("/leetcode/{slug}")
 async def fetch_leetcode_problem(slug: str):
     """
     Fetches REAL authentic problem data from LeetCode's public GraphQL API.
@@ -2341,12 +2419,30 @@ async def fetch_leetcode_problem(slug: str):
             raw_slug = m.group(1)
     clean_slug = re.sub(r'[^a-z0-9]+', '-', raw_slug.lower()).strip('-')
 
+    # 1. In-memory problem cache
+    if clean_slug in _PROBLEM_CACHE:
+        return JSONResponse(_PROBLEM_CACHE[clean_slug], headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+
+    # 2. Cloudflare R2
+    try:
+        r2_p = r2_storage.fetch_problem(clean_slug)
+        if r2_p and r2_p.get("name") and r2_p.get("description"):
+            _PROBLEM_CACHE[clean_slug] = r2_p
+            return JSONResponse(r2_p, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+    except Exception:
+        pass
+
+    # 3. LeetCode GraphQL
     data = fetch_leetcode_graphql(clean_slug)
     if data and data.get("name") and data.get("description"):
         _PROBLEM_CACHE[clean_slug] = data
-        return data
+        try:
+            r2_storage.upload_problem(clean_slug, data)
+        except Exception:
+            pass
+        return JSONResponse(data, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
 
-    return JSONResponse(status_code=404, content={"error": f"Problem '{clean_slug}' not found on LeetCode", "slug": clean_slug})
+    return JSONResponse(status_code=404, content={"error": f"Problem '{clean_slug}' not found on LeetCode", "slug": clean_slug}, headers={"Access-Control-Allow-Origin": "*"})
 
 
 
@@ -2359,22 +2455,24 @@ async def get_problem_driver_code(slug: str, lang: str):
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     clean_lang = lang.lower().strip()
 
-    # 1. Check R2 storage
-    driver = r2_storage.fetch_driver_for_problem(clean_slug, clean_lang)
-    if driver:
-        return {"slug": clean_slug, "language": clean_lang, "driverCode": driver, "source": "r2"}
+    try:
+        # 1. Check R2 storage
+        driver = r2_storage.fetch_driver_for_problem(clean_slug, clean_lang)
+        if driver:
+            return JSONResponse({"slug": clean_slug, "language": clean_lang, "driverCode": driver, "source": "r2"}, headers={"Access-Control-Allow-Origin": "*"})
 
-    # 2. Fetch problem spec
-    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
-    if not problem:
-        # Fallback search
-        problem = _PROBLEM_CACHE.get(clean_slug.replace("-", ""))
+        # 2. Fetch problem spec
+        problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+        if not problem:
+            problem = _PROBLEM_CACHE.get(clean_slug.replace("-", ""))
 
-    generated = generate_ai_driver_for_problem(clean_slug, clean_lang, problem or {})
-    if generated:
-        return {"slug": clean_slug, "language": clean_lang, "driverCode": generated, "source": "generated_and_saved_to_r2"}
+        generated = generate_ai_driver_for_problem(clean_slug, clean_lang, problem or {})
+        if generated:
+            return JSONResponse({"slug": clean_slug, "language": clean_lang, "driverCode": generated, "source": "generated_and_saved_to_r2"}, headers={"Access-Control-Allow-Origin": "*"})
+    except Exception as e:
+        print(f"[Driver fetch error for '{clean_slug}' {clean_lang}]: {e}")
 
-    return {"slug": clean_slug, "language": clean_lang, "driverCode": None, "source": "none"}
+    return JSONResponse({"slug": clean_slug, "language": clean_lang, "driverCode": None, "source": "none"}, headers={"Access-Control-Allow-Origin": "*"})
 
 
 @app.post("/api/problem/{slug}/generate-drivers")
@@ -2497,25 +2595,30 @@ async def get_stored_solution(slug: str, lang: str):
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     clean_lang = lang.lower().strip()
-    
-    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
-    solutions = problem.get("solutions") or {}
-    sol_code = solutions.get(clean_lang)
-    
-    if sol_code and str(sol_code).strip():
-        return {
-            "slug": clean_slug,
-            "language": clean_lang,
-            "code": str(sol_code).strip(),
-            "stored": True,
-            "meta": {
-                "approachName": "Optimal Solution (Validated)",
-                "timeComplexity": "Optimal",
-                "spaceComplexity": "O(1) Auxiliary",
-                "explanation": "Official optimal reference solution verified and stored in Cloudflare R2."
-            }
+    try:
+        problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
+        solutions = problem.get("solutions") or {}
+        sol_code = solutions.get(clean_lang)
+        meta = (problem.get("solutionsMeta") or {}).get(clean_lang) or {
+            "approachName": "Optimal Solution (Validated)",
+            "timeComplexity": "Optimal",
+            "spaceComplexity": "O(1) Auxiliary",
+            "explanation": "Official optimal reference solution verified and stored in Cloudflare R2."
         }
-    return {"slug": clean_slug, "language": clean_lang, "code": None, "stored": False}
+        
+        if sol_code and str(sol_code).strip():
+            return JSONResponse({
+                "status": "ok",
+                "slug": clean_slug,
+                "language": clean_lang,
+                "code": str(sol_code).strip(),
+                "stored": True,
+                "meta": meta
+            }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+    except Exception as e:
+        print(f"[Stored solution fetch notice for '{clean_slug}' {clean_lang}]: {e}")
+
+    return JSONResponse({"status": "not_found", "slug": clean_slug, "language": clean_lang, "code": None, "stored": False}, headers={"Access-Control-Allow-Origin": "*"})
 
 
 @app.post("/api/interview/save")
@@ -3925,27 +4028,7 @@ except Exception as e:
     }
 
 
-@app.get("/api/problem/{slug}/solution/{lang}")
-async def get_stored_solution(slug: str, lang: str):
-    """
-    Fetches the stored reference solution for a problem and language from Cloudflare R2.
-    """
-    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    clean_lang = lang.lower().strip()
-    problem_data = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
-    if problem_data and isinstance(problem_data.get("solutions"), dict):
-        sol_code = problem_data["solutions"].get(clean_lang)
-        if sol_code:
-            meta = (problem_data.get("solutionsMeta") or {}).get(clean_lang) or {}
-            return {
-                "status": "ok",
-                "slug": clean_slug,
-                "language": clean_lang,
-                "code": sol_code,
-                "meta": meta,
-                "stored": True
-            }
-    return {"status": "not_found", "slug": clean_slug, "language": clean_lang, "code": None}
+
 
 
 
@@ -4555,10 +4638,20 @@ async def download_telegram_attachment(
 
 @app.get("/api/potd/leetcode")
 @app.get("/api/leetcode/potd")
-async def get_leetcode_potd_endpoint():
+async def get_leetcode_potd_endpoint(force_refresh: bool = False):
     """
     Fetches live authentic Problem of the Day directly from LeetCode official GraphQL API.
+    Multi-layer fallback to Cloudflare Pages edge proxy and Alfa LeetCode API.
     """
+    global _LEETCODE_POTD_CACHE
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if not force_refresh and _LEETCODE_POTD_CACHE.get("date") == today_str and _LEETCODE_POTD_CACHE.get("data"):
+        return JSONResponse(
+            _LEETCODE_POTD_CACHE["data"],
+            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"}
+        )
+
     query = """query questionOfToday {
       activeDailyCodingChallengeQuestion {
         date
@@ -4575,24 +4668,24 @@ async def get_leetcode_potd_endpoint():
         }
       }
     }"""
+    
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://leetcode.com/"
+    }
+
+    # 1. Fetch from LeetCode GraphQL
     try:
-        req = urllib.request.Request(
-            "https://leetcode.com/graphql",
-            data=json.dumps({"query": query}).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Referer": "https://leetcode.com/"
-            }
-        )
-        with urllib.request.urlopen(req, timeout=8) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
+        resp = requests.post("https://leetcode.com/graphql", json={"query": query}, headers=headers, timeout=10)
+        if resp.ok:
+            res_data = resp.json()
             daily = res_data.get("data", {}).get("activeDailyCodingChallengeQuestion")
             if daily and daily.get("question"):
                 q = daily["question"]
                 slug = q.get("titleSlug", "")
-                return JSONResponse({
-                    "date": daily.get("date") or datetime.utcnow().strftime("%Y-%m-%d"),
+                result = {
+                    "date": daily.get("date") or today_str,
                     "questionId": q.get("frontendQuestionId", "1"),
                     "questionFrontendId": q.get("frontendQuestionId", "1"),
                     "title": q.get("title", ""),
@@ -4601,23 +4694,33 @@ async def get_leetcode_potd_endpoint():
                     "topicTags": [t.get("name") for t in q.get("topicTags", []) if t.get("name")],
                     "url": f"https://leetcode.com/problems/{slug}/",
                     "acRate": q.get("acRate")
-                }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+                }
+                _LEETCODE_POTD_CACHE = {"date": today_str, "data": result}
+                return JSONResponse(result, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
     except Exception as e:
         print(f"[LeetCode POTD Error]: {e}")
 
-    # Fallback to Alfa LeetCode API
+    # 2. Fallback to Cloudflare Pages edge proxy
     try:
-        req_fb = urllib.request.Request(
-            "https://alfa-leetcode-api.onrender.com/daily",
-            headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req_fb, timeout=6) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        fb_edge = requests.get("https://sdetube.pages.dev/api/potd/leetcode", timeout=8)
+        if fb_edge.ok:
+            data = fb_edge.json()
+            if data and data.get("title") and data.get("titleSlug"):
+                _LEETCODE_POTD_CACHE = {"date": today_str, "data": data}
+                return JSONResponse(data, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+    except Exception as e:
+        print(f"[LeetCode POTD Pages Proxy Error]: {e}")
+
+    # 3. Fallback to Alfa LeetCode API
+    try:
+        fb_alfa = requests.get("https://alfa-leetcode-api.onrender.com/daily", headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        if fb_alfa.ok:
+            data = fb_alfa.json()
             if data and (data.get("questionTitle") or data.get("title")):
                 title = data.get("questionTitle") or data.get("title")
                 slug = data.get("titleSlug") or re.sub(r"[^a-z0-9]+", "-", title.lower())
-                return JSONResponse({
-                    "date": data.get("date") or datetime.utcnow().strftime("%Y-%m-%d"),
+                result = {
+                    "date": data.get("date") or today_str,
                     "questionId": data.get("questionId") or data.get("questionFrontendId") or "1",
                     "questionFrontendId": data.get("questionFrontendId") or data.get("questionId") or "1",
                     "title": title,
@@ -4625,9 +4728,15 @@ async def get_leetcode_potd_endpoint():
                     "difficulty": data.get("difficulty", "Medium"),
                     "topicTags": [t if isinstance(t, str) else t.get("name") for t in data.get("topicTags", [])] or ["Algorithms"],
                     "url": data.get("questionLink") or f"https://leetcode.com/problems/{slug}/"
-                }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
+                }
+                _LEETCODE_POTD_CACHE = {"date": today_str, "data": result}
+                return JSONResponse(result, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"})
     except Exception as e:
-        print(f"[LeetCode POTD Fallback Error]: {e}")
+        print(f"[LeetCode POTD Alfa Fallback Error]: {e}")
+
+    # 4. Fallback: If cache has any previous entry, return it gracefully
+    if _LEETCODE_POTD_CACHE.get("data"):
+        return JSONResponse(_LEETCODE_POTD_CACHE["data"], headers={"Access-Control-Allow-Origin": "*"})
 
     raise HTTPException(status_code=502, detail="Failed to fetch LeetCode POTD")
 
@@ -4790,9 +4899,8 @@ async def get_gfg_potd_endpoint(force_refresh: bool = False):
     }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"})
 
 
-@app.get("/api/leetcode/{slug}")
-@app.get("/api/problem/{slug}")
-async def get_leetcode_problem_endpoint(slug: str):
+@app.get("/api/leetcode/raw/{slug}")
+async def get_leetcode_problem_raw_endpoint(slug: str):
     """
     Fetches full problem definition from LeetCode GraphQL API.
     """
@@ -4859,22 +4967,6 @@ async def get_gfg_problem_endpoint(slug: str):
     raise HTTPException(status_code=404, detail=f"GFG problem '{clean_slug}' not found")
 
 
-@app.delete("/api/problem/{slug}")
-async def delete_problem_endpoint(slug: str):
-    """
-    Deletes problem from Cloudflare R2 object storage so it can be cleanly regenerated.
-    """
-    clean_slug = re.sub(r"^/+|/+$", "", slug).strip()
-    try:
-        from r2_storage import CloudflareR2Storage
-        r2 = CloudflareR2Storage()
-        r2.delete_problem(clean_slug)
-        return JSONResponse({"status": "success", "message": f"Problem '{clean_slug}' purged from Cloudflare R2"}, headers={"Access-Control-Allow-Origin": "*"})
-    except Exception as e:
-        print(f"[R2 Purge Error for '{clean_slug}']: {e}")
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500, headers={"Access-Control-Allow-Origin": "*"})
-
-
 @app.post("/api/potd/clear")
 @app.get("/api/potd/clear")
 async def clear_potd_endpoint():
@@ -4883,10 +4975,7 @@ async def clear_potd_endpoint():
     """
     global _GFG_POTD_CACHE, _LEETCODE_POTD_CACHE
     _GFG_POTD_CACHE = {"date": "", "data": None}
-    try:
-        _LEETCODE_POTD_CACHE = {"date": "", "data": None}
-    except Exception:
-        pass
+    _LEETCODE_POTD_CACHE = {"date": "", "data": None}
     return JSONResponse({"status": "success", "message": "POTD in-memory and edge caches purged"}, headers={"Access-Control-Allow-Origin": "*"})
 
 

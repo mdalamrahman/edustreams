@@ -12,6 +12,18 @@
       "destination": "/api/gfg/potd"
     },
     {
+      "source": "/api/potd/leetcode",
+      "destination": "/api/potd/leetcode"
+    },
+    {
+      "source": "/api/leetcode/potd",
+      "destination": "/api/potd/leetcode"
+    },
+    {
+      "source": "/api/leetcode/question",
+      "destination": "/api/leetcode/question"
+    },
+    {
       "source": "/stream/(.*)",
       "destination": "https://edustream-backend-90vm.onrender.com/stream/$1"
     },

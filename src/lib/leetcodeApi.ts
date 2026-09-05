@@ -87,6 +87,7 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
   const endpoints = [
     '/api/potd/leetcode',
     '/api/leetcode/potd',
+    'https://sdetube.pages.dev/api/potd/leetcode',
     'https://edustream-backend-90vm.onrender.com/api/potd/leetcode'
   ];
 
@@ -234,6 +235,7 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     `/api/potd/gfg?t=${t}`,
     `/api/gfg/potd?t=${t}`,
     `/api/gfg-potd?t=${t}`,
+    `https://sdetube.pages.dev/api/potd/gfg?t=${t}`,
     `https://edustream-backend-90vm.onrender.com/api/potd/gfg?force_refresh=true&t=${t}`
   ];
 
