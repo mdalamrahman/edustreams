@@ -88,6 +88,10 @@ import { canAffordAction, deductCredits, PRICING_CONFIG, fetchLivePlatformPricin
 import { getCurrentStudent } from '../lib/auth';
 import { WalletTopupModal } from './WalletTopupModal';
 import confetti from 'canvas-confetti';
+import { runTestSuiteAgainstCompiler, TestCase, TestSuiteExecutionReport } from '../lib/testHarness';
+import { InterviewStateMachine, InterviewStage } from '../lib/interviewStateMachine';
+import { AntiCheatMonitor } from '../lib/antiCheatService';
+import { validateHLDTopology } from '../lib/hldTopologyValidator';
 
 interface InterviewCompanionProps {
   onBackToDashboard?: () => void;
@@ -157,6 +161,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [pauseReason, setPauseReason] = useState<string>('');
   const [isChangeQuestionModalOpen, setIsChangeQuestionModalOpen] = useState<boolean>(false);
 
+  // Deterministic State Machine & Test Suite Harness State
+  const [currentStage, setCurrentStage] = useState<InterviewStage>('CLARIFICATION');
+  const [testSuiteReport, setTestSuiteReport] = useState<TestSuiteExecutionReport | null>(null);
+  const [isRunningTests, setIsRunningTests] = useState<boolean>(false);
+  const stateMachineRef = useRef<InterviewStateMachine>(new InterviewStateMachine({ lockEditorUntilCoding: false }));
+  const antiCheatRef = useRef<AntiCheatMonitor>(new AntiCheatMonitor());
+
   // Assessment & Scorecard State
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [scorecard, setScorecard] = useState<InterviewScorecard | null>(null);
@@ -195,6 +206,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isCurrentlyFullscreen);
       if (!isCurrentlyFullscreen && isInterviewStarted && !isEvaluating && !scorecard) {
+        antiCheatRef.current.recordFullscreenEscape();
         setShowFullscreenWarning(true);
         pauseInterview('Fullscreen mode was exited — Fullscreen is strictly required during live technical interviews');
       } else {
@@ -208,6 +220,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   // Tab Inactivity & Page Left Auto-Pause Proctoring
   const pauseInterview = (reason = 'Page left or focus moved away from interview tab') => {
+    antiCheatRef.current.recordBlur();
     setIsInterviewPaused(true);
     setPauseReason(reason);
     setIsTimerRunning(false);
@@ -217,6 +230,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   };
 
   const resumeInterview = () => {
+    antiCheatRef.current.recordFocus();
     setIsInterviewPaused(false);
     setPauseReason('');
     setIsTimerRunning(true);
@@ -819,7 +833,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     };
 
     const duration = Math.max(1, Math.round((45 * 60 - secondsRemaining) / 60));
-    const result = await evaluateInterview(messages, ctx, duration);
+
+    // Telemetry from Test Harness, State Machine, and Anti-Cheat Monitor
+    const telemetry = {
+      testHarnessContext: testSuiteReport?.formattedEvaluationContext,
+      stateMachineContext: stateMachineRef.current.formatEvaluationDebrief(),
+      antiCheatContext: antiCheatRef.current.generateReport().formattedEvaluationContext
+    };
+
+    const result = await evaluateInterview(messages, ctx, duration, telemetry);
     setIsEvaluating(false);
     setScorecard(result);
     setIsScorecardOpen(true);
@@ -836,6 +858,48 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         origin: { y: 0.6 }
       });
     }
+  };
+
+  const handleRunTestSuite = async () => {
+    if (isRunningTests) return;
+    setIsRunningTests(true);
+
+    const testCases: TestCase[] = [
+      { id: 'tc-1', input: '4\n1 2 3 4', expectedOutput: '10', isHidden: false },
+      { id: 'tc-2', input: '1\n-5', expectedOutput: '-5', isHidden: false },
+      { id: 'tc-3', input: '5\n5 4 -1 7 8', expectedOutput: '23', isHidden: true },
+      { id: 'tc-4', input: '0\n', expectedOutput: '0', isHidden: true }
+    ];
+
+    try {
+      const report = await runTestSuiteAgainstCompiler(
+        editorCode,
+        testCases,
+        language,
+        activeQuestion?.title || 'Coding Challenge'
+      );
+      setTestSuiteReport(report);
+      stateMachineRef.current.setValidation('codeCompiled', report.verdict !== 'COMPILE_ERROR');
+      stateMachineRef.current.setValidation('testCasesPassed', report.passedTests === report.totalTests);
+      if (report.passedTests === report.totalTests) {
+        stateMachineRef.current.transitionTo('OPTIMIZATION');
+        setCurrentStage('OPTIMIZATION');
+      }
+    } catch (err) {
+      console.warn('Test suite execution error:', err);
+    } finally {
+      setIsRunningTests(false);
+    }
+  };
+
+  const handleRequestHint = (tier: 1 | 2 | 3) => {
+    const hintTitles: Record<1 | 2 | 3, string> = {
+      1: 'Can you give me a subtle conceptual nudge or direction?',
+      2: 'Could you suggest the optimal algorithmic pattern or data structure?',
+      3: 'I am stuck. Could you provide a concrete step-by-step resolution or pseudocode?'
+    };
+    stateMachineRef.current.recordHint(tier, hintTitles[tier]);
+    handleSendMessage(`[REQUEST HINT TIER ${tier}]: ${hintTitles[tier]}`);
   };
 
   const handleCloseScorecardAndExitInterview = () => {
@@ -1824,30 +1888,70 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             )}
           </div>
 
-          {/* Quick Action Prompt Pills */}
-          <div className="p-2.5 bg-slate-900/70 border-t border-slate-800 flex items-center space-x-1.5 overflow-x-auto custom-scrollbar flex-shrink-0 text-[11px]">
-            <span className="text-slate-500 font-bold uppercase text-[9px] px-1">Quick:</span>
+          {/* Deterministic Stage Ladder & Quick Action Prompt Pills */}
+          <div className="p-2 bg-slate-900/80 border-t border-slate-800 flex items-center space-x-2 overflow-x-auto custom-scrollbar flex-shrink-0 text-[11px]">
+            {/* 5-Stage Ladder */}
+            <div className="flex items-center space-x-1 px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[10px] font-mono flex-shrink-0">
+              {(['CLARIFICATION', 'INTUITION', 'DRY_RUN', 'CODING', 'OPTIMIZATION'] as InterviewStage[]).map((stage, idx) => (
+                <span
+                  key={stage}
+                  onClick={() => {
+                    stateMachineRef.current.transitionTo(stage);
+                    setCurrentStage(stage);
+                  }}
+                  className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                    currentStage === stage
+                      ? 'bg-indigo-600 text-white font-bold shadow-sm'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                  title={`Stage ${idx + 1}: ${stage}`}
+                >
+                  {idx + 1}. {stage.charAt(0) + stage.slice(1, 4).toLowerCase()}
+                </span>
+              ))}
+            </div>
+
+            <span className="text-slate-500 font-bold uppercase text-[9px] px-1 flex-shrink-0">Hints:</span>
             <button
-              onClick={() => handleSendMessage('Can you provide a subtle hint on optimizing the approach?')}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
+              onClick={() => handleRequestHint(1)}
+              className="px-2 py-1 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 font-medium border border-indigo-700/60 whitespace-nowrap cursor-pointer transition-all"
+              title="Tier 1 Hint (-5% penalty): Subtle conceptual direction"
             >
-              💡 Ask for Hint
+              💡 Nudge (-5%)
             </button>
             <button
-              onClick={() => handleSendMessage('Let me walk you through my high-level intuition and constraints before writing code.')}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
+              onClick={() => handleRequestHint(2)}
+              className="px-2 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-medium border border-amber-700/60 whitespace-nowrap cursor-pointer transition-all"
+              title="Tier 2 Hint (-15% penalty): Algorithmic pattern / DS pointer"
             >
-              🧠 Explain Intuition
+              🧩 Pattern (-15%)
             </button>
             <button
-              onClick={() => handleSendMessage('What are the edge case bounds for empty inputs or negative values?')}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
+              onClick={() => handleRequestHint(3)}
+              className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-900 text-rose-300 font-medium border border-rose-700/60 whitespace-nowrap cursor-pointer transition-all"
+              title="Tier 3 Hint (-30% penalty): Concrete pseudocode resolution"
             >
-              🔍 Clarify Constraints
+              📝 Resolution (-30%)
+            </button>
+
+            <span className="text-slate-500 font-bold uppercase text-[9px] px-1 flex-shrink-0">Prompts:</span>
+            <button
+              onClick={() => {
+                stateMachineRef.current.setValidation('assumptionsConfirmed', true);
+                stateMachineRef.current.setValidation('constraintsClarified', true);
+                handleSendMessage('What are the edge case bounds for empty inputs or negative values?');
+              }}
+              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
+            >
+              🔍 Clarify Bounds
             </button>
             <button
-              onClick={() => handleSendMessage('My target time complexity is O(N) with O(1) auxiliary space.')}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
+              onClick={() => {
+                stateMachineRef.current.setValidation('timeComplexityStated', true);
+                stateMachineRef.current.setValidation('spaceComplexityStated', true);
+                handleSendMessage('My target time complexity is O(N) with O(1) auxiliary space.');
+              }}
+              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-medium border border-slate-700 whitespace-nowrap cursor-pointer transition-all"
             >
               ⚡ State Big-O
             </button>
@@ -2057,7 +2161,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
             </div>
 
-            {/* Language Selector (When in Code Mode) */}
+            {/* Language Selector & Test Runner (When in Code Mode) */}
             {rightTab === 'code' && selectedRound !== 'HLD' && selectedRound !== 'Behavioral' && (
               <div className="flex items-center space-x-2">
                 <select
@@ -2072,6 +2176,16 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   <option value="go">Go 1.22</option>
                   <option value="rust">Rust 1.77</option>
                 </select>
+
+                <button
+                  onClick={handleRunTestSuite}
+                  disabled={isRunningTests}
+                  className="px-3 py-1 rounded-lg bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  title="Execute solution against public and hidden test cases"
+                >
+                  <Play className={`w-3 h-3 ${isRunningTests ? 'animate-spin text-emerald-400' : 'text-emerald-400'}`} />
+                  <span>{isRunningTests ? 'Testing...' : 'Run Test Suite'}</span>
+                </button>
 
                 <button
                   onClick={() => {
@@ -2099,15 +2213,23 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               </div>
             )}
 
-            {/* VIEW 1: MONACO CODE EDITOR */}
+            {/* VIEW 1: MONACO CODE EDITOR WITH TEST SUITE HARNESS */}
             {rightTab === 'code' && (
-              <div className="w-full h-full flex flex-col">
+              <div className="w-full h-full flex flex-col relative">
                 <Editor
-                  height="100%"
+                  height={testSuiteReport ? '75%' : '100%'}
                   language={language === 'cpp' ? 'cpp' : language === 'python' ? 'python' : language === 'java' ? 'java' : language === 'javascript' ? 'javascript' : language === 'go' ? 'go' : 'rust'}
                   theme="vs-dark"
                   value={editorCode}
-                  onChange={(val) => setEditorCode(val || '')}
+                  onChange={(val) => {
+                    const newCode = val || '';
+                    const diff = Math.abs(newCode.length - editorCode.length);
+                    antiCheatRef.current.recordKeystroke();
+                    if (diff > 50) {
+                      antiCheatRef.current.evaluateCodeChange(diff, 10);
+                    }
+                    setEditorCode(newCode);
+                  }}
                   options={{
                     fontSize: 13,
                     fontFamily: 'Fira Code, Menlo, Monaco, Consolas, monospace',
@@ -2118,6 +2240,55 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     automaticLayout: true
                   }}
                 />
+
+                {/* TEST SUITE EXECUTION REPORT DRAWER */}
+                {testSuiteReport && (
+                  <div className="h-1/4 bg-slate-900 border-t border-slate-800 p-3 overflow-y-auto custom-scrollbar flex flex-col justify-between text-xs animate-fadeIn">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-0.5 rounded font-black text-[10px] uppercase font-mono ${
+                          testSuiteReport.verdict === 'ACCEPTED'
+                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/60'
+                            : 'bg-rose-950 text-rose-400 border border-rose-700/60'
+                        }`}>
+                          {testSuiteReport.verdict}
+                        </span>
+                        <span className="font-bold text-slate-200">
+                          {testSuiteReport.passedTests}/{testSuiteReport.totalTests} Passed ({testSuiteReport.hiddenTestsPassed}/{testSuiteReport.hiddenTestsTotal} Hidden)
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 text-slate-400 font-mono text-[11px]">
+                        <span>⏱️ {testSuiteReport.executionTimeMs}ms</span>
+                        <span>💾 {testSuiteReport.peakMemoryKb}KB</span>
+                        <button 
+                          onClick={() => setTestSuiteReport(null)}
+                          className="hover:text-white cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+                      {testSuiteReport.results.map((r, idx) => (
+                        <div 
+                          key={r.testId}
+                          className={`p-2 rounded-xl border flex flex-col justify-between ${
+                            r.status === 'PASS' 
+                              ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-300' 
+                              : 'bg-rose-950/40 border-rose-800/40 text-rose-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-bold">
+                            <span>Test #{idx + 1} ({r.isHidden ? 'Hidden' : 'Public'})</span>
+                            <span>{r.status}</span>
+                          </div>
+                          <span className="font-mono text-[9px] opacity-80 truncate">{r.timeMs}ms</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

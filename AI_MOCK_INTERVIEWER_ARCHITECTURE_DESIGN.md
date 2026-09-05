@@ -406,12 +406,80 @@ useEffect(() => {
 
 ---
 
-## 📁 7. Source Code File Map
+* [`src/lib/testHarness.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/testHarness.ts): Automated language driver synthesis, public & hidden test execution harness, execution time and memory profiler.
+* [`src/lib/audioVAD.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/audioVAD.ts): Web Audio API Voice Activity Detection (VAD) and barge-in audio interruption engine.
+* [`src/lib/interviewStateMachine.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewStateMachine.ts): Deterministic 5-stage interview state machine and 3-tier hinting penalty ladder.
+* [`src/lib/hldTopologyValidator.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/hldTopologyValidator.ts): Graph model builder, Tarjan articulation points (SPOF) detector, cycle analysis, and architectural rule engine.
+* [`src/lib/antiCheatService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/antiCheatService.ts): Keystroke dynamics monitor, burst/paste injection detector, and proctoring integrity audit engine.
 
-* [`src/components/InterviewCompanion.tsx`](file:///c:/Users/User/Desktop/edustream/src/components/InterviewCompanion.tsx): Master interview room view, pre-flight setup wizard, Web Speech recognition loop, silence countdown, and proctoring hooks.
-* [`src/lib/interviewService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewService.ts): System prompt builder, multi-level/multi-style directives, Mistral AI message dispatch, and robust Chromium TTS engine.
-* [`src/lib/interviewEvaluator.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewEvaluator.ts): Calibrated Bar Raiser evaluation engine, JSON schema parsing, complexity audit, and 7-day remedial roadmap generator.
-* [`src/lib/interviewHistoryService.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/interviewHistoryService.ts): Cloudflare R2 object persistence and Supabase metadata index synchronization.
-* [`src/components/InterviewScorecardModal.tsx`](file:///c:/Users/User/Desktop/edustream/src/components/InterviewScorecardModal.tsx): Interactive post-interview scorecard dialog with competency tabs, evidence quotes, and markdown file download.
-* [`src/lib/githubInterviewData.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/githubInterviewData.ts): Supported company profiles, interview styles, starter code templates, and dynamic scenario generator.
-* [`src/lib/resumeParser.ts`](file:///c:/Users/User/Desktop/edustream/src/lib/resumeParser.ts): `pdfjs-dist` file text extraction and AI profile schema structuring.
+---
+
+## ⚡ 8. Tier-1 Engineering Upgrade Implementation Plan (Phases 1–6)
+
+### Phase 1: Test-Case Harness on the Existing Compiler API
+Converts the compiler API from a plain "Run Code" window into a **deterministic test evaluation engine** executing public and hidden test cases:
+* **Automated Language Test Driver Synthesis (`src/lib/testHarness.ts`)**: Injects candidate code into custom language runners (`cpp`, `java`, `python`, `javascript`, `go`), feeds input delimited by `__TEST_CASE_DELIMITER__`, and measures sub-millisecond execution times and memory limits.
+* **Test Assertion Normalizer**: Captures stdout, parses runtime exceptions and TLEs (> 3000ms), and formats a rich markdown block injected directly into the Mistral AI evaluation context.
+
+### Phase 2: Audio Engine & Client-Side Voice Activity Detection (VAD)
+Eliminates premature cut-offs while candidates pause to think:
+* **AudioWorklet & Analyser (`src/lib/audioVAD.ts`)**: Monitors RMS audio energy and zero-crossing rates in real-time. Finalizes candidate turns only after 1,200ms of continuous silence.
+* **Barge-In Interruption**: Cancels active SpeechSynthesis TTS immediately when the candidate begins speaking, freeing audio resources and aborting in-flight LLM requests.
+
+### Phase 3: Deterministic State Machine & 3-Tier Hinting Ladder
+Prevents candidate rushing and enforces authentic interview progression:
+* **5-Stage State Progression (`src/lib/interviewStateMachine.ts`)**:
+  $$\text{CLARIFICATION} \longrightarrow \text{INTUITION} \longrightarrow \text{DRY RUN} \longrightarrow \text{CODING} \longrightarrow \text{OPTIMIZATION}$$
+* **3-Tier Hint Penalty Ladder**:
+  * **Tier 1 (5% deduction)**: Subtle conceptual nudge.
+  * **Tier 2 (15% deduction)**: Algorithmic pattern or data structure pointer.
+  * **Tier 3 (30% deduction)**: Step-by-step resolution / concrete pseudocode.
+
+### Phase 4: Semantic Topology Validation for HLD Canvas
+Transforms raw drag-and-drop canvas drawings into structured graph models:
+* **Tarjan's Articulation Points Algorithm (`src/lib/hldTopologyValidator.ts`)**: Identifies Single Points of Failure (SPOFs) that would disconnect the architecture if dropped.
+* **Synchronous Cycle Detection**: Flags cyclic service calls ($A \rightarrow B \rightarrow A$) vulnerable to distributed deadlocks.
+* **Architectural Rule Engine**: Flags direct Client-to-DB connections, unbuffered high-throughput writes, and un-replicated database singletons.
+
+### Phase 5: Anti-Cheat & Keystroke Biometric Hardening
+Protects interview fidelity through client-side anomaly detection:
+* **Paste Burst / Macro Detection (`src/lib/antiCheatService.ts`)**: Flags insertions $> 120$ characters in $< 40\text{ ms}$ as External Code Injection.
+* **Inter-Key Latency (IKL) Variance**: Analyzes standard deviation of typing rhythm ($\sigma < 5\text{ ms}$ over 25+ strokes indicates a synthetic bot typist).
+* **Proctored Window Monitoring**: Tracks tab blur duration, focus shifts, and fullscreen escape frequency.
+
+### Phase 6: Calibrated Statistical Scorecards & Empirical Percentiles
+Replaces prompt estimation with empirical statistical calibration:
+* **Abramowitz & Stegun Error Function $\text{erf}(x)$**: Calculates exact empirical Z-score percentiles:
+  $$P = \frac{1}{2} \left[1 + \text{erf}\left(\frac{x - \mu}{\sigma \sqrt{2}}\right)\right] \times 100$$
+* **Few-Shot Anchor Rubrics**: Injects calibrated grading anchors (Scores 2, 4, 6, 8, 10) into `src/lib/interviewEvaluator.ts` to prevent grading drift and eliminate score inflation.
+
+---
+
+### 📅 6-Week Execution Roadmap
+
+```
+Week 1: Test Driver & Compiler Harness
+└── Wrap candidate code with automated test drivers (public/hidden test runner).
+└── Parse compiler API execution time and memory limits.
+
+Week 2: Voice Pipeline & Silero VAD
+└── Deploy ONNX WebAssembly VAD for instant silence detection.
+└── Implement barge-in interruption to abort TTS when candidate speaks.
+
+Week 3: State Machine & Hint Deductions
+└── Add interview stage progression (Clarification -> Intuition -> Coding).
+└── Implement the 3-Tier hint deduction system.
+
+Week 4: HLD Topological Validator
+└── Serialize Canvas to Graph (nodes/edges).
+└── Run Tarjan's algorithm for automatic SPOF and deadlock detection.
+
+Week 5: Biometrics & Integrity
+└── Add Monaco burst/paste velocity listener.
+└── Integrate MediaPipe local gaze/head-pose detection worker.
+
+Week 6: Empirical Percentiles & Polish
+└── Deploy Supabase Z-score percentile calculator.
+└── End-to-end load testing and UI polish.
+```
+
