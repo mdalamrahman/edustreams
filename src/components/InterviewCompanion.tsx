@@ -242,6 +242,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const isHandsFreeModeRef = useRef<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const vadRef = useRef<VoiceActivityController | null>(null);
+  const hasPermanentMicErrorRef = useRef<boolean>(false);
+  const recognitionRestartTimeoutRef = useRef<any>(null);
+  const hasEnteredFullscreenRef = useRef<boolean>(false);
 
   // Keep refs synchronized
   useEffect(() => { 
@@ -259,9 +262,14 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   // Handle Fullscreen toggle and listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      const doc = document as any;
+      const isCurrentlyFullscreen = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
       setIsFullscreen(isCurrentlyFullscreen);
-      if (!isCurrentlyFullscreen && isInterviewStarted && !isEvaluating && !scorecard) {
+      if (isCurrentlyFullscreen) {
+        hasEnteredFullscreenRef.current = true;
+        setShowFullscreenWarning(false);
+      } else if (hasEnteredFullscreenRef.current && isInterviewStarted && !isEvaluating && !scorecard) {
+        // Only trigger warning if candidate previously entered fullscreen and then escaped
         antiCheatRef.current.recordFullscreenEscape();
         setShowFullscreenWarning(true);
         pauseInterview('Fullscreen mode was exited — Fullscreen is strictly required during live technical interviews');
@@ -271,7 +279,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
   }, [isInterviewStarted, isEvaluating, scorecard]);
 
   // Tab Inactivity & Page Left Auto-Pause Proctoring
@@ -366,20 +378,40 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   const requestFullscreenMode = async () => {
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
+      if (typeof document !== 'undefined' && 'fullscreenEnabled' in document && !document.fullscreenEnabled) {
+        return;
+      }
+      const doc = document as any;
+      const docEl = document.documentElement as any;
+      if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        }
         setIsFullscreen(true);
+        hasEnteredFullscreenRef.current = true;
         setShowFullscreenWarning(false);
       }
     } catch (err) {
+      // Non-fatal if browser policy blocks fullscreen or on mobile
       console.warn('Fullscreen request notice:', err);
     }
   };
 
   const exitFullscreenMode = async () => {
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
+      const doc = document as any;
+      if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
         setIsFullscreen(false);
       }
     } catch (err) {
@@ -477,7 +509,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   };
 
   const startListening = () => {
-    if (!recognitionRef.current || isAiThinkingRef.current) return;
+    if (!recognitionRef.current || isAiThinkingRef.current || hasPermanentMicErrorRef.current) return;
     try {
       stopInterviewerSpeech();
       setIsAiSpeaking(false);
@@ -493,6 +525,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const stopListening = () => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (recognitionRestartTimeoutRef.current) clearTimeout(recognitionRestartTimeoutRef.current);
     setSilenceCountdown(null);
 
     if (recognitionRef.current && isRecognitionActiveRef.current) {
@@ -507,6 +540,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     if (isListening) {
       stopListening();
     } else {
+      hasPermanentMicErrorRef.current = false;
       startListening();
     }
   };
@@ -567,6 +601,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   // Launch the live interview session from the Pre-Interview Setup screen
   const handleStartLiveInterview = async () => {
+    // 0. Synchronously request fullscreen and unlock audio context IMMEDIATELY upon user click!
+    // This MUST be the very first line before ANY async/await to preserve the browser user activation token.
+    unlockSpeechSynthesis();
+    requestFullscreenMode();
+
     let questionToUse: CuratedInterviewQuestion | null = null;
 
     // Always auto-generate a fresh, unique personalized problem to eliminate repetition
@@ -603,10 +642,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       questionToUse = availableQuestions[0];
     }
 
-    // Unlock browser speech synthesis audio context and request fullscreen directly in this user click gesture
-    unlockSpeechSynthesis();
-    requestFullscreenMode();
-
     // 1. Billing Gatekeeping (₹10 standard rate or live dynamic rate)
     const student = getCurrentStudent();
     const interviewCost = PRICING_CONFIG.AI_MOCK_INTERVIEW || 10.0;
@@ -625,34 +660,42 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
 
     // 2. Pre-flight Mic Verification & Voice Activity Controller (VAD) initialization
-    if (!isMicPermissionGranted) {
-      await requestPreflightMicPermission();
+    let micOk = isMicPermissionGranted;
+    if (!micOk) {
+      micOk = await requestPreflightMicPermission();
     }
-    try {
-      const vad = new VoiceActivityController();
-      vad.init(
-        () => {
-          // Candidate active speech onset detected via mic audio energy:
-          // Immediately cancel any pending silence auto-send countdown so candidate is never cut off
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-            silenceTimerRef.current = null;
+    if (!micOk) {
+      hasPermanentMicErrorRef.current = true;
+      isHandsFreeModeRef.current = false;
+      setIsHandsFreeMode(false);
+    } else {
+      hasPermanentMicErrorRef.current = false;
+      try {
+        const vad = new VoiceActivityController();
+        vad.init(
+          () => {
+            // Candidate active speech onset detected via mic audio energy:
+            // Immediately cancel any pending silence auto-send countdown so candidate is never cut off
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = null;
+            }
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            setSilenceCountdown(null);
+          },
+          undefined,
+          () => {
+            // Explicit candidate interruption
+            stopInterviewerSpeech();
+            setIsAiSpeaking(false);
           }
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-          setSilenceCountdown(null);
-        },
-        undefined,
-        () => {
-          // Explicit candidate interruption
-          stopInterviewerSpeech();
-          setIsAiSpeaking(false);
-        }
-      );
-      vadRef.current = vad;
-    } catch {}
+        );
+        vadRef.current = vad;
+      } catch {}
+    }
 
     // 3. Lock interviewer voice for the entire test session with assigned persona profile
     resetInterviewerVoiceLock();
@@ -842,6 +885,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         };
 
         recognition.onerror = (event: any) => {
+          if (
+            event.error === 'not-allowed' ||
+            event.error === 'service-not-allowed' ||
+            event.error === 'audio-capture' ||
+            event.error === 'language-not-supported'
+          ) {
+            hasPermanentMicErrorRef.current = true;
+            isHandsFreeModeRef.current = false;
+            setIsMicPermissionGranted(false);
+            setIsHandsFreeMode(false);
+            setIsListening(false);
+            console.warn(`Speech recognition stopped (${event.error}). Switched to text-assisted chat mode.`);
+            return;
+          }
           if (event.error !== 'no-speech') {
             console.warn('Speech recognition error:', event.error);
           }
@@ -849,10 +906,29 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
         recognition.onend = () => {
           isRecognitionActiveRef.current = false;
-          if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current && isInterviewStarted) {
-            try {
-              recognition.start();
-            } catch {}
+          if (hasPermanentMicErrorRef.current || !isHandsFreeModeRef.current) {
+            setIsListening(false);
+            return;
+          }
+
+          // Debounce restart by 400ms to strictly prevent tight CPU error loops
+          if (!isAiSpeakingRef.current && !isAiThinkingRef.current && isInterviewStarted) {
+            if (recognitionRestartTimeoutRef.current) {
+              clearTimeout(recognitionRestartTimeoutRef.current);
+            }
+            recognitionRestartTimeoutRef.current = setTimeout(() => {
+              if (
+                isHandsFreeModeRef.current &&
+                !isAiSpeakingRef.current &&
+                !isAiThinkingRef.current &&
+                isInterviewStarted &&
+                !hasPermanentMicErrorRef.current
+              ) {
+                try {
+                  recognition.start();
+                } catch {}
+              }
+            }, 400);
           } else {
             setIsListening(false);
           }
@@ -864,6 +940,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (recognitionRestartTimeoutRef.current) clearTimeout(recognitionRestartTimeoutRef.current);
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
       }
@@ -2177,8 +2254,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             onClick={() => {
               const next = !isHandsFreeMode;
               setIsHandsFreeMode(next);
-              if (!next) stopListening();
-              else if (!isAiSpeaking && !isAiThinking) startListening();
+              isHandsFreeModeRef.current = next;
+              if (!next) {
+                stopListening();
+              } else {
+                hasPermanentMicErrorRef.current = false;
+                if (!isAiSpeaking && !isAiThinking) startListening();
+              }
             }}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               isHandsFreeMode
