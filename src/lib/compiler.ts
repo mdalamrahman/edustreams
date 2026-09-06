@@ -198,11 +198,11 @@ function generateCppParamExtractors(paramList: string[]): { declarations: string
       declarations.push(`vector<double> ${argVar} = parse_vector_double(get_arg_str(raw_input, "${namePart}", ${i}));`);
     } else if (cleanType.includes('vector<bool>')) {
       declarations.push(`vector<bool> ${argVar} = parse_vector_bool(get_arg_str(raw_input, "${namePart}", ${i}));`);
-    } else if (cleanType.includes('TreeNode*') || cleanType.includes('TreeNode *')) {
+    } else if (cleanType.includes('TreeNode') || trimmed.includes('TreeNode')) {
       declarations.push(`TreeNode* ${argVar} = parse_tree_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
-    } else if (cleanType.includes('ListNode*') || cleanType.includes('ListNode *')) {
+    } else if (cleanType.includes('ListNode') || trimmed.includes('ListNode')) {
       declarations.push(`ListNode* ${argVar} = parse_list_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
-    } else if (cleanType.includes('Node*') || cleanType.includes('Node *')) {
+    } else if (cleanType.includes('Node') || trimmed.includes('Node*') || trimmed.includes('Node *')) {
       declarations.push(`Node* ${argVar} = parse_graph_node(get_arg_str(raw_input, "${namePart}", ${i}));`);
     } else if (cleanType.includes('string')) {
       declarations.push(`string ${argVar} = parse_string_arg(get_arg_str(raw_input, "${namePart}", ${i}));`);
@@ -278,7 +278,7 @@ function findBestCppMethod(
     }
 
     if (ch === '{') {
-      if (depth === 0) {
+      if (depth === 0 || depth === 1) {
         // Buffer right before this opening brace contains potential method header
         const header = buffer.trim();
         const methodMatch = header.match(/(?:inline\s+|virtual\s+|static\s+|constexpr\s+)*([a-zA-Z0-9_<>,:\s\*&]+?)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)(?:\s*const)?(?:\s*noexcept)?$/);
@@ -301,11 +301,11 @@ function findBestCppMethod(
       depth++;
     } else if (ch === '}') {
       depth = Math.max(0, depth - 1);
-      if (depth === 0) {
+      if (depth <= 1) {
         buffer = '';
       }
     } else {
-      if (depth === 0) {
+      if (depth <= 1) {
         buffer += ch;
       }
     }
@@ -388,6 +388,68 @@ export function extractParamNamesFromCode(code: string, language: SupportedLangu
 }
 
 /**
+ * Validates whether a pre-stored driver harness from R2 or cache is syntactically sound and safe to execute.
+ * Catches common failure modes:
+ * - stdin reading (cin >>, getline(cin)) which hangs headless Judge0 runners
+ * - Missing struct declarations (TreeNode, ListNode, Node) before user solution insertion point
+ * - Broken AI code generation artifacts / placeholder errors
+ */
+export function isDriverHarnessValid(
+  driverCode: string | null | undefined,
+  language: SupportedLanguage,
+  codeOrStarter?: string
+): boolean {
+  if (!driverCode) return false;
+  const drv = driverCode.trim();
+  if (drv.length < 50) return false;
+
+  // 1. Must contain user solution placeholder
+  if (!drv.includes('// === USER SOLUTION ===') && !drv.includes('# === USER SOLUTION ===')) {
+    return false;
+  }
+
+  // 2. Fatal error / broken driver keywords
+  if (
+    drv.includes('httpsleetcodecom') ||
+    drv.includes('Error: Missing') ||
+    drv.includes('error: missing') ||
+    drv.includes('Cannot find')
+  ) {
+    return false;
+  }
+
+  const normLang = (language || 'cpp').toLowerCase();
+
+  // 3. Headless sandboxes (Judge0) do not supply stdin by default; cin/getline(cin) will hang or fail
+  if (drv.includes('cin >>') || drv.includes('getline(cin') || drv.includes('cin.tie')) {
+    return false;
+  }
+
+  // 4. For C++, verify struct declarations are placed strictly BEFORE the user solution marker
+  if (normLang.includes('cpp') || normLang.includes('c++')) {
+    const userSolPos = drv.indexOf('// === USER SOLUTION ===');
+    const headerSection = userSolPos !== -1 ? drv.substring(0, userSolPos) : drv;
+
+    const checkContext = (codeOrStarter || '') + ' ' + drv;
+    if (checkContext.includes('TreeNode') && !headerSection.includes('struct TreeNode')) {
+      return false;
+    }
+    if (checkContext.includes('ListNode') && !headerSection.includes('struct ListNode')) {
+      return false;
+    }
+    if ((checkContext.includes('Node*') || checkContext.includes('Node *')) && !headerSection.includes('Node')) {
+      return false;
+    }
+
+    if (!drv.includes('main(') && !drv.includes('main (')) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Wraps clean LeetCode Solution class with standard DSA headers, ListNode/TreeNode definitions,
  * and dynamic universal driver execution code matching LeetCode's compiler architecture.
  */
@@ -418,8 +480,10 @@ export function wrapLeetCodeExecutableCode(
     }
   }
 
-  // If a pre-stored Cloudflare R2 / AI driver exists, check for method signature alignment
+  // If a pre-stored Cloudflare R2 / AI driver exists, check for strict validity and method signature alignment
   if (preloadedDriver && (preloadedDriver.includes('// === USER SOLUTION ===') || preloadedDriver.includes('# === USER SOLUTION ==='))) {
+    const isValid = isDriverHarnessValid(preloadedDriver, language, userCode);
+
     // Detect the primary method name in user code
     let userMethodName = '';
     if (language === 'cpp' || (language as any) === 'c++') {
@@ -437,32 +501,42 @@ export function wrapLeetCodeExecutableCode(
 
     // If user defined a method name, verify that the preloaded driver doesn't call an entirely different method
     const isMethodMismatch = Boolean(userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`));
-    const hasFatalMissingCheck = preloadedDriver.includes('Error: Missing') || preloadedDriver.includes('error: missing');
 
-    if (isMethodMismatch || hasFatalMissingCheck) {
-      console.warn(`[SDETube Compiler] Preloaded driver issue (mismatch=${isMethodMismatch}, fatalMissingCheck=${hasFatalMissingCheck}). Falling back to dynamic universal harness.`);
+    if (!isValid || isMethodMismatch) {
+      console.warn(`[SDETube Compiler] Preloaded driver rejected (valid=${isValid}, mismatch=${isMethodMismatch}). Falling back to dynamic universal harness.`);
     } else {
       let replaced = preloadedDriver;
 
       if (replaced.includes('// === USER SOLUTION ===')) {
-        if (replaced.includes('// === END USER SOLUTION ===')) {
-          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?\/\/\s*===\s*END USER SOLUTION\s*===/, `// === USER SOLUTION ===\n${userCode}\n// === END USER SOLUTION ===`);
+        // Double safety: ensure any needed structs are declared before user solution
+        let structInject = '';
+        if (language === 'cpp' || (language as any) === 'c++') {
+          const userSolPos = replaced.indexOf('// === USER SOLUTION ===');
+          const header = userSolPos !== -1 ? replaced.substring(0, userSolPos) : '';
+          if (userCode.includes('TreeNode') && !header.includes('struct TreeNode')) {
+            structInject += `\nstruct TreeNode { int val; TreeNode *left; TreeNode *right; TreeNode() : val(0), left(nullptr), right(nullptr) {} TreeNode(int x) : val(x), left(nullptr), right(nullptr) {} TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {} };\n`;
+          }
+          if (userCode.includes('ListNode') && !header.includes('struct ListNode')) {
+            structInject += `\nstruct ListNode { int val; ListNode *next; ListNode() : val(0), next(nullptr) {} ListNode(int x) : val(x), next(nullptr) {} ListNode(int x, ListNode *next) : val(x), next(next) {} };\n`;
+          }
+        }
+
+        const endMarkerRegex = /(?:\/\/|\/\*)\s*===\s*END USER SOLUTION\s*===(?:\*\/)?/;
+        if (endMarkerRegex.test(replaced)) {
+          replaced = replaced.replace(new RegExp(`//\\s*===\\s*USER SOLUTION\\s*===[\\s\\S]*?${endMarkerRegex.source}`), `// === USER SOLUTION ===\n${structInject}${userCode}\n// === END USER SOLUTION ===`);
         } else if (replaced.includes('// === HIDDEN DRIVER ===')) {
-          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
-        } else if (replaced.includes('int main(') || replaced.includes('int main (')) {
-          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=int main)/, `// === USER SOLUTION ===\n${userCode}\n\n`);
+          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${structInject}${userCode}\n\n`);
         } else {
-          replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userCode}`);
+          // Non-destructive replacement: replace only the comment itself, NEVER wipe out following helpers or structs!
+          replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${structInject}${userCode}\n`);
         }
       } else if (replaced.includes('# === USER SOLUTION ===')) {
         if (replaced.includes('# === END USER SOLUTION ===')) {
           replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userCode}\n# === END USER SOLUTION ===`);
         } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
           replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
-        } else if (replaced.includes("if __name__ ==")) {
-          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=if __name__ ==)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
         } else {
-          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}`);
+          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}\n`);
         }
       }
 
@@ -728,8 +802,8 @@ inline vector<string> split_top_level_args(const string& s) {
             } else if (c == '}') {
                 brace_depth = max(0, brace_depth - 1);
                 cur += c;
-            } else if (c == ',' && bracket_depth == 0 && brace_depth == 0) {
-                if (!cur.empty()) {
+            } else if ((c == ',' || c == '\n') && bracket_depth == 0 && brace_depth == 0) {
+                if (cur.find_first_not_of(" \t\r\n") != string::npos) {
                     args.push_back(cur);
                     cur.clear();
                 }
@@ -738,7 +812,7 @@ inline vector<string> split_top_level_args(const string& s) {
             }
         }
     }
-    if (!cur.empty()) {
+    if (cur.find_first_not_of(" \t\r\n") != string::npos) {
         args.push_back(cur);
     }
     return args;
@@ -746,14 +820,20 @@ inline vector<string> split_top_level_args(const string& s) {
 
 inline string get_arg_str(const string& raw, const string& param_name, size_t index) {
     if (!param_name.empty()) {
-        size_t pos = raw.find(param_name);
-        if (pos != string::npos) {
-            size_t eq = raw.find('=', pos);
-            if (eq != string::npos) {
-                string after = raw.substr(eq + 1);
-                auto parts = split_top_level_args(after);
-                if (!parts.empty()) return parts[0];
+        size_t pos = 0;
+        while ((pos = raw.find(param_name, pos)) != string::npos) {
+            bool bound_before = (pos == 0 || (!isalnum(raw[pos - 1]) && raw[pos - 1] != '_'));
+            size_t after_pos = pos + param_name.size();
+            bool bound_after = (after_pos >= raw.size() || (!isalnum(raw[after_pos]) && raw[after_pos] != '_'));
+            if (bound_before && bound_after) {
+                size_t eq = raw.find('=', pos);
+                if (eq != string::npos) {
+                    string after = raw.substr(eq + 1);
+                    auto parts = split_top_level_args(after);
+                    if (!parts.empty()) return parts[0];
+                }
             }
+            pos++;
         }
     }
     auto top_args = split_top_level_args(raw);
@@ -901,8 +981,8 @@ inline TreeNode* parse_tree_node(string s) {
     string token;
     vector<string> tokens;
     while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
+        token.erase(0, token.find_first_not_of(" \t\r\n\"'"));
+        token.erase(token.find_last_not_of(" \t\r\n\"'") + 1);
         if (!token.empty()) tokens.push_back(token);
     }
     if (tokens.empty() || tokens[0] == "null") return nullptr;
@@ -941,8 +1021,8 @@ inline ListNode* parse_list_node(string s) {
     ListNode dummy(0);
     ListNode* tail = &dummy;
     while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \\t\\r\\n"));
-        token.erase(token.find_last_not_of(" \\t\\r\\n") + 1);
+        token.erase(0, token.find_first_not_of(" \t\r\n\"'"));
+        token.erase(token.find_last_not_of(" \t\r\n\"'") + 1);
         if (!token.empty()) {
             try {
                 tail->next = new ListNode(stoi(token));
@@ -1139,24 +1219,102 @@ if __name__ == '__main__':
         if not target_method_name and user_methods:
             target_method_name = user_methods[0]
 
+        def build_tree(vals):
+            if not vals:
+                return None
+            if isinstance(vals, str):
+                try: vals = json.loads(vals)
+                except Exception: return None
+            if not isinstance(vals, list) or not vals or vals[0] is None:
+                return None
+            root = TreeNode(vals[0])
+            q = collections.deque([root])
+            i = 1
+            while q and i < len(vals):
+                curr = q.popleft()
+                if i < len(vals):
+                    if vals[i] is not None:
+                        curr.left = TreeNode(vals[i])
+                        q.append(curr.left)
+                    i += 1
+                if i < len(vals):
+                    if vals[i] is not None:
+                        curr.right = TreeNode(vals[i])
+                        q.append(curr.right)
+                    i += 1
+            return root
+
+        def serialize_tree(root):
+            if not root:
+                return []
+            res = []
+            q = collections.deque([root])
+            while q:
+                node = q.popleft()
+                if node:
+                    res.append(node.val)
+                    q.append(node.left)
+                    q.append(node.right)
+                else:
+                    res.append(None)
+            while res and res[-1] is None:
+                res.pop()
+            return res
+
+        def build_list(vals):
+            if not vals or not isinstance(vals, list):
+                return None
+            dummy = ListNode(0)
+            cur = dummy
+            for v in vals:
+                cur.next = ListNode(v)
+                cur = cur.next
+            return dummy.next
+
+        def serialize_list(head):
+            res = []
+            cur = head
+            while cur:
+                res.append(cur.val)
+                cur = cur.next
+            return res
+
+        def serialize_val(val):
+            if isinstance(val, TreeNode):
+                return serialize_tree(val)
+            if isinstance(val, ListNode):
+                return serialize_list(val)
+            return val
+
         if target_method_name and hasattr(sol, target_method_name):
             target_method = getattr(sol, target_method_name)
-            res = target_method(*parsed_args)
-            if res is not None:
-                print(json.dumps(res, separators=(',', ':')))
-            else:
-                print(json.dumps(parsed_args[0] if parsed_args else "Success", separators=(',', ':')))
         else:
             methods = [m for m in dir(sol) if not m.startswith('_') and callable(getattr(sol, m))]
-            if methods:
-                target_method = getattr(sol, methods[0])
-                res = target_method(*parsed_args)
-                if res is not None:
-                    print(json.dumps(res, separators=(',', ':')))
-                else:
-                    print(json.dumps(parsed_args[0] if parsed_args else "Success", separators=(',', ':')))
+            target_method = getattr(sol, methods[0]) if methods else None
+
+        if target_method:
+            import inspect
+            try:
+                sig = inspect.signature(target_method)
+                pnames = list(sig.parameters.keys())
+                for idx, pname in enumerate(pnames):
+                    if idx < len(parsed_args) and isinstance(parsed_args[idx], list):
+                        plow = pname.lower()
+                        if 'root' in plow or 'tree' in plow:
+                            parsed_args[idx] = build_tree(parsed_args[idx])
+                        elif 'head' in plow or 'list' in plow:
+                            parsed_args[idx] = build_list(parsed_args[idx])
+            except Exception:
+                pass
+
+            res = target_method(*parsed_args)
+            if res is not None:
+                print(json.dumps(serialize_val(res), separators=(',', ':')))
             else:
-                print("Python Solution verified successfully.")
+                out_val = parsed_args[0] if parsed_args else "Success"
+                print(json.dumps(serialize_val(out_val), separators=(',', ':')))
+        else:
+            print("Python Solution verified successfully.")
     except Exception as e:
         sys.stderr.write(f"Runtime Error: {e}\\n")
         sys.exit(1)
@@ -1246,6 +1404,27 @@ try {
 
     return `import java.util.*;
 import java.io.*;
+
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode() {}
+    ListNode(int val) { this.val = val; }
+    ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
 
 // === USER SOLUTION ===
 ${userCode}

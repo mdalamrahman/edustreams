@@ -2328,17 +2328,18 @@ Sample expected output:
 
 Driver Requirements:
 1. Include all necessary standard library headers.
-2. Define standard structs if needed (TreeNode, ListNode, Node).
-3. Implement type-safe argument parsing for named parameters (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'grid = [["1","0"],["0","1"]]' or 'g = [1,2,3], s = [1,1]').
+2. CRITICAL STRUCT ORDER: If the problem uses TreeNode, ListNode, or Node, you MUST define struct TreeNode, struct ListNode, or class Node AT THE VERY TOP OF THE CODE, STRICTLY BEFORE '// === USER SOLUTION ==='! The user solution cannot compile if structs are defined after '// === USER SOLUTION ==='.
+3. CRITICAL INPUT HANDLING: DO NOT read from 'cin' or use 'getline(cin'. The testcase string must be defined directly in main() as string raw_input = R"RAW({sample_tc})RAW";. Reading from cin will cause a runtime failure.
+4. Implement type-safe argument parsing for named parameters (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'grid = [["1","0"],["0","1"]]' or 'root = [4,2,7,1,3], val = 2').
    - When splitting parameters on commas, track bracket depth '[' ']' and brace depth '{{' '}}' so you never split inside matrices/nested arrays.
    - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string as the value for that parameter!
-4. Place ONLY the single placeholder comment line:
+5. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
-5. In main entry (below '// === HIDDEN DRIVER ==='):
+6. In main entry (below '// === HIDDEN DRIVER ==='):
    - Read raw input string: string raw_input = R"RAW({sample_tc})RAW"; (or equivalent).
    - Parse arguments, instantiate Solution, invoke method.
    - For void in-place mutating methods (e.g. rotate, setZeroes), print the mutated first argument to stdout in clean JSON format.
-   - For value-returning methods, print return value in clean JSON format.
+   - For value-returning methods, print return value in clean JSON format (including tree level-order like [2,1,3]).
 
 Return ONLY a valid JSON object matching:
 {{

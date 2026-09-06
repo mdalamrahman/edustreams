@@ -1,4 +1,4 @@
-import { SupportedLanguage } from './compiler';
+import { SupportedLanguage, isDriverHarnessValid } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade } from './mistral';
 
@@ -1011,8 +1011,8 @@ export async function fetchOrGenerateDriverCode(
   // 1. Check local browser storage cache
   try {
     const cached = localStorage.getItem(localKey);
-    if (cached && (cached.includes('// === USER SOLUTION ===') || cached.includes('# === USER SOLUTION ==='))) {
-      if (!cached.includes('httpsleetcodecom') && !cached.includes('Error: Missing') && !cached.includes('error: missing')) {
+    if (cached) {
+      if (isDriverHarnessValid(cached, lang, starterCode)) {
         return cached;
       } else {
         localStorage.removeItem(localKey);
@@ -1026,13 +1026,11 @@ export async function fetchOrGenerateDriverCode(
     const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (resp.ok) {
       const data = await resp.json();
-      if (data?.driverCode && (data.driverCode.includes('// === USER SOLUTION ===') || data.driverCode.includes('# === USER SOLUTION ==='))) {
-        if (!data.driverCode.includes('httpsleetcodecom') && !data.driverCode.includes('Error: Missing') && !data.driverCode.includes('error: missing')) {
-          try {
-            localStorage.setItem(localKey, data.driverCode);
-          } catch (_) {}
-          return data.driverCode;
-        }
+      if (data?.driverCode && isDriverHarnessValid(data.driverCode, lang, starterCode)) {
+        try {
+          localStorage.setItem(localKey, data.driverCode);
+        } catch (_) {}
+        return data.driverCode;
       }
     }
   } catch (_) {}
@@ -1041,19 +1039,17 @@ export async function fetchOrGenerateDriverCode(
   if (starterCode) {
     try {
       const aiDriver = await requestAIDriverGeneration(slugOrTitle, lang, starterCode, sampleTestInput || '', slug);
-      if (aiDriver && (aiDriver.includes('// === USER SOLUTION ===') || aiDriver.includes('# === USER SOLUTION ==='))) {
-        if (!aiDriver.includes('httpsleetcodecom')) {
-          try {
-            localStorage.setItem(localKey, aiDriver);
-            // Persist to Cloudflare R2 in the background
-            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ driverCode: aiDriver })
-            }).catch(() => {});
-          } catch (_) {}
-          return aiDriver;
-        }
+      if (aiDriver && isDriverHarnessValid(aiDriver, lang, starterCode)) {
+        try {
+          localStorage.setItem(localKey, aiDriver);
+          // Persist to Cloudflare R2 in the background
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverCode: aiDriver })
+          }).catch(() => {});
+        } catch (_) {}
+        return aiDriver;
       }
     } catch (err) {
       console.warn(`[Client Driver Gen notice for '${slug}' ${lang}]:`, err);

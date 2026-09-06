@@ -889,21 +889,22 @@ ${sampleTestInput || ''}
 \`\`\`
 
 1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> for C++).
-2. Define standard structs if needed (TreeNode, ListNode, Node).
-3. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.
+2. CRITICAL STRUCT ORDER: If the problem uses TreeNode, ListNode, or Node, you MUST define struct TreeNode, struct ListNode, or class Node AT THE VERY TOP OF THE FILE, STRICTLY BEFORE '// === USER SOLUTION ==='! The user's solution cannot compile if structs are defined after '// === USER SOLUTION ==='.
+3. CRITICAL INPUT HANDLING: DO NOT read from 'cin' or use 'getline(cin'. The testcase is passed directly in main() via string raw_input = R"RAW(${sampleTestInput || ''})RAW";. Reading from cin will cause a runtime failure.
+4. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.
    - CRITICAL: When splitting named arguments at commas, track bracket depth '[' ']' and brace depth '{' '}' so you NEVER split on commas inside nested arrays or matrices.
    - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string directly as the value for that parameter!
-4. Place ONLY the single placeholder comment line:
+5. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
 DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
-5. In the main entry point (below '// === HIDDEN DRIVER ==='):
+6. In the main entry point (below '// === HIDDEN DRIVER ==='):
    - Read the raw input string variable: string raw_input = R"RAW(${sampleTestInput || ''})RAW"; (or equivalent in other languages).
    - Parse each argument matching the exact parameter types and names of the method.
    - Instantiate Solution sol;
    - Call sol.<methodName>(...) with the parsed arguments.
-   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]) to stdout.
+   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]], tree level-order [2,1,3]) to stdout.
    - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
-6. Handle runtime exceptions gracefully.
+7. Handle runtime exceptions gracefully.
 
 Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// === HIDDEN DRIVER ===', without markdown code block fences.`;
 
