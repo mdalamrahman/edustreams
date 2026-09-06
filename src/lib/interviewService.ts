@@ -280,6 +280,78 @@ let pendingChunkCount = 0;
 
 export type IndianVoiceProfile = 'hi_female' | 'hi_male';
 
+export interface PanelInterviewer {
+  id: string;
+  name: string;
+  title: string;
+  avatar: string;
+  voiceProfile: IndianVoiceProfile;
+  personaSummary: string;
+  sampleGreeting: string;
+}
+
+export const FAANG_INTERVIEWER_PANEL: PanelInterviewer[] = [
+  {
+    id: 'aditi-sharma',
+    name: 'Aditi Sharma',
+    title: 'Staff Software Engineer & Lead Bar Raiser',
+    avatar: '👩‍💼',
+    voiceProfile: 'hi_female',
+    personaSummary: 'Staff Distributed Systems Architect • Focus: Invariants, Rigorous Edge Cases & Concurrency',
+    sampleGreeting: '[thoughtfully] Hello, I am Aditi Sharma, Staff Software Engineer and Lead Bar Raiser. Let us work through your algorithmic and architectural trade-offs today.'
+  },
+  {
+    id: 'aarav-patel',
+    name: 'Aarav Patel',
+    title: 'Principal Systems Architect & Lead Bar Raiser',
+    avatar: '👨‍💼',
+    voiceProfile: 'hi_male',
+    personaSummary: 'Principal Systems Engineer • Focus: Asymptotic Bounds, Memory Locality & Scalability',
+    sampleGreeting: '[calmly] Hi there, I am Aarav Patel, Principal Systems Architect. Let us examine your algorithmic invariants, state transitions, and asymptotic bounds.'
+  },
+  {
+    id: 'pooja-iyer',
+    name: 'Pooja Iyer',
+    title: 'Senior Staff Engineer & Platform Bar Raiser',
+    avatar: '👩‍💻',
+    voiceProfile: 'hi_female',
+    personaSummary: 'Senior Staff Infrastructure Lead • Focus: Fault Tolerance, Clean OOP & High Throughput',
+    sampleGreeting: '[thoughtfully] Hello! I am Pooja Iyer, Senior Staff Engineer. I am looking forward to seeing how you reason through edge cases and system bottlenecks.'
+  },
+  {
+    id: 'rohan-mehta',
+    name: 'Rohan Mehta',
+    title: 'Engineering Director & Lead Bar Raiser',
+    avatar: '👨‍💻',
+    voiceProfile: 'hi_male',
+    personaSummary: 'Engineering Director & Hiring Committee Lead • Focus: Pragmatic Scalability & Operational Rigor',
+    sampleGreeting: '[encouragingly] Welcome! I am Rohan Mehta, Engineering Director and Bar Raiser. Let us dive right into the technical problem and explore your approach step by step.'
+  },
+  {
+    id: 'sneha-kulkarni',
+    name: 'Sneha Kulkarni',
+    title: 'Principal Architect & Distributed Systems Lead',
+    avatar: '👩‍💼',
+    voiceProfile: 'hi_female',
+    personaSummary: 'Principal Cloud Systems Architect • Focus: Data Partitioning, CAP Trade-offs & SPOF Resilience',
+    sampleGreeting: '[calmly] Good day! I am Sneha Kulkarni, Principal Architect. Today we will evaluate both algorithmic correctness and architectural trade-offs together.'
+  },
+  {
+    id: 'vikram-sengupta',
+    name: 'Vikram Sengupta',
+    title: 'Distinguished Engineer & Technical Bar Raiser',
+    avatar: '👨‍💼',
+    voiceProfile: 'hi_male',
+    personaSummary: 'Distinguished Core Infrastructure Architect • Focus: Race Conditions, Zero Allocations & Algorithmic Optimizations',
+    sampleGreeting: '[thoughtfully] Hello! I am Vikram Sengupta, Distinguished Engineer. We will work through a practical engineering challenge together today.'
+  }
+];
+
+export function getRandomPanelInterviewer(): PanelInterviewer {
+  const idx = Math.floor(Math.random() * FAANG_INTERVIEWER_PANEL.length);
+  return FAANG_INTERVIEWER_PANEL[idx];
+}
+
 interface KokoroAudioResponse {
   data: Array<{
     name?: string;

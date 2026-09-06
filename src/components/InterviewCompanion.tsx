@@ -75,7 +75,10 @@ import {
   getOrLockInterviewerVoice,
   resetInterviewerVoiceLock,
   unlockSpeechSynthesis,
-  cleanSpokenCandidateName
+  cleanSpokenCandidateName,
+  PanelInterviewer,
+  FAANG_INTERVIEWER_PANEL,
+  getRandomPanelInterviewer
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { 
@@ -152,7 +155,23 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [selectedRound, setSelectedRound] = useState<InterviewRound>('DSA');
   const [selectedTestStyle, setSelectedTestStyle] = useState<TestStyle>('faang_bar_raiser');
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
-  const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<IndianVoiceProfile>('hi_female');
+  const [assignedInterviewer, setAssignedInterviewer] = useState<PanelInterviewer>(() => getRandomPanelInterviewer());
+  const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<IndianVoiceProfile>(() => assignedInterviewer.voiceProfile);
+
+  const handleShuffleInterviewer = () => {
+    setAssignedInterviewer(prev => {
+      const pool = FAANG_INTERVIEWER_PANEL.filter(p => p.id !== prev.id);
+      const next = pool[Math.floor(Math.random() * pool.length)];
+      setSelectedVoiceProfile(next.voiceProfile);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (assignedInterviewer?.voiceProfile) {
+      setSelectedVoiceProfile(assignedInterviewer.voiceProfile);
+    }
+  }, [assignedInterviewer]);
 
   // Active Problem & Custom AI Generation State
   const [availableQuestions, setAvailableQuestions] = useState<CuratedInterviewQuestion[]>([]);
@@ -669,12 +688,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     const candidateGreetingName = cleanSpokenCandidateName(candidateName);
     const activeRound = interviewMode === 'full_loop' ? companySchedule[0] : null;
-    const interviewerName = 'Aditi Sharma';
-    const interviewerTitle = 'Staff Software Engineer & Lead Bar Raiser';
+    const interviewerName = assignedInterviewer.name;
+    const interviewerTitle = assignedInterviewer.title;
 
     const initialGreeting = interviewMode === 'full_loop' && activeRound
       ? `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. Welcome to your ${currentCompany.name} Full Virtual Onsite Loop. We are commencing with ${activeRound.title}. Focus area: ${activeRound.focusDescription}.\n\nHere is your technical scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nWhenever you are ready, please walk me through your clarifying questions and architectural or algorithmic approach.`
-      : `Hello ${candidateGreetingName}! I'm ${interviewerName}, Staff Software Engineer & Lead Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
+      : `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. We will be conducting your ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -909,7 +928,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       candidateCode: editorCode,
       language: language,
       whiteboardNotes: whiteboardNotes,
-      interviewerPersonaName: selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'
+      interviewerPersonaName: assignedInterviewer.name
     };
 
     const aiReply = await sendInterviewerMessage(nextMessages, ctx);
@@ -1806,8 +1825,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <span className="text-slate-200 font-bold text-xs">Assigned Lead Interviewer:</span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                        Auto-Assigned Panel
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                        <Check className="w-2.5 h-2.5" />
+                        <span>Panel Auto-Assigned</span>
                       </span>
                     </div>
                     <span className="text-[10px] text-emerald-400 font-mono">Fish Audio S2.1 Pro Free</span>
@@ -1815,34 +1835,49 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
                   <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/50 shadow-md shadow-emerald-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/30 border border-emerald-500/40 flex items-center justify-center text-xl flex-shrink-0">
-                        👩‍💼
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/30 border border-emerald-500/40 flex items-center justify-center text-2xl flex-shrink-0">
+                        {assignedInterviewer.avatar}
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-white">Aditi Sharma</span>
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50 font-mono text-[9px]">
-                            Lead Bar Raiser
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-white">{assignedInterviewer.name}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50 font-mono text-[9px] font-bold">
+                            {assignedInterviewer.title}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-300">Staff Software Engineer • {currentCompany.name}</div>
+                        <div className="text-[11px] text-slate-300 mt-0.5 font-medium">
+                          {currentCompany.name} Hiring Committee • {assignedInterviewer.personaSummary}
+                        </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
-                          Realistic FAANG Protocol: Interviewers are assigned automatically by the recruitment panel.
+                          Voice: {assignedInterviewer.voiceProfile === 'hi_female' ? 'Indian English Female' : 'Indian English Male'} (Sub-90ms latency)
                         </div>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        unlockSpeechSynthesis();
-                        streamInterviewerSpeech("[thoughtfully] Hello, I am Aditi Sharma, Staff Software Engineer and Lead Bar Raiser. Let us work through your algorithmic and architectural trade-offs today.", "hi_female");
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-emerald-700/60 flex-shrink-0"
-                    >
-                      <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>🔊 Test Interviewer Audio</span>
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          unlockSpeechSynthesis();
+                          streamInterviewerSpeech(assignedInterviewer.sampleGreeting, assignedInterviewer.voiceProfile);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-emerald-700/60"
+                        title="Test spoken audio sample of the assigned interviewer"
+                      >
+                        <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>🔊 Test Audio</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleShuffleInterviewer}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-slate-700"
+                        title="Re-assign another senior bar raiser from the hiring committee pool"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+                        <span>🎲 Re-Assign</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2188,10 +2223,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           {/* Assigned AI Interviewer Badge (Realistic Panel Protocol) */}
           <div 
             className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-mono text-emerald-300"
-            title={`Assigned Lead Interviewer: Aditi Sharma, Staff Software Engineer & Lead Bar Raiser (${currentCompany.name})`}
+            title={`Assigned Lead Interviewer: ${assignedInterviewer.name}, ${assignedInterviewer.title} (${currentCompany.name})`}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>👩‍💼 Aditi Sharma ({currentCompany.name})</span>
+            <span>{assignedInterviewer.avatar} {assignedInterviewer.name} ({currentCompany.name})</span>
           </div>
 
           {/* Pause / Resume Interview Proctor Button */}
