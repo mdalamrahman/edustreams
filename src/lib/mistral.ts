@@ -61,7 +61,12 @@ export async function executeAIChatCascade(
 
   // 1. PRIMARY: Groq Ultra-Fast API (Qwen 3.8 / GPT OSS 120B / Compound)
   const groqModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
+  let groqRateLimitedCount = 0;
   for (const model of groqModels) {
+    if (groqRateLimitedCount >= 2) {
+      console.warn('[Groq AI Cascade] Multiple models rate limited (429). Fast failover to Mistral / secondary cascade.');
+      break;
+    }
     try {
       const bodyPayload: any = {
         model,
@@ -90,20 +95,28 @@ export async function executeAIChatCascade(
           const cleanContent = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
           return cleanContent || rawContent.trim();
         }
+      } else if (res.status === 429) {
+        groqRateLimitedCount++;
+        console.warn(`[Groq Model '${model}'] Rate limited (429).`);
       }
     } catch (e) {
       console.warn(`[Groq Model '${model}' notice]:`, e);
     }
   }
 
-  // 2. SECONDARY: Mistral AI (mistral-small, codestral)
+  // 2. SECONDARY: Mistral AI (mistral-small, open-mistral-nemo, mistral-large)
   if (MISTRAL_API_KEY) {
-    const mistralModels = ['mistral-small-latest', 'codestral-latest', 'mistral-large-latest'];
+    const mistralModels = ['mistral-small-latest', 'open-mistral-nemo', 'mistral-large-latest'];
+    // For Mistral JSON mode, API strictly mandates that 'json' must appear in messages
+    const mistralMessages = options?.responseFormatJson && !messages.some(m => /json/i.test(m.content))
+      ? [...messages, { role: 'system', content: 'Respond with a valid JSON object matching the requested schema.' }]
+      : messages;
+
     for (const model of mistralModels) {
       try {
         const bodyPayload: any = {
           model,
-          messages,
+          messages: mistralMessages,
           temperature: temp,
         };
         if (options?.responseFormatJson) {
@@ -125,6 +138,28 @@ export async function executeAIChatCascade(
           const content = data.choices?.[0]?.message?.content;
           if (content && typeof content === 'string' && content.trim().length > 0) {
             return content.trim();
+          }
+        } else if (res.status === 400 && options?.responseFormatJson) {
+          // Fallback retry without strict response_format parameter if schema validation rejected it
+          const retryRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${MISTRAL_API_KEY}`
+            },
+            body: JSON.stringify({
+              model,
+              messages: mistralMessages,
+              temperature: temp,
+            }),
+            signal: AbortSignal.timeout(timeoutMs)
+          });
+          if (retryRes.ok) {
+            const data = await retryRes.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (content && typeof content === 'string' && content.trim().length > 0) {
+              return content.trim();
+            }
           }
         }
       } catch (e) {

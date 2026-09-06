@@ -234,6 +234,13 @@ export function unlockSpeechSynthesis(): void {
   }
 }
 
+let isFishAudioQuotaExhausted = false;
+try {
+  if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fish_audio_quota_exhausted') === 'true') {
+    isFishAudioQuotaExhausted = true;
+  }
+} catch {}
+
 export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi_female'): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
 
@@ -246,20 +253,41 @@ export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi
     // 1. Check for Indian English Male
     let maleVoice = voices.find(v => 
       (v.lang === 'en-IN' || v.lang === 'hi-IN') && 
-      (v.name.toLowerCase().includes('ravi') || v.name.toLowerCase().includes('prabhat') || v.name.toLowerCase().includes('male'))
+      (v.name.toLowerCase().includes('ravi') || v.name.toLowerCase().includes('prabhat') || (v.name.toLowerCase().includes('male') && !v.name.toLowerCase().includes('female')))
     );
 
-    // 2. Check for Natural Male English voices
+    // 2. Check for Natural Male English voices across OS / browser engines
     if (!maleVoice) {
       maleVoice = voices.find(v => 
         v.lang.startsWith('en') && 
-        (v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('guy') || v.name.toLowerCase().includes('mark') || v.name.toLowerCase().includes('daniel') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('james') || v.name.toLowerCase().includes('male'))
+        (v.name.toLowerCase().includes('david') || 
+         v.name.toLowerCase().includes('guy') || 
+         v.name.toLowerCase().includes('mark') || 
+         v.name.toLowerCase().includes('daniel') || 
+         v.name.toLowerCase().includes('george') || 
+         v.name.toLowerCase().includes('james') || 
+         v.name.toLowerCase().includes('richard') || 
+         v.name.toLowerCase().includes('tom') || 
+         v.name.toLowerCase().includes('alex') || 
+         v.name.toLowerCase().includes('fred') || 
+         (v.name.toLowerCase().includes('male') && !v.name.toLowerCase().includes('female')))
       );
     }
 
     // 3. Fallback to any non-female English voice
     if (!maleVoice) {
-      maleVoice = voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('zira') && !v.name.toLowerCase().includes('samantha') && !v.name.toLowerCase().includes('heera') && !v.name.toLowerCase().includes('female'));
+      maleVoice = voices.find(v => 
+        v.lang.startsWith('en') && 
+        !v.name.toLowerCase().includes('zira') && 
+        !v.name.toLowerCase().includes('samantha') && 
+        !v.name.toLowerCase().includes('heera') && 
+        !v.name.toLowerCase().includes('kavya') && 
+        !v.name.toLowerCase().includes('aditi') && 
+        !v.name.toLowerCase().includes('priya') && 
+        !v.name.toLowerCase().includes('victoria') && 
+        !v.name.toLowerCase().includes('karen') && 
+        !v.name.toLowerCase().includes('female')
+      );
     }
 
     lockedMaleVoice = maleVoice || voices[0];
@@ -277,7 +305,11 @@ export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi
     if (!femaleVoice) {
       femaleVoice = voices.find(v => 
         v.lang.startsWith('en') && 
-        (v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha') || v.name.toLowerCase().includes('victoria') || v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('karen'))
+        (v.name.toLowerCase().includes('zira') || 
+         v.name.toLowerCase().includes('samantha') || 
+         v.name.toLowerCase().includes('victoria') || 
+         v.name.toLowerCase().includes('karen') || 
+         v.name.toLowerCase().includes('female'))
       );
     }
 
@@ -489,7 +521,19 @@ export async function generateAndBufferChunk(
     });
 
     if (!response.ok) {
-      console.warn(`[Fish Audio] Edge proxy status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
+      if (response.status === 402) {
+        if (!isFishAudioQuotaExhausted) {
+          console.warn('[Fish Audio] API credit balance is zero (HTTP 402 Payment Required). Automatically routing all interview speech to high-performance local speech engine.');
+        }
+        isFishAudioQuotaExhausted = true;
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('fish_audio_quota_exhausted', 'true');
+          }
+        } catch {}
+      } else {
+        console.warn(`[Fish Audio] Edge proxy status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
+      }
       return false;
     }
 
@@ -630,7 +674,7 @@ export async function streamInterviewerSpeech(
 
   const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
 
-  if (apiKey) {
+  if (apiKey && !isFishAudioQuotaExhausted) {
     pendingChunkCount = sentences.length;
 
     // Fire sentence 1 instantly to hit sub-90ms startup boundaries

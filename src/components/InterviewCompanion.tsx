@@ -331,16 +331,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     }
   }, [isInterviewStarted]);
 
-  // Pre-warm authenticated Kokoro Space instance to eliminate serverless cold start lag
-  useEffect(() => {
-    if (!isInterviewStarted) {
-      const timer = setTimeout(() => {
-        console.log('[Kokoro-TTS] Pre-warming authenticated Space instance to eliminate serverless cold start lag...');
-        speakInterviewerResponse('...', selectedVoiceProfile, () => {}).catch(() => {});
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isInterviewStarted, selectedVoiceProfile]);
 
   // Load Past Interview History
   const loadPastHistory = async () => {
