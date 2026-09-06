@@ -34,11 +34,56 @@ export interface InterviewContext {
 }
 
 /**
+ * Sanitizes candidate handles, emails, and usernames into a natural, spoken first name
+ * Examples: 'mdalamrahman' -> 'Rahman', 'mdalamrahman4@gmail.com' -> 'Rahman', 'john.doe' -> 'John'
+ */
+export function cleanSpokenCandidateName(rawName?: string): string {
+  if (!rawName || !rawName.trim()) return 'Candidate';
+  let clean = rawName.trim();
+
+  // Strip email domain if present
+  if (clean.includes('@')) {
+    clean = clean.split('@')[0];
+  }
+
+  // Strip trailing numbers, symbols, underscores, dots, dashes
+  clean = clean.replace(/[_.\-+0-9]+/g, ' ').trim();
+  if (!clean) return 'Candidate';
+
+  const tokens = clean.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 'Candidate';
+
+  // Handle concatenated South Asian handles like 'mdalamrahman'
+  const lower = tokens[0].toLowerCase();
+  if (tokens.length === 1 && lower.startsWith('md') && lower.length > 5) {
+    if (lower.endsWith('rahman')) {
+      return 'Rahman';
+    }
+    if (lower.includes('alam')) {
+      return 'Alam';
+    }
+    const remainder = lower.slice(2);
+    return remainder.charAt(0).toUpperCase() + remainder.slice(1);
+  }
+
+  // If handle starts with 'md' or 'mohd' prefix followed by other tokens
+  if ((lower === 'md' || lower === 'mohd' || lower === 'dr' || lower === 'mr') && tokens.length > 1) {
+    const next = tokens[1];
+    return next.charAt(0).toUpperCase() + next.slice(1).toLowerCase();
+  }
+
+  // Standard case: capitalize first name token
+  const first = tokens[0];
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+/**
  * Builds a structured, high-fidelity Principal Interviewer System Prompt.
  */
 export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
   const { company, level, round, testStyle, question, candidate, interviewerPersonaName } = ctx;
   const interviewerName = interviewerPersonaName || 'Aditi Sharma';
+  const spokenCandidateName = cleanSpokenCandidateName(candidate?.name);
 
   const levelExpectations: Record<SdeLevel, string> = {
     'SDE-1': 'Expect solid algorithmic fundamentals, standard library mastery, clean syntax, basic edge cases, and time/space complexity awareness. Guide with warm, clear hints if stuck.',
@@ -79,12 +124,11 @@ export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
 
   return `You are ${interviewerName}, a Principal Engineering Interviewer and Lead Bar Raiser at ${company} conducting a live technical mock interview.
 Your name and identity is strictly ${interviewerName}. You are a seasoned, articulate technical leader.
-Role Level: ${level}
-Round Type: ${round}
+Round Track: ${round}
 Interview Style: ${testStyle || 'faang_bar_raiser'} (${styleDirectives[testStyle || 'faang_bar_raiser']})
 
 ${candidate ? `CANDIDATE BACKGROUND & RESUME CONTEXT:
-- Candidate Name: ${candidate.name || 'Candidate'}
+- Spoken Name: ${spokenCandidateName}
 - Experience Level: ${candidate.experienceYears ? `${candidate.experienceYears} Years` : 'Not specified'}
 - Current / Previous Role: ${candidate.currentRole || 'Software Engineer'}
 - Core Tech Stack: ${candidate.techStack && candidate.techStack.length > 0 ? candidate.techStack.join(', ') : 'C++, Python, Java'}
@@ -93,7 +137,7 @@ ${candidate.customGoals ? `- Candidate Focus / Goals: ${candidate.customGoals}` 
 ${candidate.resumeText ? `- Extracted Resume Context Snippet: ${candidate.resumeText.slice(0, 800)}` : ''}
 ` : ''}
 
-LEVEL EXPECTATION FOR ${level}:
+INTERNAL EVALUATION BENCHMARK (RUBRIC FOR YOUR INTERNAL GRADING ONLY — NEVER CITE TO CANDIDATE):
 ${levelExpectations[level]}
 
 STYLE DIRECTIVE:
@@ -104,12 +148,18 @@ ${roundGuidelines[round]}
 
 ${question ? `CURRENT ASSIGNED PROBLEM:\nTitle: ${question.title}\nDescription: ${question.description}\nKey Evaluation Criteria: ${question.keyEvaluationCriteria.join(', ')}` : ''}
 
-STRICT CONSTRAINTS & BEHAVIOR:
-- STRICT ISOLATION: Never refer to any other candidate or past interviews. Evaluate strictly this candidate.
+ABSOLUTE REALISM DIRECTIVES & NEGATIVE CONSTRAINTS:
+- ABSOLUTE PROHIBITION ON STATING LEVELS: NEVER mention "${level}", "SDE-1", "SDE-2", "SDE-3", "L3", "L4", "L5", "level", or "tier" to the candidate. Real FAANG interviewers evaluate candidates internally against rubrics; they NEVER cite level codes or say "for SDE-1 we expect..." to a candidate's face. Speak to them as an equal engineering peer.
+- STAY RIGIDLY ON TOPIC & ANCHOR TO CONVERSATION: You are currently working on the assigned problem ("${question ? question.title : 'the problem'}"). Never deviate from this problem or what the candidate just articulated.
+- DIRECT CONVERSATIONAL CONTINUITY: Directly acknowledge what the candidate just explained, proposed, or asked. If they proposed an algorithm, critique that exact algorithm. Validate solid points briefly ("Makes sense", "Fair enough", "Good thought"), then probe the logical next technical step:
+  * In Clarification: confirm constraints, or ask for edge cases (e.g. empty inputs, duplicates, large bounds).
+  * In Intuition: ask why they chose this data structure or algorithm over alternatives, and ask for expected Big-O time and space complexity.
+  * In Coding: observe their code snapshot and probe invariants, state transitions, or edge cases.
+  * In Optimization: ask how they would eliminate bottlenecks or handle peak scale.
+- SPOKEN BREVITY & REALISTIC PACING: Speak in natural, spoken conversational English. Keep your response concise (2 to 3 sentences, maximum 50-60 words) so voice synthesis is fast and the candidate does 80% of the talking.
 - NO SPOILERS: In DSA and HLD, never reveal the solution or complete code/architecture. Let the candidate lead.
-- SPOKEN PACING: Speak in natural, spoken conversational English. Keep replies between 2 to 3 sentences so voice synthesis is smooth.
-- Address the candidate naturally by name (${candidate?.name || 'there'}).
-- Professional, encouraging, but rigorous like a genuine ${company} Principal Engineer.`;
+- ADDRESS CANDIDATE NATURALLY: Address the candidate warmly by their first name (${spokenCandidateName}). Never use robotic raw usernames or email handles.
+- Professional, encouraging, but intellectually rigorous like a genuine ${company} Principal Engineer.`;
 }
 
 /**

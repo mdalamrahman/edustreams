@@ -30,7 +30,9 @@ The simulator supports 4 distinct interview rounds with specialized system promp
 
 ### 2.3 Spoken Audio Interaction (STT / TTS) & Ambient Engine
 * **Hands-Free Speech-to-Text (STT)**: Built on the W3C Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`) with continuous interim result streaming.
-* **Smart Silence Detection & Auto-Send**: Employs a 1.8-second countdown timer that triggers after the candidate stops speaking, automatically dispatching the query without requiring manual button clicks.
+* **Smart Silence Detection & Generous Pacing (4.0s)**: Employs a 4.0-second countdown timer that triggers after the candidate stops speaking, preventing premature auto-sending while candidates breathe, formulate thoughts, or inspect code. Connected to Web Audio VAD to immediately cancel countdowns on vocal speech onset, accompanied by a manual "✋ Hold (Keep Thinking)" pause button.
+* **Auto-Assigned Interviewer Panel (Realistic FAANG Protocol)**: Mirrors real-world hiring loops where candidates do not choose their interviewer or voice. Automatically assigns the lead interviewer (Aditi Sharma, Staff Software Engineer & Lead Bar Raiser at Google/company) powered by Fish Audio S2.1 Pro Indian English phonemes (`hi_female`).
+* **Level Prohibition & Name Sanitization**: Strictly prohibits the AI from reciting level codes ("SDE-1", "SDE-2", "L3", "L4") in dialogue to the candidate, keeping rubrics internal while sanitizing candidate usernames into natural first names (e.g., `mdalamrahman` $\rightarrow$ "Rahman").
 * **Resilient Text-to-Speech (TTS)**: Built-in voice synthesizer that cleans markdown fences, expands technical abbreviations (e.g., *QPS* $\rightarrow$ "Q P S", *SPOF* $\rightarrow$ "single point of failure", *DB* $\rightarrow$ "database"), and splits sentences into sub-150-character chunks to ensure fluid cadence.
 
 ### 2.4 Proctoring, State Guardrails & Anti-Cheating

@@ -74,7 +74,8 @@ import {
   IndianVoiceProfile,
   getOrLockInterviewerVoice,
   resetInterviewerVoiceLock,
-  unlockSpeechSynthesis
+  unlockSpeechSynthesis,
+  cleanSpokenCandidateName
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { 
@@ -136,7 +137,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [isCheckingMic, setIsCheckingMic] = useState<boolean>(false);
 
   // Candidate Profile Form State
-  const [candidateName, setCandidateName] = useState<string>(() => getCurrentStudent()?.email?.split('@')[0] || 'Candidate');
+  const [candidateName, setCandidateName] = useState<string>(() => cleanSpokenCandidateName(getCurrentStudent()?.email?.split('@')[0]) || 'Candidate');
   const [candidateExpYears, setCandidateExpYears] = useState<string>('2-4');
   const [candidateRole, setCandidateRole] = useState<string>('Software Engineer');
   const [candidateTechStack, setCandidateTechStack] = useState<string>('C++, Python, React, PostgreSQL, Redis, Kafka');
@@ -525,7 +526,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       }
       setIsChangeQuestionModalOpen(false);
 
-      const candidateGreetingName = candidateName.trim() || 'Candidate';
+      const candidateGreetingName = cleanSpokenCandidateName(candidateName);
       const switchMsg: InterviewMessage = {
         id: `msg-${Date.now()}`,
         role: 'interviewer',
@@ -621,7 +622,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       const vad = new VoiceActivityController();
       vad.init(
         () => {
-          // Candidate active speech onset
+          // Candidate active speech onset detected via mic audio energy:
+          // Immediately cancel any pending silence auto-send countdown so candidate is never cut off
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+          }
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setSilenceCountdown(null);
         },
         undefined,
         () => {
@@ -656,14 +667,14 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       setRightTab('code');
     }
 
-    const candidateGreetingName = candidateName.trim() || 'Candidate';
+    const candidateGreetingName = cleanSpokenCandidateName(candidateName);
     const activeRound = interviewMode === 'full_loop' ? companySchedule[0] : null;
-    const interviewerName = selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel';
-    const interviewerTitle = 'Principal Bar Raiser';
+    const interviewerName = 'Aditi Sharma';
+    const interviewerTitle = 'Staff Software Engineer & Lead Bar Raiser';
 
     const initialGreeting = interviewMode === 'full_loop' && activeRound
-      ? `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. Welcome to your ${currentCompany.name} ${selectedLevel} Full Virtual Onsite Loop. We are commencing with ${activeRound.title}. Focus area: ${activeRound.focusDescription}.\n\nHere is your technical scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nWhenever you are ready, please walk me through your clarifying questions and architectural/algorithmic approach.`
-      : `Hello ${candidateGreetingName}! I'm ${interviewerName}, Principal Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedLevel} ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
+      ? `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. Welcome to your ${currentCompany.name} Full Virtual Onsite Loop. We are commencing with ${activeRound.title}. Focus area: ${activeRound.focusDescription}.\n\nHere is your technical scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nWhenever you are ready, please walk me through your clarifying questions and architectural or algorithmic approach.`
+      : `Hello ${candidateGreetingName}! I'm ${interviewerName}, Staff Software Engineer & Lead Bar Raiser at ${currentCompany.name}. We will be conducting your ${selectedRound} interview today.\n\nHere is your problem scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nTo begin, please walk me through your initial understanding, clarify any constraints, and explain your high-level approach before writing code or drawing architecture.`;
 
     const initialMsg: InterviewMessage = {
       id: 'msg-init',
@@ -782,18 +793,26 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             setInputValue(fullSpeech);
 
             // Reset silence countdown timer
-            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-            if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current);
+              silenceTimerRef.current = null;
+            }
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            setSilenceCountdown(null);
 
-            // If hands-free mode is on and we have meaningful speech, start 1.8s auto-send countdown
+            // If hands-free mode is on and we have meaningful speech, start 4.0s auto-send countdown
             if (isHandsFreeModeRef.current && fullSpeech.split(' ').length >= 2) {
-              let remainingMs = 1800;
-              setSilenceCountdown(1.8);
+              let remainingMs = 4000;
+              setSilenceCountdown(4.0);
 
               countdownIntervalRef.current = setInterval(() => {
                 remainingMs -= 200;
                 if (remainingMs <= 0) {
                   clearInterval(countdownIntervalRef.current);
+                  countdownIntervalRef.current = null;
                   setSilenceCountdown(null);
                 } else {
                   setSilenceCountdown(Number((remainingMs / 1000).toFixed(1)));
@@ -802,6 +821,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
               silenceTimerRef.current = setTimeout(() => {
                 clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
                 setSilenceCountdown(null);
                 const toSend = speechAccumulatorRef.current.trim();
                 if (toSend && !isAiThinkingRef.current) {
@@ -809,7 +829,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   setInterimSpeech('');
                   handleSendMessage(toSend);
                 }
-              }, 1800);
+              }, 4000);
             }
           }
         };
@@ -1781,84 +1801,48 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   </button>
                 </div>
 
-                {/* Fish Audio S2.1 Pro Free & Indian Voice Persona */}
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                {/* Auto-Assigned Interviewer Panel (Realistic FAANG Protocol) */}
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-slate-200 font-bold text-xs">AI Interviewer Voice (Fish Audio S2.1 Pro Free):</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-200 font-bold text-xs">Assigned Lead Interviewer:</span>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                        🇮🇳 Indian English (Sub-90ms)
+                        Auto-Assigned Panel
                       </span>
                     </div>
-                    <span className="text-[10px] text-emerald-400 font-mono">Parallel Queue Active</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">Fish Audio S2.1 Pro Free</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div
-                      onClick={() => setSelectedVoiceProfile('hi_female')}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                        selectedVoiceProfile === 'hi_female'
-                          ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">👩‍💼</span>
-                          <div>
-                            <div className="text-xs font-bold text-white">Aditi Sharma (Priya)</div>
-                            <div className="text-[10px] text-slate-400">Staff Architect (Ex-Google)</div>
-                            <div className="text-[9px] font-mono text-emerald-400 mt-0.5">hi_female • Warm Cadence</div>
-                          </div>
-                        </div>
-                        {selectedVoiceProfile === 'hi_female' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/50 shadow-md shadow-emerald-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/30 border border-emerald-500/40 flex items-center justify-center text-xl flex-shrink-0">
+                        👩‍💼
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          unlockSpeechSynthesis();
-                          streamInterviewerSpeech("[thoughtfully] Hello, I am Aditi Sharma. I will be your Lead Bar Raiser today. Let us evaluate your architectural trade-offs.", "hi_female");
-                        }}
-                        className="mt-3 w-full py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-slate-700/60"
-                      >
-                        <Volume2 className="w-3 h-3 text-emerald-400" />
-                        <span>🔊 Test Voice</span>
-                      </button>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-white">Aditi Sharma</span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50 font-mono text-[9px]">
+                            Lead Bar Raiser
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300">Staff Software Engineer • {currentCompany.name}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          Realistic FAANG Protocol: Interviewers are assigned automatically by the recruitment panel.
+                        </div>
+                      </div>
                     </div>
 
-                    <div
-                      onClick={() => setSelectedVoiceProfile('hi_male')}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
-                        selectedVoiceProfile === 'hi_male'
-                          ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
-                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-                      }`}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        unlockSpeechSynthesis();
+                        streamInterviewerSpeech("[thoughtfully] Hello, I am Aditi Sharma, Staff Software Engineer and Lead Bar Raiser. Let us work through your algorithmic and architectural trade-offs today.", "hi_female");
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-emerald-700/60 flex-shrink-0"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">👨‍💼</span>
-                          <div>
-                            <div className="text-xs font-bold text-white">Aarav Patel (Aarav)</div>
-                            <div className="text-[10px] text-slate-400">Principal Bar Raiser (Uber)</div>
-                            <div className="text-[9px] font-mono text-indigo-400 mt-0.5">hi_male • Tech Lead</div>
-                          </div>
-                        </div>
-                        {selectedVoiceProfile === 'hi_male' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          unlockSpeechSynthesis();
-                          streamInterviewerSpeech("[thoughtfully] Hi, I am Aarav Patel. Let us examine your algorithmic invariants and asymptotic bounds.", "hi_male");
-                        }}
-                        className="mt-3 w-full py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-slate-700/60"
-                      >
-                        <Volume2 className="w-3 h-3 text-cyan-400" />
-                        <span>🔊 Test Voice</span>
-                      </button>
-                    </div>
+                      <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>🔊 Test Interviewer Audio</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2201,14 +2185,14 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             {isVoiceMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
           </button>
 
-          {/* AI Voice Persona Toggle */}
-          <button
-            onClick={() => setSelectedVoiceProfile(prev => prev === 'hi_female' ? 'hi_male' : 'hi_female')}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-mono text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 transition-colors cursor-pointer"
-            title={`Voice: ${selectedVoiceProfile === 'hi_female' ? 'Aditi (Female)' : 'Aarav (Male)'}. Click to toggle.`}
+          {/* Assigned AI Interviewer Badge (Realistic Panel Protocol) */}
+          <div 
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-mono text-emerald-300"
+            title={`Assigned Lead Interviewer: Aditi Sharma, Staff Software Engineer & Lead Bar Raiser (${currentCompany.name})`}
           >
-            <span>{selectedVoiceProfile === 'hi_female' ? '👩‍💼 Aditi' : '👨‍💼 Aarav'}</span>
-          </button>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>👩‍💼 Aditi Sharma ({currentCompany.name})</span>
+          </div>
 
           {/* Pause / Resume Interview Proctor Button */}
           <button
@@ -2505,6 +2489,23 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   <span className="px-2 py-0.5 rounded-full bg-teal-500/20 border border-teal-500/50 text-teal-300 font-mono text-[10px] font-bold animate-pulse">
                     Sending in {silenceCountdown}s
                   </span>
+                  <button
+                    onClick={() => {
+                      if (silenceTimerRef.current) {
+                        clearTimeout(silenceTimerRef.current);
+                        silenceTimerRef.current = null;
+                      }
+                      if (countdownIntervalRef.current) {
+                        clearInterval(countdownIntervalRef.current);
+                        countdownIntervalRef.current = null;
+                      }
+                      setSilenceCountdown(null);
+                    }}
+                    className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] font-bold cursor-pointer transition-colors border border-amber-500/40 flex items-center gap-1"
+                    title="Pause auto-send so you can keep thinking and continue speaking"
+                  >
+                    <span>✋ Hold</span>
+                  </button>
                   <button
                     onClick={() => {
                       const toSend = speechAccumulatorRef.current.trim() || interimSpeech.trim() || inputValue.trim();
