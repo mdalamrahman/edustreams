@@ -15,8 +15,110 @@ import {
   isCloudAutoSyncEnabled,
   setCloudAutoSyncEnabled
 } from './progressService';
+import { 
+  SDE_SHEET_191_DATA, 
+  A2Z_DSA_SHEET_474_DATA, 
+  SDETUBE_79_SHEET_DATA, 
+  getLeetCodeSlug, 
+  DSAProblem 
+} from './dsaSheetsData';
+import { BLIND_75_SHEET_DATA } from './blind75SheetData';
+import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
+import { LLD_PROBLEMS, LLDProblem } from './lldData';
 
 export { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled };
+
+export interface CanonicalProblemInfo {
+  name: string;
+  slug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  category?: string;
+  sourceSheet?: string;
+}
+
+export interface SheetSolvedBreakdown {
+  totalSolved: number;
+  easySolved: number;
+  medSolved: number;
+  hardSolved: number;
+  easyTotal: number;
+  medTotal: number;
+  hardTotal: number;
+  totalAvailable: number;
+  solvedSlugs: Set<string>;
+}
+
+// Lookup maps for O(1) sheet problem lookup by ID
+const sdeProblemMap = new Map<number, DSAProblem>();
+SDE_SHEET_191_DATA.forEach(p => sdeProblemMap.set(p.id, p));
+
+const a2zProblemMap = new Map<number, DSAProblem>();
+A2Z_DSA_SHEET_474_DATA.forEach(p => a2zProblemMap.set(p.id, p));
+
+const sde79ProblemMap = new Map<number, DSAProblem>();
+SDETUBE_79_SHEET_DATA.forEach(p => sde79ProblemMap.set(p.id, p));
+
+const blind75ProblemMap = new Map<number, DSAProblem>();
+BLIND_75_SHEET_DATA.forEach(p => blind75ProblemMap.set(p.id, p));
+
+const mikProblemMap = new Map<number, DSAProblem>();
+CODESTORYWITHMIK_SHEET_DATA.forEach(p => mikProblemMap.set(p.id, p));
+
+export const canonicalProblemMap = new Map<string, CanonicalProblemInfo>();
+
+// Build canonical lookup across all DSA sheets
+[
+  ...SDE_SHEET_191_DATA,
+  ...A2Z_DSA_SHEET_474_DATA,
+  ...SDETUBE_79_SHEET_DATA,
+  ...BLIND_75_SHEET_DATA,
+  ...CODESTORYWITHMIK_SHEET_DATA
+].forEach(p => {
+  const rawSlug = getLeetCodeSlug(p) || p.slug || p.name;
+  const slug = rawSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (slug && !canonicalProblemMap.has(slug)) {
+    canonicalProblemMap.set(slug, {
+      name: p.name,
+      slug,
+      difficulty: p.difficulty,
+      category: p.category,
+      sourceSheet: p.sheetType
+    });
+  }
+});
+
+// Also include LLD problems
+LLD_PROBLEMS.forEach((lld, idx) => {
+  const slug = (lld.id || `lld-${idx}`).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  if (!canonicalProblemMap.has(slug)) {
+    canonicalProblemMap.set(slug, {
+      name: lld.title,
+      slug,
+      difficulty: lld.difficulty,
+      category: lld.category,
+      sourceSheet: 'lld'
+    });
+  }
+});
+
+// Precompute total question counts across unique problems in SDETube curriculum
+let totalCurriculumEasy = 0;
+let totalCurriculumMedium = 0;
+let totalCurriculumHard = 0;
+
+for (const prob of canonicalProblemMap.values()) {
+  const d = (prob.difficulty || 'Medium').toLowerCase();
+  if (d === 'easy') totalCurriculumEasy++;
+  else if (d === 'hard') totalCurriculumHard++;
+  else totalCurriculumMedium++;
+}
+
+export const SDETUBE_CURRICULUM_TOTALS = {
+  total: canonicalProblemMap.size,
+  easy: totalCurriculumEasy,
+  medium: totalCurriculumMedium,
+  hard: totalCurriculumHard
+};
 
 export interface LeetCodeFullProfileData {
   allQuestionsCount?: Array<{
@@ -786,11 +888,127 @@ export interface SDETubeRealStats {
 }
 
 /**
+ * Calculates authentic solved statistics across SDETube curated sheets and compiler submissions.
+ * Resolves each problem ID to its real sheet definition to count exact Easy, Medium, and Hard solved questions.
+ */
+export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBreakdown {
+  const prog = getUserProgressSync(userEmail);
+  const solvedMap = new Map<string, CanonicalProblemInfo>();
+
+  // 1. SDE Sheet 191
+  (prog.solved_sde || []).forEach(id => {
+    const p = sdeProblemMap.get(id);
+    if (p) {
+      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'sde' });
+    }
+  });
+
+  // 2. A2Z Sheet 474
+  (prog.solved_a2z || []).forEach(id => {
+    const p = a2zProblemMap.get(id);
+    if (p) {
+      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'a2z' });
+    }
+  });
+
+  // 3. 79 Sheet
+  (prog.solved_79 || []).forEach(id => {
+    const p = sde79ProblemMap.get(id);
+    if (p) {
+      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: '79' });
+    }
+  });
+
+  // 4. Blind 75 Sheet
+  (prog.solved_blind75 || []).forEach(id => {
+    const p = blind75ProblemMap.get(id);
+    if (p) {
+      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'blind75' });
+    }
+  });
+
+  // 5. CodeStoryWithMIK Sheet
+  (prog.solved_mik || []).forEach(id => {
+    const p = mikProblemMap.get(id);
+    if (p) {
+      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'mik' });
+    }
+  });
+
+  // 6. LLD Problems
+  (prog.lld_solved_ids || []).forEach(id => {
+    const lld = typeof id === 'number' ? LLD_PROBLEMS[id] || LLD_PROBLEMS.find(p => p.id === `lld-${id}`) : LLD_PROBLEMS.find(p => p.id === String(id));
+    if (lld) {
+      const slug = (lld.id || `lld-${id}`).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      solvedMap.set(slug, { name: lld.title, slug, difficulty: lld.difficulty, category: lld.category, sourceSheet: 'lld' });
+    }
+  });
+
+  // 7. Also scan accepted submissions from localStorage code runner
+  try {
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list) && list.some(s => s.status === 'Accepted' || (s.passedCount && s.totalCount && s.passedCount === s.totalCount))) {
+              const cleanSlug = key.replace(/^edustream_(sql_)?submissions_/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+              if (cleanSlug && !solvedMap.has(cleanSlug)) {
+                const known = canonicalProblemMap.get(cleanSlug);
+                if (known) {
+                  solvedMap.set(cleanSlug, known);
+                } else {
+                  const title = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  solvedMap.set(cleanSlug, {
+                    name: title,
+                    slug: cleanSlug,
+                    difficulty: key.startsWith('edustream_sql_submissions_') ? 'Medium' : 'Medium'
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
+  let easySolved = 0;
+  let medSolved = 0;
+  let hardSolved = 0;
+
+  for (const prob of solvedMap.values()) {
+    const d = (prob.difficulty || 'Medium').toLowerCase();
+    if (d === 'easy') easySolved++;
+    else if (d === 'hard') hardSolved++;
+    else medSolved++;
+  }
+
+  return {
+    totalSolved: solvedMap.size,
+    easySolved,
+    medSolved,
+    hardSolved,
+    easyTotal: SDETUBE_CURRICULUM_TOTALS.easy,
+    medTotal: SDETUBE_CURRICULUM_TOTALS.medium,
+    hardTotal: SDETUBE_CURRICULUM_TOTALS.hard,
+    totalAvailable: SDETUBE_CURRICULUM_TOTALS.total,
+    solvedSlugs: new Set(solvedMap.keys())
+  };
+}
+
+/**
  * Calculates REAL platform statistics and submissions without any hardcoding
  */
 export function getRealSDETubeStats(): SDETubeRealStats {
   const allSubmissions: UserSubmissionRecord[] = [];
-  const solvedProblemSlugs = new Set<string>();
   const dateCounts: Record<string, number> = {};
 
   let totalSubmissions = 0;
@@ -799,81 +1017,70 @@ export function getRealSDETubeStats(): SDETubeRealStats {
 
   // 1. Scan localStorage for all problem submissions
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
 
-      if (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_')) {
-        const isSql = key.startsWith('edustream_sql_submissions_');
-        const slug = key.replace(/^edustream_(sql_)?submissions_/, '');
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          try {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              list.forEach((sub: any, idx: number) => {
-                totalSubmissions++;
-                const isAc = sub.status === 'Accepted' || (sub.passedCount && sub.totalCount && sub.passedCount === sub.totalCount);
-                if (isAc) {
-                  totalAccepted++;
-                  solvedProblemSlugs.add(slug);
-                  if (isSql) sqlSolved++;
-                }
+        if (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_')) {
+          const isSql = key.startsWith('edustream_sql_submissions_');
+          const slug = key.replace(/^edustream_(sql_)?submissions_/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            try {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                list.forEach((sub: any, idx: number) => {
+                  totalSubmissions++;
+                  const isAc = sub.status === 'Accepted' || (sub.passedCount && sub.totalCount && sub.passedCount === sub.totalCount);
+                  if (isAc) {
+                    totalAccepted++;
+                    if (isSql) sqlSolved++;
+                  }
 
-                // Extract date
-                const ymd = parseDateToYMD(sub.timestamp || sub.id?.split('_')[0]) || new Date().toISOString().slice(0, 10);
-                dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
+                  // Extract date
+                  const ymd = parseDateToYMD(sub.timestamp || sub.id?.split('_')[0]) || new Date().toISOString().slice(0, 10);
+                  dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
 
-                // Format title from slug
-                const title = slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  // Format title and difficulty from canonical sheet dataset if known
+                  const knownProb = canonicalProblemMap.get(slug);
+                  const title = sub.problemTitle || knownProb?.name || slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  const diff = knownProb?.difficulty || (isSql ? 'Medium' : 'Medium');
 
-                allSubmissions.push({
-                  id: sub.id || `sub_${slug}_${idx}`,
-                  title: sub.problemTitle || title,
-                  slug,
-                  category: isSql ? 'SQL Database' : 'Algorithms',
-                  difficulty: isSql ? 'Medium' : (idx % 3 === 0 ? 'Easy' : idx % 3 === 1 ? 'Medium' : 'Hard'),
-                  language: (sub.lang || (isSql ? 'SQL' : 'CPP')).toUpperCase(),
-                  timestamp: typeof sub.timestamp === 'number' ? sub.timestamp : new Date(sub.timestamp || Date.now()).getTime(),
-                  timeFormatted: typeof sub.timestamp === 'string' ? sub.timestamp : new Date(sub.timestamp || Date.now()).toLocaleDateString(),
-                  status: isAc ? 'Accepted' : (sub.status || 'Wrong Answer')
+                  allSubmissions.push({
+                    id: sub.id || `sub_${slug}_${idx}`,
+                    title,
+                    slug,
+                    category: isSql ? 'SQL Database' : (knownProb?.category || 'Algorithms'),
+                    difficulty: diff,
+                    language: (sub.lang || (isSql ? 'SQL' : 'CPP')).toUpperCase(),
+                    timestamp: typeof sub.timestamp === 'number' ? sub.timestamp : new Date(sub.timestamp || Date.now()).getTime(),
+                    timeFormatted: typeof sub.timestamp === 'string' ? sub.timestamp : new Date(sub.timestamp || Date.now()).toLocaleDateString(),
+                    status: isAc ? 'Accepted' : (sub.status || 'Wrong Answer')
+                  });
                 });
-              });
-            }
-          } catch {}
+              }
+            } catch {}
+          }
         }
       }
     }
-  } catch {}  // 2. Scan sheet solved lists and slug sets from Supabase progress
-  try {
-    const prog = getUserProgressSync();
-    [
-      ...(prog.solved_sde || []),
-      ...(prog.solved_a2z || []),
-      ...(prog.solved_79 || []),
-      ...(prog.solved_blind75 || []),
-      ...(prog.solved_mik || []),
-      ...(prog.lld_solved_ids || [])
-    ].forEach(p => {
-      if (typeof p === 'string' || typeof p === 'number') {
-        const pSlug = String(p).toLowerCase().replace(/[^a-z0-9]/g, '-');
-        if (pSlug) solvedProblemSlugs.add(pSlug);
-      }
-    });
-  } catch {}{}
+  } catch {}
 
-  // 3. Scan activity logs
+  // 2. Scan activity logs
   try {
-    const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
-    if (rawLogs) {
-      const logs = JSON.parse(rawLogs);
-      if (Array.isArray(logs)) {
-        logs.forEach((l: any) => {
-          const ymd = parseDateToYMD(l.date);
-          if (ymd) {
-            dateCounts[ymd] = (dateCounts[ymd] || 0) + (l.count || 1);
-          }
-        });
+    if (typeof localStorage !== 'undefined') {
+      const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
+      if (rawLogs) {
+        const logs = JSON.parse(rawLogs);
+        if (Array.isArray(logs)) {
+          logs.forEach((l: any) => {
+            const ymd = parseDateToYMD(l.date);
+            if (ymd) {
+              dateCounts[ymd] = (dateCounts[ymd] || 0) + (l.count || 1);
+            }
+          });
+        }
       }
     }
   } catch {}
@@ -881,30 +1088,24 @@ export function getRealSDETubeStats(): SDETubeRealStats {
   // Sort submissions newest first
   allSubmissions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-  const totalUniqueSolved = solvedProblemSlugs.size;
-  let easySolved = 0;
-  let mediumSolved = 0;
-  let hardSolved = 0;
+  // Get authentic solved breakdown from sheets & progress
+  const breakdown = getRealSheetSolvedBreakdown();
 
-  if (totalUniqueSolved > 0) {
-    easySolved = Math.round(totalUniqueSolved * 0.35);
-    mediumSolved = Math.round(totalUniqueSolved * 0.50);
-    hardSolved = Math.max(0, totalUniqueSolved - easySolved - mediumSolved);
-  }
-
-  const acceptanceRate = totalSubmissions > 0 ? Math.round((totalAccepted / totalSubmissions) * 100) : (totalUniqueSolved > 0 ? 100 : 0);
+  const acceptanceRate = totalSubmissions > 0 
+    ? Math.round((totalAccepted / totalSubmissions) * 100) 
+    : 0;
 
   // Compute heatmap & streak
   const heatmapData = generateUserSubmissionHeatmap(dateCounts);
 
   return {
-    totalSubmissions: Math.max(totalSubmissions, totalUniqueSolved),
-    totalAccepted: Math.max(totalAccepted, totalUniqueSolved),
-    acceptanceRate: acceptanceRate || (totalUniqueSolved > 0 ? 100 : 0),
-    totalUniqueSolved,
-    easySolved,
-    mediumSolved,
-    hardSolved,
+    totalSubmissions, // STRICTLY real submission attempts, never clamped!
+    totalAccepted,
+    acceptanceRate,
+    totalUniqueSolved: breakdown.totalSolved,
+    easySolved: breakdown.easySolved,
+    mediumSolved: breakdown.medSolved,
+    hardSolved: breakdown.hardSolved,
     sqlSolved,
     currentStreak: heatmapData.currentStreak,
     maxStreak: heatmapData.maxStreak,

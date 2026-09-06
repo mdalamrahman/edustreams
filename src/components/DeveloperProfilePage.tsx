@@ -53,6 +53,8 @@ import {
   getUserBadges,
   getUserTracksCertificates,
   getUserRecentSubmissions,
+  getRealSheetSolvedBreakdown,
+  SDETUBE_CURRICULUM_TOTALS,
   LinkedProfilesConfig,
   SDETubeBadge,
   TrackCertificateProgress,
@@ -292,17 +294,12 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     if (updated.githubUsername) loadGithub(updated.githubUsername);
   };
 
-  // Solved Stats calculation — real data from Supabase progressService
+  // Solved Stats calculation — authentic data from Supabase progressService and sheet definitions
   const userEmail = user?.email;
   const userProgress = getUserProgressSync(userEmail);
-  const sdeSolved = (userProgress.solved_sde || []).length;
-  const a2zSolved = (userProgress.solved_a2z || []).length;
-  const blindSolved = (userProgress.solved_blind75 || []).length;
-  const mikSolved = (userProgress.solved_mik || []).length;
-  const lldSolved = (userProgress.lld_solved_ids || []).length;
+  const sheetBreakdown = useMemo(() => getRealSheetSolvedBreakdown(userEmail), [userEmail, userProgress]);
 
-  // Real solved total — no fake fallback
-  const totalSdetubeSolved = sdeSolved + a2zSolved + blindSolved + mikSolved + lldSolved;
+  const totalSdetubeSolved = sheetBreakdown.totalSolved;
   const leetcodeSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count ?? 0;
   const gfgSolved = Number(gfgData?.total_problems_solved || 0);
   const cfSolved = Number(codeforcesData?.total_problems_solved || 0);
@@ -323,25 +320,43 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     } catch { return {}; }
   }, [leetcodeData?.matchedUser?.submissionCalendar]);
 
+  const lcPastYearSubmissions = useMemo(() => {
+    return Object.values(lcHeatmap).reduce((a, b) => a + b, 0);
+  }, [lcHeatmap]);
 
+  const lcEasySolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count ?? 0;
+  const lcMedSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count ?? 0;
+  const lcHardSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count ?? 0;
 
   const easySolved = profileMode === 'sdetube'
-    ? Math.round(totalSdetubeSolved * 0.45)
+    ? sheetBreakdown.easySolved
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count ?? 0)
-    : Math.round(combinedSolved * 0.42);
+    ? lcEasySolved
+    : (sheetBreakdown.easySolved + lcEasySolved + Math.round(gfgSolved * 0.45));
 
   const medSolved = profileMode === 'sdetube'
-    ? Math.round(totalSdetubeSolved * 0.45)
+    ? sheetBreakdown.medSolved
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count ?? 0)
-    : Math.round(combinedSolved * 0.48);
+    ? lcMedSolved
+    : (sheetBreakdown.medSolved + lcMedSolved + Math.round(gfgSolved * 0.45));
 
   const hardSolved = profileMode === 'sdetube'
-    ? Math.max(0, totalSdetubeSolved - easySolved - medSolved)
+    ? sheetBreakdown.hardSolved
     : profileMode === 'leetcode'
-    ? (leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Hard')?.count ?? 0)
-    : Math.max(0, combinedSolved - easySolved - medSolved);
+    ? lcHardSolved
+    : (sheetBreakdown.hardSolved + lcHardSolved + Math.max(0, gfgSolved - Math.round(gfgSolved * 0.45) - Math.round(gfgSolved * 0.45)) + cfSolved);
+
+  const easyTotal = profileMode === 'sdetube'
+    ? sheetBreakdown.easyTotal
+    : (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Easy')?.count ?? 850);
+
+  const medTotal = profileMode === 'sdetube'
+    ? sheetBreakdown.medTotal
+    : (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Medium')?.count ?? 1820);
+
+  const hardTotal = profileMode === 'sdetube'
+    ? sheetBreakdown.hardTotal
+    : (leetcodeData?.allQuestionsCount?.find(q => q.difficulty === 'Hard')?.count ?? 750);
 
   // 52-week heatmap columns
   const weeks = [];
@@ -769,9 +784,9 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
 
                 <div className="space-y-2.5">
                   {[
-                    { label: 'Easy', val: easySolved, total: 850, color: 'bg-emerald-500', text: 'text-emerald-400' },
-                    { label: 'Medium', val: medSolved, total: 1820, color: 'bg-amber-500', text: 'text-amber-400' },
-                    { label: 'Hard', val: hardSolved, total: 750, color: 'bg-rose-500', text: 'text-rose-400' }
+                    { label: 'Easy', val: easySolved, total: easyTotal, color: 'bg-emerald-500', text: 'text-emerald-400' },
+                    { label: 'Medium', val: medSolved, total: medTotal, color: 'bg-amber-500', text: 'text-amber-400' },
+                    { label: 'Hard', val: hardSolved, total: hardTotal, color: 'bg-rose-500', text: 'text-rose-400' }
                   ].map(r => (
                     <div key={r.label} className="space-y-1">
                       <div className="flex items-center justify-between text-xs font-mono">
@@ -898,7 +913,12 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Activity className="w-4 h-4 text-emerald-400" />
-                    <span>{profileMode === 'sdetube' ? `${heatmap.totalSubmissions || totalSdetubeSolved} SDETube submissions in past year` : `${heatmap.totalSubmissions + leetcodeSolved + gfgSolved + cfSolved} combined submissions in past year`}</span>
+                    <span>
+                      {profileMode === 'sdetube' 
+                        ? `${heatmap.totalSubmissions} SDETube submissions in past year` 
+                        : `${heatmap.totalSubmissions + lcPastYearSubmissions} combined submissions in past year`
+                      }
+                    </span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">Active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong></p>
                 </div>
