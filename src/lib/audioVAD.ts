@@ -135,19 +135,21 @@ export class VoiceActivityController {
 
       const isTTS = (window as any).isTTSActive === true || this.isTTSActive;
       
-      // When TTS is speaking, apply a calibrated margin (+25%) to prevent speaker bleed
-      // while immediately terminating audio when candidate speaks into the mic
-      const threshold = isTTS ? this.config.energyThreshold * 1.25 : this.config.energyThreshold;
-      const isVoiceDetected = rms >= threshold;
-
-      if (isVoiceDetected && isTTS) {
-        // Kill the Fish Audio queue & speech tracks instantly to enable natural conversational turn-taking
-        abortStreamingPlayback();
-        terminateInterviewerAudioSpeech();
-        this.isTTSActive = false;
-        if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-        this.handleBargeIn();
+      // When TTS is actively speaking, completely suppress microphone energy analysis
+      // to eliminate speaker bleed, false barge-in cancellations ("stops speaking respeaks"),
+      // and acoustic self-hearing loops.
+      if (isTTS) {
+        this.isSpeaking = false;
+        if (this.silenceTimer) {
+          clearTimeout(this.silenceTimer);
+          this.silenceTimer = null;
+        }
+        this.animationFrameId = requestAnimationFrame(checkAudioFrame);
+        return;
       }
+
+      const threshold = this.config.energyThreshold;
+      const isVoiceDetected = rms >= threshold;
 
       if (isVoiceDetected) {
         this.lastSpeechTimestamp = now;

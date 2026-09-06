@@ -459,6 +459,8 @@ export function stripEmotionTagsForUI(text: string): string {
  * Indian English conversational pauses with emotional tone cues.
  */
 export function textToSpeechNormalizer(text: string): string {
+  if (!text) return '';
+
   // Extract starting emotional cue tag if present
   const emotionMatch = text.match(/^\[(sternly|thoughtfully|encouragingly|approvingly)\]/i);
   const prefixTag = emotionMatch ? emotionMatch[0] : "";
@@ -466,21 +468,45 @@ export function textToSpeechNormalizer(text: string): string {
   let coreBody = emotionMatch ? text.slice(prefixTag.length) : text;
 
   coreBody = coreBody
-    // Core platform text cleanup rules (From your specific code map)
+    // Strip code blocks and inline code
     .replace(/```[\s\S]*?```/g, '... Reviewing the code block inside your workspace arena ...')
     .replace(/`([^`]+)`/g, '$1')
+
+    // STRIP ALL MARKDOWN FORMATTING (Bolds, Italics, Strikethrough, Headers, Lists)
+    // This strictly eliminates "asterisk asterisk" spoken pronunciations!
+    .replace(/\*{3,}([^*]+)\*{3,}/g, '$1') // ***bold italic***
+    .replace(/\*{2}([^*]+)\*{2}/g, '$1')   // **bold**
+    .replace(/\*([^*]+)\*/g, '$1')         // *italic*
+    .replace(/_{2}([^_]+)_{2}/g, '$1')     // __bold__
+    .replace(/_([^_]+)_/g, '$1')           // _italic_
+    .replace(/~~([^~]+)~~/g, '$1')         // ~~strikethrough~~
+    .replace(/^#{1,6}\s+/gm, '')           // # Headers
+    .replace(/^[\s]*[-*+]\s+/gm, '')       // - or * Bullet list items
+    .replace(/^[\s]*\d+\.\s+/gm, '')       // 1. Numbered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
+    .replace(/\*+/g, '')                   // Any remaining stray asterisks
+
+    // Strip emojis
     .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+
+    // Normalize Big-O notation
     .replace(/\bO\(1\)/gi, 'O of 1')
     .replace(/\bO\(n\)/gi, 'O of n')
+    .replace(/\bO\(N\)/g, 'O of N')
     .replace(/\bO\(n\s*\*\s*log\s*n\)/gi, 'O of n log n')
     .replace(/\bO\(log\s*n\)/gi, 'O of log n')
     .replace(/\bO\(n\^?2\)/gi, 'O of n squared')
     .replace(/\bO\(2\^?n\)/gi, 'O of 2 to the n')
+
+    // DSA code syntax to spoken words
+    .replace(/\bnums\[i\]/gi, 'nums at index i')
+    .replace(/\bnums\[j\]/gi, 'nums at index j')
+    .replace(/\bnums\.length\b/gi, 'nums length')
+
+    // Tech acronyms to clear pronunciation
     .replace(/\bQPS\b/g, 'Q P S')
     .replace(/\bTPS\b/g, 'T P S')
     .replace(/\bSPOF\b/g, 'single point of failure')
-    
-    // Indian corporate & engineering phrasing normalization
     .replace(/\bLPA\b/gi, 'L P A')
     .replace(/\bCTC\b/gi, 'C T C')
     .replace(/\bDSA\b/g, 'D S A')
@@ -498,9 +524,12 @@ export function textToSpeechNormalizer(text: string): string {
     .replace(/\bRPC\b/g, 'R P C')
     .replace(/\bgRPC\b/g, 'G R P C')
     
-    // Injected physical breathing pauses for realistic conversational delivery
+    // Injected physical breathing pauses for natural conversational delivery
     .replace(/\b(look|see|actually|think about it|wait)\b/gi, '... $1 ...')
     .replace(/\.(\s+)/g, '. — ');
+
+  // Clean remaining stray backslashes and collapse extra spaces
+  coreBody = coreBody.replace(/\\/g, '').replace(/\s{2,}/g, ' ');
 
   return `${prefixTag} ${coreBody.trim()}`.trim();
 }
@@ -754,7 +783,9 @@ function playLocalSpeechFallback(
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
     }
-    const fallbackUtterance = new SpeechSynthesisUtterance(cleanSpeechText);
+    // Strip any [bracketed tags] or stray asterisks so browser SpeechSynthesis never reads them aloud
+    const spokenText = cleanSpeechText.replace(/\[[^\]]*\]/g, '').replace(/\*+/g, '').trim();
+    const fallbackUtterance = new SpeechSynthesisUtterance(spokenText);
     const selectedVoice = getOrLockInterviewerVoice(voiceProfile);
 
     if (selectedVoice) {
