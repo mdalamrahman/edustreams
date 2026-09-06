@@ -622,19 +622,43 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         stage: 'problem'
       };
 
-      setMessages(prev => [...prev, switchMsg]);
+      let switchRevealed = false;
+      const revealSwitchMsg = () => {
+        if (switchRevealed) return;
+        switchRevealed = true;
+        setMessages(prev => [...prev, switchMsg]);
+      };
 
       if (!isVoiceMuted) {
         setIsAiSpeaking(true);
         vadRef.current?.setTTSActive(true);
-        stopListening();
-        speakInterviewerText(switchMsg.content, () => {
-          setIsAiSpeaking(false);
-          vadRef.current?.setTTSActive(false);
-          setTimeout(() => {
-            if (isHandsFreeModeRef.current) startListening();
-          }, 350);
-        }, selectedVoiceProfile);
+        if (typeof window !== 'undefined') (window as any).isTTSActive = true;
+        stopListening(true);
+        const safetyTimer = setTimeout(revealSwitchMsg, 8000);
+        speakInterviewerText(
+          switchMsg.content,
+          () => {
+            clearTimeout(safetyTimer);
+            revealSwitchMsg();
+            speechEchoCooldownUntilRef.current = Date.now() + 100;
+            setIsAiSpeaking(false);
+            vadRef.current?.setTTSActive(false);
+            if (typeof window !== 'undefined') (window as any).isTTSActive = false;
+            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
+              startListening();
+            }
+          },
+          selectedVoiceProfile,
+          () => {
+            clearTimeout(safetyTimer);
+            revealSwitchMsg();
+          }
+        );
+      } else {
+        revealSwitchMsg();
+        if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
+          startListening();
+        }
       }
     } catch (err) {
       console.warn('Switch question error:', err);
@@ -796,23 +820,21 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         setMessages([initialMsg]);
       };
 
-      // Safety timeout: reveal text within 2.5s if TTS encounters network lag
-      const safetyTimer = setTimeout(revealGreeting, 2500);
+      // Safety timeout: reveal text within 8s if TTS encounters network lag
+      const safetyTimer = setTimeout(revealGreeting, 8000);
 
       speakInterviewerText(
         initialGreeting, 
         () => {
           clearTimeout(safetyTimer);
           revealGreeting();
-          speechEchoCooldownUntilRef.current = Date.now() + 850;
+          speechEchoCooldownUntilRef.current = Date.now() + 100;
           setIsAiSpeaking(false);
           vadRef.current?.setTTSActive(false);
           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-          setTimeout(() => {
-            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
-              startListening();
-            }
-          }, 900);
+          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+            startListening();
+          }
         }, 
         selectedVoiceProfile,
         () => {
@@ -864,7 +886,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        recognition.lang = 'en-GB';
 
         recognition.onstart = () => {
           isRecognitionActiveRef.current = true;
@@ -1100,23 +1122,21 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       if (typeof window !== 'undefined') (window as any).isTTSActive = true;
       stopListening(true);
 
-      // 2.5s fallback safety timer in case TTS takes longer or fails
-      const safetyTimeout = setTimeout(revealMessage, 2500);
+      // 8s fallback safety timer in case TTS takes longer or fails
+      const safetyTimeout = setTimeout(revealMessage, 8000);
 
       speakInterviewerText(
         aiReply,
         () => {
           clearTimeout(safetyTimeout);
           revealMessage();
-          speechEchoCooldownUntilRef.current = Date.now() + 850;
+          speechEchoCooldownUntilRef.current = Date.now() + 100;
           setIsAiSpeaking(false);
           vadRef.current?.setTTSActive(false);
           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-          setTimeout(() => {
-            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
-              startListening();
-            }
-          }, 900);
+          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+            startListening();
+          }
         },
         selectedVoiceProfile,
         () => {
@@ -1318,20 +1338,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           setMessages([nextMsg]);
         };
 
-        const safetyTimer = setTimeout(revealRound, 2500);
+        const safetyTimer = setTimeout(revealRound, 8000);
 
         speakInterviewerText(
           roundIntro, 
           () => {
             clearTimeout(safetyTimer);
             revealRound();
-            speechEchoCooldownUntilRef.current = Date.now() + 850;
+            speechEchoCooldownUntilRef.current = Date.now() + 100;
             setIsAiSpeaking(false);
             vadRef.current?.setTTSActive(false);
             if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-            setTimeout(() => {
-              if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) startListening();
-            }, 900);
+            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+              startListening();
+            }
           }, 
           selectedVoiceProfile,
           () => {
@@ -2525,13 +2545,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                       speakInterviewerText(
                         lastInterviewerMsg.content, 
                         () => {
-                          speechEchoCooldownUntilRef.current = Date.now() + 850;
+                          speechEchoCooldownUntilRef.current = Date.now() + 100;
                           setIsAiSpeaking(false);
                           vadRef.current?.setTTSActive(false);
                           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-                          setTimeout(() => {
-                            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) startListening();
-                          }, 900);
+                          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
+                            startListening();
+                          }
                         }, 
                         selectedVoiceProfile
                       );
@@ -2581,13 +2601,13 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                         speakInterviewerText(
                           msg.content, 
                           () => {
-                            speechEchoCooldownUntilRef.current = Date.now() + 850;
+                            speechEchoCooldownUntilRef.current = Date.now() + 100;
                             setIsAiSpeaking(false);
                             vadRef.current?.setTTSActive(false);
                             if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-                            setTimeout(() => {
-                              if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) startListening();
-                            }, 900);
+                            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
+                              startListening();
+                            }
                           }, 
                           selectedVoiceProfile
                         );

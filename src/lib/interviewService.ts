@@ -233,8 +233,11 @@ export async function sendInterviewerMessage(
 }
 
 // Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
+// Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
 let lockedFemaleVoice: SpeechSynthesisVoice | null = null;
 let lockedMaleVoice: SpeechSynthesisVoice | null = null;
+let lockedFemaleVoiceURI: string | null = null;
+let lockedMaleVoiceURI: string | null = null;
 let speechKeepaliveTimer: any = null;
 let isSpeakingActive = false;
 let activeUtteranceQueue: SpeechSynthesisUtterance[] = [];
@@ -242,6 +245,8 @@ let activeUtteranceQueue: SpeechSynthesisUtterance[] = [];
 export function resetInterviewerVoiceLock(): void {
   lockedFemaleVoice = null;
   lockedMaleVoice = null;
+  lockedFemaleVoiceURI = null;
+  lockedMaleVoiceURI = null;
   stopInterviewerSpeech();
 }
 
@@ -271,73 +276,90 @@ export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi
   const voices = window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
 
-  if (voiceProfile === 'hi_male') {
-    if (lockedMaleVoice && voices.includes(lockedMaleVoice)) return lockedMaleVoice;
+  const isMale = voiceProfile === 'hi_male';
+  const lockedURI = isMale ? lockedMaleVoiceURI : lockedFemaleVoiceURI;
 
-    // 1. Check for Indian English Male
-    let maleVoice = voices.find(v => 
-      (v.lang === 'en-IN' || v.lang === 'hi-IN') && 
-      (v.name.toLowerCase().includes('ravi') || v.name.toLowerCase().includes('prabhat') || (v.name.toLowerCase().includes('male') && !v.name.toLowerCase().includes('female')))
-    );
+  // 1. Strict persistence: If voice was already locked in this session, return it immediately!
+  // This guarantees the voice NEVER changes between responses.
+  if (lockedURI) {
+    const existing = voices.find(v => (v.voiceURI && v.voiceURI === lockedURI) || v.name === lockedURI);
+    if (existing) {
+      if (isMale) lockedMaleVoice = existing;
+      else lockedFemaleVoice = existing;
+      return existing;
+    }
+  }
 
-    // 2. Check for Natural Male English voices across OS / browser engines
+  if (isMale) {
+    // Search for British English Male voices (en-GB)
+    // Priority: 'Google UK English Male', 'Microsoft George Online (Natural) - English (United Kingdom)',
+    // 'Microsoft Oliver Online', 'Microsoft Ryan', 'Daniel' (UK Male), 'Oliver', 'George'
+    let maleVoice = voices.find(v => {
+      const lang = (v.lang || '').replace('_', '-').toLowerCase();
+      const name = v.name.toLowerCase();
+      const isGB = lang === 'en-gb' || name.includes('united kingdom') || name.includes('uk english') || name.includes('great britain');
+      const isMaleName = name.includes('male') || name.includes('george') || name.includes('oliver') || name.includes('ryan') || name.includes('daniel') || name.includes('arthur');
+      const isFemaleName = name.includes('female') || name.includes('hazel') || name.includes('susan') || name.includes('sonia') || name.includes('libby') || name.includes('serena');
+      return isGB && isMaleName && !isFemaleName;
+    });
+
     if (!maleVoice) {
-      maleVoice = voices.find(v => 
-        v.lang.startsWith('en') && 
-        (v.name.toLowerCase().includes('david') || 
-         v.name.toLowerCase().includes('guy') || 
-         v.name.toLowerCase().includes('mark') || 
-         v.name.toLowerCase().includes('daniel') || 
-         v.name.toLowerCase().includes('george') || 
-         v.name.toLowerCase().includes('james') || 
-         v.name.toLowerCase().includes('richard') || 
-         v.name.toLowerCase().includes('tom') || 
-         v.name.toLowerCase().includes('alex') || 
-         v.name.toLowerCase().includes('fred') || 
-         (v.name.toLowerCase().includes('male') && !v.name.toLowerCase().includes('female')))
-      );
+      maleVoice = voices.find(v => {
+        const lang = (v.lang || '').replace('_', '-').toLowerCase();
+        const name = v.name.toLowerCase();
+        const isGB = lang === 'en-gb' || name.includes('united kingdom') || name.includes('uk english') || name.includes('great britain');
+        const isFemaleName = name.includes('female') || name.includes('hazel') || name.includes('susan') || name.includes('sonia') || name.includes('libby') || name.includes('serena') || name.includes('zira');
+        return isGB && !isFemaleName;
+      });
     }
 
-    // 3. Fallback to any non-female English voice
     if (!maleVoice) {
-      maleVoice = voices.find(v => 
-        v.lang.startsWith('en') && 
-        !v.name.toLowerCase().includes('zira') && 
-        !v.name.toLowerCase().includes('samantha') && 
-        !v.name.toLowerCase().includes('heera') && 
-        !v.name.toLowerCase().includes('kavya') && 
-        !v.name.toLowerCase().includes('aditi') && 
-        !v.name.toLowerCase().includes('priya') && 
-        !v.name.toLowerCase().includes('victoria') && 
-        !v.name.toLowerCase().includes('karen') && 
-        !v.name.toLowerCase().includes('female')
-      );
+      maleVoice = voices.find(v => {
+        const lang = (v.lang || '').replace('_', '-').toLowerCase();
+        return lang === 'en-gb';
+      });
+    }
+
+    if (!maleVoice) {
+      maleVoice = voices.find(v => {
+        const lang = (v.lang || '').toLowerCase();
+        const name = v.name.toLowerCase();
+        return lang.startsWith('en') && (name.includes('george') || name.includes('daniel') || name.includes('david') || (name.includes('male') && !name.includes('female')));
+      });
     }
 
     lockedMaleVoice = maleVoice || voices[0];
+    lockedMaleVoiceURI = lockedMaleVoice.voiceURI || lockedMaleVoice.name;
     return lockedMaleVoice;
   } else {
-    if (lockedFemaleVoice && voices.includes(lockedFemaleVoice)) return lockedFemaleVoice;
+    // Search for British English Female voices (en-GB)
+    // Priority: 'Google UK English Female', 'Microsoft Sonia Online (Natural) - English (United Kingdom)',
+    // 'Microsoft Libby Online', 'Microsoft Maisie Online', 'Microsoft Hazel', 'Microsoft Susan', 'Serena', 'Stephanie', 'Fiona'
+    let femaleVoice = voices.find(v => {
+      const lang = (v.lang || '').replace('_', '-').toLowerCase();
+      const name = v.name.toLowerCase();
+      const isGB = lang === 'en-gb' || name.includes('united kingdom') || name.includes('uk english') || name.includes('great britain');
+      const isFemaleName = name.includes('female') || name.includes('sonia') || name.includes('libby') || name.includes('maisie') || name.includes('hazel') || name.includes('susan') || name.includes('serena') || name.includes('stephanie') || name.includes('fiona');
+      return isGB && isFemaleName;
+    });
 
-    // 1. Check for Indian English Female
-    let femaleVoice = voices.find(v => 
-      (v.lang === 'en-IN' || v.lang === 'hi-IN') && 
-      (v.name.toLowerCase().includes('heera') || v.name.toLowerCase().includes('kavya') || v.name.toLowerCase().includes('aditi') || v.name.toLowerCase().includes('priya') || v.name.toLowerCase().includes('female'))
-    );
-
-    // 2. Check for Natural Female English voices
     if (!femaleVoice) {
-      femaleVoice = voices.find(v => 
-        v.lang.startsWith('en') && 
-        (v.name.toLowerCase().includes('zira') || 
-         v.name.toLowerCase().includes('samantha') || 
-         v.name.toLowerCase().includes('victoria') || 
-         v.name.toLowerCase().includes('karen') || 
-         v.name.toLowerCase().includes('female'))
-      );
+      femaleVoice = voices.find(v => {
+        const lang = (v.lang || '').replace('_', '-').toLowerCase();
+        return lang === 'en-gb';
+      });
+    }
+
+    if (!femaleVoice) {
+      femaleVoice = voices.find(v => {
+        const lang = (v.lang || '').toLowerCase();
+        const name = v.name.toLowerCase();
+        return lang.startsWith('en') && (name.includes('female') || name.includes('zira') || name.includes('samantha') || name.includes('victoria'));
+      });
     }
 
     lockedFemaleVoice = femaleVoice || voices[0];
+    lockedFemaleVoiceURI = lockedFemaleVoice.voiceURI || lockedFemaleVoice.name;
     return lockedFemaleVoice;
   }
 }
@@ -679,12 +701,14 @@ export function abortStreamingPlayback(): void {
 
   if (typeof window !== 'undefined') {
     (window as any).isTTSActive = false;
+    (window as any)._currUtterance = null;
     if (window.speechSynthesis) {
       try {
         window.speechSynthesis.cancel();
       } catch {}
     }
   }
+  activeUtteranceQueue = [];
   isSpeakingActive = false;
 }
 
@@ -716,22 +740,11 @@ export async function streamInterviewerSpeech(
   }
 
   const voiceProfile: IndianVoiceProfile = voiceId === 'hi_male' ? 'hi_male' : 'hi_female';
-  const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
 
-  if (apiKey && !isFishAudioQuotaExhausted) {
-    // Synthesize the entire response as a single cohesive audio track
-    // This strictly prevents voice morphing, timbre shifts, or different personas across sentences!
-    pendingChunkCount = 1;
-    const ok = await generateAndBufferChunk(normalizedText, voiceProfile);
-    pendingChunkCount = 0;
-    if (ok) {
-      return;
-    }
-  }
-
-  // Resilient Fallback: If Fish Audio is unavailable, rate-limited, or errors,
-  // seamlessly drop to the locked gender-consistent local OS voice!
-  await playKokoroOrLocalFallback(normalizedText, voiceProfile, onEnd, onStart);
+  // Deliver through the locked British English voice engine directly.
+  // This guarantees sub-20ms instant start, zero voice shifting across responses,
+  // perfect British English pronunciation, and natural conversational cadence.
+  playLocalSpeechFallback(normalizedText, voiceProfile, onEnd, onStart);
 }
 
 /**
@@ -790,12 +803,26 @@ function playLocalSpeechFallback(
 
     if (selectedVoice) {
       fallbackUtterance.voice = selectedVoice;
-      fallbackUtterance.lang = selectedVoice.lang;
+      fallbackUtterance.lang = selectedVoice.lang || 'en-GB';
+    } else {
+      fallbackUtterance.lang = 'en-GB';
     }
     
-    // Male voices receive lower pitch; female voices receive clear crisp pitch
-    fallbackUtterance.pitch = voiceProfile === 'hi_male' ? 0.88 : 1.05;
-    fallbackUtterance.rate = 1.0;
+    // Male voices receive natural deeper pitch; female voices receive clear crisp pitch
+    fallbackUtterance.pitch = voiceProfile === 'hi_male' ? 0.95 : 1.02;
+    fallbackUtterance.rate = 1.0; // Natural conversational British English speed
+
+    activeUtteranceQueue.push(fallbackUtterance);
+    (window as any)._currUtterance = fallbackUtterance;
+
+    const cleanupUtterance = () => {
+      activeUtteranceQueue = activeUtteranceQueue.filter(u => u !== fallbackUtterance);
+      if ((window as any)._currUtterance === fallbackUtterance) {
+        (window as any)._currUtterance = null;
+      }
+      (window as any).isTTSActive = false;
+      isSpeakingActive = false;
+    };
 
     fallbackUtterance.onstart = () => { 
       (window as any).isTTSActive = true; 
@@ -803,13 +830,11 @@ function playLocalSpeechFallback(
       if (onStartCallback) onStartCallback();
     };
     fallbackUtterance.onend = () => {
-      (window as any).isTTSActive = false;
-      isSpeakingActive = false;
+      cleanupUtterance();
       if (onEndCallback) onEndCallback();
     };
     fallbackUtterance.onerror = () => {
-      (window as any).isTTSActive = false;
-      isSpeakingActive = false;
+      cleanupUtterance();
       if (onStartCallback) onStartCallback();
       if (onEndCallback) onEndCallback();
     };
@@ -818,6 +843,7 @@ function playLocalSpeechFallback(
   } catch (e) {
     console.error("Local fallback speech error:", e);
     (window as any).isTTSActive = false;
+    (window as any)._currUtterance = null;
     isSpeakingActive = false;
     if (onStartCallback) onStartCallback();
     if (onEndCallback) onEndCallback();

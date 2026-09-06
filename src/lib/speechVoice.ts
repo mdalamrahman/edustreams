@@ -66,7 +66,7 @@ export function startSpeechRecognition(options: {
 
     const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognitionClass();
-    recognition.lang = options.lang || 'en-US';
+    recognition.lang = options.lang || 'en-GB';
     recognition.interimResults = true;
     recognition.continuous = options.continuous ?? false;
     recognition.maxAlternatives = 1;
@@ -160,16 +160,17 @@ export function speakText(
     }
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.rate = options?.rate || 1.05;
+    utterance.rate = options?.rate || 1.0; // Natural conversational British English speed
     utterance.pitch = options?.pitch || 1.0;
-    utterance.lang = 'en-US';
+    utterance.lang = 'en-GB';
 
-    // Pick a natural English voice if available
+    // Pick a natural British English voice if available
     const voices = window.speechSynthesis.getVoices();
-    const naturalVoice = voices.find(v => 
-      (v.lang.startsWith('en') || v.lang === 'en-US') && 
-      (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.name.includes('Guy'))
-    ) || voices.find(v => v.lang.startsWith('en'));
+    const naturalVoice = voices.find(v => {
+      const lang = (v.lang || '').replace('_', '-').toLowerCase();
+      const name = v.name.toLowerCase();
+      return lang === 'en-gb' || name.includes('united kingdom') || name.includes('uk english');
+    }) || voices.find(v => (v.lang || '').startsWith('en'));
 
     if (naturalVoice) {
       utterance.voice = naturalVoice;
