@@ -59,18 +59,24 @@ export async function executeAIChatCascade(
   const temp = options?.temperature ?? 0.3;
   const timeoutMs = options?.timeoutMs ?? 12000;
 
-  // 1. PRIMARY: Groq Ultra-Fast API (GPT OSS 120B / 20B / Compound / Qwen)
-  const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'groq/compound', 'qwen/qwen3.8-27b', 'qwen/qwen3.6-27b'];
+  // 1. PRIMARY: Groq Ultra-Fast API (GPT OSS 120B / 20B)
+  const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'groq/compound-mini'];
+  
+  // For Groq JSON mode, API strictly mandates that 'json' must appear in messages
+  const groqMessages = options?.responseFormatJson && !messages.some(m => /json/i.test(m.content))
+    ? [...messages, { role: 'system', content: 'Respond with a valid JSON object matching the requested schema.' }]
+    : messages;
+
   let groqRateLimitedCount = 0;
   for (const model of groqModels) {
-    if (groqRateLimitedCount >= 2) {
+    if (groqRateLimitedCount >= 3) {
       console.warn('[Groq AI Cascade] Multiple models rate limited (429). Fast failover to Mistral / secondary cascade.');
       break;
     }
     try {
       const bodyPayload: any = {
         model,
-        messages,
+        messages: groqMessages,
         temperature: temp,
       };
       if (options?.maxTokens) bodyPayload.max_tokens = options.maxTokens;
@@ -92,12 +98,14 @@ export async function executeAIChatCascade(
         const data = await res.json();
         const rawContent = data.choices?.[0]?.message?.content;
         if (rawContent && typeof rawContent === 'string' && rawContent.trim().length > 0) {
-          const cleanContent = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+          const cleanContent = rawContent.replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
           return cleanContent || rawContent.trim();
         }
       } else if (res.status === 429) {
         groqRateLimitedCount++;
         console.warn(`[Groq Model '${model}'] Rate limited (429).`);
+      } else {
+        console.warn(`[Groq Model '${model}'] Status ${res.status}: ${res.statusText}`);
       }
     } catch (e) {
       console.warn(`[Groq Model '${model}' notice]:`, e);

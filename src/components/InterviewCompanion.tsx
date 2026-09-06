@@ -78,7 +78,8 @@ import {
   cleanSpokenCandidateName,
   PanelInterviewer,
   FAANG_INTERVIEWER_PANEL,
-  getRandomPanelInterviewer
+  getRandomPanelInterviewer,
+  getNextPanelInterviewer
 } from '../lib/interviewService';
 import { evaluateInterview, InterviewScorecard } from '../lib/interviewEvaluator';
 import { 
@@ -155,14 +156,23 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [selectedRound, setSelectedRound] = useState<InterviewRound>('DSA');
   const [selectedTestStyle, setSelectedTestStyle] = useState<TestStyle>('faang_bar_raiser');
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
-  const [assignedInterviewer, setAssignedInterviewer] = useState<PanelInterviewer>(() => getRandomPanelInterviewer());
+  const [assignedInterviewer, setAssignedInterviewer] = useState<PanelInterviewer>(() => getNextPanelInterviewer());
   const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<IndianVoiceProfile>(() => assignedInterviewer.voiceProfile);
+
+  // Auto-select new interviewer persona every time the page or companion is opened
+  useEffect(() => {
+    const freshInterviewer = getNextPanelInterviewer();
+    setAssignedInterviewer(freshInterviewer);
+    setSelectedVoiceProfile(freshInterviewer.voiceProfile);
+    resetInterviewerVoiceLock();
+  }, []);
 
   const handleShuffleInterviewer = () => {
     setAssignedInterviewer(prev => {
       const pool = FAANG_INTERVIEWER_PANEL.filter(p => p.id !== prev.id);
       const next = pool[Math.floor(Math.random() * pool.length)];
       setSelectedVoiceProfile(next.voiceProfile);
+      resetInterviewerVoiceLock();
       return next;
     });
   };
@@ -542,19 +552,32 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     if (
       !recognitionRef.current || 
       isAiThinkingRef.current || 
-      isAiSpeakingRef.current || 
-      hasPermanentMicErrorRef.current ||
-      Date.now() < speechEchoCooldownUntilRef.current
+      isAiSpeakingRef.current
     ) return;
     try {
+      hasPermanentMicErrorRef.current = false;
       stopInterviewerSpeech();
       setIsAiSpeaking(false);
       if (!isRecognitionActiveRef.current) {
         recognitionRef.current.start();
       }
+      isRecognitionActiveRef.current = true;
       setIsListening(true);
-    } catch (err) {
-      console.warn('Speech recognition start error:', err);
+    } catch (err: any) {
+      if (err?.name === 'InvalidStateError' || err?.message?.includes('already started')) {
+        isRecognitionActiveRef.current = true;
+        setIsListening(true);
+      } else {
+        setTimeout(() => {
+          if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+            try {
+              recognitionRef.current?.start();
+              isRecognitionActiveRef.current = true;
+              setIsListening(true);
+            } catch {}
+          }
+        }, 120);
+      }
     }
   };
 
@@ -644,9 +667,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             setIsAiSpeaking(false);
             vadRef.current?.setTTSActive(false);
             if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
-              startListening();
-            }
+            setTimeout(() => {
+              if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+                hasPermanentMicErrorRef.current = false;
+                startListening();
+              }
+            }, 120);
           },
           selectedVoiceProfile,
           () => {
@@ -805,6 +831,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
     setSecondsRemaining(45 * 60);
     setIsTimerRunning(true);
     setIsInterviewStarted(true);
+    hasPermanentMicErrorRef.current = false;
+    isHandsFreeModeRef.current = true;
+    setIsHandsFreeMode(true);
 
     if (!isVoiceMuted) {
       lastSpokenInterviewerTextRef.current = initialGreeting;
@@ -832,9 +861,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           setIsAiSpeaking(false);
           vadRef.current?.setTTSActive(false);
           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
-            startListening();
-          }
+          setTimeout(() => {
+            if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+              hasPermanentMicErrorRef.current = false;
+              startListening();
+            }
+          }, 120);
         }, 
         selectedVoiceProfile,
         () => {
@@ -1004,13 +1036,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           }
 
           // Debounce restart by 400ms to strictly prevent tight CPU error loops
-          // Ensure it does NOT restart while AI is speaking, thinking, or during acoustic cooldown
+          // Auto-restart recognition in hands-free mode when AI is not speaking or thinking
           if (
             !isAiSpeakingRef.current && 
             !isAiThinkingRef.current && 
             !(typeof window !== 'undefined' && (window as any).isTTSActive) && 
-            isInterviewStarted && 
-            Date.now() >= speechEchoCooldownUntilRef.current
+            isInterviewStarted
           ) {
             if (recognitionRestartTimeoutRef.current) {
               clearTimeout(recognitionRestartTimeoutRef.current);
@@ -1022,14 +1053,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 !isAiThinkingRef.current &&
                 !(typeof window !== 'undefined' && (window as any).isTTSActive) &&
                 isInterviewStarted &&
-                !hasPermanentMicErrorRef.current &&
-                Date.now() >= speechEchoCooldownUntilRef.current
+                !hasPermanentMicErrorRef.current
               ) {
                 try {
                   recognition.start();
-                } catch {}
+                  isRecognitionActiveRef.current = true;
+                  setIsListening(true);
+                } catch (err: any) {
+                  if (err?.name === 'InvalidStateError') {
+                    isRecognitionActiveRef.current = true;
+                    setIsListening(true);
+                  }
+                }
               }
-            }, 400);
+            }, 150);
           } else {
             setIsListening(false);
           }
@@ -1134,9 +1171,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           setIsAiSpeaking(false);
           vadRef.current?.setTTSActive(false);
           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
-            startListening();
-          }
+          setTimeout(() => {
+            if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+              hasPermanentMicErrorRef.current = false;
+              startListening();
+            }
+          }, 120);
         },
         selectedVoiceProfile,
         () => {
@@ -1310,7 +1350,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       }
 
       const candidateGreetingName = candidateName.trim() || 'Candidate';
-      const interviewerName = selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel';
+      const interviewerName = assignedInterviewer.name;
       const roundIntro = `Welcome to Round ${nextIdx + 1} (${nextDef.title}), ${candidateGreetingName}! I am ${interviewerName}, ${nextDef.interviewerTitle}. We will be focusing on ${nextDef.focusDescription}.\n\nHere is your technical scenario:\n**${newQ.title}**\n\n${newQ.description}\n\nWhenever you are ready, please walk me through your initial thoughts, verify any edge conditions, and structure your approach.`;
 
       const nextMsg: InterviewMessage = {
@@ -1349,9 +1389,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             setIsAiSpeaking(false);
             vadRef.current?.setTTSActive(false);
             if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
-              startListening();
-            }
+            setTimeout(() => {
+              if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+                hasPermanentMicErrorRef.current = false;
+                startListening();
+              }
+            }, 120);
           }, 
           selectedVoiceProfile,
           () => {
@@ -2491,7 +2534,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               <div>
                 <div className="flex items-center space-x-1.5">
                   <h4 className="text-xs font-bold text-white tracking-tight">
-                    {selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'}
+                    {assignedInterviewer?.name || (selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel')}
                   </h4>
                   <span className="px-1.5 py-0.2 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[9px] font-mono">
                     {currentCompany.name} Bar Raiser
@@ -2549,9 +2592,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                           setIsAiSpeaking(false);
                           vadRef.current?.setTTSActive(false);
                           if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-                          if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
-                            startListening();
-                          }
+                          setTimeout(() => {
+                            if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+                              hasPermanentMicErrorRef.current = false;
+                              startListening();
+                            }
+                          }, 120);
                         }, 
                         selectedVoiceProfile
                       );
@@ -2583,7 +2629,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   <div className="flex items-center space-x-1.5">
                     <span className="font-semibold text-slate-300">
                       {msg.role === 'interviewer' 
-                        ? `${selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'} (${currentCompany.name})` 
+                        ? `${assignedInterviewer?.name || 'Interviewer'} (${currentCompany.name})` 
                         : `${candidateName || 'Candidate'}`}
                     </span>
                     <span>•</span>
@@ -2605,9 +2651,12 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                             setIsAiSpeaking(false);
                             vadRef.current?.setTTSActive(false);
                             if (typeof window !== 'undefined') (window as any).isTTSActive = false;
-                            if (isHandsFreeModeRef.current && !hasPermanentMicErrorRef.current) {
-                              startListening();
-                            }
+                            setTimeout(() => {
+                              if (isHandsFreeModeRef.current && !isAiSpeakingRef.current && !isAiThinkingRef.current) {
+                                hasPermanentMicErrorRef.current = false;
+                                startListening();
+                              }
+                            }, 120);
                           }, 
                           selectedVoiceProfile
                         );

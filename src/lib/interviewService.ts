@@ -175,10 +175,15 @@ export async function sendInterviewerMessage(
     { role: 'system', content: systemPrompt }
   ];
 
+  // Compact conversation history window to strictly prevent TPM token-overflow rate limits (429)
+  const conversationSlice = messages.length > 7
+    ? [messages[0], ...messages.slice(-6)]
+    : messages;
+
   // Map messages and ensure the candidate's latest spoken statement is the focal point
-  for (let i = 0; i < messages.length; i++) {
-    const m = messages[i];
-    const isLatest = i === messages.length - 1;
+  for (let i = 0; i < conversationSlice.length; i++) {
+    const m = conversationSlice[i];
+    const isLatest = i === conversationSlice.length - 1;
 
     if (m.role === 'interviewer') {
       formattedMessages.push({
@@ -214,9 +219,9 @@ export async function sendInterviewerMessage(
 
   try {
     const reply = await executeAIChatCascade(formattedMessages, {
-      temperature: 0.5,
-      maxTokens: 350,
-      timeoutMs: 12000
+      temperature: 0.4,
+      maxTokens: 250,
+      timeoutMs: 14000
     });
     if (reply && reply.trim().length > 0) {
       return reply.trim();
@@ -225,11 +230,28 @@ export async function sendInterviewerMessage(
     console.error('Interviewer AI API error:', err);
   }
 
-  const lastCandidateMsg = messages.filter(m => m.role === 'candidate').slice(-1)[0]?.content;
-  if (lastCandidateMsg) {
-    return `Regarding your point about "${lastCandidateMsg.slice(0, 60)}...": that's an interesting intuition. Walk me through the exact invariants and time complexity for that approach.`;
+  // Dynamic context-aware responses preventing repetitive text
+  const lastCandidateMsg = messages.filter(m => m.role === 'candidate').slice(-1)[0]?.content || '';
+  const lowerMsg = lastCandidateMsg.toLowerCase();
+
+  if (lowerMsg.includes('time') || lowerMsg.includes('space') || lowerMsg.includes('complexity') || lowerMsg.includes('big-o') || lowerMsg.includes('o(')) {
+    return `That asymptotic analysis makes sense. What boundary conditions or extreme constraints might break this approach?`;
   }
-  return "Thank you for explaining that. Walk me through your time and space complexity, and how you would handle edge cases.";
+  if (lowerMsg.includes('edge') || lowerMsg.includes('empty') || lowerMsg.includes('null') || lowerMsg.includes('negative')) {
+    return `Good attention to corner cases. How does your algorithm maintain its invariants across those edge conditions?`;
+  }
+  if (lowerMsg.includes('code') || lowerMsg.includes('write') || lowerMsg.includes('implement')) {
+    return `Go ahead and structure that cleanly in the code editor. Keep modularity and edge cases in mind as you type.`;
+  }
+  if (lastCandidateMsg.length > 5) {
+    const snippets = [
+      `I see your reasoning regarding "${lastCandidateMsg.slice(0, 50)}...". How would you structure that in terms of space and time complexity?`,
+      `That is a sensible angle on "${lastCandidateMsg.slice(0, 50)}...". What would be the worst-case input scenario for this strategy?`,
+      `Fair point. Walk me through the step-by-step invariant transitions before we start coding.`
+    ];
+    return snippets[Math.floor(Math.random() * snippets.length)];
+  }
+  return "That makes sense. Walk me through your expected time and space complexity, and how you would handle boundary conditions.";
 }
 
 // Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
@@ -456,6 +478,22 @@ export const FAANG_INTERVIEWER_PANEL: PanelInterviewer[] = [
 export function getRandomPanelInterviewer(): PanelInterviewer {
   const idx = Math.floor(Math.random() * FAANG_INTERVIEWER_PANEL.length);
   return FAANG_INTERVIEWER_PANEL[idx];
+}
+
+/**
+ * Automatically selects a new, different interviewer whenever the page is opened or refreshed
+ */
+export function getNextPanelInterviewer(): PanelInterviewer {
+  if (typeof window === 'undefined') return FAANG_INTERVIEWER_PANEL[0];
+  try {
+    const lastId = sessionStorage.getItem('last_interview_persona_id');
+    const available = FAANG_INTERVIEWER_PANEL.filter(p => p.id !== lastId);
+    const chosen = available[Math.floor(Math.random() * available.length)] || FAANG_INTERVIEWER_PANEL[0];
+    sessionStorage.setItem('last_interview_persona_id', chosen.id);
+    return chosen;
+  } catch {
+    return getRandomPanelInterviewer();
+  }
 }
 
 interface KokoroAudioResponse {
