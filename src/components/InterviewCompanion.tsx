@@ -65,7 +65,10 @@ import {
   CandidateDetails,
   sendInterviewerMessage, 
   speakInterviewerText, 
+  speakInterviewerResponse,
   stopInterviewerSpeech,
+  terminateInterviewerAudioSpeech,
+  IndianVoiceProfile,
   getOrLockInterviewerVoice,
   resetInterviewerVoiceLock,
   unlockSpeechSynthesis
@@ -145,6 +148,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
   const [selectedRound, setSelectedRound] = useState<InterviewRound>('DSA');
   const [selectedTestStyle, setSelectedTestStyle] = useState<TestStyle>('faang_bar_raiser');
   const [language, setLanguage] = useState<SupportedLanguage>('cpp');
+  const [selectedVoiceProfile, setSelectedVoiceProfile] = useState<IndianVoiceProfile>('hi_female');
 
   // Active Problem & Custom AI Generation State
   const [availableQuestions, setAvailableQuestions] = useState<CuratedInterviewQuestion[]>([]);
@@ -303,6 +307,17 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }
   }, [isInterviewStarted]);
+
+  // Pre-warm authenticated Kokoro Space instance to eliminate serverless cold start lag
+  useEffect(() => {
+    if (!isInterviewStarted) {
+      const timer = setTimeout(() => {
+        console.log('[Kokoro-TTS] Pre-warming authenticated Space instance to eliminate serverless cold start lag...');
+        speakInterviewerResponse('...', selectedVoiceProfile, () => {}).catch(() => {});
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isInterviewStarted, selectedVoiceProfile]);
 
   // Load Past Interview History
   const loadPastHistory = async () => {
@@ -528,7 +543,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           setTimeout(() => {
             if (isHandsFreeModeRef.current) startListening();
           }, 350);
-        });
+        }, selectedVoiceProfile);
       }
     } catch (err) {
       console.warn('Switch question error:', err);
@@ -671,7 +686,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               startListening();
             }
           }, 350);
-        });
+        }, selectedVoiceProfile);
       } else if (isHandsFreeModeRef.current) {
         startListening();
       }
@@ -874,7 +889,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             startListening();
           }
         }, 350);
-      });
+      }, selectedVoiceProfile);
     } else if (isHandsFreeModeRef.current) {
       startListening();
     }
@@ -1062,7 +1077,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             setTimeout(() => {
               if (isHandsFreeModeRef.current) startListening();
             }, 350);
-          });
+          }, selectedVoiceProfile);
         } else if (isHandsFreeModeRef.current) {
           startListening();
         }
@@ -1692,6 +1707,59 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     {isHandsFreeMode ? 'Enabled' : 'Disabled'}
                   </button>
                 </div>
+
+                {/* Kokoro-TTS Indian Voice Persona */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-slate-200 font-bold text-xs">AI Interviewer Voice (Kokoro-TTS):</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
+                        🇮🇳 Indian English Phonemes
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">Authenticated Space</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVoiceProfile('hi_female')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        selectedVoiceProfile === 'hi_female'
+                          ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">👩‍💼</span>
+                        <div>
+                          <div className="text-xs font-bold text-white">Aditi</div>
+                          <div className="text-[9px] font-mono text-emerald-400">hi_female (Warm Cadence)</div>
+                        </div>
+                      </div>
+                      {selectedVoiceProfile === 'hi_female' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVoiceProfile('hi_male')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        selectedVoiceProfile === 'hi_male'
+                          ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">👨‍💼</span>
+                        <div>
+                          <div className="text-xs font-bold text-white">Aarav</div>
+                          <div className="text-[9px] font-mono text-indigo-400">hi_male (Principal Tech Lead)</div>
+                        </div>
+                      </div>
+                      {selectedVoiceProfile === 'hi_male' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2095,6 +2163,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             {isVoiceMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
           </button>
 
+          {/* AI Voice Persona Toggle */}
+          <button
+            onClick={() => setSelectedVoiceProfile(prev => prev === 'hi_female' ? 'hi_male' : 'hi_female')}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-slate-800 bg-slate-950 text-xs font-mono text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 transition-colors cursor-pointer"
+            title={`Voice: ${selectedVoiceProfile === 'hi_female' ? 'Aditi (Female)' : 'Aarav (Male)'}. Click to toggle.`}
+          >
+            <span>{selectedVoiceProfile === 'hi_female' ? '👩‍💼 Aditi' : '👨‍💼 Aarav'}</span>
+          </button>
+
           {/* Pause / Resume Interview Proctor Button */}
           <button
             onClick={() => {
@@ -2225,7 +2302,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     const lastInterviewerMsg = [...messages].reverse().find(m => m.role === 'interviewer');
                     if (lastInterviewerMsg) {
                       setIsAiSpeaking(true);
-                      speakInterviewerText(lastInterviewerMsg.content, () => setIsAiSpeaking(false));
+                      speakInterviewerText(lastInterviewerMsg.content, () => setIsAiSpeaking(false), selectedVoiceProfile);
                     }
                   }}
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-bold transition-all cursor-pointer"
@@ -2261,7 +2338,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                       onClick={() => {
                         unlockSpeechSynthesis();
                         setIsAiSpeaking(true);
-                        speakInterviewerText(msg.content, () => setIsAiSpeaking(false));
+                        speakInterviewerText(msg.content, () => setIsAiSpeaking(false), selectedVoiceProfile);
                       }}
                       className="flex items-center space-x-1 px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-indigo-300 hover:text-white text-[10px] font-bold transition-all cursor-pointer"
                       title="Play / Replay this voice response"

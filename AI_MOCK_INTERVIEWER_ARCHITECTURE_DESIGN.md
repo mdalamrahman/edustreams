@@ -184,36 +184,32 @@ if (ctx.candidateCode && ctx.candidateCode.trim().length > 0) {
 
 ---
 
-### 5.2 Resilient Web Speech Engine (TTS & STT)
+### 5.2 Hyper-Realistic Neural Speech Engine (Kokoro-TTS & Indian Phonemes)
 
-Standard browser `SpeechSynthesis` and `SpeechRecognition` implementations suffer from known Chromium bugs and acoustic feedback loops:
-1. **Chromium GC Bug**: Long utterances get garbage collected mid-speech, cutting audio short after a few words.
-2. **Chrome 15-Second Freeze**: Chrome silently freezes audio playback after ~15 seconds without firing `onend`.
-3. **Acoustic Speaker Feedback (Barge-in False Positives)**: When the AI speaks through laptop loudspeakers, the microphone captures the speaker output. If the VAD detects RMS above threshold, it assumes the candidate interrupted and aborts AI speech after 1–2 words.
-4. **Abrupt Utterance Boundary Clipping**: Fragmenting text arbitrarily mid-phrase creates robotic cadences and missing words.
+To move beyond robotic browser voices, the platform integrates an authenticated connection with a private **Kokoro-TTS Hugging Face Space** (`mdalamrahman/Kokoro-TTS`), using native multi-lingual weights and calibrated Indian English cadence:
 
-#### The Solutions Implemented in `src/lib/interviewService.ts` & `src/lib/audioVAD.ts`:
-* **Acoustic Speaker Echo Suppression (`audioVAD.ts`)**: When `isTTSActive === true`, the VAD suppresses all voice detection frames and halts barge-in triggers until the AI completes its utterance, accompanied by a 350ms acoustic dissipation cooldown.
-* **Global Voice Locking & Utterance Retention**: `activeUtteranceQueue` keeps active utterance references alive in JavaScript memory so the V8 garbage collector never unloads them.
-* **Non-Destructive Keepalive Heartbeat**: A 5-second interval checks `window.speechSynthesis.paused`. If true, it calls `resume()` without destructively resetting active synthesis.
-* **Per-Utterance Watchdog Fallback**: Each spoken chunk sets an automatic watchdog timer (`wordCount * 550ms + 2500ms`). If Chromium fails to dispatch an `onend` event, the watchdog safely forces queue progression.
-* **Natural Spoken Normalization**: Regular expressions expand mathematical notations, Big-O notations, and technical acronyms:
-  ```typescript
-  let cleanText = text
-    .replace(/```[\s\S]*?```/g, 'Code snippet provided in the editor.')
-    .replace(/\bO\(1\)/g, 'O of 1')
-    .replace(/\bO\(log\s*n\)/gi, 'O of log n')
-    .replace(/\bO\(n\s*\*\s*log\s*n\)/gi, 'O of n log n')
-    .replace(/\bO\(n\)/gi, 'O of n')
-    .replace(/\bO\(n\^2\)/gi, 'O of n squared')
-    .replace(/\bQPS\b/g, 'Q P S')
-    .replace(/\bSPOF\b/g, 'single point of failure')
-    .replace(/\bLLD\b/g, 'low level design')
-    .replace(/\bHLD\b/g, 'high level design')
-    .replace(/\bJSON\b/gi, 'Jason')
-    .replace(/\bSQL\b/gi, 'sequel');
-  ```
-* **True Sentence-Level Segmentation**: Splits strictly at sentence boundaries (`.`, `!`, `?`) keeping clauses under 250 characters while retaining internal commas for natural human breathing cadences.
+#### 1. Authorized Serverless Client Bridge (`@gradio/client`)
+* Authenticates against the private Space via `Client.connect("mdalamrahman/Kokoro-TTS", { token: VITE_HF_TOKEN })`.
+* Dispatches generation requests to `/predict` with text payload, selected voice profile (`af_heart` for Aditi / `am_michael` for Aarav), and an optimal FAANG interview conversational tempo (`speed: 1.03`).
+* Because the space is private, generated audio endpoints are securely streamed and fetched via `fetch(url, { headers: { Authorization: 'Bearer ...' } })`, converted into local `blob:` URLs, and played through `new Audio()`.
+
+#### 2. Indian Corporate & Technical Cadence Formatter (`formatTextForIndianCadence`)
+* Injects conversational pauses (`... actually ...`, `... look ...`, `. — `) to simulate human critical thinking.
+* Phonetically normalizes Indian recruitment terminology and Big-O asymptotics:
+  * LPA $\rightarrow$ *"L P A"*, CTC $\rightarrow$ *"C T C"*
+  * $O(1) \rightarrow$ *"O of 1"*, $O(N \log N) \rightarrow$ *"O of N log N"*
+  * QPS $\rightarrow$ *"Q P S"*, SPOF $\rightarrow$ *"single point of failure"*
+  * LLD $\rightarrow$ *"low level design"*, HLD $\rightarrow$ *"high level design"*
+  * JSON $\rightarrow$ *"Jason"*, SQL $\rightarrow$ *"sequel"*, NoSQL $\rightarrow$ *"no sequel"*
+* Replaces inline code blocks with spoken contextual cues: *"Check the code buffer I just updated in your arena"*.
+
+#### 3. Voice Activity Detection & Barge-In Audio Controller (`src/lib/audioVAD.ts`)
+* Intercepts microphone RMS input through a 2-stage **Biquad Vocal Formant Bandpass Filter** (300 Hz – 3,400 Hz) to eliminate desk thumps and mechanical keyboard clicks.
+* When candidate voice energy exceeds the calibrated threshold during active AI speech, it immediately fires `terminateInterviewerAudioSpeech()`, halting audio and instantly ceding the conversational floor to the candidate.
+
+#### 4. Pre-Flight Serverless Warm-Up & Fail-Safe Local Fallback
+* **Cold-Start Elimination**: The setup wizard silently fires a warm-up token (`"..."`) during the pre-flight check, keeping serverless instances warm.
+* **Fail-Safe Graceful Fallback**: If Hugging Face hits quota limits or experiences network latency, `playLocalSpeechFallback()` seamlessly drops down to native OS regional voices (`en-IN` / `hi-IN` with `SpeechSynthesisUtterance`) with zero UI interruption.
 
 #### Hands-Free Silence Detection in `src/components/InterviewCompanion.tsx`:
 ```typescript

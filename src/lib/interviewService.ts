@@ -1,3 +1,4 @@
+import { Client } from "@gradio/client";
 import { MISTRAL_API_KEY, executeAIChatCascade } from './mistral';
 import { SdeLevel, InterviewRound, TestStyle, CuratedInterviewQuestion } from './githubInterviewData';
 
@@ -212,245 +213,280 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
   };
 }
 
-// Watchdog timer reference to prevent audio stalls
-let utteranceWatchdogTimer: any = null;
+// Global pointer to track active audio element runtime
+let currentInterviewerAudio: HTMLAudioElement | null = null;
+let cachedKokoroClient: any = null;
+let lastConnectedToken = '';
+
+export type IndianVoiceProfile = 'hi_female' | 'hi_male';
+
+interface KokoroAudioResponse {
+  data: Array<{
+    name?: string;
+    url?: string;
+    data?: string;
+    is_file?: boolean;
+  } | string>;
+}
 
 /**
- * Robust, realistic Text-to-Speech (TTS) synthesizer:
- * - Thorough natural text preprocessing (expanding Big-O, technical acronyms, stripping emojis/code fences)
- * - Complete sentence phrasing (prevents choppy comma-splitting)
- * - Per-chunk watchdog timer (bypasses Chromium dropped onend events)
- * - V8 GC retention and non-destructive Chrome keepalive
+ * Technical text pre-processor designed to control the Indian Voice Pack's cadence.
+ * Forces elegant human-like structural pauses around complex corporate jargon.
  */
-export function speakInterviewerText(text: string, onEnd?: () => void): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) {
-    if (onEnd) onEnd();
+export function formatTextForIndianCadence(text: string): string {
+  return text
+    // 1. Maintain core platform redactions (From your specific code map)
+    .replace(/```[\s\S]*?```/g, '... Check the code buffer I just updated in your arena ...')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
+    .replace(/\bO\(1\)/gi, 'O of 1')
+    .replace(/\bO\(n\)/gi, 'O of n')
+    .replace(/\bO\(n\s*\*\s*log\s*n\)/gi, 'O of n log n')
+    .replace(/\bO\(log\s*n\)/gi, 'O of log n')
+    .replace(/\bO\(n\^?2\)/gi, 'O of n squared')
+    .replace(/\bO\(2\^?n\)/gi, 'O of 2 to the n')
+    .replace(/\bQPS\b/g, 'Q P S')
+    .replace(/\bTPS\b/g, 'T P S')
+    .replace(/\bSPOF\b/g, 'single point of failure')
+    
+    // 2. Local Indian corporate & technical acronym expansion
+    .replace(/\bLPA\b/gi, 'L P A')
+    .replace(/\bCTC\b/gi, 'C T C')
+    .replace(/\bDSA\b/g, 'D S A')
+    .replace(/\bLLD\b/g, 'low level design')
+    .replace(/\bHLD\b/g, 'high level design')
+    .replace(/\bAPI\b/g, 'A P I')
+    .replace(/\bAPIs\b/g, 'A P I s')
+    .replace(/\bDB\b/g, 'database')
+    .replace(/\bDBs\b/g, 'databases')
+    .replace(/\bJSON\b/gi, 'Jason')
+    .replace(/\bSQL\b/gi, 'sequel')
+    .replace(/\bNoSQL\b/gi, 'no sequel')
+    .replace(/\bCDN\b/g, 'C D N')
+    .replace(/\bDNS\b/g, 'D N S')
+    .replace(/\bRPC\b/g, 'R P C')
+    .replace(/\bgRPC\b/g, 'G R P C')
+    
+    // 3. Cadence Anchors: Injects vocal formatting markers to simulate active critical thinking
+    .replace(/\b(look|see|actually|think about it|wait)\b/gi, '... $1 ...')
+    .replace(/\.(\s+)/g, '. — ')
+    .trim();
+}
+
+/**
+ * Connects or returns existing cached authorized Gradio client for the private Space
+ */
+async function getAuthenticatedKokoroClient(token: string) {
+  if (cachedKokoroClient && lastConnectedToken === token) {
+    return cachedKokoroClient;
+  }
+  const app = await Client.connect("mdalamrahman/Kokoro-TTS", {
+    token: (token || "") as `hf_${string}`
+  });
+  cachedKokoroClient = app;
+  lastConnectedToken = token;
+  return app;
+}
+
+/**
+ * Authenticates against your private Hugging Face space and streams high-fidelity 
+ * Indian voice profiles directly back to the active client workspace.
+ */
+export async function speakInterviewerResponse(
+  rawText: string,
+  indianVoiceProfile: IndianVoiceProfile = 'hi_female', 
+  onEndCallback?: () => void
+): Promise<void> {
+
+  // 1. Immediately drop running audio vectors to prepare for candidate vocal barge-in
+  terminateInterviewerAudioSpeech();
+
+  const cleanSpeechText = formatTextForIndianCadence(rawText);
+  if (!cleanSpeechText) {
+    if (onEndCallback) onEndCallback();
+    return;
+  }
+  
+  // Resolve environment variables based on Vite / NextJS runtime architectures
+  const hfToken = ((import.meta as any).env?.VITE_HF_TOKEN || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_HF_TOKEN : '')) || "";
+
+  // If token is missing, gracefully drop to localized regional OS voices
+  if (!hfToken) {
+    console.warn("[Kokoro-TTS] VITE_HF_TOKEN not detected. Using localized Indian English OS fallback voice...");
+    playLocalSpeechFallback(cleanSpeechText, onEndCallback);
     return;
   }
 
-  stopInterviewerSpeech();
-  isSpeakingActive = true;
-
   try {
-    // 1. Clean markdown & expand technical terms for natural spoken cadence
-    let cleanText = text
-      // Replace code blocks with spoken notice
-      .replace(/```[\s\S]*?```/g, 'I have updated the code editor with the relevant template. ')
-      .replace(/`([^`]+)`/g, '$1')
-      // Strip emojis (both surrogate pairs and standard ranges)
-      .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
-      // Expand Big-O asymptotic notations
-      .replace(/\bO\(1\)\b/g, 'O of 1')
-      .replace(/\bO\(log\s*n\)\b/gi, 'O of log N')
-      .replace(/\bO\(n\)\b/gi, 'O of N')
-      .replace(/\bO\(n\s*log\s*n\)\b/gi, 'O of N log N')
-      .replace(/\bO\(n\^?2\)\b/gi, 'O of N squared')
-      .replace(/\bO\(2\^?n\)\b/gi, 'O of 2 to the N')
-      .replace(/\bO\(V\s*\+\s*E\)\b/gi, 'O of V plus E')
-      .replace(/\bO\(n!\)\b/gi, 'O of N factorial')
-      // Expand technical abbreviations & acronyms
-      .replace(/\bQPS\b/g, 'queries per second')
-      .replace(/\bTPS\b/g, 'transactions per second')
-      .replace(/\bSPOF\b/g, 'single point of failure')
-      .replace(/\bAPI\b/g, 'A P I')
-      .replace(/\bAPIs\b/g, 'A P I s')
-      .replace(/\bDB\b/g, 'database')
-      .replace(/\bDBs\b/g, 'databases')
-      .replace(/\bLLD\b/g, 'low level design')
-      .replace(/\bHLD\b/g, 'high level design')
-      .replace(/\bDSA\b/g, 'D S A')
-      .replace(/\bSTAR\b/g, 'STAR method')
-      .replace(/\bFIFO\b/g, 'first in first out')
-      .replace(/\bLRU\b/g, 'L R U')
-      .replace(/\bCRUD\b/g, 'C R U D')
-      .replace(/\bRPC\b/g, 'R P C')
-      .replace(/\bgRPC\b/g, 'G R P C')
-      .replace(/\bJSON\b/gi, 'Jason')
-      .replace(/\bSQL\b/g, 'sequel')
-      .replace(/\bNoSQL\b/gi, 'no sequel')
-      .replace(/\bCDN\b/g, 'C D N')
-      .replace(/\bDNS\b/g, 'D N S')
-      .replace(/\bK\/V\b/g, 'key value')
-      .replace(/\bDr\./g, 'Doctor')
-      .replace(/\bMr\./g, 'Mister')
-      .replace(/\bMs\./g, 'Miss')
-      .replace(/\be\.g\./gi, 'for example')
-      .replace(/\bi\.e\./gi, 'that is')
-      .replace(/\bvs\.?\b/gi, 'versus')
-      // Strip remaining markdown formatting symbols
-      .replace(/[*_#~>]/g, '')
-      .replace(/https?:\/\/\S+/g, '')
-      .trim();
-
-    if (!cleanText) {
-      isSpeakingActive = false;
-      if (onEnd) onEnd();
-      return;
+    // 2. Open authorized bridge session with your authenticated private Space
+    const app = await getAuthenticatedKokoroClient(hfToken);
+    
+    // Map voice request to available Space models if needed
+    let spaceVoice: string = indianVoiceProfile;
+    if (indianVoiceProfile === 'hi_female') {
+      spaceVoice = 'af_heart'; // High quality female voice with warm natural cadence
+    } else if (indianVoiceProfile === 'hi_male') {
+      spaceVoice = 'am_michael'; // Authoritative male tech lead voice
     }
 
-    // 2. Segment by true sentence boundaries (preserving natural comma cadence)
-    const rawSentences = cleanText.match(/[^.!?\n]+(?:[.!?\n]+|$)/g) || [cleanText];
-    const chunks: string[] = [];
-
-    for (const raw of rawSentences) {
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      // If a sentence is manageable in length (< 250 chars), keep it intact for natural inflection
-      if (trimmed.length <= 250) {
-        chunks.push(trimmed);
+    // 3. Request streaming output from the private endpoint pool
+    let response: KokoroAudioResponse;
+    try {
+      response = await app.predict("/predict", {
+        text: cleanSpeechText, 
+        voice: spaceVoice, 
+        speed: 1.03,               // Optimal professional velocity matching FAANG interview tempos
+      }) as KokoroAudioResponse;
+    } catch (predictErr: any) {
+      if (spaceVoice !== 'af_heart') {
+        response = await app.predict("/predict", {
+          text: cleanSpeechText,
+          voice: 'af_heart',
+          speed: 1.03
+        }) as KokoroAudioResponse;
       } else {
-        // Only split very long sentences at natural conjunctions
-        const subParts = trimmed.split(/,\s+(?=and|but|while|so|however|or|because|then)\b/i);
-        let current = '';
-        for (const sub of subParts) {
-          if ((current + ', ' + sub).length <= 250) {
-            current = current ? current + ', ' + sub : sub;
-          } else {
-            if (current) chunks.push(current);
-            current = sub;
-          }
-        }
-        if (current) chunks.push(current);
+        throw predictErr;
       }
     }
 
-    if (chunks.length === 0) {
-      isSpeakingActive = false;
-      if (onEnd) onEnd();
-      return;
+    // 4. Construct live client-side element wrapper from generated data stream
+    let secureAudioUrl = '';
+    const item = response?.data?.[0];
+    if (typeof item === 'string') {
+      secureAudioUrl = item;
+    } else if (item && typeof item === 'object') {
+      secureAudioUrl = (item as any).url || (item as any).name || (item as any).data || '';
     }
 
-    // 3. Resume audio engine if paused
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
+    if (secureAudioUrl) {
+      let playableUrl = secureAudioUrl;
+      let isBlob = false;
 
-    setTimeout(() => {
-      if (!isSpeakingActive) return;
-
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
+      // Because the Space is private, fetch the audio binary with the Bearer token to create a playable blob
+      if (hfToken && !secureAudioUrl.startsWith('data:') && !secureAudioUrl.startsWith('blob:')) {
+        try {
+          const fetchResp = await fetch(secureAudioUrl, {
+            headers: {
+              Authorization: `Bearer ${hfToken}`
+            }
+          });
+          if (fetchResp.ok) {
+            const blob = await fetchResp.blob();
+            playableUrl = URL.createObjectURL(blob);
+            isBlob = true;
+          }
+        } catch (fetchErr) {
+          console.warn("[Kokoro-TTS] Auth fetch warning, using direct URL:", fetchErr);
         }
-
-        const voice = getOrLockInterviewerVoice();
-        activeUtteranceQueue = [];
-
-        // Pre-create and store utterances in memory (prevents Chromium V8 GC sweep)
-        for (let i = 0; i < chunks.length; i++) {
-          const utt = new SpeechSynthesisUtterance(chunks[i]);
-          utt.rate = 1.0;
-          utt.pitch = 1.0;
-          utt.volume = 1.0;
-          if (voice) {
-            utt.voice = voice;
-            utt.lang = voice.lang;
-          } else {
-            utt.lang = 'en-US';
-          }
-          activeUtteranceQueue.push(utt);
-        }
-
-        // Non-destructive Chrome keepalive (only resumes if browser paused; never pauses active audio)
-        if (speechKeepaliveTimer) clearInterval(speechKeepaliveTimer);
-        speechKeepaliveTimer = setInterval(() => {
-          if (isSpeakingActive && typeof window !== 'undefined' && window.speechSynthesis) {
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-          }
-        }, 1500);
-
-        const playChunk = (index: number) => {
-          if (utteranceWatchdogTimer) {
-            clearTimeout(utteranceWatchdogTimer);
-            utteranceWatchdogTimer = null;
-          }
-
-          if (!isSpeakingActive || index >= activeUtteranceQueue.length) {
-            stopInterviewerSpeech();
-            if (onEnd) onEnd();
-            return;
-          }
-
-          const currentUtt = activeUtteranceQueue[index];
-          let chunkDone = false;
-
-          const advanceToNextChunk = () => {
-            if (chunkDone) return;
-            chunkDone = true;
-            if (utteranceWatchdogTimer) {
-              clearTimeout(utteranceWatchdogTimer);
-              utteranceWatchdogTimer = null;
-            }
-            if (isSpeakingActive) {
-              playChunk(index + 1);
-            }
-          };
-
-          currentUtt.onstart = () => {
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-          };
-
-          currentUtt.onend = () => {
-            advanceToNextChunk();
-          };
-
-          currentUtt.onerror = (e) => {
-            if (e.error !== 'interrupted' && e.error !== 'canceled') {
-              console.warn('Speech chunk playback notice:', e.error);
-            }
-            advanceToNextChunk();
-          };
-
-          // Watchdog safety timer: if Chromium drops onend, force advance to next chunk
-          const wordCount = currentUtt.text.split(/\s+/).length;
-          const expectedMs = Math.max(3000, wordCount * 550 + 2500);
-          utteranceWatchdogTimer = setTimeout(() => {
-            if (!chunkDone && isSpeakingActive) {
-              console.warn('[TTS Watchdog] Advance stalled chunk:', index);
-              advanceToNextChunk();
-            }
-          }, expectedMs);
-
-          try {
-            window.speechSynthesis.speak(currentUtt);
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-          } catch (speakErr) {
-            console.warn('Speech chunk exception:', speakErr);
-            advanceToNextChunk();
-          }
-        };
-
-        playChunk(0);
-      } catch (innerErr) {
-        console.warn('Speech playback initiation error:', innerErr);
-        stopInterviewerSpeech();
-        if (onEnd) onEnd();
       }
-    }, 40);
 
-  } catch (err) {
-    console.warn('Speech synthesis general error:', err);
-    stopInterviewerSpeech();
-    if (onEnd) onEnd();
+      const audio = new Audio(playableUrl);
+      currentInterviewerAudio = audio;
+
+      const cleanup = () => {
+        (window as any).isTTSActive = false; 
+        isSpeakingActive = false;
+        currentInterviewerAudio = null;
+        if (isBlob) {
+          try { URL.revokeObjectURL(playableUrl); } catch {}
+        }
+      };
+
+      // 5. Tie state flags directly into your audioVAD.ts architecture
+      audio.onplay = () => {
+        // Locks down microphone detection to prevent laptop speakers from creating echo loops
+        (window as any).isTTSActive = true; 
+        isSpeakingActive = true;
+      };
+
+      audio.onended = () => {
+        // Releases line and initiates acoustic dissipation cooldown
+        cleanup();
+        if (onEndCallback) onEndCallback();
+      };
+
+      audio.onerror = (e) => {
+        console.error("Kokoro Audio playback frame failure:", e);
+        cleanup();
+        playLocalSpeechFallback(cleanSpeechText, onEndCallback);
+      };
+
+      // 6. Fire playback action
+      await audio.play();
+    } else {
+      throw new Error("Mismatched or empty data fields received from private workspace node.");
+    }
+
+  } catch (error) {
+    console.warn("Private space connection dropped or unauthorized. Falling back to local OS speech engine...", error);
+    cachedKokoroClient = null; // Clear cache on failure
+    playLocalSpeechFallback(cleanSpeechText, onEndCallback);
   }
 }
 
-export function stopInterviewerSpeech(): void {
-  isSpeakingActive = false;
-  activeUtteranceQueue = [];
-  if (utteranceWatchdogTimer) {
-    clearTimeout(utteranceWatchdogTimer);
-    utteranceWatchdogTimer = null;
+/**
+ * Fail-safe boundary fallback: Gracefully drops down to local engine if Space hits quotas or errors
+ */
+function playLocalSpeechFallback(cleanSpeechText: string, onEndCallback?: () => void): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    if (typeof window !== 'undefined') (window as any).isTTSActive = false;
+    isSpeakingActive = false;
+    if (onEndCallback) onEndCallback();
+    return;
   }
-  if (speechKeepaliveTimer) {
-    clearInterval(speechKeepaliveTimer);
-    speechKeepaliveTimer = null;
+
+  try {
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
+    const fallbackUtterance = new SpeechSynthesisUtterance(cleanSpeechText);
+    
+    // Attempt to parse localized regional sub-voices native to the candidate's host OS (en-IN or hi-IN)
+    const nativeSystemVoices = window.speechSynthesis.getVoices();
+    const nativeIndianVoice = nativeSystemVoices.find(v => 
+      v.lang === 'en-IN' || v.lang === 'hi-IN' || v.name.includes('India') || v.name.includes('Ravi') || v.name.includes('Heera') || v.name.includes('Kavya')
+    ) || getOrLockInterviewerVoice();
+
+    if (nativeIndianVoice) {
+      fallbackUtterance.voice = nativeIndianVoice;
+      fallbackUtterance.lang = nativeIndianVoice.lang;
+    }
+    fallbackUtterance.rate = 1.0;
+
+    fallbackUtterance.onstart = () => { 
+      (window as any).isTTSActive = true; 
+      isSpeakingActive = true;
+    };
+    fallbackUtterance.onend = () => {
+      (window as any).isTTSActive = false;
+      isSpeakingActive = false;
+      if (onEndCallback) onEndCallback();
+    };
+    fallbackUtterance.onerror = (e) => {
+      (window as any).isTTSActive = false;
+      isSpeakingActive = false;
+      if (onEndCallback) onEndCallback();
+    };
+
+    window.speechSynthesis.speak(fallbackUtterance);
+  } catch (e) {
+    console.error("Local fallback speech error:", e);
+    (window as any).isTTSActive = false;
+    isSpeakingActive = false;
+    if (onEndCallback) onEndCallback();
+  }
+}
+
+/**
+ * Global cancellation handler triggered instantly when your audioVAD.ts engine flags a candidate barge-in.
+ */
+export function terminateInterviewerAudioSpeech(): void {
+  if (currentInterviewerAudio) {
+    try {
+      currentInterviewerAudio.pause();
+      currentInterviewerAudio.currentTime = 0;
+    } catch {}
+    currentInterviewerAudio = null;
   }
   if (typeof window !== 'undefined' && window.speechSynthesis) {
     try {
@@ -460,4 +496,20 @@ export function stopInterviewerSpeech(): void {
       }
     } catch {}
   }
+  if (typeof window !== 'undefined') {
+    (window as any).isTTSActive = false;
+  }
+  isSpeakingActive = false;
+}
+
+// Backward-compatible alias for existing callers
+export const stopInterviewerSpeech = terminateInterviewerAudioSpeech;
+
+// Backward-compatible alias for speakInterviewerText callers
+export function speakInterviewerText(
+  text: string, 
+  onEnd?: () => void,
+  indianVoiceProfile: IndianVoiceProfile = 'hi_female'
+): void {
+  speakInterviewerResponse(text, indianVoiceProfile, onEnd);
 }

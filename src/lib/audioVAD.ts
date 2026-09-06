@@ -4,6 +4,8 @@
  * prevent premature cut-offs, and enable seamless barge-in interruption.
  */
 
+import { terminateInterviewerAudioSpeech } from './interviewService';
+
 export interface VADConfig {
   sampleRate?: number;
   fftSize?: number;
@@ -120,14 +122,6 @@ export class VoiceActivityController {
     const checkAudioFrame = () => {
       if (!this.analyser) return;
 
-      // When the AI interviewer is actively speaking (isTTSActive), suppress acoustic
-      // loopback from device loudspeakers to prevent the AI from self-cancelling.
-      if (this.isTTSActive) {
-        this.isSpeaking = false;
-        this.animationFrameId = requestAnimationFrame(checkAudioFrame);
-        return;
-      }
-
       this.analyser.getByteTimeDomainData(timeDomainData);
 
       // Compute Root Mean Square (RMS) energy
@@ -139,7 +133,20 @@ export class VoiceActivityController {
       const rms = Math.sqrt(sumSquares / bufferLength) * 100;
       const now = performance.now();
 
-      const isVoiceDetected = rms >= this.config.energyThreshold;
+      const isTTS = (window as any).isTTSActive === true || this.isTTSActive;
+      
+      // When TTS is speaking, apply a calibrated margin (+25%) to prevent speaker bleed
+      // while immediately terminating audio when candidate speaks into the mic
+      const threshold = isTTS ? this.config.energyThreshold * 1.25 : this.config.energyThreshold;
+      const isVoiceDetected = rms >= threshold;
+
+      if (isVoiceDetected && isTTS) {
+        // CRITICAL: Stop the private Space audio track immediately to give the channel back to the user
+        terminateInterviewerAudioSpeech();
+        this.isTTSActive = false;
+        if (typeof window !== 'undefined') (window as any).isTTSActive = false;
+        this.handleBargeIn();
+      }
 
       if (isVoiceDetected) {
         this.lastSpeechTimestamp = now;
@@ -147,11 +154,6 @@ export class VoiceActivityController {
         if (!this.isSpeaking) {
           this.isSpeaking = true;
           this.speechStartTimestamp = now;
-
-          // Barge-in: Candidate interrupted AI while TTS is actively speaking
-          if (this.isTTSActive) {
-            this.handleBargeIn();
-          }
 
           if (this.onSpeechStartCallback) {
             this.onSpeechStartCallback();
@@ -192,11 +194,7 @@ export class VoiceActivityController {
    * Handles immediate cancellation of interviewer speech when candidate barges in
    */
   private handleBargeIn(): void {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {}
-    }
+    terminateInterviewerAudioSpeech();
 
     if (this.onBargeInCallback) {
       this.onBargeInCallback();

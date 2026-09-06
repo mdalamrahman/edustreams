@@ -11,6 +11,7 @@
     "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
+    "@gradio/client": "^1.11.0",
     "@monaco-editor/react": "^4.6.0",
     "@supabase/supabase-js": "^2.39.8",
     "alasql": "^4.17.3",
