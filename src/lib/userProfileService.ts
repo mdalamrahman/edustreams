@@ -11,8 +11,12 @@ import {
   getLinkedProfiles as getLinkedProfilesFromService, 
   saveLinkedProfiles as saveLinkedProfilesToService, 
   getUserProgressSync, 
-  LinkedProfilesConfig 
+  LinkedProfilesConfig,
+  isCloudAutoSyncEnabled,
+  setCloudAutoSyncEnabled
 } from './progressService';
+
+export { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled };
 
 export interface LeetCodeFullProfileData {
   allQuestionsCount?: Array<{

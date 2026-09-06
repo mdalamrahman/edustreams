@@ -888,7 +888,7 @@ Sample test input:
 ${sampleTestInput || ''}
 \`\`\`
 
-1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <sstream>, <queue>, <map>, <set>, <cmath> for C++).
+1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <numeric>, <unordered_map>, <map>, <set>, <unordered_set>, <queue>, <stack>, <deque>, <cmath>, <climits>, <cstring>, <sstream>, <utility>, <tuple>, <functional>, <memory>, <cctype>, <stdexcept> for C++). Add 'using namespace std;' so std types like map, vector, string are directly accessible.
 2. CRITICAL STRUCT ORDER: If the problem uses TreeNode, ListNode, or Node, you MUST define struct TreeNode, struct ListNode, or class Node AT THE VERY TOP OF THE FILE, STRICTLY BEFORE '// === USER SOLUTION ==='! The user's solution cannot compile if structs are defined after '// === USER SOLUTION ==='.
 3. CRITICAL INPUT HANDLING: DO NOT read from 'cin' or use 'getline(cin'. The testcase is passed directly in main() via string raw_input = R"RAW(${sampleTestInput || ''})RAW";. Reading from cin will cause a runtime failure.
 4. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.

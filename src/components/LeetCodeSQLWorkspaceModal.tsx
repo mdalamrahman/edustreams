@@ -42,6 +42,7 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
 import { ReportTestCaseModal } from './ReportTestCaseModal';
 import { toSlug } from '../lib/problemService';
+import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
 
@@ -79,6 +80,27 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   });
 
   const [codeSaveStatus, setCodeSaveStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
+  const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(() => isCloudAutoSyncEnabled(getCurrentStudent()?.email));
+  const lastSyncedCodeRef = useRef<string>(code);
+
+  const handleToggleAutoSync = () => {
+    const next = !isAutoSyncEnabled;
+    setIsAutoSyncEnabled(next);
+    setCloudAutoSyncEnabled(next, getCurrentStudent()?.email);
+  };
+
+  // Auto-sync debounced trigger when option is enabled
+  useEffect(() => {
+    if (!isAutoSyncEnabled) return;
+    if (!code || code.trim().length === 0) return;
+    if (code === lastSyncedCodeRef.current) return;
+
+    const timer = setTimeout(() => {
+      handleSyncCodeToCloud(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [code, isAutoSyncEnabled]);
 
   // Instant Synchronous Autosave on every keystroke
   const handleCodeChange = (newVal: string | undefined) => {
@@ -102,27 +124,32 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   };
 
   // Sync user SQL code directly to Cloudflare R2 as a .txt file (deducts ₹0.05)
-  const handleSyncCodeToCloud = async () => {
+  const handleSyncCodeToCloud = async (isAutoSync: boolean = false) => {
     setCodeSaveStatus('idle');
     const slug = toSlug(cleanTitle);
     const student = getCurrentStudent();
 
     if (!canAffordAction(PRICING_CONFIG.CLOUD_CODE_SAVE, student?.email)) {
-      setInsufficientMeta({
-        cost: PRICING_CONFIG.CLOUD_CODE_SAVE,
-        action: `Save SQL Query to Cloud Backup (5 paise): ${cleanTitle}`
-      });
-      setIsInsufficientCreditsOpen(true);
+      if (!isAutoSync) {
+        setInsufficientMeta({
+          cost: PRICING_CONFIG.CLOUD_CODE_SAVE,
+          action: `Save SQL Query to Cloud Backup (5 paise): ${cleanTitle}`
+        });
+        setIsInsufficientCreditsOpen(true);
+      }
       return;
     }
 
     deductCredits(
       PRICING_CONFIG.CLOUD_CODE_SAVE,
       'CLOUD_CODE_SAVE',
-      `☁️ Save SQL Code to Cloud (5p): ${cleanTitle}`,
+      isAutoSync
+        ? `☁️ Auto-Sync SQL Code to Cloud (5p): ${cleanTitle}`
+        : `☁️ Save SQL Code to Cloud (5p): ${cleanTitle}`,
       student?.email
     );
 
+    lastSyncedCodeRef.current = code;
     try {
       localStorage.setItem(`edustream_sql_code_${slug}`, code);
       if (student?.email) {
@@ -829,10 +856,34 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
             {/* Right: LeetCode Toolbar Actions */}
             <div className="flex items-center space-x-1.5">
+              {/* Cloud Auto-Sync Toggle Button */}
+              <div className="relative group">
+                <button
+                  onClick={handleToggleAutoSync}
+                  className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                    isAutoSyncEnabled
+                      ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/60 shadow-sm shadow-cyan-900/30'
+                      : 'bg-white/[0.06] hover:bg-white/[0.12] text-slate-400 hover:text-slate-200 border border-white/10'
+                  }`}
+                  title={isAutoSyncEnabled ? "Cloud Auto-Sync is ON. Click to toggle OFF." : "Click to enable Cloud Auto-Sync (Deducts ₹0.05 per sync)"}
+                >
+                  <Cloud className={`w-3.5 h-3.5 ${isAutoSyncEnabled ? 'text-cyan-400 animate-pulse' : 'text-slate-500'}`} />
+                  <span className="text-[11px] font-bold">
+                    {isAutoSyncEnabled ? 'Auto-Sync ON' : 'Auto-Sync OFF'}
+                  </span>
+                </button>
+
+                {/* Tooltip on Hover */}
+                <div className="absolute top-8 right-0 bg-slate-900 border border-slate-700/80 text-slate-200 text-[11px] font-sans px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl pointer-events-none z-30 flex items-center gap-1">
+                  <span>Auto-Sync {isAutoSyncEnabled ? 'Active' : 'Disabled'}</span>
+                  <span className="text-amber-400 font-mono font-bold">(Deducts ₹0.05 / sync)</span>
+                </div>
+              </div>
+
               {/* Save to Cloud Button with Hover Tooltip */}
               <div className="relative group">
                 <button
-                  onClick={handleSyncCodeToCloud}
+                  onClick={() => handleSyncCodeToCloud(false)}
                   className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
                     codeSaveStatus === 'synced'
                       ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-700/60 shadow-sm'

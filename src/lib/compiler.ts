@@ -24,6 +24,34 @@ const JUDGE0_LANG_MAP: Record<string, number> = {
   sql: 82         // SQLite 3.27.2
 };
 
+export const CPP_STANDARD_HEADERS_PRELUDE = `// Comprehensive Standard C++ Headers Suite
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <numeric>
+#include <unordered_map>
+#include <map>
+#include <set>
+#include <unordered_set>
+#include <queue>
+#include <stack>
+#include <deque>
+#include <cmath>
+#include <climits>
+#include <cstring>
+#include <sstream>
+#include <utility>
+#include <tuple>
+#include <functional>
+#include <memory>
+#include <cctype>
+#include <stdexcept>
+#include <regex>
+#include <iomanip>
+using namespace std;
+`;
+
 /**
  * Canonicalizes complex nested data structures so that order-independent collections
  * (e.g. Subsets, Permutations, 3Sum, Group Anagrams, Combination Sum)
@@ -546,6 +574,10 @@ export function wrapLeetCodeExecutableCode(
         replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${effectiveInput}"""`);
       } else if (replaced.includes('const rawInput = `')) {
         replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${effectiveInput}\`;`);
+      }
+
+      if (language === 'cpp' || (language as any) === 'c++') {
+        replaced = `${CPP_STANDARD_HEADERS_PRELUDE}\n${replaced}`;
       }
       return replaced;
     }
@@ -1504,6 +1536,26 @@ export async function executeCode(
         (compileOut && compileOut.includes('error:'))
       );
 
+      // Self-healing fallback: If preloaded driver failed compilation on Judge0, automatically retry with universal harness
+      if (preloadedDriver && ((data.status && data.status.id === 6) || (compileOut && compileOut.includes('error:')))) {
+        console.warn('[SDETube Compiler] Preloaded driver failed compilation on Judge0. Testing universal fallback harness...');
+        const fallbackRes = await executeCode(code, language, testInput, problemTitle, undefined);
+        if (fallbackRes.status === 'SUCCESS' || !fallbackRes.stderr.includes('error:')) {
+          console.log('[SDETube Compiler] Universal fallback harness succeeded! Evicting broken driver from cache and R2.');
+          const slug = problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          const langKey = normLang;
+          try {
+            localStorage.removeItem(`edustream_driver_${slug}_${langKey}`);
+          } catch (_) {}
+          try {
+            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(langKey)}`, {
+              method: 'DELETE'
+            }).catch(() => {});
+          } catch (_) {}
+          return fallbackRes;
+        }
+      }
+
       // Clean non-fatal C++ compiler warnings (structured bindings, deprecation warnings) from diagnostics
       let cleanDiag = rawDiag;
       if (!isFatalErr && !rawDiag.toLowerCase().includes('error:') && !rawDiag.toLowerCase().includes('runtime error')) {
@@ -1550,6 +1602,26 @@ export async function executeCode(
       const endTime = performance.now();
       const rawStderr = (resData.stderr || resData.error || '').trim();
       const isFatalErr = Boolean(rawStderr && (rawStderr.includes('error:') || rawStderr.includes('Runtime Error') || rawStderr.includes('Exception') || rawStderr.includes('Traceback')));
+
+      // Self-healing fallback: If preloaded driver failed backend compilation, automatically retry with universal harness
+      if (preloadedDriver && isFatalErr && rawStderr.includes('error:')) {
+        console.warn('[SDETube Compiler] Preloaded driver failed backend compilation. Testing universal fallback harness...');
+        const fallbackRes = await executeCode(code, language, testInput, problemTitle, undefined);
+        if (fallbackRes.status === 'SUCCESS' || !fallbackRes.stderr.includes('error:')) {
+          console.log('[SDETube Compiler] Universal fallback harness succeeded! Evicting broken driver from cache and R2.');
+          const slug = problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          const langKey = normLang;
+          try {
+            localStorage.removeItem(`edustream_driver_${slug}_${langKey}`);
+          } catch (_) {}
+          try {
+            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(langKey)}`, {
+              method: 'DELETE'
+            }).catch(() => {});
+          } catch (_) {}
+          return fallbackRes;
+        }
+      }
 
       return {
         stdout: resData.stdout || resData.output || '',

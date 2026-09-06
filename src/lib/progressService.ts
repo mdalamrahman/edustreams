@@ -14,6 +14,7 @@ export interface LinkedProfilesConfig {
   codeforcesHandle?: string;
   bio?: string;
   customAvatar?: string;
+  autoSyncCloud?: boolean;
 }
 
 export interface UserDSAProgress {
@@ -37,7 +38,8 @@ const DEFAULT_LINKED_PROFILES: LinkedProfilesConfig = {
   githubUsername: '',
   gfgUsername: '',
   codeforcesHandle: '',
-  bio: 'Software Development Engineer & DSA Enthusiast on SDETube.'
+  bio: 'Software Development Engineer & DSA Enthusiast on SDETube.',
+  autoSyncCloud: false
 };
 
 // In-Memory Progress Cache for instant 0ms synchronous UI reads
@@ -414,6 +416,31 @@ export function getLinkedProfiles(email?: string): LinkedProfilesConfig {
  */
 export async function saveLinkedProfiles(config: LinkedProfilesConfig, email?: string): Promise<void> {
   await saveUserProgress({ linked_profiles: config }, email);
+}
+
+/**
+ * Checks whether automatic cloud code sync is enabled for user
+ */
+export function isCloudAutoSyncEnabled(email?: string): boolean {
+  try {
+    const local = localStorage.getItem('edustream_cloud_autosync_enabled');
+    if (local !== null) return local === 'true';
+    const cfg = getLinkedProfiles(email);
+    return Boolean(cfg?.autoSyncCloud);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sets automatic cloud code sync preference for user in localStorage and Supabase
+ */
+export async function setCloudAutoSyncEnabled(enabled: boolean, email?: string): Promise<void> {
+  try {
+    localStorage.setItem('edustream_cloud_autosync_enabled', String(enabled));
+    const cfg = { ...getLinkedProfiles(email), autoSyncCloud: enabled };
+    await saveLinkedProfiles(cfg, email);
+  } catch {}
 }
 
 /**

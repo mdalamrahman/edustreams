@@ -24,7 +24,8 @@ import {
   BookmarkCheck,
   Download,
   ShieldCheck,
-  GraduationCap
+  GraduationCap,
+  Cloud
 } from 'lucide-react';
 import {
   LeetCodeFullProfileData,
@@ -42,7 +43,9 @@ import {
   getUserTracksCertificates,
   TrackCertificateProgress,
   LinkedProfilesConfig,
-  SDETubeRealStats
+  SDETubeRealStats,
+  isCloudAutoSyncEnabled,
+  setCloudAutoSyncEnabled
 } from '../lib/userProfileService';
 import { getUserWallet } from '../lib/billing';
 import { getUserProgressSync } from '../lib/progressService';
@@ -92,6 +95,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [cfInput, setCfInput] = useState(linkedConfig.codeforcesHandle || '');
   const [ghInput, setGhInput] = useState(linkedConfig.githubUsername || '');
   const [bioInput, setBioInput] = useState(linkedConfig.bio || '');
+  const [autoSyncInput, setAutoSyncInput] = useState<boolean>(() => isCloudAutoSyncEnabled(user?.email));
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const wallet = useMemo(() => getUserWallet(user?.email), [user?.email]);
@@ -206,6 +210,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
       if (cfg.codeforcesHandle) loadCodeforces(cfg.codeforcesHandle);
       if (cfg.githubUsername) loadGithub(cfg.githubUsername);
+      setAutoSyncInput(isCloudAutoSyncEnabled(user?.email));
     }
   }, [isOpen, user?.email]);
 
@@ -216,10 +221,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       gfgUsername: gfgInput.trim(),
       codeforcesHandle: cfInput.trim(),
       githubUsername: ghInput.trim(),
-      bio: bioInput.trim()
+      bio: bioInput.trim(),
+      autoSyncCloud: autoSyncInput
     };
     setLinkedConfig(updated);
     saveLinkedProfiles(updated, user?.email);
+    setCloudAutoSyncEnabled(autoSyncInput, user?.email);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
 
@@ -1652,6 +1659,43 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     placeholder="e.g. torvalds or gaearon"
                     className="w-full px-4 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-100 text-xs font-mono focus:border-cyan-500 focus:outline-none transition-colors"
                   />
+                </div>
+
+                {/* Cloud Code Auto-Sync Setting */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 via-slate-950/60 to-cyan-950/40 border border-indigo-700/50 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="p-2 rounded-xl bg-cyan-950/80 border border-cyan-700/60 text-cyan-400">
+                        <Cloud className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-200">Cloud Code Auto-Sync</span>
+                          <span className="px-2 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-700/50 text-[10px] font-mono font-bold text-cyan-300">
+                            ₹0.05 / sync
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Automatically backup and sync editor code changes directly to Cloudflare R2 cloud storage.
+                        </p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 ml-3">
+                      <input
+                        type="checkbox"
+                        checked={autoSyncInput}
+                        onChange={(e) => setAutoSyncInput(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500 shadow-inner"></div>
+                    </label>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-800/80 pt-2">
+                    <span>Charges stated in platform billing: <strong>5 paise (₹0.05)</strong> per debounced sync.</span>
+                    <span className={autoSyncInput ? "text-cyan-400 font-bold" : "text-slate-500"}>
+                      Status: {autoSyncInput ? 'ENABLED' : 'DISABLED'}
+                    </span>
+                  </div>
                 </div>
 
                 <div>
