@@ -235,11 +235,6 @@ export function unlockSpeechSynthesis(): void {
 }
 
 let isFishAudioQuotaExhausted = false;
-try {
-  if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('fish_audio_quota_exhausted') === 'true') {
-    isFishAudioQuotaExhausted = true;
-  }
-} catch {}
 
 export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi_female'): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
@@ -511,26 +506,21 @@ export async function generateAndBufferChunk(
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "model": "s2.1-pro-free"
       },
       body: JSON.stringify({
         text: promptText,
-        model: "s2.1-pro-free",
-        response_format: "mp3"
+        format: "mp3"
       })
     });
 
     if (!response.ok) {
       if (response.status === 402) {
         if (!isFishAudioQuotaExhausted) {
-          console.warn('[Fish Audio] API credit balance is zero (HTTP 402 Payment Required). Automatically routing all interview speech to high-performance local speech engine.');
+          console.warn('[Fish Audio] API credit notice (HTTP 402). Seamlessly falling back to local speech engine.');
         }
         isFishAudioQuotaExhausted = true;
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('fish_audio_quota_exhausted', 'true');
-          }
-        } catch {}
       } else {
         console.warn(`[Fish Audio] Edge proxy status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
       }
