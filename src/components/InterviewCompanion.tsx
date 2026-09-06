@@ -603,8 +603,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       questionToUse = availableQuestions[0];
     }
 
-    // 0. Unlock browser speech synthesis audio context directly in this user click gesture
+    // Unlock browser speech synthesis audio context and request fullscreen directly in this user click gesture
     unlockSpeechSynthesis();
+    requestFullscreenMode();
 
     // 1. Billing Gatekeeping (₹10 standard rate or live dynamic rate)
     const student = getCurrentStudent();
@@ -653,12 +654,9 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       vadRef.current = vad;
     } catch {}
 
-    // 3. Enforce Fullscreen Mode
-    await requestFullscreenMode();
-
-    // 4. Lock interviewer voice for the entire test session
+    // 3. Lock interviewer voice for the entire test session with assigned persona profile
     resetInterviewerVoiceLock();
-    getOrLockInterviewerVoice();
+    getOrLockInterviewerVoice(assignedInterviewer.voiceProfile);
 
     if (interviewMode === 'full_loop') {
       setCurrentRoundIndex(0);

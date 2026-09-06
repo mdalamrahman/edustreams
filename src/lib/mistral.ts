@@ -59,8 +59,8 @@ export async function executeAIChatCascade(
   const temp = options?.temperature ?? 0.3;
   const timeoutMs = options?.timeoutMs ?? 12000;
 
-  // 1. PRIMARY: Groq Ultra-Fast API (Qwen 3.8 / GPT OSS 120B / Compound)
-  const groqModels = ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound', 'groq/compound-mini', 'qwen/qwen3.6-27b'];
+  // 1. PRIMARY: Groq Ultra-Fast API (GPT OSS 120B / 20B / Compound / Qwen)
+  const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'groq/compound-mini', 'groq/compound', 'qwen/qwen3.8-27b', 'qwen/qwen3.6-27b'];
   let groqRateLimitedCount = 0;
   for (const model of groqModels) {
     if (groqRateLimitedCount >= 2) {

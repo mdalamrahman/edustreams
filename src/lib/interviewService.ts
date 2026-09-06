@@ -171,27 +171,52 @@ export async function sendInterviewerMessage(
 ): Promise<string> {
   const systemPrompt = buildInterviewerSystemPrompt(ctx);
 
-  const formattedMessages = [
-    { role: 'system', content: systemPrompt },
-    ...messages.map(m => ({
-      role: m.role === 'interviewer' ? 'assistant' : 'user',
-      content: m.content
-    }))
+  const formattedMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: systemPrompt }
   ];
 
-  // If candidate has written code, inject latest snapshot
-  if (ctx.candidateCode && ctx.candidateCode.trim().length > 0) {
-    formattedMessages.push({
-      role: 'user',
-      content: `[CANDIDATE EDITOR SNAPSHOT (${ctx.language || 'cpp'})]:\n\`\`\`\n${ctx.candidateCode}\n\`\`\`\n${ctx.whiteboardNotes ? `[WHITEBOARD/NOTES SNAPSHOT]:\n${ctx.whiteboardNotes}` : ''}`
-    });
+  // Map messages and ensure the candidate's latest spoken statement is the focal point
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    const isLatest = i === messages.length - 1;
+
+    if (m.role === 'interviewer') {
+      formattedMessages.push({
+        role: 'assistant',
+        content: m.content
+      });
+    } else {
+      if (isLatest) {
+        // Build the latest turn with explicit student statement demarcation
+        let turnContent = `[STUDENT'S SPOKEN STATEMENT]:\n"${m.content}"`;
+
+        if (ctx.candidateCode && ctx.candidateCode.trim().length > 0) {
+          turnContent += `\n\n[STUDENT'S CURRENT EDITOR CODE (${ctx.language || 'cpp'})]:\n\`\`\`\n${ctx.candidateCode}\n\`\`\``;
+        }
+        if (ctx.whiteboardNotes && ctx.whiteboardNotes.trim().length > 0) {
+          turnContent += `\n\n[STUDENT'S NOTES]:\n${ctx.whiteboardNotes}`;
+        }
+
+        turnContent += `\n\n[CRITICAL INTERVIEWER DIRECTIVE]: You MUST directly acknowledge, analyze, and reply to what the student JUST stated above ("${m.content}"). If they proposed an algorithm/data structure (e.g. monotonic deque, two pointers, trie), validate whether it works, critique its viability, and ask for Big-O or boundary conditions. If they asked a clarifying question, answer it directly. Never ignore the student's statement or produce a disconnected response.`;
+
+        formattedMessages.push({
+          role: 'user',
+          content: turnContent
+        });
+      } else {
+        formattedMessages.push({
+          role: 'user',
+          content: m.content
+        });
+      }
+    }
   }
 
   try {
     const reply = await executeAIChatCascade(formattedMessages, {
-      temperature: 0.6,
+      temperature: 0.5,
       maxTokens: 350,
-      timeoutMs: 10000
+      timeoutMs: 12000
     });
     if (reply && reply.trim().length > 0) {
       return reply.trim();
@@ -200,7 +225,11 @@ export async function sendInterviewerMessage(
     console.error('Interviewer AI API error:', err);
   }
 
-  return "Thank you for explaining that. Let's dig deeper into the trade-offs. How do you plan to scale this under high concurrency?";
+  const lastCandidateMsg = messages.filter(m => m.role === 'candidate').slice(-1)[0]?.content;
+  if (lastCandidateMsg) {
+    return `Regarding your point about "${lastCandidateMsg.slice(0, 60)}...": that's an interesting intuition. Walk me through the exact invariants and time complexity for that approach.`;
+  }
+  return "Thank you for explaining that. Walk me through your time and space complexity, and how you would handle edge cases.";
 }
 
 // Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
@@ -657,36 +686,22 @@ export async function streamInterviewerSpeech(
     return;
   }
 
-  // Segment input strictly by punctuation parameters (. ! ?)
-  const sentences = normalizedText.match(/[^.!?]+[.!?]+/g) || [normalizedText];
-  const emotionMatch = normalizedText.match(/^\[(sternly|thoughtfully|encouragingly|approvingly)\]/i);
-  const emotionTag = emotionMatch ? emotionMatch[0] : "";
-
+  const voiceProfile: IndianVoiceProfile = voiceId === 'hi_male' ? 'hi_male' : 'hi_female';
   const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
 
   if (apiKey && !isFishAudioQuotaExhausted) {
-    pendingChunkCount = sentences.length;
-
-    // Fire sentence 1 instantly to hit sub-90ms startup boundaries
-    const firstChunkOk = await generateAndBufferChunk(sentences[0], voiceId);
-    pendingChunkCount--;
-
-    if (firstChunkOk) {
-      // Sentence 1 ready and playing! Background fetch remaining tracks sequentially
-      (async () => {
-        for (let i = 1; i < sentences.length; i++) {
-          const sentenceWithTone = emotionTag ? `${emotionTag} ${sentences[i].trim()}` : sentences[i];
-          await generateAndBufferChunk(sentenceWithTone, voiceId);
-          pendingChunkCount--;
-        }
-      })();
+    // Synthesize the entire response as a single cohesive audio track
+    // This strictly prevents voice morphing, timbre shifts, or different personas across sentences!
+    pendingChunkCount = 1;
+    const ok = await generateAndBufferChunk(normalizedText, voiceProfile);
+    pendingChunkCount = 0;
+    if (ok) {
       return;
     }
   }
 
-  // Resilient Fallback: If Fish Audio key is missing, hits API credit limits, or errors,
-  // seamlessly drop to authenticated Kokoro-TTS or regional local OS voices!
-  const voiceProfile: IndianVoiceProfile = voiceId === 'hi_male' ? 'hi_male' : 'hi_female';
+  // Resilient Fallback: If Fish Audio is unavailable, rate-limited, or errors,
+  // seamlessly drop to the locked gender-consistent local OS voice!
   await playKokoroOrLocalFallback(normalizedText, voiceProfile, onEnd, onStart);
 }
 
