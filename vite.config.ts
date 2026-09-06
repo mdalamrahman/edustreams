@@ -27,6 +27,12 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true,
         },
+        // Proxy Fish Audio TTS requests to avoid browser CORS issues
+        '/api/fish-tts': {
+          target: 'https://api.fish.audio/v1/tts',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/fish-tts/, ''),
+        },
         // Proxy all API requests to backend
         '/api': {
           target: backendUrl,

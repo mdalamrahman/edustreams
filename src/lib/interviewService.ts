@@ -204,15 +204,15 @@ export async function sendInterviewerMessage(
 }
 
 // Global Voice Lock & Utterance References (Prevents Chromium GC & Audio Freezes)
-let lockedInterviewerVoice: SpeechSynthesisVoice | null = null;
-let lockedVoiceURI: string | null = null;
+let lockedFemaleVoice: SpeechSynthesisVoice | null = null;
+let lockedMaleVoice: SpeechSynthesisVoice | null = null;
 let speechKeepaliveTimer: any = null;
 let isSpeakingActive = false;
 let activeUtteranceQueue: SpeechSynthesisUtterance[] = [];
 
 export function resetInterviewerVoiceLock(): void {
-  lockedInterviewerVoice = null;
-  lockedVoiceURI = null;
+  lockedFemaleVoice = null;
+  lockedMaleVoice = null;
   stopInterviewerSpeech();
 }
 
@@ -234,35 +234,63 @@ export function unlockSpeechSynthesis(): void {
   }
 }
 
-export function getOrLockInterviewerVoice(): SpeechSynthesisVoice | null {
+export function getOrLockInterviewerVoice(voiceProfile: IndianVoiceProfile = 'hi_female'): SpeechSynthesisVoice | null {
   if (typeof window === 'undefined' || !window.speechSynthesis) return null;
 
   const voices = window.speechSynthesis.getVoices();
   if (!voices || voices.length === 0) return null;
 
-  if (lockedVoiceURI) {
-    const existing = voices.find(v => v.voiceURI === lockedVoiceURI);
-    if (existing) return existing;
+  if (voiceProfile === 'hi_male') {
+    if (lockedMaleVoice && voices.includes(lockedMaleVoice)) return lockedMaleVoice;
+
+    // 1. Check for Indian English Male
+    let maleVoice = voices.find(v => 
+      (v.lang === 'en-IN' || v.lang === 'hi-IN') && 
+      (v.name.toLowerCase().includes('ravi') || v.name.toLowerCase().includes('prabhat') || v.name.toLowerCase().includes('male'))
+    );
+
+    // 2. Check for Natural Male English voices
+    if (!maleVoice) {
+      maleVoice = voices.find(v => 
+        v.lang.startsWith('en') && 
+        (v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('guy') || v.name.toLowerCase().includes('mark') || v.name.toLowerCase().includes('daniel') || v.name.toLowerCase().includes('george') || v.name.toLowerCase().includes('james') || v.name.toLowerCase().includes('male'))
+      );
+    }
+
+    // 3. Fallback to any non-female English voice
+    if (!maleVoice) {
+      maleVoice = voices.find(v => v.lang.startsWith('en') && !v.name.toLowerCase().includes('zira') && !v.name.toLowerCase().includes('samantha') && !v.name.toLowerCase().includes('heera') && !v.name.toLowerCase().includes('female'));
+    }
+
+    lockedMaleVoice = maleVoice || voices[0];
+    return lockedMaleVoice;
+  } else {
+    if (lockedFemaleVoice && voices.includes(lockedFemaleVoice)) return lockedFemaleVoice;
+
+    // 1. Check for Indian English Female
+    let femaleVoice = voices.find(v => 
+      (v.lang === 'en-IN' || v.lang === 'hi-IN') && 
+      (v.name.toLowerCase().includes('heera') || v.name.toLowerCase().includes('kavya') || v.name.toLowerCase().includes('aditi') || v.name.toLowerCase().includes('priya') || v.name.toLowerCase().includes('female'))
+    );
+
+    // 2. Check for Natural Female English voices
+    if (!femaleVoice) {
+      femaleVoice = voices.find(v => 
+        v.lang.startsWith('en') && 
+        (v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha') || v.name.toLowerCase().includes('victoria') || v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('karen'))
+      );
+    }
+
+    lockedFemaleVoice = femaleVoice || voices[0];
+    return lockedFemaleVoice;
   }
-
-  // Prioritize premium natural voices
-  const preferred = voices.find(v => 
-    (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.name.includes('Guy') || v.name.includes('David') || v.name.includes('Mark') || v.name.includes('Zira')) && 
-    (v.lang.startsWith('en-US') || v.lang.startsWith('en-GB') || v.lang.startsWith('en'))
-  ) || voices.find(v => v.lang.startsWith('en-US')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-
-  if (preferred) {
-    lockedInterviewerVoice = preferred;
-    lockedVoiceURI = preferred.voiceURI;
-  }
-
-  return lockedInterviewerVoice;
 }
 
 // Pre-initialize voice listener
 if (typeof window !== 'undefined' && window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => {
-    getOrLockInterviewerVoice();
+    getOrLockInterviewerVoice('hi_female');
+    getOrLockInterviewerVoice('hi_male');
   };
 }
 
@@ -424,31 +452,44 @@ export function textToSpeechNormalizer(text: string): string {
 export const formatTextForIndianCadence = textToSpeechNormalizer;
 
 /**
- * Dispatches stateless POST requests directly to Fish Audio's fair-use developer endpoint (s2.1-pro-free)
+ * Dispatches stateless POST requests directly 
  */
-async function generateAndBufferChunk(sentenceText: string, voiceId: string): Promise<boolean> {
+export async function generateAndBufferChunk(
+  sentenceText: string, 
+  voiceId: string = "default"
+): Promise<boolean> {
   if (!sentenceText || !sentenceText.trim()) return false;
 
   const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
   if (!apiKey) return false;
 
   try {
-    const response = await fetch("https://api.fish.audio/v1/tts", {
+    // Route via Cloudflare Pages edge proxy /api/fish-tts to bypass browser CORS preflight
+    const endpoint = typeof window !== 'undefined' ? '/api/fish-tts' : 'https://api.fish.audio/v1/tts';
+
+    // Inject persona/gender directive for Fish Audio S2.1
+    let promptText = sentenceText.trim();
+    if (voiceId === 'hi_male' && !promptText.includes('[male')) {
+      promptText = `[male voice, deep articulate tone, Indian accent] ${promptText}`;
+    } else if (voiceId === 'hi_female' && !promptText.includes('[female')) {
+      promptText = `[female voice, warm professional tone, Indian accent] ${promptText}`;
+    }
+
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text: sentenceText.trim(),
-        model: "s2.1-pro-free",  // Explicit unmetered developer handle
-        voice_id: voiceId !== 'default' && voiceId !== 'hi_female' && voiceId !== 'hi_male' ? voiceId : undefined,
+        text: promptText,
+        model: "s2.1-pro-free",
         response_format: "mp3"
       })
     });
 
     if (!response.ok) {
-      console.warn(`[Fish Audio] Edge server status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
+      console.warn(`[Fish Audio] Edge proxy status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
       return false;
     }
 
@@ -463,7 +504,7 @@ async function generateAndBufferChunk(sentenceText: string, voiceId: string): Pr
     }
     return true;
   } catch (error) {
-    console.error("[Fish Audio] Segment pipeline failure:", error);
+    console.warn("[Fish Audio] Segment pipeline notice, using fallback:", error);
     return false;
   }
 }
@@ -639,100 +680,16 @@ async function playKokoroOrLocalFallback(
   onEndCallback?: () => void,
   onStartCallback?: () => void
 ): Promise<void> {
-  const hfToken = ((import.meta as any).env?.VITE_HF_TOKEN || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_HF_TOKEN : '')) || "";
-
-  if (!hfToken) {
-    playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
-    return;
-  }
-
-  try {
-    const app = await getAuthenticatedKokoroClient(hfToken);
-    let spaceVoice = indianVoiceProfile === 'hi_male' ? 'am_michael' : 'af_heart';
-
-    let response: KokoroAudioResponse;
-    try {
-      response = await app.predict("/predict", {
-        text: cleanSpeechText,
-        voice: spaceVoice,
-        speed: 1.03,
-      }) as KokoroAudioResponse;
-    } catch {
-      response = await app.predict("/predict", {
-        text: cleanSpeechText,
-        voice: 'af_heart',
-        speed: 1.03
-      }) as KokoroAudioResponse;
-    }
-
-    let secureAudioUrl = '';
-    const item = response?.data?.[0];
-    if (typeof item === 'string') {
-      secureAudioUrl = item;
-    } else if (item && typeof item === 'object') {
-      secureAudioUrl = (item as any).url || (item as any).name || (item as any).data || '';
-    }
-
-    if (secureAudioUrl) {
-      let playableUrl = secureAudioUrl;
-      let isBlob = false;
-
-      if (hfToken && !secureAudioUrl.startsWith('data:') && !secureAudioUrl.startsWith('blob:')) {
-        try {
-          const fetchResp = await fetch(secureAudioUrl, {
-            headers: { Authorization: `Bearer ${hfToken}` }
-          });
-          if (fetchResp.ok) {
-            const blob = await fetchResp.blob();
-            playableUrl = URL.createObjectURL(blob);
-            isBlob = true;
-          }
-        } catch {}
-      }
-
-      const audio = new Audio(playableUrl);
-      currentInterviewerAudio = audio;
-
-      const cleanup = () => {
-        (window as any).isTTSActive = false;
-        isSpeakingActive = false;
-        currentInterviewerAudio = null;
-        if (isBlob) {
-          try { URL.revokeObjectURL(playableUrl); } catch {}
-        }
-      };
-
-      audio.onplay = () => {
-        (window as any).isTTSActive = true;
-        isSpeakingActive = true;
-        if (onStartCallback) onStartCallback();
-      };
-
-      audio.onended = () => {
-        cleanup();
-        if (onEndCallback) onEndCallback();
-      };
-
-      audio.onerror = () => {
-        cleanup();
-        playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
-      };
-
-      await audio.play();
-    } else {
-      playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
-    }
-  } catch {
-    cachedKokoroClient = null;
-    playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
-  }
+  // Directly use the gender-aware local speech fallback
+  playLocalSpeechFallback(cleanSpeechText, indianVoiceProfile, onEndCallback, onStartCallback);
 }
 
 /**
- * Fail-safe boundary fallback: Gracefully drops down to local OS regional voice engine
+ * Fail-safe boundary fallback: Gracefully drops down to local OS regional voice engine with strict gender-awareness
  */
 function playLocalSpeechFallback(
   cleanSpeechText: string, 
+  voiceProfile: IndianVoiceProfile = 'hi_female',
   onEndCallback?: () => void,
   onStartCallback?: () => void
 ): void {
@@ -749,15 +706,15 @@ function playLocalSpeechFallback(
       window.speechSynthesis.resume();
     }
     const fallbackUtterance = new SpeechSynthesisUtterance(cleanSpeechText);
-    const nativeSystemVoices = window.speechSynthesis.getVoices();
-    const nativeIndianVoice = nativeSystemVoices.find(v => 
-      v.lang === 'en-IN' || v.lang === 'hi-IN' || v.name.includes('India') || v.name.includes('Ravi') || v.name.includes('Heera') || v.name.includes('Kavya')
-    ) || getOrLockInterviewerVoice();
+    const selectedVoice = getOrLockInterviewerVoice(voiceProfile);
 
-    if (nativeIndianVoice) {
-      fallbackUtterance.voice = nativeIndianVoice;
-      fallbackUtterance.lang = nativeIndianVoice.lang;
+    if (selectedVoice) {
+      fallbackUtterance.voice = selectedVoice;
+      fallbackUtterance.lang = selectedVoice.lang;
     }
+    
+    // Male voices receive lower pitch; female voices receive clear crisp pitch
+    fallbackUtterance.pitch = voiceProfile === 'hi_male' ? 0.88 : 1.05;
     fallbackUtterance.rate = 1.0;
 
     fallbackUtterance.onstart = () => { 

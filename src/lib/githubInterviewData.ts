@@ -1,4 +1,4 @@
-import { MISTRAL_API_KEY } from './mistral';
+import { MISTRAL_API_KEY, executeAIChatCascade } from './mistral';
 
 /**
  * SDE Interview Question Bank & Dynamic Question Generation Engine
@@ -263,6 +263,127 @@ export const CURATED_INTERVIEW_QUESTIONS: CuratedInterviewQuestion[] = [
       javascript: `var maxSlidingWindow = function(nums, k) {\n    return [];\n};`,
       go: `package main\n\nfunc maxSlidingWindow(nums []int, k int) []int {\n    return []int{}\n}`,
       rust: `impl Solution {\n    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {\n        Vec::new()\n    }\n}`
+    }
+  },
+  {
+    id: 'amzn-dsa-2',
+    company: 'Amazon',
+    level: 'SDE-2',
+    round: 'DSA',
+    testStyle: 'faang_bar_raiser',
+    title: 'Critical Connections in a Network (Tarjan\'s Bridges Algorithm)',
+    description: 'There are n servers numbered from 0 to n - 1 connected by undirected server-to-server connections forming a network where connections[i] = [a, b] represents a connection between servers a and b. Any server can reach other servers directly or indirectly through the network. A critical connection is a connection that, if removed, will make some servers unable to reach some other servers. Return all critical connections in the network in any order.',
+    constraints: [
+      '2 <= n <= 10^5',
+      'n - 1 <= connections.length <= 10^5',
+      '0 <= a, b <= n - 1',
+      'a != b',
+      'There are no repeated connections.'
+    ],
+    sampleInputOutput: 'Input: n = 4, connections = [[0,1],[1,2],[2,0],[1,3]]\nOutput: [[1,3]]\nExplanation: [[1,3]] is the only critical connection (bridge) in the network.',
+    keyEvaluationCriteria: [
+      'Identification of Bridge-Finding problem using Tarjan\'s DFS algorithm in O(V + E) time',
+      'Maintenance of discovery times (tin) and lowest reachable times (low)',
+      'Avoiding trivial backtrack to direct parent in undirected graph',
+      'Space complexity O(V + E) for adjacency list and recursion stack'
+    ],
+    starterCode: {
+      cpp: `#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {\n        return {};\n    }\n};`,
+      python: `class Solution:\n    def criticalConnections(self, n: int, connections: list[list[int]]) -> list[list[int]]:\n        return []`,
+      java: `import java.util.*;\n\nclass Solution {\n    public List<List<Integer>> criticalConnections(int n, List<List<Integer>> connections) {\n        return new ArrayList<>();\n    }\n}`,
+      javascript: `var criticalConnections = function(n, connections) {\n    return [];\n};`,
+      go: `package main\n\nfunc criticalConnections(n int, connections [][]int) [][]int {\n    return [][]int{}\n}`,
+      rust: `impl Solution {\n    pub fn critical_connections(n: i32, connections: Vec<Vec<i32>>) -> Vec<Vec<i32>> {\n        Vec::new()\n    }\n}`
+    }
+  },
+  {
+    id: 'amzn-dsa-3',
+    company: 'Amazon',
+    level: 'SDE-2',
+    round: 'DSA',
+    testStyle: 'faang_bar_raiser',
+    title: 'Word Search II (Trie & 2D Grid Backtracking)',
+    description: 'Given an m x n board of characters and a list of strings words, return all words on the board. Each word must be constructed from letters of sequentially adjacent cells, where adjacent cells are horizontally or vertically neighboring. The same letter cell may not be used more than once in a word.',
+    constraints: [
+      'm == board.length, n == board[i].length',
+      '1 <= m, n <= 12',
+      '1 <= words.length <= 3 * 10^4',
+      '1 <= words[i].length <= 10',
+      'board and words[i] consist of lowercase English letters.'
+    ],
+    sampleInputOutput: 'Input: board = [["o","a","a","n"],["e","t","a","e"],["i","h","k","r"],["i","f","l","v"]], words = ["oath","pea","eat","rain"]\nOutput: ["eat","oath"]',
+    keyEvaluationCriteria: [
+      'Prefix Tree (Trie) construction over word list for rapid branch pruning',
+      'Backtracking DFS with in-place cell masking to avoid secondary visited matrix overhead',
+      'Trie node leaf pruning after a word is matched to prevent redundant re-traversals',
+      'Time complexity O(M * N * 4^(L)) where L is maximum word length'
+    ],
+    starterCode: {
+      cpp: `#include <iostream>\n#include <vector>\n#include <string>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<string> findWords(vector<vector<char>>& board, vector<string>& words) {\n        return {};\n    }\n};`,
+      python: `class Solution:\n    def findWords(self, board: list[list[str]], words: list[str]) -> list[str]:\n        return []`,
+      java: `import java.util.*;\n\nclass Solution {\n    public List<String> findWords(char[][] board, String[] words) {\n        return new ArrayList<>();\n    }\n}`,
+      javascript: `var findWords = function(board, words) {\n    return [];\n};`,
+      go: `package main\n\nfunc findWords(board [][]byte, words []string) []string {\n    return []string{}\n}`,
+      rust: `impl Solution {\n    pub fn find_words(board: Vec<Vec<char>>, words: Vec<String>) -> Vec<String> {\n        Vec::new()\n    }\n}`
+    }
+  },
+  {
+    id: 'amzn-dsa-4',
+    company: 'Amazon',
+    level: 'SDE-2',
+    round: 'DSA',
+    testStyle: 'faang_bar_raiser',
+    title: 'Trapping Rain Water (Two Pointers & Monotonic Boundary)',
+    description: 'Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.',
+    constraints: [
+      'n == height.length',
+      '1 <= n <= 2 * 10^4',
+      '0 <= height[i] <= 10^5'
+    ],
+    sampleInputOutput: 'Input: height = [0,1,0,2,1,0,1,3,2,1,2,1]\nOutput: 6\nExplanation: 6 units of rain water are trapped in the elevation map.',
+    keyEvaluationCriteria: [
+      'Rejection of O(N^2) brute force and advancement from O(N) space DP to O(1) space Two Pointers',
+      'Invariant: min(left_max, right_max) determines the water bound at current pointer',
+      'Correct handling of plateau peaks, monotonic ascending/descending slopes, and edge arrays'
+    ],
+    starterCode: {
+      cpp: `#include <iostream>\n#include <vector>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    int trap(vector<int>& height) {\n        return 0;\n    }\n};`,
+      python: `class Solution:\n    def trap(self, height: list[int]) -> int:\n        return 0`,
+      java: `class Solution {\n    public int trap(int[] height) {\n        return 0;\n    }\n}`,
+      javascript: `var trap = function(height) {\n    return 0;\n};`,
+      go: `package main\n\nfunc trap(height []int) int {\n    return 0\n}`,
+      rust: `impl Solution {\n    pub fn trap(height: Vec<i32>) -> i32 {\n        0\n    }\n}`
+    }
+  },
+  {
+    id: 'amzn-dsa-5',
+    company: 'Amazon',
+    level: 'SDE-2',
+    round: 'DSA',
+    testStyle: 'faang_bar_raiser',
+    title: 'Course Schedule II (Topological Sort / Kahn\'s Algorithm)',
+    description: 'There are a total of numCourses courses you have to take, labeled from 0 to numCourses - 1. You are given an array prerequisites where prerequisites[i] = [a_i, b_i] indicates that you must take course b_i first if you want to take course a_i. Return the ordering of courses you should take to finish all courses. If there are many valid answers, return any of them. If it is impossible to finish all courses, return an empty array.',
+    constraints: [
+      '1 <= numCourses <= 2000',
+      '0 <= prerequisites.length <= numCourses * (numCourses - 1)',
+      'prerequisites[i].length == 2',
+      '0 <= a_i, b_i < numCourses',
+      'a_i != b_i',
+      'All the pairs [a_i, b_i] are distinct.'
+    ],
+    sampleInputOutput: 'Input: numCourses = 4, prerequisites = [[1,0],[2,0],[3,1],[3,2]]\nOutput: [0,2,1,3]\nExplanation: There are 4 courses to take. One possible order is [0,1,2,3], another is [0,2,1,3].',
+    keyEvaluationCriteria: [
+      'In-degree calculation and queue-based BFS (Kahn\'s algorithm) or DFS 3-state cycle detection',
+      'Cycle detection check: comparing visited node count against numCourses',
+      'Asymptotic Time complexity O(V + E) and Space complexity O(V + E)'
+    ],
+    starterCode: {
+      cpp: `#include <iostream>\n#include <vector>\n#include <queue>\n\nusing namespace std;\n\nclass Solution {\npublic:\n    vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {\n        return {};\n    }\n};`,
+      python: `from collections import deque\n\nclass Solution:\n    def findOrder(self, numCourses: int, prerequisites: list[list[int]]) -> list[int]:\n        return []`,
+      java: `import java.util.*;\n\nclass Solution {\n    public int[] findOrder(int numCourses, int[][] prerequisites) {\n        return new int[]{};\n    }\n}`,
+      javascript: `var findOrder = function(numCourses, prerequisites) {\n    return [];\n};`,
+      go: `package main\n\nfunc findOrder(numCourses int, prerequisites [][]int) []int {\n    return []int{}\n}`,
+      rust: `impl Solution {\n    pub fn find_order(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> Vec<i32> {\n        Vec::new()\n    }\n}`
     }
   },
   {
@@ -635,49 +756,41 @@ Generate a fresh, authentic question formatted STRICTLY as JSON with this exact 
 }`;
 
   try {
-    const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MISTRAL_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        messages: [{ role: 'user', content: prompt }],
+    const raw = await executeAIChatCascade(
+      [{ role: 'user', content: prompt }],
+      {
         temperature: 0.85,
-        response_format: { type: 'json_object' }
-      })
-    });
+        responseFormatJson: true,
+        timeoutMs: 9000
+      }
+    );
 
-    if (res.ok) {
-      const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.title && parsed.description) {
-          return {
-            id: parsed.id || `gen-${Date.now()}`,
-            title: parsed.title,
-            company: company,
-            level: level,
-            round: round,
-            testStyle: style,
-            description: parsed.description,
-            constraints: parsed.constraints || [],
-            sampleInputOutput: parsed.sampleInputOutput || '',
-            keyEvaluationCriteria: parsed.keyEvaluationCriteria || ['Optimal Time/Space Complexity', 'Clean Modularity'],
-            starterCode: parsed.starterCode || {}
-          };
-        }
+    if (raw && raw.trim().length > 0) {
+      const cleanJson = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      if (parsed.title && parsed.description) {
+        return {
+          id: parsed.id || `gen-${Date.now()}`,
+          title: parsed.title,
+          company: company,
+          level: level,
+          round: round,
+          testStyle: style,
+          description: parsed.description,
+          constraints: parsed.constraints || [],
+          sampleInputOutput: parsed.sampleInputOutput || '',
+          keyEvaluationCriteria: parsed.keyEvaluationCriteria || ['Optimal Time/Space Complexity', 'Clean Modularity'],
+          starterCode: parsed.starterCode || {}
+        };
       }
     }
   } catch (err) {
-    console.warn('Dynamic question generation fallback notice:', err);
+    console.warn('Dynamic question generation AI notice, using randomized curated pool:', err);
   }
 
   // Fallback to randomized curated question so it never repeats the same static problem
   const pool = CURATED_INTERVIEW_QUESTIONS.filter(q => q.round === round);
-  const companyPool = pool.filter(q => q.company.toLowerCase() === company.toLowerCase());
+  const companyPool = pool.filter(q => q.company.toLowerCase() === company.toLowerCase() || q.company.toLowerCase() === 'general');
   const selectedPool = companyPool.length > 0 ? companyPool : pool;
   const picked = selectedPool[Math.floor(Math.random() * selectedPool.length)] || CURATED_INTERVIEW_QUESTIONS[0];
   return { ...picked, testStyle: style };
