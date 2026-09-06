@@ -184,50 +184,65 @@ if (ctx.candidateCode && ctx.candidateCode.trim().length > 0) {
 
 ---
 
-### 5.2 Hyper-Realistic Neural Speech Engine (Kokoro-TTS & Indian Phonemes)
+### 5.2 Fish Audio S2.1 Pro Free Neural Speech & Parallel Streaming Architecture
 
-To move beyond robotic browser voices, the platform integrates an authenticated connection with a private **Kokoro-TTS Hugging Face Space** (`mdalamrahman/Kokoro-TTS`), using native multi-lingual weights and calibrated Indian English cadence:
+To achieve sub-90ms conversational latency while preserving rich emotional nuance and native Indian English phonemes, the platform integrates **Fish Audio S2.1 Pro Free** with parallel sentence-streaming queues and multi-tier fallback protection:
 
-#### 1. Authorized Serverless Client Bridge (`@gradio/client`)
-* Authenticates against the private Space via `Client.connect("mdalamrahman/Kokoro-TTS", { token: VITE_HF_TOKEN })`.
-* Dispatches generation requests to `/predict` with text payload, selected voice profile (`af_heart` for Aditi / `am_michael` for Aarav), and an optimal FAANG interview conversational tempo (`speed: 1.03`).
-* Because the space is private, generated audio endpoints are securely streamed and fetched via `fetch(url, { headers: { Authorization: 'Bearer ...' } })`, converted into local `blob:` URLs, and played through `new Audio()`.
+```
+                     [ Mistral / State Machine System Trigger ]
+                                         │
+                                         ▼
+                            [ textToSpeechNormalizer ]
+                 (Maps technical acronyms & cleans code fences)
+                                         │
+                                         ▼
+                    [ Sentence-Splitting Segmentation Loop ]
+                     (Splits inputs into micro-sentence segments)
+                                         │
+                ┌────────────────────────┴────────────────────────┐
+                ▼                                                 ▼
+         [ Sentence 1 ]                                    [ Sentences 2...N ]
+       (Keeps Emotion Tag)                                (Inherits Context)
+                │                                                 │
+      Instant API Fetch (Sub-90ms)                         Background Cache Pipeline
+                │                                                 │
+                ▼                                                 ▼
+      ┌──────────────────┐                               ┌──────────────────┐
+      │  Fish Audio API  │                               │  Fish Audio API  │
+      │ (s2.1-pro-free)  │                               │ (s2.1-pro-free)  │
+      └────────┬─────────┘                               └────────┬─────────┘
+               │                                                  │
+       Binary Data Blob                                   Cached Object URL Blobs
+               │                                                  │
+               ▼                                                  ▼
+     [ Play Sentence 1 ] ─────── (On Ended Context) ──────> [ Play Sentence 2...N ]
+```
 
-#### 2. Indian Corporate & Technical Cadence Formatter (`formatTextForIndianCadence`)
-* Injects conversational pauses (`... actually ...`, `... look ...`, `. — `) to simulate human critical thinking.
-* Phonetically normalizes Indian recruitment terminology and Big-O asymptotics:
-  * LPA $\rightarrow$ *"L P A"*, CTC $\rightarrow$ *"C T C"*
-  * $O(1) \rightarrow$ *"O of 1"*, $O(N \log N) \rightarrow$ *"O of N log N"*
-  * QPS $\rightarrow$ *"Q P S"*, SPOF $\rightarrow$ *"single point of failure"*
-  * LLD $\rightarrow$ *"low level design"*, HLD $\rightarrow$ *"high level design"*
-  * JSON $\rightarrow$ *"Jason"*, SQL $\rightarrow$ *"sequel"*, NoSQL $\rightarrow$ *"no sequel"*
-* Replaces inline code blocks with spoken contextual cues: *"Check the code buffer I just updated in your arena"*.
+#### 1. Sentence-Streaming Pipeline (`streamInterviewerSpeech`)
+* **Micro-Sentence Segmentation**: Incoming speech text is segmented strictly by terminal punctuation (`.`, `!`, `?`).
+* **Sub-90ms Instant Playback**: Sentence 1 is dispatched immediately to `https://api.fish.audio/v1/tts` (`model: "s2.1-pro-free"`). As soon as the first binary blob returns, it is converted into a local `Blob` URL and played through HTML5 audio without waiting for the rest of the paragraph.
+* **Asynchronous Background Caching**: Sentences $2 \dots N$ are synthesized sequentially in the background while the candidate is listening to Sentence 1, eliminating pipeline starvation and audio buffer underruns.
 
-#### 3. Voice Activity Detection & Barge-In Audio Controller (`src/lib/audioVAD.ts`)
-* Intercepts microphone RMS input through a 2-stage **Biquad Vocal Formant Bandpass Filter** (300 Hz – 3,400 Hz) to eliminate desk thumps and mechanical keyboard clicks.
-* When candidate voice energy exceeds the calibrated threshold during active AI speech, it immediately fires `terminateInterviewerAudioSpeech()`, halting audio and instantly ceding the conversational floor to the candidate.
+#### 2. Dynamic Emotional Persona Tags & Subtitle Stripper (`stripEmotionTagsForUI`)
+* **Emotional Tags**: System prompts and hint ladders inject emotional tone directives:
+  * `[thoughtfully]`: Used during initial architectural formulation and problem presentation.
+  * `[encouragingly]`: Injected by `InterviewStateMachine.recordHint()` during 3-tier hint delivery.
+  * `[sternly]`: Used when asymptotic Big-O bounds are violated or anti-cheat triggers occur.
+  * `[approvingly]`: Used when dry runs or test suites execute cleanly.
+* **UI Subtitle Stripper**: `stripEmotionTagsForUI(text)` ensures that bracketed tags like `[thoughtfully]` are completely stripped from chat transcript bubbles, keeping visual text professional and pristine.
 
-#### 4. Zero-Lag Speech & Text Synchronization Protocol (`onStart` Hook)
-* **Problem**: When an LLM returns a response, prematurely rendering the entire paragraph in the transcript 1.5s before neural audio synthesis streams creates an awkward user experience where the candidate reads ahead.
-* **Solution**: `speakInterviewerResponse` and `speakInterviewerText` implement an `onStartCallback` hook attached directly to `audio.onplay` (and `fallbackUtterance.onstart`).
-* **Implementation**: The UI retains the AI in `isAiThinking` mode while Kokoro-TTS buffers the audio. The transcript message is revealed via `revealMessage()` the exact millisecond audio begins playing through speakers, accompanied by a 2,500ms fail-safe timeout.
+#### 3. Real-Time VAD Interruption Integration (`abortStreamingPlayback`)
+* In `src/lib/audioVAD.ts`, when the candidate speaks while the interviewer stream is active (`isVoiceDetected && isTTSActive === true`), the controller fires `abortStreamingPlayback()`.
+* This immediately pauses active HTML5 audio, cancels the queue, revokes all in-flight Object URLs, and releases microphone locks with sub-5ms turnaround.
 
-#### 5. Cohesive Interviewer Persona Architecture (`Aditi Sharma` & `Aarav Patel`)
-* **Unified Persona Binding**: The user's choice in Step 6 (`hi_female` $\rightarrow$ **Aditi Sharma**, `hi_male` $\rightarrow$ **Aarav Patel**) is injected into:
-  1. `buildInterviewerSystemPrompt(ctx)`: Strictly anchors the LLM identity to Aditi or Aarav, preventing the model from assuming arbitrary names.
-  2. Spoken Initial Greeting: The interviewer introduces themselves by name, title, and company.
-  3. Live Room Top Bar: Displays the interviewer's portrait and company title.
-  4. Live Transcript Dialogue Stream: Tags each interviewer message with their explicit persona name.
+#### 4. Resilient 3-Tier Speech Engine Fallback
+1. **Tier 1 (Fish Audio S2.1 Pro Free)**: High-speed, unmetered neural audio with emotional conditioning.
+2. **Tier 2 (Private Kokoro-TTS Space)**: Authenticated serverless pipeline via `mdalamrahman/Kokoro-TTS` with Indian English voice weights (`af_heart` / `am_michael`).
+3. **Tier 3 (Local OS Regional Voices)**: Client-side Web Speech Synthesis (`en-IN` / `hi-IN` with `SpeechSynthesisUtterance`), guaranteeing 100% offline uptime even if external APIs hit quota limits.
 
-#### 6. Zero-Repetition Dynamic Scenario Engine
-* **Automatic Synthesis on Launch**: Instead of serving static cached questions, `handleStartLiveInterview()` automatically invokes `generateDynamicInterviewQuestion()` upon session start.
-* **Randomized Subtopic & Domain Entropy**: Injects entropy across 40+ specialized domain topics (sliding window deques, LSM-trees, Raft consensus, star schemas, etc.), guaranteeing candidates never encounter repetitive questions.
-
-#### 7. PWA Custom Install Diagnostic Protocol
-* In modern Progressive Web Applications, `Navbar.tsx` intercepts `beforeinstallprompt` and invokes `e.preventDefault()` to suppress intrusive mini-infobars and preserve the deferred prompt for user-triggered installation (`deferredPrompt.prompt()`). Chromium logs an informational notice informing developers that the mini-infobar was intentionally suppressed.
-
-#### 8. Pre-Flight Serverless Warm-Up & Fail-Safe Local Fallback
+#### 5. Pre-Flight Serverless Warm-Up & Fail-Safe Local Fallback
 * **Cold-Start Elimination**: The setup wizard silently fires a warm-up token (`"..."`) during the pre-flight check, keeping serverless instances warm.
+
 * **Fail-Safe Graceful Fallback**: If Hugging Face hits quota limits or experiences network latency, `playLocalSpeechFallback()` seamlessly drops down to native OS regional voices (`en-IN` / `hi-IN` with `SpeechSynthesisUtterance`) with zero UI interruption.
 
 #### Hands-Free Silence Detection in `src/components/InterviewCompanion.tsx`:

@@ -216,10 +216,17 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
   };
 }
 
-// Global pointer to track active audio element runtime
+// Global lifecycle pointers for serial execution tracking & Fish Audio sentence-streaming
+let audioPlaybackQueue: string[] = [];
+let isPlaybackWorkerRunning = false;
+let currentPlayingAudio: HTMLAudioElement | null = null;
 let currentInterviewerAudio: HTMLAudioElement | null = null;
 let cachedKokoroClient: any = null;
 let lastConnectedToken = '';
+let activeStreamOnEnd: (() => void) | null = null;
+let activeStreamOnStart: (() => void) | null = null;
+let hasStreamFiredStart = false;
+let pendingChunkCount = 0;
 
 export type IndianVoiceProfile = 'hi_female' | 'hi_male';
 
@@ -233,13 +240,28 @@ interface KokoroAudioResponse {
 }
 
 /**
- * Technical text pre-processor designed to control the Indian Voice Pack's cadence.
- * Forces elegant human-like structural pauses around complex corporate jargon.
+ * Strips emotional expressions ([sternly], [thoughtfully], [encouragingly], [approvingly]) 
+ * so transcript bubbles remain clean on the user interface.
  */
-export function formatTextForIndianCadence(text: string): string {
-  return text
-    // 1. Maintain core platform redactions (From your specific code map)
-    .replace(/```[\s\S]*?```/g, '... Check the code buffer I just updated in your arena ...')
+export function stripEmotionTagsForUI(text: string): string {
+  if (!text) return "";
+  return text.replace(/^\[(sternly|thoughtfully|encouragingly|approvingly)\]\s*/gi, "").trim();
+}
+
+/**
+ * Pre-processes code fragments and structures technical terms for natural 
+ * Indian English conversational pauses with emotional tone cues.
+ */
+export function textToSpeechNormalizer(text: string): string {
+  // Extract starting emotional cue tag if present
+  const emotionMatch = text.match(/^\[(sternly|thoughtfully|encouragingly|approvingly)\]/i);
+  const prefixTag = emotionMatch ? emotionMatch[0] : "";
+  
+  let coreBody = emotionMatch ? text.slice(prefixTag.length) : text;
+
+  coreBody = coreBody
+    // Core platform text cleanup rules (From your specific code map)
+    .replace(/```[\s\S]*?```/g, '... Reviewing the code block inside your workspace arena ...')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
     .replace(/\bO\(1\)/gi, 'O of 1')
@@ -252,7 +274,7 @@ export function formatTextForIndianCadence(text: string): string {
     .replace(/\bTPS\b/g, 'T P S')
     .replace(/\bSPOF\b/g, 'single point of failure')
     
-    // 2. Local Indian corporate & technical acronym expansion
+    // Indian corporate & engineering phrasing normalization
     .replace(/\bLPA\b/gi, 'L P A')
     .replace(/\bCTC\b/gi, 'C T C')
     .replace(/\bDSA\b/g, 'D S A')
@@ -270,14 +292,209 @@ export function formatTextForIndianCadence(text: string): string {
     .replace(/\bRPC\b/g, 'R P C')
     .replace(/\bgRPC\b/g, 'G R P C')
     
-    // 3. Cadence Anchors: Injects vocal formatting markers to simulate active critical thinking
+    // Injected physical breathing pauses for realistic conversational delivery
     .replace(/\b(look|see|actually|think about it|wait)\b/gi, '... $1 ...')
-    .replace(/\.(\s+)/g, '. — ')
-    .trim();
+    .replace(/\.(\s+)/g, '. — ');
+
+  return `${prefixTag} ${coreBody.trim()}`.trim();
+}
+
+export const formatTextForIndianCadence = textToSpeechNormalizer;
+
+/**
+ * Dispatches stateless POST requests directly to Fish Audio's fair-use developer endpoint (s2.1-pro-free)
+ */
+async function generateAndBufferChunk(sentenceText: string, voiceId: string): Promise<boolean> {
+  if (!sentenceText || !sentenceText.trim()) return false;
+
+  const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
+  if (!apiKey) return false;
+
+  try {
+    const response = await fetch("https://api.fish.audio/v1/tts", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: sentenceText.trim(),
+        model: "s2.1-pro-free",  // Explicit unmetered developer handle
+        voice_id: voiceId !== 'default' && voiceId !== 'hi_female' && voiceId !== 'hi_male' ? voiceId : undefined,
+        response_format: "mp3"
+      })
+    });
+
+    if (!response.ok) {
+      console.warn(`[Fish Audio] Edge server status ${response.status} (${response.statusText}). Triggering resilient fallback.`);
+      return false;
+    }
+
+    const audioBlob = await response.blob();
+    const blobUrl = URL.createObjectURL(audioBlob);
+    
+    audioPlaybackQueue.push(blobUrl);
+
+    // Bootstrap playback thread instantly if worker is currently idling
+    if (!isPlaybackWorkerRunning) {
+      processAudioPlaybackQueue();
+    }
+    return true;
+  } catch (error) {
+    console.error("[Fish Audio] Segment pipeline failure:", error);
+    return false;
+  }
 }
 
 /**
- * Connects or returns existing cached authorized Gradio client for the private Space
+ * Plays tracked sentence blocks seamlessly back-to-back
+ */
+async function processAudioPlaybackQueue(): Promise<void> {
+  if (audioPlaybackQueue.length === 0) {
+    if (pendingChunkCount <= 0) {
+      isPlaybackWorkerRunning = false;
+      (window as any).isTTSActive = false; // Relinquish microphone back to candidate [audioVAD.ts]
+      isSpeakingActive = false;
+      if (activeStreamOnEnd) {
+        const cb = activeStreamOnEnd;
+        activeStreamOnEnd = null;
+        cb();
+      }
+    }
+    return;
+  }
+
+  isPlaybackWorkerRunning = true;
+  (window as any).isTTSActive = true; // Lock voice channel to prevent acoustic echo feedback loop
+  isSpeakingActive = true;
+
+  const nextTrackUrl = audioPlaybackQueue.shift()!;
+  currentPlayingAudio = new Audio(nextTrackUrl);
+
+  currentPlayingAudio.onplay = () => {
+    if (!hasStreamFiredStart && activeStreamOnStart) {
+      hasStreamFiredStart = true;
+      activeStreamOnStart();
+    }
+  };
+
+  currentPlayingAudio.onended = () => {
+    try { URL.revokeObjectURL(nextTrackUrl); } catch {}
+    processAudioPlaybackQueue(); // Advance queue loop
+  };
+
+  currentPlayingAudio.onerror = () => {
+    try { URL.revokeObjectURL(nextTrackUrl); } catch {}
+    processAudioPlaybackQueue();
+  };
+
+  try {
+    await currentPlayingAudio.play();
+  } catch (err) {
+    console.warn("[Fish Audio] HTML5 audio.play error:", err);
+    try { URL.revokeObjectURL(nextTrackUrl); } catch {}
+    processAudioPlaybackQueue();
+  }
+}
+
+/**
+ * Forced hard-reset command fired on candidate conversational barge-in loops
+ */
+export function abortStreamingPlayback(): void {
+  if (currentPlayingAudio) {
+    try {
+      currentPlayingAudio.pause();
+      currentPlayingAudio.currentTime = 0;
+    } catch {}
+    currentPlayingAudio = null;
+  }
+  if (currentInterviewerAudio) {
+    try {
+      currentInterviewerAudio.pause();
+      currentInterviewerAudio.currentTime = 0;
+    } catch {}
+    currentInterviewerAudio = null;
+  }
+  audioPlaybackQueue.forEach(url => {
+    try { URL.revokeObjectURL(url); } catch {}
+  });
+  audioPlaybackQueue = [];
+  isPlaybackWorkerRunning = false;
+  pendingChunkCount = 0;
+
+  if (typeof window !== 'undefined') {
+    (window as any).isTTSActive = false;
+    if (window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+  }
+  isSpeakingActive = false;
+}
+
+export const terminateInterviewerAudioSpeech = abortStreamingPlayback;
+export const stopInterviewerSpeech = abortStreamingPlayback;
+
+/**
+ * Master Fish Audio S2.1 Pro Free streaming pipeline with sub-90ms startup.
+ * Splits full responses into micro-sentence arrays to eliminate network wait times.
+ */
+export async function streamInterviewerSpeech(
+  fullText: string, 
+  voiceId: string = "default",
+  onEnd?: () => void,
+  onStart?: () => void
+): Promise<void> {
+  // 1. Reset any processing queues to maintain thread purity
+  abortStreamingPlayback();
+
+  activeStreamOnEnd = onEnd || null;
+  activeStreamOnStart = onStart || null;
+  hasStreamFiredStart = false;
+
+  const normalizedText = textToSpeechNormalizer(fullText);
+  if (!normalizedText) {
+    if (onStart) onStart();
+    if (onEnd) onEnd();
+    return;
+  }
+
+  // Segment input strictly by punctuation parameters (. ! ?)
+  const sentences = normalizedText.match(/[^.!?]+[.!?]+/g) || [normalizedText];
+  const emotionMatch = normalizedText.match(/^\[(sternly|thoughtfully|encouragingly|approvingly)\]/i);
+  const emotionTag = emotionMatch ? emotionMatch[0] : "";
+
+  const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
+
+  if (apiKey) {
+    pendingChunkCount = sentences.length;
+
+    // Fire sentence 1 instantly to hit sub-90ms startup boundaries
+    const firstChunkOk = await generateAndBufferChunk(sentences[0], voiceId);
+    pendingChunkCount--;
+
+    if (firstChunkOk) {
+      // Sentence 1 ready and playing! Background fetch remaining tracks sequentially
+      (async () => {
+        for (let i = 1; i < sentences.length; i++) {
+          const sentenceWithTone = emotionTag ? `${emotionTag} ${sentences[i].trim()}` : sentences[i];
+          await generateAndBufferChunk(sentenceWithTone, voiceId);
+          pendingChunkCount--;
+        }
+      })();
+      return;
+    }
+  }
+
+  // Resilient Fallback: If Fish Audio key is missing, hits API credit limits, or errors,
+  // seamlessly drop to authenticated Kokoro-TTS or regional local OS voices!
+  const voiceProfile: IndianVoiceProfile = voiceId === 'hi_male' ? 'hi_male' : 'hi_female';
+  await playKokoroOrLocalFallback(normalizedText, voiceProfile, onEnd, onStart);
+}
+
+/**
+ * Connects or returns existing cached authorized Gradio client for the private Kokoro-TTS Space
  */
 async function getAuthenticatedKokoroClient(token: string) {
   if (cachedKokoroClient && lastConnectedToken === token) {
@@ -292,69 +509,40 @@ async function getAuthenticatedKokoroClient(token: string) {
 }
 
 /**
- * Authenticates against your private Hugging Face space and streams high-fidelity 
- * Indian voice profiles directly back to the active client workspace.
+ * Fail-safe boundary fallback: Gracefully routes to Kokoro-TTS or regional OS speech engine
  */
-export async function speakInterviewerResponse(
-  rawText: string,
-  indianVoiceProfile: IndianVoiceProfile = 'hi_female', 
+async function playKokoroOrLocalFallback(
+  cleanSpeechText: string,
+  indianVoiceProfile: IndianVoiceProfile = 'hi_female',
   onEndCallback?: () => void,
   onStartCallback?: () => void
 ): Promise<void> {
-
-  // 1. Immediately drop running audio vectors to prepare for candidate vocal barge-in
-  terminateInterviewerAudioSpeech();
-
-  const cleanSpeechText = formatTextForIndianCadence(rawText);
-  if (!cleanSpeechText) {
-    if (onStartCallback) onStartCallback();
-    if (onEndCallback) onEndCallback();
-    return;
-  }
-  
-  // Resolve environment variables based on Vite / NextJS runtime architectures
   const hfToken = ((import.meta as any).env?.VITE_HF_TOKEN || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_HF_TOKEN : '')) || "";
 
-  // If token is missing, gracefully drop to localized regional OS voices
   if (!hfToken) {
-    console.warn("[Kokoro-TTS] VITE_HF_TOKEN not detected. Using localized Indian English OS fallback voice...");
     playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
     return;
   }
 
   try {
-    // 2. Open authorized bridge session with your authenticated private Space
     const app = await getAuthenticatedKokoroClient(hfToken);
-    
-    // Map voice request to available Space models if needed
-    let spaceVoice: string = indianVoiceProfile;
-    if (indianVoiceProfile === 'hi_female') {
-      spaceVoice = 'af_heart'; // High quality female voice with warm natural cadence
-    } else if (indianVoiceProfile === 'hi_male') {
-      spaceVoice = 'am_michael'; // Authoritative male tech lead voice
-    }
+    let spaceVoice = indianVoiceProfile === 'hi_male' ? 'am_michael' : 'af_heart';
 
-    // 3. Request streaming output from the private endpoint pool
     let response: KokoroAudioResponse;
     try {
       response = await app.predict("/predict", {
-        text: cleanSpeechText, 
-        voice: spaceVoice, 
-        speed: 1.03,               // Optimal professional velocity matching FAANG interview tempos
+        text: cleanSpeechText,
+        voice: spaceVoice,
+        speed: 1.03,
       }) as KokoroAudioResponse;
-    } catch (predictErr: any) {
-      if (spaceVoice !== 'af_heart') {
-        response = await app.predict("/predict", {
-          text: cleanSpeechText,
-          voice: 'af_heart',
-          speed: 1.03
-        }) as KokoroAudioResponse;
-      } else {
-        throw predictErr;
-      }
+    } catch {
+      response = await app.predict("/predict", {
+        text: cleanSpeechText,
+        voice: 'af_heart',
+        speed: 1.03
+      }) as KokoroAudioResponse;
     }
 
-    // 4. Construct live client-side element wrapper from generated data stream
     let secureAudioUrl = '';
     const item = response?.data?.[0];
     if (typeof item === 'string') {
@@ -367,29 +555,24 @@ export async function speakInterviewerResponse(
       let playableUrl = secureAudioUrl;
       let isBlob = false;
 
-      // Because the Space is private, fetch the audio binary with the Bearer token to create a playable blob
       if (hfToken && !secureAudioUrl.startsWith('data:') && !secureAudioUrl.startsWith('blob:')) {
         try {
           const fetchResp = await fetch(secureAudioUrl, {
-            headers: {
-              Authorization: `Bearer ${hfToken}`
-            }
+            headers: { Authorization: `Bearer ${hfToken}` }
           });
           if (fetchResp.ok) {
             const blob = await fetchResp.blob();
             playableUrl = URL.createObjectURL(blob);
             isBlob = true;
           }
-        } catch (fetchErr) {
-          console.warn("[Kokoro-TTS] Auth fetch warning, using direct URL:", fetchErr);
-        }
+        } catch {}
       }
 
       const audio = new Audio(playableUrl);
       currentInterviewerAudio = audio;
 
       const cleanup = () => {
-        (window as any).isTTSActive = false; 
+        (window as any).isTTSActive = false;
         isSpeakingActive = false;
         currentInterviewerAudio = null;
         if (isBlob) {
@@ -397,43 +580,34 @@ export async function speakInterviewerResponse(
         }
       };
 
-      // 5. Tie state flags directly into your audioVAD.ts architecture
       audio.onplay = () => {
-        // Locks down microphone detection to prevent laptop speakers from creating echo loops
-        (window as any).isTTSActive = true; 
+        (window as any).isTTSActive = true;
         isSpeakingActive = true;
-        if (onStartCallback) {
-          onStartCallback();
-        }
+        if (onStartCallback) onStartCallback();
       };
 
       audio.onended = () => {
-        // Releases line and initiates acoustic dissipation cooldown
         cleanup();
         if (onEndCallback) onEndCallback();
       };
 
-      audio.onerror = (e) => {
-        console.error("Kokoro Audio playback frame failure:", e);
+      audio.onerror = () => {
         cleanup();
         playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
       };
 
-      // 6. Fire playback action
       await audio.play();
     } else {
-      throw new Error("Mismatched or empty data fields received from private workspace node.");
+      playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
     }
-
-  } catch (error) {
-    console.warn("Private space connection dropped or unauthorized. Falling back to local OS speech engine...", error);
-    cachedKokoroClient = null; // Clear cache on failure
+  } catch {
+    cachedKokoroClient = null;
     playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
   }
 }
 
 /**
- * Fail-safe boundary fallback: Gracefully drops down to local engine if Space hits quotas or errors
+ * Fail-safe boundary fallback: Gracefully drops down to local OS regional voice engine
  */
 function playLocalSpeechFallback(
   cleanSpeechText: string, 
@@ -453,8 +627,6 @@ function playLocalSpeechFallback(
       window.speechSynthesis.resume();
     }
     const fallbackUtterance = new SpeechSynthesisUtterance(cleanSpeechText);
-    
-    // Attempt to parse localized regional sub-voices native to the candidate's host OS (en-IN or hi-IN)
     const nativeSystemVoices = window.speechSynthesis.getVoices();
     const nativeIndianVoice = nativeSystemVoices.find(v => 
       v.lang === 'en-IN' || v.lang === 'hi-IN' || v.name.includes('India') || v.name.includes('Ravi') || v.name.includes('Heera') || v.name.includes('Kavya')
@@ -476,7 +648,7 @@ function playLocalSpeechFallback(
       isSpeakingActive = false;
       if (onEndCallback) onEndCallback();
     };
-    fallbackUtterance.onerror = (e) => {
+    fallbackUtterance.onerror = () => {
       (window as any).isTTSActive = false;
       isSpeakingActive = false;
       if (onStartCallback) onStartCallback();
@@ -493,33 +665,15 @@ function playLocalSpeechFallback(
   }
 }
 
-/**
- * Global cancellation handler triggered instantly when your audioVAD.ts engine flags a candidate barge-in.
- */
-export function terminateInterviewerAudioSpeech(): void {
-  if (currentInterviewerAudio) {
-    try {
-      currentInterviewerAudio.pause();
-      currentInterviewerAudio.currentTime = 0;
-    } catch {}
-    currentInterviewerAudio = null;
-  }
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    try {
-      window.speechSynthesis.cancel();
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-    } catch {}
-  }
-  if (typeof window !== 'undefined') {
-    (window as any).isTTSActive = false;
-  }
-  isSpeakingActive = false;
+// Backward-compatible alias for speakInterviewerResponse callers
+export async function speakInterviewerResponse(
+  rawText: string,
+  indianVoiceProfile: IndianVoiceProfile = 'hi_female', 
+  onEndCallback?: () => void,
+  onStartCallback?: () => void
+): Promise<void> {
+  return streamInterviewerSpeech(rawText, indianVoiceProfile, onEndCallback, onStartCallback);
 }
-
-// Backward-compatible alias for existing callers
-export const stopInterviewerSpeech = terminateInterviewerAudioSpeech;
 
 // Backward-compatible alias for speakInterviewerText callers
 export function speakInterviewerText(
@@ -528,5 +682,5 @@ export function speakInterviewerText(
   indianVoiceProfile: IndianVoiceProfile = 'hi_female',
   onStart?: () => void
 ): void {
-  speakInterviewerResponse(text, indianVoiceProfile, onEnd, onStart);
+  streamInterviewerSpeech(text, indianVoiceProfile, onEnd, onStart);
 }

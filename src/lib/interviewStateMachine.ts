@@ -17,6 +17,7 @@ export interface HintRecord {
   penaltyPercent: number;
   hintText: string;
   timestamp: string;
+  emotionDirective?: string;
 }
 
 export interface StageValidationState {
@@ -150,7 +151,8 @@ export class InterviewStateMachine {
       tier,
       penaltyPercent: penaltyMap[tier],
       hintText,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString(),
+      emotionDirective: '[encouragingly]'
     };
 
     this.hintsGiven.push(record);

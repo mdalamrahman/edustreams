@@ -4,7 +4,7 @@
  * prevent premature cut-offs, and enable seamless barge-in interruption.
  */
 
-import { terminateInterviewerAudioSpeech } from './interviewService';
+import { terminateInterviewerAudioSpeech, abortStreamingPlayback } from './interviewService';
 
 export interface VADConfig {
   sampleRate?: number;
@@ -141,7 +141,8 @@ export class VoiceActivityController {
       const isVoiceDetected = rms >= threshold;
 
       if (isVoiceDetected && isTTS) {
-        // CRITICAL: Stop the private Space audio track immediately to give the channel back to the user
+        // Kill the Fish Audio queue & speech tracks instantly to enable natural conversational turn-taking
+        abortStreamingPlayback();
         terminateInterviewerAudioSpeech();
         this.isTTSActive = false;
         if (typeof window !== 'undefined') (window as any).isTTSActive = false;

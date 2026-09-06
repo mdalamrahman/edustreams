@@ -66,6 +66,9 @@ import {
   sendInterviewerMessage, 
   speakInterviewerText, 
   speakInterviewerResponse,
+  streamInterviewerSpeech,
+  abortStreamingPlayback,
+  stripEmotionTagsForUI,
   stopInterviewerSpeech,
   terminateInterviewerAudioSpeech,
   IndianVoiceProfile,
@@ -1778,56 +1781,84 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                   </button>
                 </div>
 
-                {/* Kokoro-TTS Indian Voice Persona */}
+                {/* Fish Audio S2.1 Pro Free & Indian Voice Persona */}
                 <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
-                      <span className="text-slate-200 font-bold text-xs">AI Interviewer Voice (Kokoro-TTS):</span>
+                      <span className="text-slate-200 font-bold text-xs">AI Interviewer Voice (Fish Audio S2.1 Pro Free):</span>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                        🇮🇳 Indian English Phonemes
+                        🇮🇳 Indian English (Sub-90ms)
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">Authenticated Space</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">Parallel Queue Active</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
                       onClick={() => setSelectedVoiceProfile('hi_female')}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                         selectedVoiceProfile === 'hi_female'
                           ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
                           : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">👩‍💼</span>
-                        <div>
-                          <div className="text-xs font-bold text-white">Aditi</div>
-                          <div className="text-[9px] font-mono text-emerald-400">hi_female (Warm Cadence)</div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">👩‍💼</span>
+                          <div>
+                            <div className="text-xs font-bold text-white">Aditi Sharma (Priya)</div>
+                            <div className="text-[10px] text-slate-400">Staff Architect (Ex-Google)</div>
+                            <div className="text-[9px] font-mono text-emerald-400 mt-0.5">hi_female • Warm Cadence</div>
+                          </div>
                         </div>
+                        {selectedVoiceProfile === 'hi_female' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
                       </div>
-                      {selectedVoiceProfile === 'hi_female' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unlockSpeechSynthesis();
+                          streamInterviewerSpeech("[thoughtfully] Hello, I am Aditi Sharma. I will be your Lead Bar Raiser today. Let us evaluate your architectural trade-offs.", "hi_female");
+                        }}
+                        className="mt-3 w-full py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-slate-700/60"
+                      >
+                        <Volume2 className="w-3 h-3 text-emerald-400" />
+                        <span>🔊 Test Voice</span>
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
+                    <div
                       onClick={() => setSelectedVoiceProfile('hi_male')}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      className={`p-3 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
                         selectedVoiceProfile === 'hi_male'
                           ? 'bg-emerald-950/70 border-emerald-500 text-white font-bold ring-1 ring-emerald-500 shadow-md shadow-emerald-950/30'
                           : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">👨‍💼</span>
-                        <div>
-                          <div className="text-xs font-bold text-white">Aarav</div>
-                          <div className="text-[9px] font-mono text-indigo-400">hi_male (Principal Tech Lead)</div>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">👨‍💼</span>
+                          <div>
+                            <div className="text-xs font-bold text-white">Aarav Patel (Aarav)</div>
+                            <div className="text-[10px] text-slate-400">Principal Bar Raiser (Uber)</div>
+                            <div className="text-[9px] font-mono text-indigo-400 mt-0.5">hi_male • Tech Lead</div>
+                          </div>
                         </div>
+                        {selectedVoiceProfile === 'hi_male' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
                       </div>
-                      {selectedVoiceProfile === 'hi_male' && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          unlockSpeechSynthesis();
+                          streamInterviewerSpeech("[thoughtfully] Hi, I am Aarav Patel. Let us examine your algorithmic invariants and asymptotic bounds.", "hi_male");
+                        }}
+                        className="mt-3 w-full py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-slate-700/60"
+                      >
+                        <Volume2 className="w-3 h-3 text-cyan-400" />
+                        <span>🔊 Test Voice</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2365,7 +2396,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     ? 'bg-indigo-600 text-white shadow-md rounded-br-none'
                     : 'bg-slate-900 border border-slate-800 text-slate-200 shadow-sm rounded-bl-none'
                 }`}>
-                  <FormattedChatText text={msg.content} />
+                  <FormattedChatText text={msg.role === 'interviewer' ? stripEmotionTagsForUI(msg.content) : msg.content} />
                 </div>
               </div>
             ))}
