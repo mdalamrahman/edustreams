@@ -207,7 +207,26 @@ To move beyond robotic browser voices, the platform integrates an authenticated 
 * Intercepts microphone RMS input through a 2-stage **Biquad Vocal Formant Bandpass Filter** (300 Hz – 3,400 Hz) to eliminate desk thumps and mechanical keyboard clicks.
 * When candidate voice energy exceeds the calibrated threshold during active AI speech, it immediately fires `terminateInterviewerAudioSpeech()`, halting audio and instantly ceding the conversational floor to the candidate.
 
-#### 4. Pre-Flight Serverless Warm-Up & Fail-Safe Local Fallback
+#### 4. Zero-Lag Speech & Text Synchronization Protocol (`onStart` Hook)
+* **Problem**: When an LLM returns a response, prematurely rendering the entire paragraph in the transcript 1.5s before neural audio synthesis streams creates an awkward user experience where the candidate reads ahead.
+* **Solution**: `speakInterviewerResponse` and `speakInterviewerText` implement an `onStartCallback` hook attached directly to `audio.onplay` (and `fallbackUtterance.onstart`).
+* **Implementation**: The UI retains the AI in `isAiThinking` mode while Kokoro-TTS buffers the audio. The transcript message is revealed via `revealMessage()` the exact millisecond audio begins playing through speakers, accompanied by a 2,500ms fail-safe timeout.
+
+#### 5. Cohesive Interviewer Persona Architecture (`Aditi Sharma` & `Aarav Patel`)
+* **Unified Persona Binding**: The user's choice in Step 6 (`hi_female` $\rightarrow$ **Aditi Sharma**, `hi_male` $\rightarrow$ **Aarav Patel**) is injected into:
+  1. `buildInterviewerSystemPrompt(ctx)`: Strictly anchors the LLM identity to Aditi or Aarav, preventing the model from assuming arbitrary names.
+  2. Spoken Initial Greeting: The interviewer introduces themselves by name, title, and company.
+  3. Live Room Top Bar: Displays the interviewer's portrait and company title.
+  4. Live Transcript Dialogue Stream: Tags each interviewer message with their explicit persona name.
+
+#### 6. Zero-Repetition Dynamic Scenario Engine
+* **Automatic Synthesis on Launch**: Instead of serving static cached questions, `handleStartLiveInterview()` automatically invokes `generateDynamicInterviewQuestion()` upon session start.
+* **Randomized Subtopic & Domain Entropy**: Injects entropy across 40+ specialized domain topics (sliding window deques, LSM-trees, Raft consensus, star schemas, etc.), guaranteeing candidates never encounter repetitive questions.
+
+#### 7. PWA Custom Install Diagnostic Protocol
+* In modern Progressive Web Applications, `Navbar.tsx` intercepts `beforeinstallprompt` and invokes `e.preventDefault()` to suppress intrusive mini-infobars and preserve the deferred prompt for user-triggered installation (`deferredPrompt.prompt()`). Chromium logs an informational notice informing developers that the mini-infobar was intentionally suppressed.
+
+#### 8. Pre-Flight Serverless Warm-Up & Fail-Safe Local Fallback
 * **Cold-Start Elimination**: The setup wizard silently fires a warm-up token (`"..."`) during the pre-flight check, keeping serverless instances warm.
 * **Fail-Safe Graceful Fallback**: If Hugging Face hits quota limits or experiences network latency, `playLocalSpeechFallback()` seamlessly drops down to native OS regional voices (`en-IN` / `hi-IN` with `SpeechSynthesisUtterance`) with zero UI interruption.
 

@@ -30,13 +30,15 @@ export interface InterviewContext {
   candidateCode?: string;
   language?: string;
   whiteboardNotes?: string;
+  interviewerPersonaName?: string;
 }
 
 /**
  * Builds a structured, high-fidelity Principal Interviewer System Prompt.
  */
 export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
-  const { company, level, round, testStyle, question, candidate } = ctx;
+  const { company, level, round, testStyle, question, candidate, interviewerPersonaName } = ctx;
+  const interviewerName = interviewerPersonaName || 'Aditi Sharma';
 
   const levelExpectations: Record<SdeLevel, string> = {
     'SDE-1': 'Expect solid algorithmic fundamentals, standard library mastery, clean syntax, basic edge cases, and time/space complexity awareness. Guide with warm, clear hints if stuck.',
@@ -75,7 +77,8 @@ export function buildInterviewerSystemPrompt(ctx: InterviewContext): string {
 3. Reference their resume projects and experience if provided, and probe what specifically THEY delivered.`
   };
 
-  return `You are a Principal Engineering Interviewer and Lead Bar Raiser at ${company} conducting a live technical mock interview.
+  return `You are ${interviewerName}, a Principal Engineering Interviewer and Lead Bar Raiser at ${company} conducting a live technical mock interview.
+Your name and identity is strictly ${interviewerName}. You are a seasoned, articulate technical leader.
 Role Level: ${level}
 Round Type: ${round}
 Interview Style: ${testStyle || 'faang_bar_raiser'} (${styleDirectives[testStyle || 'faang_bar_raiser']})
@@ -295,7 +298,8 @@ async function getAuthenticatedKokoroClient(token: string) {
 export async function speakInterviewerResponse(
   rawText: string,
   indianVoiceProfile: IndianVoiceProfile = 'hi_female', 
-  onEndCallback?: () => void
+  onEndCallback?: () => void,
+  onStartCallback?: () => void
 ): Promise<void> {
 
   // 1. Immediately drop running audio vectors to prepare for candidate vocal barge-in
@@ -303,6 +307,7 @@ export async function speakInterviewerResponse(
 
   const cleanSpeechText = formatTextForIndianCadence(rawText);
   if (!cleanSpeechText) {
+    if (onStartCallback) onStartCallback();
     if (onEndCallback) onEndCallback();
     return;
   }
@@ -313,7 +318,7 @@ export async function speakInterviewerResponse(
   // If token is missing, gracefully drop to localized regional OS voices
   if (!hfToken) {
     console.warn("[Kokoro-TTS] VITE_HF_TOKEN not detected. Using localized Indian English OS fallback voice...");
-    playLocalSpeechFallback(cleanSpeechText, onEndCallback);
+    playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
     return;
   }
 
@@ -397,6 +402,9 @@ export async function speakInterviewerResponse(
         // Locks down microphone detection to prevent laptop speakers from creating echo loops
         (window as any).isTTSActive = true; 
         isSpeakingActive = true;
+        if (onStartCallback) {
+          onStartCallback();
+        }
       };
 
       audio.onended = () => {
@@ -408,7 +416,7 @@ export async function speakInterviewerResponse(
       audio.onerror = (e) => {
         console.error("Kokoro Audio playback frame failure:", e);
         cleanup();
-        playLocalSpeechFallback(cleanSpeechText, onEndCallback);
+        playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
       };
 
       // 6. Fire playback action
@@ -420,17 +428,22 @@ export async function speakInterviewerResponse(
   } catch (error) {
     console.warn("Private space connection dropped or unauthorized. Falling back to local OS speech engine...", error);
     cachedKokoroClient = null; // Clear cache on failure
-    playLocalSpeechFallback(cleanSpeechText, onEndCallback);
+    playLocalSpeechFallback(cleanSpeechText, onEndCallback, onStartCallback);
   }
 }
 
 /**
  * Fail-safe boundary fallback: Gracefully drops down to local engine if Space hits quotas or errors
  */
-function playLocalSpeechFallback(cleanSpeechText: string, onEndCallback?: () => void): void {
+function playLocalSpeechFallback(
+  cleanSpeechText: string, 
+  onEndCallback?: () => void,
+  onStartCallback?: () => void
+): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) {
     if (typeof window !== 'undefined') (window as any).isTTSActive = false;
     isSpeakingActive = false;
+    if (onStartCallback) onStartCallback();
     if (onEndCallback) onEndCallback();
     return;
   }
@@ -456,6 +469,7 @@ function playLocalSpeechFallback(cleanSpeechText: string, onEndCallback?: () => 
     fallbackUtterance.onstart = () => { 
       (window as any).isTTSActive = true; 
       isSpeakingActive = true;
+      if (onStartCallback) onStartCallback();
     };
     fallbackUtterance.onend = () => {
       (window as any).isTTSActive = false;
@@ -465,6 +479,7 @@ function playLocalSpeechFallback(cleanSpeechText: string, onEndCallback?: () => 
     fallbackUtterance.onerror = (e) => {
       (window as any).isTTSActive = false;
       isSpeakingActive = false;
+      if (onStartCallback) onStartCallback();
       if (onEndCallback) onEndCallback();
     };
 
@@ -473,6 +488,7 @@ function playLocalSpeechFallback(cleanSpeechText: string, onEndCallback?: () => 
     console.error("Local fallback speech error:", e);
     (window as any).isTTSActive = false;
     isSpeakingActive = false;
+    if (onStartCallback) onStartCallback();
     if (onEndCallback) onEndCallback();
   }
 }
@@ -509,7 +525,8 @@ export const stopInterviewerSpeech = terminateInterviewerAudioSpeech;
 export function speakInterviewerText(
   text: string, 
   onEnd?: () => void,
-  indianVoiceProfile: IndianVoiceProfile = 'hi_female'
+  indianVoiceProfile: IndianVoiceProfile = 'hi_female',
+  onStart?: () => void
 ): void {
-  speakInterviewerResponse(text, indianVoiceProfile, onEnd);
+  speakInterviewerResponse(text, indianVoiceProfile, onEnd, onStart);
 }

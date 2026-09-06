@@ -554,38 +554,41 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
   // Launch the live interview session from the Pre-Interview Setup screen
   const handleStartLiveInterview = async () => {
-    let questionToUse = activeQuestion;
+    let questionToUse: CuratedInterviewQuestion | null = null;
 
-    // Auto-generate fresh personalized question if default
-    if (!questionToUse || questionToUse.id.startsWith('goog-dsa-1')) {
-      try {
-        setIsGeneratingCustomQuestion(true);
-        questionToUse = await generateDynamicInterviewQuestion(
-          currentCompany.name,
-          selectedRound,
-          selectedLevel,
-          selectedTestStyle,
-          {
-            name: candidateName,
-            techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
-            experienceYears: candidateExpYears,
-            currentRole: candidateRole,
-            resumeText: resumeText,
-            customGoals: candidateGoals
-          }
-        );
-        setActiveQuestion(questionToUse);
-        if (questionToUse.starterCode && questionToUse.starterCode[language]) {
-          setEditorCode(questionToUse.starterCode[language]);
+    // Always auto-generate a fresh, unique personalized problem to eliminate repetition
+    try {
+      setIsGeneratingCustomQuestion(true);
+      questionToUse = await generateDynamicInterviewQuestion(
+        currentCompany.name,
+        selectedRound,
+        selectedLevel,
+        selectedTestStyle,
+        {
+          name: candidateName,
+          techStack: candidateTechStack.split(',').map(s => s.trim()).filter(Boolean),
+          experienceYears: candidateExpYears,
+          currentRole: candidateRole,
+          resumeText: resumeText,
+          customGoals: candidateGoals
         }
-      } catch (e) {
-        console.warn('Auto dynamic question generation fallback:', e);
-      } finally {
-        setIsGeneratingCustomQuestion(false);
+      );
+      setActiveQuestion(questionToUse);
+      if (questionToUse.starterCode && questionToUse.starterCode[language]) {
+        setEditorCode(questionToUse.starterCode[language]);
+      } else if (selectedRound === 'DSA' || selectedRound === 'LLD') {
+        setEditorCode('// Write your optimal solution here\n\n');
       }
+    } catch (e) {
+      const pool = availableQuestions.length > 0 ? availableQuestions : (activeQuestion ? [activeQuestion] : []);
+      questionToUse = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : activeQuestion;
+    } finally {
+      setIsGeneratingCustomQuestion(false);
     }
 
-    if (!questionToUse) return;
+    if (!questionToUse) {
+      questionToUse = availableQuestions[0];
+    }
 
     // 0. Unlock browser speech synthesis audio context directly in this user click gesture
     unlockSpeechSynthesis();
@@ -652,8 +655,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
     const candidateGreetingName = candidateName.trim() || 'Candidate';
     const activeRound = interviewMode === 'full_loop' ? companySchedule[0] : null;
-    const interviewerName = activeRound ? activeRound.interviewerName : (currentCompany.name === 'Google' ? 'Dr. Sarah Chen' : currentCompany.name === 'Amazon' ? 'David Miller' : currentCompany.name === 'Meta' ? 'Alex Rivera' : 'Michael Zhang');
-    const interviewerTitle = activeRound ? activeRound.interviewerTitle : 'Principal Bar Raiser';
+    const interviewerName = selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel';
+    const interviewerTitle = 'Principal Bar Raiser';
 
     const initialGreeting = interviewMode === 'full_loop' && activeRound
       ? `Hello ${candidateGreetingName}! I'm ${interviewerName}, ${interviewerTitle} at ${currentCompany.name}. Welcome to your ${currentCompany.name} ${selectedLevel} Full Virtual Onsite Loop. We are commencing with ${activeRound.title}. Focus area: ${activeRound.focusDescription}.\n\nHere is your technical scenario:\n**${questionToUse.title}**\n\n${questionToUse.description}\n\nWhenever you are ready, please walk me through your clarifying questions and architectural/algorithmic approach.`
@@ -667,18 +670,30 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       stage: 'problem'
     };
 
-    setMessages([initialMsg]);
     setSecondsRemaining(45 * 60);
     setIsTimerRunning(true);
     setIsInterviewStarted(true);
 
-    // Speak initial greeting after live room mounts
-    setTimeout(() => {
-      if (!isVoiceMuted) {
-        setIsAiSpeaking(true);
-        vadRef.current?.setTTSActive(true);
-        stopListening();
-        speakInterviewerText(initialGreeting, () => {
+    if (!isVoiceMuted) {
+      setIsAiSpeaking(true);
+      vadRef.current?.setTTSActive(true);
+      stopListening();
+
+      let greetingRevealed = false;
+      const revealGreeting = () => {
+        if (greetingRevealed) return;
+        greetingRevealed = true;
+        setMessages([initialMsg]);
+      };
+
+      // Safety timeout: reveal text within 2.5s if TTS encounters network lag
+      const safetyTimer = setTimeout(revealGreeting, 2500);
+
+      speakInterviewerText(
+        initialGreeting, 
+        () => {
+          clearTimeout(safetyTimer);
+          revealGreeting();
           setIsAiSpeaking(false);
           vadRef.current?.setTTSActive(false);
           setTimeout(() => {
@@ -686,11 +701,20 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               startListening();
             }
           }, 350);
-        }, selectedVoiceProfile);
-      } else if (isHandsFreeModeRef.current) {
+        }, 
+        selectedVoiceProfile,
+        () => {
+          // onStart: Audio is actively playing through speakers now! Reveal text simultaneously!
+          clearTimeout(safetyTimer);
+          revealGreeting();
+        }
+      );
+    } else {
+      setMessages([initialMsg]);
+      if (isHandsFreeModeRef.current) {
         startListening();
       }
-    }, 200);
+    }
   };
 
   // Auto-scroll transcript on new messages
@@ -861,11 +885,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       question: activeQuestion || undefined,
       candidateCode: editorCode,
       language: language,
-      whiteboardNotes: whiteboardNotes
+      whiteboardNotes: whiteboardNotes,
+      interviewerPersonaName: selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'
     };
 
     const aiReply = await sendInterviewerMessage(nextMessages, ctx);
-    setIsAiThinking(false);
 
     const interviewerMsg: InterviewMessage = {
       id: `msg-${Date.now() + 1}`,
@@ -875,23 +899,47 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       stage: 'coding'
     };
 
-    setMessages([...nextMessages, interviewerMsg]);
+    let messageRevealed = false;
+    const revealMessage = () => {
+      if (messageRevealed) return;
+      messageRevealed = true;
+      setIsAiThinking(false);
+      setMessages([...nextMessages, interviewerMsg]);
+    };
 
     if (!isVoiceMuted) {
       setIsAiSpeaking(true);
       vadRef.current?.setTTSActive(true);
       stopListening();
-      speakInterviewerText(aiReply, () => {
-        setIsAiSpeaking(false);
-        vadRef.current?.setTTSActive(false);
-        setTimeout(() => {
-          if (isHandsFreeModeRef.current) {
-            startListening();
-          }
-        }, 350);
-      }, selectedVoiceProfile);
-    } else if (isHandsFreeModeRef.current) {
-      startListening();
+
+      // 2.5s fallback safety timer in case TTS takes longer or fails
+      const safetyTimeout = setTimeout(revealMessage, 2500);
+
+      speakInterviewerText(
+        aiReply,
+        () => {
+          clearTimeout(safetyTimeout);
+          revealMessage();
+          setIsAiSpeaking(false);
+          vadRef.current?.setTTSActive(false);
+          setTimeout(() => {
+            if (isHandsFreeModeRef.current) {
+              startListening();
+            }
+          }, 350);
+        },
+        selectedVoiceProfile,
+        () => {
+          // onStart: Audio is actively playing through the speaker! Reveal text at the exact same instant!
+          clearTimeout(safetyTimeout);
+          revealMessage();
+        }
+      );
+    } else {
+      revealMessage();
+      if (isHandsFreeModeRef.current) {
+        startListening();
+      }
     }
   };
 
@@ -1052,7 +1100,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
       }
 
       const candidateGreetingName = candidateName.trim() || 'Candidate';
-      const roundIntro = `Welcome to Round ${nextIdx + 1} (${nextDef.title}), ${candidateGreetingName}! I am ${nextDef.interviewerName}, ${nextDef.interviewerTitle}. We will be focusing on ${nextDef.focusDescription}.\n\nHere is your technical scenario:\n**${newQ.title}**\n\n${newQ.description}\n\nWhenever you are ready, please walk me through your initial thoughts, verify any edge conditions, and structure your approach.`;
+      const interviewerName = selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel';
+      const roundIntro = `Welcome to Round ${nextIdx + 1} (${nextDef.title}), ${candidateGreetingName}! I am ${interviewerName}, ${nextDef.interviewerTitle}. We will be focusing on ${nextDef.focusDescription}.\n\nHere is your technical scenario:\n**${newQ.title}**\n\n${newQ.description}\n\nWhenever you are ready, please walk me through your initial thoughts, verify any edge conditions, and structure your approach.`;
 
       const nextMsg: InterviewMessage = {
         id: `msg-r${nextIdx + 1}-init`,
@@ -1062,26 +1111,47 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
         stage: 'problem'
       };
 
-      setMessages([nextMsg]);
       setSecondsRemaining((nextDef.durationMinutes || 45) * 60);
       setIsTimerRunning(true);
 
-      setTimeout(() => {
-        if (!isVoiceMuted) {
-          setIsAiSpeaking(true);
-          vadRef.current?.setTTSActive(true);
-          stopListening();
-          speakInterviewerText(roundIntro, () => {
+      if (!isVoiceMuted) {
+        setIsAiSpeaking(true);
+        vadRef.current?.setTTSActive(true);
+        stopListening();
+
+        let roundRevealed = false;
+        const revealRound = () => {
+          if (roundRevealed) return;
+          roundRevealed = true;
+          setMessages([nextMsg]);
+        };
+
+        const safetyTimer = setTimeout(revealRound, 2500);
+
+        speakInterviewerText(
+          roundIntro, 
+          () => {
+            clearTimeout(safetyTimer);
+            revealRound();
             setIsAiSpeaking(false);
             vadRef.current?.setTTSActive(false);
             setTimeout(() => {
               if (isHandsFreeModeRef.current) startListening();
             }, 350);
-          }, selectedVoiceProfile);
-        } else if (isHandsFreeModeRef.current) {
+          }, 
+          selectedVoiceProfile,
+          () => {
+            // onStart: Audio is actively playing through the speaker! Reveal text at the exact same instant!
+            clearTimeout(safetyTimer);
+            revealRound();
+          }
+        );
+      } else {
+        setMessages([nextMsg]);
+        if (isHandsFreeModeRef.current) {
           startListening();
         }
-      }, 300);
+      }
     } catch (err) {
       console.warn('Next round generation error:', err);
     } finally {
@@ -1765,69 +1835,6 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
           </div>
 
-          {/* Confidential Assessment Briefing & Readiness Check (Question is Hidden Until Live Interview Starts) */}
-          <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex-shrink-0">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold uppercase text-amber-400 tracking-wider">
-                      Live Assessment Protocol:
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-400 font-mono text-[10px]">
-                      Scenario Confidential
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-white mt-0.5">
-                    Problem scenario is hidden and will be presented live by your {currentCompany.name} Lead Interviewer
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1">
-                    To mirror genuine FAANG/Tier-1 interviews, the problem is kept confidential until you enter the room.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto flex-shrink-0">
-                <button
-                  onClick={handleShuffleQuestion}
-                  className="px-3.5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                  title="Picks another authentic scenario from our curated company question bank"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-                  <span>🎲 Shuffle Question</span>
-                </button>
-
-                <button
-                  onClick={handleGenerateCustomQuestion}
-                  disabled={isGeneratingCustomQuestion}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
-                  title="Synthesizes a brand-new scenario customized for your exact skills, level, and tech stack"
-                >
-                  <Wand2 className={`w-3.5 h-3.5 ${isGeneratingCustomQuestion ? 'animate-spin' : ''}`} />
-                  <span>{isGeneratingCustomQuestion ? 'Customizing Secret Problem...' : '✨ Generate AI Problem for My Stack'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Checklist items */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80 text-[11px] font-mono text-slate-300">
-              <div className="flex items-center space-x-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>Candidate Profile Armed</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                <span>45-Min Timer & Sandbox Ready</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80">
-                <CheckCircle2 className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                <span>Fullscreen Focus Armed</span>
-              </div>
-            </div>
-          </div>
 
           {/* Start CTA Button */}
           <div className="pt-2 flex flex-col items-center gap-2">
@@ -2257,10 +2264,10 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               <div>
                 <div className="flex items-center space-x-1.5">
                   <h4 className="text-xs font-bold text-white tracking-tight">
-                    {currentCompany.name} Lead Bar Raiser
+                    {selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'}
                   </h4>
                   <span className="px-1.5 py-0.2 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 text-[9px] font-mono">
-                    Voice Locked
+                    {currentCompany.name} Bar Raiser
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -2329,7 +2336,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
               >
                 <div className="flex items-center justify-between w-full max-w-[92%] text-[10px] text-slate-500 font-mono">
                   <div className="flex items-center space-x-1.5">
-                    <span>{msg.role === 'interviewer' ? `${currentCompany.name} Interviewer` : `${candidateName || 'Candidate'}`}</span>
+                    <span className="font-semibold text-slate-300">
+                      {msg.role === 'interviewer' 
+                        ? `${selectedVoiceProfile === 'hi_female' ? 'Aditi Sharma' : 'Aarav Patel'} (${currentCompany.name})` 
+                        : `${candidateName || 'Candidate'}`}
+                    </span>
                     <span>•</span>
                     <span>{msg.timestamp}</span>
                   </div>
