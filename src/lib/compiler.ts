@@ -121,6 +121,15 @@ export function compareOutputs(actual: any, expected: any): boolean {
   const cleanExp = String(expected).trim().replace(/\r\n/g, '\n').replace(/\s+$/mg, '');
   if (cleanAct === cleanExp) return true;
 
+  // Support multiple valid expected outputs (e.g. "[0,-3,9] or [0,-10,5]" or "opt1 || opt2")
+  if (cleanExp.includes(' or ') || cleanExp.includes('||')) {
+    const delimiter = cleanExp.includes(' or ') ? ' or ' : '||';
+    const options = cleanExp.split(delimiter).map(s => s.trim()).filter(Boolean);
+    if (options.some(opt => compareOutputs(cleanAct, opt))) {
+      return true;
+    }
+  }
+
   try {
     const parsedAct = JSON.parse(cleanAct);
     const parsedExp = JSON.parse(cleanExp);
@@ -150,6 +159,103 @@ export function compareOutputs(actual: any, expected: any): boolean {
   if (stripQuotes(cleanAct) === stripQuotes(cleanExp)) return true;
 
   return false;
+}
+
+/**
+ * Special Judge: Validates whether a serialized binary tree is a valid height-balanced BST for a sorted nums array.
+ * Specifically for LeetCode 108 ("Convert Sorted Array to Binary Search Tree") which has multiple correct options.
+ */
+export function isValidHeightBalancedBSTForNums(treeOutput: string | any[], numsInput: string | number[]): boolean {
+  try {
+    let nums: number[] = [];
+    if (Array.isArray(numsInput)) {
+      nums = numsInput;
+    } else if (typeof numsInput === 'string') {
+      const match = numsInput.match(/\[([^\]]*)\]/);
+      if (match) {
+        nums = match[1].split(',').map(s => s.trim()).filter(s => s.length > 0).map(Number);
+      }
+    }
+
+    let treeArr: any[] = [];
+    if (Array.isArray(treeOutput)) {
+      treeArr = treeOutput;
+    } else if (typeof treeOutput === 'string') {
+      const clean = treeOutput.trim();
+      const match = clean.match(/\[([^\]]*)\]/);
+      if (match) {
+        treeArr = match[1].split(',').map(s => {
+          const t = s.trim().toLowerCase();
+          if (t === 'null' || t === 'none' || t === '') return null;
+          return Number(t);
+        });
+      } else {
+        return false;
+      }
+    }
+
+    if (nums.length === 0) {
+      return treeArr.length === 0 || (treeArr.length === 1 && treeArr[0] === null);
+    }
+    if (treeArr.length === 0 || treeArr[0] === null || isNaN(treeArr[0])) {
+      return false;
+    }
+
+    class TreeNode {
+      val: number;
+      left: TreeNode | null = null;
+      right: TreeNode | null = null;
+      constructor(v: number) { this.val = v; }
+    }
+
+    const root = new TreeNode(treeArr[0]);
+    const queue: TreeNode[] = [root];
+    let i = 1;
+
+    while (queue.length > 0 && i < treeArr.length) {
+      const curr = queue.shift()!;
+      if (i < treeArr.length && treeArr[i] !== null && !isNaN(treeArr[i])) {
+        curr.left = new TreeNode(treeArr[i]);
+        queue.push(curr.left);
+      }
+      i++;
+      if (i < treeArr.length && treeArr[i] !== null && !isNaN(treeArr[i])) {
+        curr.right = new TreeNode(treeArr[i]);
+        queue.push(curr.right);
+      }
+      i++;
+    }
+
+    // 1. In-order traversal must equal nums
+    const inorder: number[] = [];
+    function traverse(node: TreeNode | null) {
+      if (!node) return;
+      traverse(node.left);
+      inorder.push(node.val);
+      traverse(node.right);
+    }
+    traverse(root);
+
+    if (inorder.length !== nums.length) return false;
+    for (let k = 0; k < inorder.length; k++) {
+      if (inorder[k] !== nums[k]) return false;
+    }
+
+    // 2. Height-balanced check: |height(left) - height(right)| <= 1 for all nodes
+    function checkHeight(node: TreeNode | null): number {
+      if (!node) return 0;
+      const lh = checkHeight(node.left);
+      if (lh === -1) return -1;
+      const rh = checkHeight(node.right);
+      if (rh === -1) return -1;
+      if (Math.abs(lh - rh) > 1) return -1;
+      return Math.max(lh, rh) + 1;
+    }
+
+    return checkHeight(root) !== -1;
+  } catch {
+    return false;
+  }
 }
 
 function deepEqual(a: any, b: any): boolean {

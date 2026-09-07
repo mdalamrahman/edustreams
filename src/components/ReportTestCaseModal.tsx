@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Sparkles,
@@ -37,8 +37,8 @@ interface ReportTestCaseModalProps {
   userActualOutput?: string;
   language?: string;
   userEmail?: string;
-  onApplyCorrection: (correctedInput: string, correctedExpectedOutput: string) => void;
-  onResubmit?: () => void;
+  onApplyCorrection: (correctedInput: string, correctedExpectedOutput: string) => any;
+  onResubmit?: (updatedTemplate?: any) => void;
 }
 
 export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
@@ -60,6 +60,10 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [aiResult, setAiResult] = useState<TestCaseVerificationResult | null>(null);
+  const [autoResubmitCountdown, setAutoResubmitCountdown] = useState<number | null>(null);
+  const latestUpdatedTemplateRef = useRef<any>(null);
+  const timerIdRef = useRef<any>(null);
+
   const [resolvedStatus, setResolvedStatus] = useState<{
     autoResolved: boolean;
     credited: boolean;
@@ -73,8 +77,33 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
       setAiResult(null);
       setUserNote('');
       setResolvedStatus(null);
+      setAutoResubmitCountdown(null);
+      latestUpdatedTemplateRef.current = null;
+    } else {
+      if (timerIdRef.current) {
+        clearTimeout(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+      setAutoResubmitCountdown(null);
     }
   }, [isOpen, testCaseIndex, currentInput]);
+
+  useEffect(() => {
+    if (autoResubmitCountdown === null) return;
+    if (autoResubmitCountdown <= 0) {
+      handleResubmit();
+      return;
+    }
+    timerIdRef.current = setTimeout(() => {
+      setAutoResubmitCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => {
+      if (timerIdRef.current) {
+        clearTimeout(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [autoResubmitCountdown]);
 
   if (!isOpen) return null;
 
@@ -124,7 +153,9 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
         const localCredit = creditUserReward(1.00, bountyDesc, activeEmail);
 
         // 2. Call backend to auto-resolve problem in R2 + memory cache and record credit in DB
-        let backendMessage = "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue.";
+        let backendMessage = result.verdict === 'MULTIPLE_VALID_OUTPUTS'
+          ? "Multiple valid BST structures detected! Testcase updated to accept valid solutions. ₹1 credited to balance. Auto-resubmitting..."
+          : "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Auto-resubmitting your solution...";
         let backendBalance = localCredit.newBalance;
 
         try {
@@ -148,8 +179,9 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
           console.warn('[Auto-Resolve Backend Notice]:', e);
         }
 
-        // 3. Apply correction in the workspace
-        onApplyCorrection(finalInput, finalExpected);
+        // 3. Apply correction in the workspace and retain latest template
+        const updatedTpl = onApplyCorrection(finalInput, finalExpected);
+        latestUpdatedTemplateRef.current = updatedTpl;
 
         setResolvedStatus({
           autoResolved: true,
@@ -158,6 +190,9 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
           newBalance: backendBalance,
           message: backendMessage
         });
+
+        // 4. Trigger auto-resubmit countdown (2 seconds for clear feedback and smooth UX)
+        setAutoResubmitCountdown(2);
       }
     } catch (e) {
       console.error('[Verify TestCase Error]:', e);
@@ -167,9 +202,14 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   };
 
   const handleResubmit = () => {
+    if (timerIdRef.current) {
+      clearTimeout(timerIdRef.current);
+      timerIdRef.current = null;
+    }
+    setAutoResubmitCountdown(null);
     onClose();
     if (onResubmit) {
-      onResubmit();
+      onResubmit(latestUpdatedTemplateRef.current);
     }
   };
 
@@ -301,6 +341,12 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                           <Coins className="w-3.5 h-3.5 text-amber-400" />
                           +₹1.00 Credited to Balance
                         </span>
+                        {autoResubmitCountdown !== null && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-teal-950/90 border border-teal-400 text-teal-300 font-mono text-[11px] font-bold flex items-center gap-1 animate-pulse">
+                            <RefreshCw className="w-3 h-3 text-teal-400 animate-spin" />
+                            Auto-Resubmitting ({autoResubmitCountdown}s)
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm font-bold text-emerald-100 leading-snug">
                         {resolvedStatus.message}
@@ -374,7 +420,16 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                     className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 cursor-pointer group"
                   >
                     <Play className="w-4 h-4 fill-white text-white group-hover:scale-110 transition-transform" />
-                    <span>Resubmit Solution Now 🚀</span>
+                    <span>
+                      {autoResubmitCountdown !== null && autoResubmitCountdown > 0
+                        ? `Auto-Resubmitting in ${autoResubmitCountdown}s... (Click to Resubmit Now)`
+                        : 'Resubmit Solution Now 🚀'}
+                    </span>
+                    {autoResubmitCountdown !== null && autoResubmitCountdown > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-mono font-bold animate-pulse">
+                        {autoResubmitCountdown}
+                      </span>
+                    )}
                   </button>
                 ) : (
                   <button
@@ -387,7 +442,14 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                 )}
 
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    if (timerIdRef.current) {
+                      clearTimeout(timerIdRef.current);
+                      timerIdRef.current = null;
+                    }
+                    setAutoResubmitCountdown(null);
+                    onClose();
+                  }}
                   className="py-2.5 px-5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white text-xs font-bold transition-all cursor-pointer"
                 >
                   Close

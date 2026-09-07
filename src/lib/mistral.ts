@@ -943,7 +943,7 @@ export interface TestCaseVerificationPayload {
 
 export interface TestCaseVerificationResult {
   isIncorrect: boolean;
-  verdict: 'INCORRECT_EXPECTED' | 'MALFORMED_INPUT' | 'INVALID_CONSTRAINT' | 'ALREADY_CORRECT';
+  verdict: 'INCORRECT_EXPECTED' | 'MALFORMED_INPUT' | 'INVALID_CONSTRAINT' | 'MULTIPLE_VALID_OUTPUTS' | 'ALREADY_CORRECT';
   analysis: string;
   correctedInput: string;
   correctedExpectedOutput: string;
@@ -960,6 +960,11 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
     let isIncorrect = Boolean(res.isIncorrect);
     let verdict = res.verdict || (isIncorrect ? 'INCORRECT_EXPECTED' : 'ALREADY_CORRECT');
     let explanation = res.explanation || (isIncorrect ? 'Discrepancy detected in testcase.' : 'Testcase is mathematically correct.');
+
+    if (verdict === 'MULTIPLE_VALID_OUTPUTS') {
+      isIncorrect = true;
+      explanation = res.explanation || 'This problem has multiple valid solutions/options. Testcase updated to accept valid alternative solution.';
+    }
 
     if (!finalInput.includes('=')) {
       let pName = 'grid';
@@ -1034,12 +1039,20 @@ STUDENT'S REPORT NOTE / SUSPICION:
 ${userNote || '(No specific note, please perform full mathematical & algorithmic validation)'}
 
 TASK:
-1. Trace the input against the problem statement and compute the TRUE expected output.
-2. Check if input format has parameter name prefix.
-3. Respond ONLY with a valid JSON object matching this schema:
+1. SPECIAL JUDGE & MULTIPLE VALID OPTIONS CHECK:
+   - Determine if this problem allows MULTIPLE VALID SOLUTIONS or configurations (for example: Binary Search Tree construction where multiple height-balanced BST roots/structures are valid such as in "Convert Sorted Array to Binary Search Tree", topological sort sequences, multiple valid paths, permutations, partitionings, etc.).
+   - Check if the STUDENT'S ACTUAL EXECUTION OUTPUT is one of the mathematically valid answers according to the problem constraints (e.g. for "Convert Sorted Array to BST", is it a valid height-balanced binary search tree containing the elements of nums in order?).
+   - If the student's output is valid, OR if the stored expected output is only one of multiple valid options and wrongly rejects the student's valid output:
+     * Set "isIncorrect": true
+     * Set "verdict": "MULTIPLE_VALID_OUTPUTS"
+     * Set "correctedExpectedOutput": Set to the student's valid output (or allow both options formatted as e.g. '[0,-3,9,-10,null,5] or [0,-10,5,null,-3,null,9]'), so the student's valid solution will pass.
+     * Set "explanation": Explain clearly that the problem permits multiple correct answers, that the student's output is fully valid, and that the testcase expected output has been updated to accept it.
+2. Trace the input against the problem statement and compute the TRUE expected output.
+3. Check if input format has parameter name prefix.
+4. Respond ONLY with a valid JSON object matching this schema:
 {
   "isIncorrect": boolean,
-  "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "ALREADY_CORRECT",
+  "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "MULTIPLE_VALID_OUTPUTS" | "ALREADY_CORRECT",
   "analysis": "Brief step-by-step trace of the logic on this input",
   "correctedInput": "The clean, valid, formatted input string",
   "correctedExpectedOutput": "The exact true expected output (e.g. 'true', 'false', '42', '5', '[0, 1]', '[[1,2]]')",

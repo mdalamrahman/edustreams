@@ -54,7 +54,7 @@ import {
   VolumeX,
   Radio
 } from 'lucide-react';
-import { executeCode, compareOutputs, SupportedLanguage } from '../lib/compiler';
+import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames } from '../lib/problemService';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
@@ -1017,7 +1017,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return problemTemplate.expectedOutputs?.[activeTestCaseIdx] || problemTemplate.expectedOutputs?.[0] || '';
   }, [problemTemplate, activeTestCaseIdx]);
 
-  const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput): boolean => {
+  const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput, caseInput?: string): boolean => {
     // Only treat as fatal error if stderr contains genuine error/exception signatures (not harmless GCC compiler warnings)
     const isFatalStderr = Boolean(
       stderr && (
@@ -1030,12 +1030,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     );
     if (isFatalStderr) return false;
     if (!stdout || !stdout.trim()) return false;
+
+    // Special judge for "Convert Sorted Array to Binary Search Tree" (LeetCode 108)
+    // Multiple height-balanced BSTs are valid for the same sorted array
+    const isBstProblem = currentProblemSlug.includes('convert-sorted-array-to-binary-search-tree') ||
+      cleanTitle.toLowerCase().includes('convert sorted array to');
+    if (isBstProblem && caseInput) {
+      if (isValidHeightBalancedBSTForNums(stdout, caseInput)) {
+        return true;
+      }
+    }
+
     if (!expectedOutput || !expectedOutput.trim()) return stdout.trim().length > 0;
     return compareOutputs(stdout, expectedOutput);
   };
 
   // Run Code (First 3 Run Cases) vs Submit (All Hidden Cases)
-  const handleExecute = async (isSubmission: boolean = false) => {
+  const handleExecute = async (isSubmission: boolean = false, templateOverride?: ProblemTemplate) => {
     const cost = isSubmission ? PRICING_CONFIG.CODE_SUBMIT_DSA_LLD : PRICING_CONFIG.COMPILER_RUN_DSA_LLD;
     const actionLabel = isSubmission ? 'Submitting & Judging Solution (20 paise)' : 'Running Code via Compiler (5 paise)';
 
@@ -1056,12 +1067,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     if (isConsoleMinimized) setIsConsoleMinimized(false);
     const start = Date.now();
 
+    const activeTemplate = templateOverride || problemTemplate;
+
     try {
-      let preloadedDriver = problemTemplate?.driverCode?.[language];
+      let preloadedDriver = activeTemplate?.driverCode?.[language];
       if (!preloadedDriver) {
         const slug = currentProblemSlug;
-        const sampleCase = testInput || problemTemplate?.testCases?.[0] || '';
-        const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, problemTemplate.starters?.[language], sampleCase);
+        const sampleCase = testInput || activeTemplate?.testCases?.[0] || '';
+        const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, activeTemplate.starters?.[language], sampleCase);
         if (fetchedDriver) {
           preloadedDriver = fetchedDriver;
           setProblemTemplate(prev => ({
@@ -1080,7 +1093,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         setExecutionTime(elapsedMs);
         setExecutionResult(result);
 
-        const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr, currentExpectedOutput);
+        const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr, currentExpectedOutput, testInput);
 
         setSubmissionResult({
           isSubmission: false,
@@ -1102,11 +1115,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         // ----------------------------------------------------
         // SUBMISSION MODE: Ultra-Fast Parallel Execution
         // ----------------------------------------------------
-        const allCases = problemTemplate.testCases && problemTemplate.testCases.length > 0 
-          ? problemTemplate.testCases 
+        const allCases = activeTemplate.testCases && activeTemplate.testCases.length > 0 
+          ? activeTemplate.testCases 
           : [testInput];
-        const allExpected = problemTemplate.expectedOutputs && problemTemplate.expectedOutputs.length > 0
-          ? problemTemplate.expectedOutputs
+        const allExpected = activeTemplate.expectedOutputs && activeTemplate.expectedOutputs.length > 0
+          ? activeTemplate.expectedOutputs
           : [currentExpectedOutput];
 
         // Run all test cases concurrently in parallel for lightning-fast results
@@ -1115,7 +1128,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           const caseStart = Date.now();
           const res = await executeCode(code, language, caseInput, cleanTitle, preloadedDriver);
           const caseLatency = Math.max(2, Date.now() - caseStart);
-          const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut);
+          const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut, caseInput);
           return {
             caseIndex: i,
             input: caseInput,
@@ -1201,9 +1214,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           memoryKb: memoryKb,
           runtimePercentile: runtimePct,
           memoryPercentile: memoryPct,
-          timeComplexity: problemTemplate.approaches?.[0]?.timeComplexity || 'O(N)',
-          spaceComplexity: problemTemplate.approaches?.[0]?.spaceComplexity || 'O(N)',
-          timeExplanation: problemTemplate.approaches?.[0]?.description || 'Linear traversal with efficient element processing.',
+          timeComplexity: activeTemplate.approaches?.[0]?.timeComplexity || 'O(N)',
+          spaceComplexity: activeTemplate.approaches?.[0]?.spaceComplexity || 'O(N)',
+          timeExplanation: activeTemplate.approaches?.[0]?.description || 'Linear traversal with efficient element processing.',
           spaceExplanation: `Auxiliary dynamic memory allocated (${(memoryKb / 1024).toFixed(1)} MB).`,
           optimalTimeComplexity: 'O(N)',
           optimalSpaceComplexity: 'O(1)',
@@ -2771,7 +2784,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <span>Test Result</span>
                   {executionResult && (
                     <span className={`w-2 h-2 rounded-full ${
-                      executionResult.stderr || !isOutputValid(executionResult.stdout, executionResult.stderr) 
+                      executionResult.stderr || !isOutputValid(executionResult.stdout, executionResult.stderr, currentExpectedOutput, testInput) 
                         ? 'bg-rose-500' 
                         : 'bg-emerald-400'
                     }`} />
@@ -3325,9 +3338,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
         language={language}
         userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
-        onResubmit={() => {
+        onResubmit={(updatedTemplate) => {
           setIsReportTestCaseOpen(false);
-          handleExecute(true);
+          handleExecute(true, updatedTemplate);
         }}
         onApplyCorrection={(correctedInput, correctedExpected) => {
           let finalInput = (correctedInput || '').trim();
@@ -3336,27 +3349,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             finalInput = `${pNames[0]} = ${finalInput}`;
           }
 
-          setProblemTemplate(prev => {
-            const updatedCases = [...(prev.testCases || [])];
-            const updatedExp = [...(prev.expectedOutputs || [])];
-            updatedCases[reportTestCaseIdx] = finalInput;
-            if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected.trim();
-            
-            const next = { ...prev, testCases: updatedCases, expectedOutputs: updatedExp };
-            try {
-              const slug = currentProblemSlug;
-              localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
-              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
-              // Invalidate stale driver cache so resilient driver is generated/used
-              const langs = ['cpp', 'python', 'javascript', 'java', 'go', 'rust'];
-              langs.forEach(l => localStorage.removeItem(`edustream_driver_${slug}_${l}`));
-            } catch {}
-            return next;
-          });
+          const updatedCases = [...(problemTemplate.testCases || [])];
+          const updatedExp = [...(problemTemplate.expectedOutputs || [])];
+          updatedCases[reportTestCaseIdx] = finalInput;
+          if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected.trim();
+          
+          const next = { ...problemTemplate, testCases: updatedCases, expectedOutputs: updatedExp };
+          try {
+            const slug = currentProblemSlug;
+            localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
+            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
+            // Invalidate stale driver cache so resilient driver is generated/used
+            const langs = ['cpp', 'python', 'javascript', 'java', 'go', 'rust'];
+            langs.forEach(l => localStorage.removeItem(`edustream_driver_${slug}_${l}`));
+          } catch {}
+
+          setProblemTemplate(next);
 
           if (reportTestCaseIdx === activeTestCaseIdx) {
             setTestInput(finalInput);
           }
+
+          return next;
         }}
       />
 
