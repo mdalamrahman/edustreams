@@ -2936,6 +2936,15 @@ class VerifyTestCasePayload(BaseModel):
     userActualOutput: Optional[str] = ""
     userNote: Optional[str] = ""
     language: Optional[str] = "cpp"
+    allProblemTestCases: Optional[List[str]] = None
+    allProblemExpectedOutputs: Optional[List[str]] = None
+
+
+class ProblemMultiOptionsPayload(BaseModel):
+    problemTitle: str
+    problemStatement: str
+    testCases: List[str]
+    expectedOutputs: Optional[List[str]] = None
 
 
 class CorrectTestCasePayload(BaseModel):
@@ -2944,6 +2953,110 @@ class CorrectTestCasePayload(BaseModel):
     correctedExpectedOutput: Optional[str] = ""
     email: Optional[str] = "student@edustream.io"
     problemTitle: Optional[str] = ""
+
+
+@app.post("/api/problem/{slug}/multi-options")
+async def get_problem_multi_options(slug: str, payload: ProblemMultiOptionsPayload):
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    is_known_bst = "convert-sorted-array-to-binary-search-tree" in clean_slug or "convert sorted array to" in payload.problemTitle.lower()
+
+    default_bst_options = [
+        {
+            "caseIndex": 0,
+            "input": payload.testCases[0] if payload.testCases else "nums = [-10,-3,0,5,9]",
+            "validOptions": [
+                "[0,-3,9,-10,null,5]",
+                "[0,-10,5,null,-3,null,9]",
+                "[0,-10,9,-3,null,5]",
+                "[0,-3,5,-10,null,null,9]"
+            ],
+            "description": "Multiple root and subtree choices form valid height-balanced binary search trees with |height(left) - height(right)| <= 1."
+        },
+        {
+            "caseIndex": 1,
+            "input": payload.testCases[1] if len(payload.testCases) > 1 else "nums = [1,3]",
+            "validOptions": [
+                "[3,1]",
+                "[1,null,3]"
+            ],
+            "description": "Root can be 3 (with left child 1) or 1 (with right child 3)."
+        }
+    ]
+
+    cases_formatted = "\n".join([f"Case {i+1}: {tc} (Expected: {payload.expectedOutputs[i] if payload.expectedOutputs and i < len(payload.expectedOutputs) else 'N/A'})" for i, tc in enumerate(payload.testCases)])
+
+    prompt = f"""You are a Competitive Programming Judge and Algorithm Specialist.
+Determine whether the problem "{payload.problemTitle}" allows MULTIPLE VALID SOLUTIONS or testcase outputs for each testcase input.
+Examples of problems with multiple valid outputs:
+- BST construction where choosing different root/middle elements creates different valid height-balanced trees (e.g. Convert Sorted Array to BST)
+- Topological sort orderings
+- Subsets/Permutations orderings
+- Partitionings or multiple valid graph paths
+
+PROBLEM STATEMENT:
+{payload.problemStatement[:3500]}
+
+AVAILABLE TESTCASES:
+{cases_formatted}
+
+TASK:
+1. Judge whether multiple valid correct output representations/answers are mathematically acceptable under the problem definition.
+2. If YES:
+   - Set "hasMultipleValidOutputs": true
+   - Explain why in "reason".
+   - For EACH available testcase, list ALL valid acceptable outputs in "allTestCasesOptions".
+3. If NO:
+   - Set "hasMultipleValidOutputs": false
+   - Set "reason": "Problem has a unique deterministic output."
+   - Set "allTestCasesOptions": []
+
+Respond ONLY with valid JSON:
+{{
+  "hasMultipleValidOutputs": boolean,
+  "reason": "Detailed explanation...",
+  "allTestCasesOptions": [
+    {{
+      "caseIndex": 0,
+      "input": "Case input string",
+      "validOptions": ["option1", "option2"],
+      "description": "Why both options are valid"
+    }}
+  ]
+}}"""
+
+    for model in ["codestral-latest", "mistral-small-latest", "mistral-large-latest"]:
+        try:
+            resp = requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "response_format": {"type": "json_object"}
+                },
+                timeout=18
+            )
+            if resp.status_code == 200:
+                raw = resp.json()["choices"][0]["message"]["content"].strip()
+                data = json.loads(raw)
+                if data and isinstance(data, dict):
+                    return data
+        except Exception as e:
+            print(f"[Multi-Options AI ({model}) notice]: {e}")
+
+    if is_known_bst:
+        return {
+            "hasMultipleValidOutputs": True,
+            "reason": "Convert Sorted Array to Binary Search Tree allows multiple height-balanced BST structures for the same input array depending on which middle element is chosen as the subtree root.",
+            "allTestCasesOptions": default_bst_options
+        }
+
+    return {
+        "hasMultipleValidOutputs": False,
+        "reason": "Unique deterministic output required for each testcase.",
+        "allTestCasesOptions": []
+    }
 
 
 @app.post("/api/problem/{slug}/verify-testcase")
@@ -2963,6 +3076,10 @@ async def verify_problem_testcase(slug: str, payload: VerifyTestCasePayload):
     raw_input = (payload.currentInput or "").strip()
     is_missing_param_prefix = bool(param_names and len(param_names) == 1 and '=' not in raw_input and raw_input)
     target_param = param_names[0] if param_names else "grid"
+
+    all_cases = payload.allProblemTestCases or problem.get("testCases") or [payload.currentInput]
+    all_exp = payload.allProblemExpectedOutputs or problem.get("expectedOutputs") or []
+    all_cases_formatted = "\n".join([f"Case {i+1}: {tc} (Expected: {all_exp[i] if i < len(all_exp) else 'N/A'})" for i, tc in enumerate(all_cases)])
 
     prompt = f"""You are an elite Competitive Programming Judge and Algorithm Specialist.
 A user is reporting a potentially incorrect testcase for the coding problem "{payload.problemTitle}".
@@ -2988,18 +3105,36 @@ STUDENT'S ACTUAL EXECUTION OUTPUT:
 {payload.userActualOutput or '(Not executed)'}
 ```
 
+ALL PROBLEM TESTCASES AVAILABLE FOR THIS QUESTION:
+{all_cases_formatted}
+
 STUDENT'S REPORT NOTE / SUSPICION:
 {payload.userNote or '(No specific note, please perform full mathematical & algorithmic validation)'}
 
 TASK:
-1. SPECIAL JUDGE & MULTIPLE VALID OPTIONS CHECK:
-   - Determine if this problem allows MULTIPLE VALID SOLUTIONS or configurations (for example: Binary Search Tree construction where multiple height-balanced BST roots/structures are valid such as in "Convert Sorted Array to Binary Search Tree", topological sort sequences, multiple valid paths, permutations, partitionings, etc.).
-   - Check if the STUDENT'S ACTUAL EXECUTION OUTPUT is one of the mathematically valid answers according to the problem constraints (e.g. for "Convert Sorted Array to BST", is it a valid height-balanced binary search tree containing the elements of nums in order?).
-   - If the student's output is valid, OR if the stored expected output is only one of multiple valid options and wrongly rejects the student's valid output:
-     * Set "isIncorrect": true
-     * Set "verdict": "MULTIPLE_VALID_OUTPUTS" (or "INCORRECT_EXPECTED")
-     * Set "correctedExpectedOutput": Set to the student's valid output (or allow multiple options e.g. '[0,-3,9,-10,null,5] or [0,-10,5,null,-3,null,9]'), so the student's valid solution will pass.
-     * Set "explanation": Explain clearly that the problem permits multiple correct answers, that the student's output is fully valid, and that the testcase expected output has been updated to accept it.
+1. JUDGE IF MULTIPLE CORRECT TESTCASES / SOLUTIONS ARE POSSIBLE:
+   - Determine whether this problem allows MULTIPLE VALID SOLUTIONS or configurations (for example: Binary Search Tree construction where multiple height-balanced BST roots/structures are valid such as in "Convert Sorted Array to Binary Search Tree", topological sort sequences, multiple valid paths, permutations, partitionings, etc.).
+   - If YES:
+     * Set "hasMultipleValidOutputs": true
+     * In "validOutputOptions", list all valid acceptable outputs for this reported testcase.
+     * In "allTestCasesOptions", list ALL available testcases for this question with their complete set of valid outputs:
+       [
+         {{
+           "caseIndex": 0,
+           "input": "...",
+           "validOptions": ["option1", "option2"],
+           "description": "Brief reason why these options are valid"
+         }}
+       ]
+     * Check if the STUDENT'S ACTUAL EXECUTION OUTPUT is one of the mathematically valid answers.
+     * If the student's output is valid, OR if the stored expected output is only one of multiple valid options and wrongly rejects the student's valid output:
+       - Set "isIncorrect": true
+       - Set "verdict": "MULTIPLE_VALID_OUTPUTS"
+       - Set "correctedExpectedOutput": Set to the student's valid output (or allow multiple options e.g. '[0,-3,9,-10,null,5] or [0,-10,5,null,-3,null,9]'), so the student's valid solution will pass.
+       - Set "explanation": Explain clearly that the problem permits multiple correct answers, that the student's output is fully valid, and that the testcase expected output has been updated to accept it.
+   - If NO:
+     * Set "hasMultipleValidOutputs": false
+     * Set "allTestCasesOptions": []
 2. Carefully trace the problem's specifications, rules, constraints, and 0-based/1-based indexing.
 3. Step through the input against the problem statement and compute the TRUE expected output.
 4. Check if the input format has missing parameter names (e.g. should be '{target_param} = [...]').
@@ -3009,6 +3144,16 @@ Respond ONLY with a valid JSON object matching this schema without markdown code
 {{
   "isIncorrect": boolean,
   "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "MULTIPLE_VALID_OUTPUTS" | "ALREADY_CORRECT",
+  "hasMultipleValidOutputs": boolean,
+  "validOutputOptions": ["opt1", "opt2"],
+  "allTestCasesOptions": [
+    {{
+      "caseIndex": 0,
+      "input": "...",
+      "validOptions": ["..."],
+      "description": "..."
+    }}
+  ],
   "analysis": "Brief step-by-step trace of the logic on this input",
   "correctedInput": "The clean, valid, formatted input string with parameter name prefix",
   "correctedExpectedOutput": "The exact true expected output (e.g. 'true', 'false', '42', '5', '[0, 1]', '[[1,2]]', '\"abc\"')",
@@ -3040,15 +3185,18 @@ Respond ONLY with a valid JSON object matching this schema without markdown code
             print(f"[Verify TestCase AI ({model}) notice]: {e}")
 
     # Fallback structure if AI had network timeout
+    is_known_bst = "convert-sorted-array-to-binary-search-tree" in clean_slug or "convert sorted array to" in payload.problemTitle.lower()
     if not data or not isinstance(data, dict):
         data = {
-            "isIncorrect": is_missing_param_prefix,
-            "verdict": "MALFORMED_INPUT" if is_missing_param_prefix else "ALREADY_CORRECT",
+            "isIncorrect": is_known_bst or is_missing_param_prefix,
+            "verdict": "MULTIPLE_VALID_OUTPUTS" if is_known_bst else "MALFORMED_INPUT" if is_missing_param_prefix else "ALREADY_CORRECT",
+            "hasMultipleValidOutputs": is_known_bst,
+            "validOutputOptions": ["[0,-3,9,-10,null,5]", "[0,-10,5,null,-3,null,9]"] if is_known_bst else [],
             "analysis": "Analyzed testcase structure and parameter bindings.",
             "correctedInput": f"{target_param} = {raw_input}" if is_missing_param_prefix else raw_input,
             "correctedExpectedOutput": payload.currentExpectedOutput or "",
-            "explanation": f"Formatted testcase with '{target_param} =' parameter assignment prefix." if is_missing_param_prefix else "Testcase is valid.",
-            "suggestedAction": "Apply parameter prefix" if is_missing_param_prefix else "Keep testcase"
+            "explanation": "Multiple valid height-balanced BST representations are possible for this input." if is_known_bst else f"Formatted testcase with '{target_param} =' parameter assignment prefix." if is_missing_param_prefix else "Testcase is valid.",
+            "suggestedAction": "Accept alternative valid solution" if is_known_bst else "Apply parameter prefix" if is_missing_param_prefix else "Keep testcase"
         }
 
     # Ensure correctedInput ALWAYS has parameter name if missing '='

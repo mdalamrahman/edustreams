@@ -14,11 +14,13 @@ import {
   Code2,
   Check,
   Coins,
-  Play
+  Play,
+  Layers
 } from 'lucide-react';
 import {
   verifyAndCorrectTestCaseAI,
-  TestCaseVerificationResult
+  TestCaseVerificationResult,
+  MultiTestCaseOption
 } from '../lib/mistral';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { creditUserReward } from '../lib/billing';
@@ -37,6 +39,8 @@ interface ReportTestCaseModalProps {
   userActualOutput?: string;
   language?: string;
   userEmail?: string;
+  allProblemTestCases?: string[];
+  allProblemExpectedOutputs?: string[];
   onApplyCorrection: (correctedInput: string, correctedExpectedOutput: string) => any;
   onResubmit?: (updatedTemplate?: any) => void;
 }
@@ -54,6 +58,8 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   userActualOutput,
   language,
   userEmail,
+  allProblemTestCases,
+  allProblemExpectedOutputs,
   onApplyCorrection,
   onResubmit
 }) => {
@@ -122,7 +128,9 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
         currentExpectedOutput,
         userActualOutput,
         userNote: userNote.trim(),
-        language: language || 'cpp'
+        language: language || 'cpp',
+        allProblemTestCases,
+        allProblemExpectedOutputs
       });
 
       setAiResult(result);
@@ -382,6 +390,81 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                   {aiResult.analysis}
                 </p>
               </div>
+
+              {/* Multiple Valid Testcase Options Detected Card */}
+              {(aiResult.hasMultipleValidOutputs || (aiResult.allTestCasesOptions && aiResult.allTestCasesOptions.length > 0)) && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 border-2 border-purple-500/60 shadow-xl space-y-3.5 animate-fadeIn">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300 shadow-sm">
+                        <Layers className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                          <span>Multiple Correct Testcase Solutions Possible</span>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-900/80 border border-purple-500/70 text-[10px] text-purple-300 font-mono">
+                            Special Judge
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-slate-300">
+                          AI evaluated this question and confirmed multiple mathematically valid testcase outputs exist.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* List of All Testcases available for this question */}
+                  <div className="space-y-2.5 pt-1">
+                    <div className="flex items-center justify-between text-[10px] font-bold text-purple-300 uppercase tracking-wider">
+                      <span>Available Testcases & Valid Output Options for Question:</span>
+                      <span className="text-slate-400 font-mono">
+                        {(aiResult.allTestCasesOptions || []).length} Question Testcases
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                      {(aiResult.allTestCasesOptions && aiResult.allTestCasesOptions.length > 0
+                        ? aiResult.allTestCasesOptions
+                        : [{
+                            caseIndex: testCaseIndex,
+                            input: currentInput,
+                            validOptions: aiResult.validOutputOptions || [aiResult.correctedExpectedOutput],
+                            description: "Valid options detected by AI"
+                          }]
+                      ).map((item: MultiTestCaseOption, idx: number) => (
+                        <div key={idx} className="p-3 rounded-xl bg-slate-950/90 border border-purple-900/40 space-y-2">
+                          <div className="flex items-center justify-between text-xs flex-wrap gap-1">
+                            <span className="font-bold text-slate-200 flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-purple-950 border border-purple-700/50 text-[10px] font-mono text-purple-300">
+                                Case {item.caseIndex + 1}
+                              </span>
+                              <code className="text-slate-300 font-mono text-[11px] font-normal">{item.input}</code>
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/50">
+                              {item.validOptions.length} acceptable {item.validOptions.length === 1 ? 'option' : 'options'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            {item.validOptions.map((opt: string, oIdx: number) => (
+                              <div key={oIdx} className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono flex items-start gap-1.5">
+                                <span className="text-purple-400 font-bold flex-shrink-0">Option {oIdx + 1}:</span>
+                                <span className="text-emerald-300 break-all">{opt}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {item.description && (
+                            <p className="text-[10px] text-slate-400 italic pt-0.5">
+                              💡 {item.description}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Before vs Corrected Diff */}
               {aiResult.isIncorrect && (

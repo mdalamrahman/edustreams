@@ -69,6 +69,7 @@ import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from 
 import { WalletTopupModal } from './WalletTopupModal';
 import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
 import { ReportTestCaseModal } from './ReportTestCaseModal';
+import { ProblemMultiOptionsModal } from './ProblemMultiOptionsModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
@@ -357,6 +358,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // AI Test Case Verification and Repair Modal State
   const [isReportTestCaseOpen, setIsReportTestCaseOpen] = useState<boolean>(false);
   const [reportTestCaseIdx, setReportTestCaseIdx] = useState<number>(0);
+  const [isMultiOptionsModalOpen, setIsMultiOptionsModalOpen] = useState<boolean>(false);
+
+  // Checks if this problem accepts multiple correct testcase solutions
+  const isMultiOutputQuestion = useMemo(() => {
+    const slug = currentProblemSlug.toLowerCase();
+    const title = cleanTitle.toLowerCase();
+    if (slug.includes('convert-sorted-array-to-binary-search-tree') || title.includes('convert sorted array to')) return true;
+    if (problemTemplate.expectedOutputs?.some(o => o && (o.includes(' or ') || o.includes('||')))) return true;
+    try {
+      const cached = localStorage.getItem(`edustream_multi_options_${currentProblemSlug}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.hasMultipleValidOutputs) return true;
+      }
+    } catch {}
+    return false;
+  }, [currentProblemSlug, cleanTitle, problemTemplate.expectedOutputs]);
 
   
   // Direct LeetCode & GeeksforGeeks links (Only if explicitly present)
@@ -2860,6 +2878,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {isMultiOutputQuestion && (
+                          <button
+                            onClick={() => setIsMultiOptionsModalOpen(true)}
+                            className="px-2.5 py-1 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/50 text-purple-300 hover:text-purple-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm animate-pulse"
+                            title="List all available testcases and valid options for this question"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Multi-Option Answers</span>
+                          </button>
+                        )}
+
                         <button
                           onClick={() => {
                             setReportTestCaseIdx(activeTestCaseIdx);
@@ -2879,12 +2908,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     </div>
 
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold">
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold flex-wrap gap-1">
                         <span>Input (Case {activeTestCaseIdx + 1}):</span>
                         {currentExpectedOutput && (
-                          <span className="text-slate-400 font-normal font-mono normal-case">
-                            Expected: <code className="text-indigo-300 font-bold">{currentExpectedOutput}</code>
-                          </span>
+                          <div className="flex items-center gap-1.5 text-slate-400 font-normal font-mono normal-case flex-wrap">
+                            <span>Expected:</span>
+                            {currentExpectedOutput.includes(' or ') || currentExpectedOutput.includes('||') ? (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {currentExpectedOutput.split(/ or |\|\|/).map((opt, oIdx) => (
+                                  <span key={oIdx} className="px-1.5 py-0.5 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-bold text-[10px]">
+                                    Opt {oIdx + 1}: {opt.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <code className="text-indigo-300 font-bold">{currentExpectedOutput}</code>
+                            )}
+                          </div>
                         )}
                       </div>
                       <textarea
@@ -3338,6 +3378,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
         language={language}
         userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
+        allProblemTestCases={problemTemplate.testCases}
+        allProblemExpectedOutputs={problemTemplate.expectedOutputs}
         onResubmit={(updatedTemplate) => {
           setIsReportTestCaseOpen(false);
           handleExecute(true, updatedTemplate);
@@ -3371,6 +3413,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
 
           return next;
+        }}
+      />
+
+      {/* AI Testcase Multi-Option Inspection Modal */}
+      <ProblemMultiOptionsModal
+        isOpen={isMultiOptionsModalOpen}
+        onClose={() => setIsMultiOptionsModalOpen(false)}
+        problemTitle={cleanTitle}
+        problemSlug={currentProblemSlug}
+        problemStatement={problemTemplate.description}
+        testCases={problemTemplate.testCases || [testInput]}
+        expectedOutputs={problemTemplate.expectedOutputs}
+        onApplyAllOptionsToTemplate={(updatedExpectedOutputs) => {
+          setProblemTemplate(prev => {
+            const next = { ...prev, expectedOutputs: updatedExpectedOutputs };
+            try {
+              const slug = currentProblemSlug;
+              localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
+              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
+            } catch {}
+            return next;
+          });
         }}
       />
 

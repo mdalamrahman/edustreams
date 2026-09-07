@@ -939,6 +939,21 @@ export interface TestCaseVerificationPayload {
   userActualOutput?: string;
   userNote?: string;
   language?: string;
+  allProblemTestCases?: string[];
+  allProblemExpectedOutputs?: string[];
+}
+
+export interface MultiTestCaseOption {
+  caseIndex: number;
+  input: string;
+  validOptions: string[];
+  description?: string;
+}
+
+export interface ProblemMultiOptionsResult {
+  hasMultipleValidOutputs: boolean;
+  reason: string;
+  allTestCasesOptions: MultiTestCaseOption[];
 }
 
 export interface TestCaseVerificationResult {
@@ -949,21 +964,61 @@ export interface TestCaseVerificationResult {
   correctedExpectedOutput: string;
   explanation: string;
   suggestedAction: string;
+  hasMultipleValidOutputs?: boolean;
+  validOutputOptions?: string[];
+  allTestCasesOptions?: MultiTestCaseOption[];
 }
 
 export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPayload): Promise<TestCaseVerificationResult> {
-  const { slug, problemTitle, problemStatement, methodSignature, currentInput, currentExpectedOutput, userActualOutput, userNote } = payload;
+  const { slug, problemTitle, problemStatement, methodSignature, currentInput, currentExpectedOutput, userActualOutput, userNote, allProblemTestCases, allProblemExpectedOutputs } = payload;
   const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').trim();
+  const isKnownBST = cleanSlug.includes('convert-sorted-array-to-binary-search-tree') ||
+    problemTitle.toLowerCase().includes('convert sorted array to');
+
+  const defaultBSTOptions: MultiTestCaseOption[] = [
+    {
+      caseIndex: 0,
+      input: allProblemTestCases?.[0] || 'nums = [-10,-3,0,5,9]',
+      validOptions: [
+        '[0,-3,9,-10,null,5]',
+        '[0,-10,5,null,-3,null,9]',
+        '[0,-10,9,-3,null,5]',
+        '[0,-3,5,-10,null,null,9]'
+      ],
+      description: 'Height-balanced BST where |height(left) - height(right)| <= 1 and in-order traversal equals [-10,-3,0,5,9].'
+    },
+    {
+      caseIndex: 1,
+      input: allProblemTestCases?.[1] || 'nums = [1,3]',
+      validOptions: [
+        '[3,1]',
+        '[1,null,3]'
+      ],
+      description: 'Root can be 3 (left child 1) or 1 (right child 3).'
+    }
+  ];
 
   const sanitizeResult = (res: Partial<TestCaseVerificationResult>): TestCaseVerificationResult => {
     let finalInput = (res.correctedInput || currentInput || '').trim();
     let isIncorrect = Boolean(res.isIncorrect);
     let verdict = res.verdict || (isIncorrect ? 'INCORRECT_EXPECTED' : 'ALREADY_CORRECT');
     let explanation = res.explanation || (isIncorrect ? 'Discrepancy detected in testcase.' : 'Testcase is mathematically correct.');
+    let hasMultipleValidOutputs = Boolean(res.hasMultipleValidOutputs || isKnownBST || verdict === 'MULTIPLE_VALID_OUTPUTS');
+    let validOutputOptions = Array.isArray(res.validOutputOptions) && res.validOutputOptions.length > 0
+      ? res.validOutputOptions
+      : [];
+    let allTestCasesOptions = Array.isArray(res.allTestCasesOptions) && res.allTestCasesOptions.length > 0
+      ? res.allTestCasesOptions
+      : (isKnownBST ? defaultBSTOptions : []);
 
-    if (verdict === 'MULTIPLE_VALID_OUTPUTS') {
+    if (verdict === 'MULTIPLE_VALID_OUTPUTS' || (isKnownBST && hasMultipleValidOutputs)) {
       isIncorrect = true;
+      hasMultipleValidOutputs = true;
+      verdict = 'MULTIPLE_VALID_OUTPUTS';
       explanation = res.explanation || 'This problem has multiple valid solutions/options. Testcase updated to accept valid alternative solution.';
+      if (validOutputOptions.length === 0 && isKnownBST) {
+        validOutputOptions = defaultBSTOptions[0].validOptions;
+      }
     }
 
     if (!finalInput.includes('=')) {
@@ -988,7 +1043,10 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
       correctedInput: finalInput,
       correctedExpectedOutput: res.correctedExpectedOutput || currentExpectedOutput || '',
       explanation,
-      suggestedAction: res.suggestedAction || (isIncorrect ? 'Apply AI correction' : 'Testcase verified')
+      suggestedAction: res.suggestedAction || (isIncorrect ? 'Apply AI correction' : 'Testcase verified'),
+      hasMultipleValidOutputs,
+      validOutputOptions: validOutputOptions.length > 0 ? validOutputOptions : undefined,
+      allTestCasesOptions: allTestCasesOptions.length > 0 ? allTestCasesOptions : undefined
     };
   };
 
@@ -1011,6 +1069,10 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
   }
 
   // 2. Cascade AI fallback
+  const allCasesFormatted = (allProblemTestCases || [currentInput]).map((tc, idx) => 
+    `Case ${idx + 1}: ${tc} (Expected: ${allProblemExpectedOutputs?.[idx] || 'N/A'})`
+  ).join('\n');
+
   const prompt = `You are an elite Competitive Programming Judge and Algorithm Specialist.
 A user is reporting a potentially incorrect testcase for the coding problem "${problemTitle}".
 
@@ -1035,30 +1097,58 @@ STUDENT'S ACTUAL EXECUTION OUTPUT:
 ${userActualOutput || '(Not executed)'}
 \`\`\`
 
+ALL PROBLEM TESTCASES AVAILABLE FOR THIS QUESTION:
+${allCasesFormatted}
+
 STUDENT'S REPORT NOTE / SUSPICION:
 ${userNote || '(No specific note, please perform full mathematical & algorithmic validation)'}
 
 TASK:
-1. SPECIAL JUDGE & MULTIPLE VALID OPTIONS CHECK:
-   - Determine if this problem allows MULTIPLE VALID SOLUTIONS or configurations (for example: Binary Search Tree construction where multiple height-balanced BST roots/structures are valid such as in "Convert Sorted Array to Binary Search Tree", topological sort sequences, multiple valid paths, permutations, partitionings, etc.).
-   - Check if the STUDENT'S ACTUAL EXECUTION OUTPUT is one of the mathematically valid answers according to the problem constraints (e.g. for "Convert Sorted Array to BST", is it a valid height-balanced binary search tree containing the elements of nums in order?).
-   - If the student's output is valid, OR if the stored expected output is only one of multiple valid options and wrongly rejects the student's valid output:
-     * Set "isIncorrect": true
-     * Set "verdict": "MULTIPLE_VALID_OUTPUTS"
-     * Set "correctedExpectedOutput": Set to the student's valid output (or allow both options formatted as e.g. '[0,-3,9,-10,null,5] or [0,-10,5,null,-3,null,9]'), so the student's valid solution will pass.
-     * Set "explanation": Explain clearly that the problem permits multiple correct answers, that the student's output is fully valid, and that the testcase expected output has been updated to accept it.
+1. JUDGE IF MULTIPLE CORRECT TESTCASES / SOLUTIONS ARE POSSIBLE:
+   - Determine whether this problem allows MULTIPLE VALID SOLUTIONS or configurations (for example: Binary Search Tree construction where multiple height-balanced BST roots/structures are valid such as in "Convert Sorted Array to Binary Search Tree", topological sort sequences, multiple valid paths, permutations, partitionings, etc.).
+   - If YES:
+     * Set "hasMultipleValidOutputs": true
+     * In "validOutputOptions", list all valid acceptable outputs for this reported testcase.
+     * In "allTestCasesOptions", list ALL available testcases for this question with their complete set of valid outputs:
+       [
+         {
+           "caseIndex": 0,
+           "input": "...",
+           "validOptions": ["option1", "option2"],
+           "description": "Brief reason why these options are valid"
+         }
+       ]
+     * Check if the STUDENT'S ACTUAL EXECUTION OUTPUT is one of the mathematically valid answers.
+     * If the student's output is valid, OR if the stored expected output is only one of multiple valid options and wrongly rejects the student's valid output:
+       - Set "isIncorrect": true
+       - Set "verdict": "MULTIPLE_VALID_OUTPUTS"
+       - Set "correctedExpectedOutput": Set to the student's valid output (or allow options formatted as '[0,-3,9,-10,null,5] or [0,-10,5,null,-3,null,9]'), so the student's valid solution will pass.
+       - Set "explanation": Explain clearly that the problem permits multiple correct answers, that the student's output is fully valid, and that the testcase expected output has been updated to accept it.
+   - If NO:
+     * Set "hasMultipleValidOutputs": false
+     * Set "allTestCasesOptions": []
 2. Trace the input against the problem statement and compute the TRUE expected output.
 3. Check if input format has parameter name prefix.
 4. Respond ONLY with a valid JSON object matching this schema:
 {
   "isIncorrect": boolean,
   "verdict": "INCORRECT_EXPECTED" | "MALFORMED_INPUT" | "INVALID_CONSTRAINT" | "MULTIPLE_VALID_OUTPUTS" | "ALREADY_CORRECT",
+  "hasMultipleValidOutputs": boolean,
+  "validOutputOptions": ["opt1", "opt2"],
+  "allTestCasesOptions": [
+    {
+      "caseIndex": 0,
+      "input": "...",
+      "validOptions": ["..."],
+      "description": "..."
+    }
+  ],
   "analysis": "Brief step-by-step trace of the logic on this input",
   "correctedInput": "The clean, valid, formatted input string",
   "correctedExpectedOutput": "The exact true expected output (e.g. 'true', 'false', '42', '5', '[0, 1]', '[[1,2]]')",
   "explanation": "Clear explanation of why it was wrong or why it is already correct",
   "suggestedAction": "Summary of recommended action"
-}`;
+} `;
 
   const rawJson = await executeAIChatCascade([
     { role: 'user', content: prompt }
@@ -1074,12 +1164,164 @@ TASK:
   }
 
   return sanitizeResult({
-    isIncorrect: !currentInput.includes('='),
-    verdict: !currentInput.includes('=') ? 'MALFORMED_INPUT' : 'ALREADY_CORRECT',
-    analysis: 'Verified testcase formatting and argument bindings.',
+    isIncorrect: isKnownBST || !currentInput.includes('='),
+    verdict: isKnownBST ? 'MULTIPLE_VALID_OUTPUTS' : !currentInput.includes('=') ? 'MALFORMED_INPUT' : 'ALREADY_CORRECT',
+    hasMultipleValidOutputs: isKnownBST,
+    validOutputOptions: isKnownBST ? defaultBSTOptions[0].validOptions : undefined,
+    allTestCasesOptions: isKnownBST ? defaultBSTOptions : undefined,
+    analysis: isKnownBST ? 'Identified multiple valid height-balanced BST representations for sorted array.' : 'Verified testcase formatting and argument bindings.',
     correctedInput: currentInput,
     correctedExpectedOutput: currentExpectedOutput || '',
-    explanation: !currentInput.includes('=') ? 'Formatted testcase parameter prefix.' : 'Testcase is valid.',
-    suggestedAction: !currentInput.includes('=') ? 'Apply parameter fix' : 'Keep testcase'
+    explanation: isKnownBST ? 'Multiple valid height-balanced BST representations are possible for this input.' : !currentInput.includes('=') ? 'Formatted testcase parameter prefix.' : 'Testcase is valid.',
+    suggestedAction: isKnownBST ? 'Accept alternative valid BST representation' : !currentInput.includes('=') ? 'Apply parameter fix' : 'Keep testcase'
   });
+}
+
+/**
+ * AI Judge: Evaluates whether a question allows multiple correct testcase solutions.
+ * If yes, lists all testcases available for the question with all valid options.
+ */
+export async function judgeProblemMultiOptionsAI(params: {
+  slug: string;
+  problemTitle: string;
+  problemStatement: string;
+  testCases: string[];
+  expectedOutputs?: string[];
+}): Promise<ProblemMultiOptionsResult> {
+  const { slug, problemTitle, problemStatement, testCases, expectedOutputs } = params;
+  const cacheKey = `edustream_multi_options_${slug}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed.hasMultipleValidOutputs === 'boolean') {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  const isKnownBST = slug.includes('convert-sorted-array-to-binary-search-tree') ||
+    problemTitle.toLowerCase().includes('convert sorted array to');
+
+  const defaultBSTOptions: MultiTestCaseOption[] = [
+    {
+      caseIndex: 0,
+      input: testCases[0] || 'nums = [-10,-3,0,5,9]',
+      validOptions: [
+        '[0,-3,9,-10,null,5]',
+        '[0,-10,5,null,-3,null,9]',
+        '[0,-10,9,-3,null,5]',
+        '[0,-3,5,-10,null,null,9]'
+      ],
+      description: 'Multiple root and subtree choices form valid height-balanced binary search trees with |height(left) - height(right)| <= 1.'
+    },
+    {
+      caseIndex: 1,
+      input: testCases[1] || 'nums = [1,3]',
+      validOptions: [
+        '[3,1]',
+        '[1,null,3]'
+      ],
+      description: 'Root can be 3 (with left child 1) or 1 (with right child 3).'
+    }
+  ];
+
+  // 1. Try Backend FastAPI route
+  try {
+    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/multi-options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        problemTitle,
+        problemStatement,
+        testCases,
+        expectedOutputs
+      }),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.hasMultipleValidOutputs === 'boolean') {
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+        return data;
+      }
+    }
+  } catch (e) {
+    console.warn('[Backend Multi-Options Notice]:', e);
+  }
+
+  // 2. Cascade AI fallback
+  const casesPrompt = testCases.map((tc, idx) => `Case ${idx + 1}: ${tc} (Expected: ${expectedOutputs?.[idx] || 'N/A'})`).join('\n');
+
+  const prompt = `You are a Competitive Programming Judge and Algorithm Specialist.
+Determine whether the problem "${problemTitle}" allows MULTIPLE VALID SOLUTIONS or testcase outputs for each testcase input.
+Examples of problems with multiple valid outputs:
+- BST construction where choosing different root/middle elements creates different valid height-balanced trees (e.g. Convert Sorted Array to BST)
+- Topological sort orderings
+- Subsets/Permutations orderings
+- Partitionings or multiple valid graph paths
+
+PROBLEM STATEMENT:
+${problemStatement.slice(0, 3500)}
+
+AVAILABLE TESTCASES:
+${casesPrompt}
+
+TASK:
+1. Judge whether multiple valid correct output representations/answers are mathematically acceptable under the problem definition.
+2. If YES:
+   - Set "hasMultipleValidOutputs": true
+   - Explain why in "reason".
+   - For EACH available testcase, list ALL valid acceptable outputs in "allTestCasesOptions".
+3. If NO:
+   - Set "hasMultipleValidOutputs": false
+   - Set "reason": "Problem has a unique deterministic output."
+   - Set "allTestCasesOptions": []
+
+Respond ONLY with valid JSON:
+{
+  "hasMultipleValidOutputs": boolean,
+  "reason": "Detailed explanation...",
+  "allTestCasesOptions": [
+    {
+      "caseIndex": 0,
+      "input": "Case input string",
+      "validOptions": ["option1", "option2"],
+      "description": "Why both options are valid"
+    }
+  ]
+}`;
+
+  try {
+    const rawJson = await executeAIChatCascade([
+      { role: 'user', content: prompt }
+    ], { temperature: 0.1, responseFormatJson: true });
+
+    if (rawJson) {
+      const parsed = JSON.parse(rawJson);
+      if (parsed && typeof parsed.hasMultipleValidOutputs === 'boolean') {
+        try { localStorage.setItem(cacheKey, JSON.stringify(parsed)); } catch {}
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('[AI Multi-Options Error]:', e);
+  }
+
+  // Fallback for known BST problem
+  if (isKnownBST) {
+    const result: ProblemMultiOptionsResult = {
+      hasMultipleValidOutputs: true,
+      reason: 'Convert Sorted Array to Binary Search Tree allows multiple height-balanced BST structures for the same input array depending on which middle element is chosen as the subtree root.',
+      allTestCasesOptions: defaultBSTOptions
+    };
+    try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch {}
+    return result;
+  }
+
+  return {
+    hasMultipleValidOutputs: false,
+    reason: 'Unique deterministic output required for each testcase.',
+    allTestCasesOptions: []
+  };
 }
