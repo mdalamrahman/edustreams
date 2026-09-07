@@ -1122,4 +1122,90 @@ export function getUserRecentSubmissions(): UserSubmissionRecord[] {
   return stats.recentSubmissions;
 }
 
+/**
+ * Checks if a specific problem was submitted and accepted on LeetCode on the same day.
+ * Inspects the user's recentSubmissionList for accepted solutions matching slug or title.
+ */
+export function isLeetCodeProblemSolvedToday(
+  recentSubmissions?: Array<{
+    title?: string;
+    titleSlug?: string;
+    statusDisplay?: string;
+    timestamp?: string | number;
+  }>,
+  targetSlug?: string,
+  targetTitle?: string,
+  potdDate?: string
+): boolean {
+  if (!Array.isArray(recentSubmissions) || recentSubmissions.length === 0) return false;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cleanTargetSlug = (targetSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanTargetTitle = (targetTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  for (const sub of recentSubmissions) {
+    if (!sub) continue;
+    const isAccepted = (sub.statusDisplay || '').toLowerCase() === 'accepted';
+    if (!isAccepted) continue;
+
+    const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const slugMatches = (
+      (cleanTargetSlug && subSlug === cleanTargetSlug) ||
+      (cleanTargetTitle && subTitle === cleanTargetTitle) ||
+      (cleanTargetSlug && (subSlug.includes(cleanTargetSlug) || cleanTargetSlug.includes(subSlug))) ||
+      (cleanTargetTitle && (subTitle.includes(cleanTargetTitle) || cleanTargetTitle.includes(subTitle)))
+    );
+
+    if (!slugMatches) continue;
+
+    // Check if submitted on the same day / within ~30 hours (covering UTC/local timezone shifts)
+    const tsSec = typeof sub.timestamp === 'string' ? parseInt(sub.timestamp, 10) : Number(sub.timestamp || 0);
+    if (tsSec > 0) {
+      const subDate = new Date(tsSec * 1000).toISOString().slice(0, 10);
+      const diffHours = (Date.now() - tsSec * 1000) / (1000 * 60 * 60);
+
+      if (subDate === today || (potdDate && subDate === potdDate) || (diffHours >= 0 && diffHours <= 30)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Checks if GFG POTD is solved today on official GeeksforGeeks platform or locally.
+ */
+export function isGfgProblemSolvedToday(
+  gfgData?: GFGProfileData | null,
+  targetSlug?: string,
+  targetTitle?: string
+): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 1. Direct local marks
+  if (typeof localStorage !== 'undefined') {
+    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+    if (targetSlug) {
+      const sub = localStorage.getItem(`edustream_submissions_${targetSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+  }
+
+  // 2. Official GFG Profile checks (streak, pod streak)
+  if (gfgData) {
+    const curStreak = Number(gfgData.current_streak || gfgData.streak || 0);
+    const podCurrent = Number((gfgData as any).pod_solved_current_streak || 0);
+    const podTimeMachine = Number((gfgData as any).pod_solved_current_streak_incl_timemachine || 0);
+    if (curStreak > 0 || podCurrent > 0 || podTimeMachine > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 

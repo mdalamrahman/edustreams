@@ -2,7 +2,7 @@ import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_
 import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
-import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes } from './progressService';
+import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
 
 export interface DailyActivityItem {
   date: string; // 'YYYY-MM-DD'
@@ -175,6 +175,26 @@ export function isPotdSolvedToday(): boolean {
       const list: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];
       if (list.includes(sdePotd.id)) return true;
       if (isProblemSlugSolved(sdePotd.slug || sdePotd.name)) return true;
+      const sub = localStorage.getItem(`edustream_submissions_${sdePotd.slug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+  } catch {}
+
+  // Check cached LeetCode & GFG POTDs
+  try {
+    const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode');
+    if (lcRaw) {
+      const lc = JSON.parse(lcRaw);
+      if (lc.titleSlug && (isProblemSlugSolved(lc.titleSlug) || isProblemSlugSolved(lc.title))) return true;
+      const sub = localStorage.getItem(`edustream_submissions_${lc.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+    const gfgRaw = localStorage.getItem('edustream_potd_cache_gfg');
+    if (gfgRaw) {
+      const gfg = JSON.parse(gfgRaw);
+      if (gfg.titleSlug && (isProblemSlugSolved(gfg.titleSlug) || isProblemSlugSolved(gfg.title))) return true;
+      const sub = localStorage.getItem(`edustream_submissions_${gfg.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
     }
   } catch {}
   return false;
@@ -291,8 +311,30 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
       matchedProblems.some(p => p.id === sdePotd?.id || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === potdName)
     );
 
-    const isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');
-    const isGfgPotd = strId === '9999' || strId === 'gfgpotd' || cleanSlug.includes('gfg');
+    let isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');
+    let isGfgPotd = strId === '9999' || strId === 'gfgpotd' || cleanSlug.includes('gfg');
+
+    // Dynamic match against cached LeetCode & GFG POTDs
+    try {
+      const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode');
+      if (lcRaw) {
+        const lcData = JSON.parse(lcRaw);
+        const lSlug = (lcData.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const lTitle = (lcData.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (lSlug && (cleanSlug === lSlug || strId === lSlug || cleanSlug === lTitle || strId === lTitle)) {
+          isLcPotd = true;
+        }
+      }
+      const gfgRaw = localStorage.getItem('edustream_potd_cache_gfg');
+      if (gfgRaw) {
+        const gfgData = JSON.parse(gfgRaw);
+        const gSlug = (gfgData.problemSlug || gfgData.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/[^a-z0-9]/g, '');
+        const gTitle = (gfgData.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (gSlug && (cleanSlug === gSlug || strId === gSlug || cleanSlug === gTitle || strId === gTitle)) {
+          isGfgPotd = true;
+        }
+      }
+    } catch {}
 
     if (isSdePotd || isLcPotd || isGfgPotd || strId === 'potd') {
       localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
@@ -361,19 +403,19 @@ export function markLLDProblemSolved(problemId: string | number) {
 export function getAllPlatformUniqueProblems(): any[] {
   const map = new Map<string, any>();
   const allSheets = [
-    ...SDE_SHEET_DATA,
-    ...SDE_SHEET_191_DATA,
-    ...A2Z_DSA_SHEET_473_DATA,
-    ...SDETUBE_79_SHEET_DATA,
-    ...BLIND_75_SHEET_DATA,
-    ...CODESTORYWITHMIK_SHEET_DATA
+    ...(SDE_SHEET_DATA || []),
+    ...(SDE_SHEET_191_DATA || []),
+    ...(A2Z_DSA_SHEET_473_DATA || []),
+    ...(SDETUBE_79_SHEET_DATA || []),
+    ...(BLIND_75_SHEET_DATA || []),
+    ...(CODESTORYWITHMIK_SHEET_DATA || [])
   ];
   for (const prob of (allSheets as any[])) {
-    const nameOrTitle = prob.name || prob.title || '';
-    const rawSlug = getLeetCodeSlug(nameOrTitle || prob.leetcode || '') || nameOrTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const cleanSlug = rawSlug.trim();
-    if (cleanSlug && !map.has(cleanSlug)) {
-      map.set(cleanSlug, prob);
+    if (!prob) continue;
+    const rawSlug = getLeetCodeSlug(prob);
+    const cleanSlug = (rawSlug || prob.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+    if (cleanSlug && cleanSlug !== 'problem' && !map.has(cleanSlug)) {
+      map.set(cleanSlug, { ...prob, cleanSlug });
     }
   }
   return Array.from(map.values());
@@ -387,16 +429,111 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const allUniqueProblems = getAllPlatformUniqueProblems();
   const dsaTotal = Math.max(allUniqueProblems.length, 1);
 
+  // Load all solved problem IDs across all sheets and Supabase sync
+  const allSolvedIds = new Set<number>();
+  const allSolvedSlugs = new Set<string>();
+
+  try {
+    const syncProg = getUserProgressSync();
+    if (syncProg) {
+      (syncProg.solved_sde || []).forEach(id => allSolvedIds.add(id));
+      (syncProg.solved_a2z || []).forEach(id => allSolvedIds.add(id));
+      (syncProg.solved_79 || []).forEach(id => allSolvedIds.add(id));
+      (syncProg.solved_blind75 || []).forEach(id => allSolvedIds.add(id));
+      (syncProg.solved_mik || []).forEach(id => allSolvedIds.add(id));
+    }
+  } catch {}
+
+  const sheetKeys = [
+    'sdetube_sde_sheet_solved_ids',
+    'sdetube_dsa_solved_sde',
+    'sdetube_dsa_solved_a2z',
+    'sdetube_dsa_solved_79',
+    'sdetube_dsa_sheet_solved_sde',
+    'sdetube_dsa_sheet_solved_a2z',
+    'sdetube_dsa_sheet_solved_79',
+    'sdetube_dsa_sheet_solved_blind75',
+    'sdetube_dsa_sheet_solved_mik',
+    'sdetube_dsa_sheet_solved_codestorywithmik',
+    'sdestream_solved_problems'
+  ];
+  sheetKeys.forEach(k => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach(id => typeof id === 'number' && allSolvedIds.add(id));
+        }
+      }
+    } catch {}
+  });
+
+  try {
+    const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
+    if (rawSlugs) {
+      const arr = JSON.parse(rawSlugs);
+      if (Array.isArray(arr)) {
+        arr.forEach(s => allSolvedSlugs.add(String(s).toLowerCase().replace(/[^a-z0-9]/g, '')));
+      }
+    }
+  } catch {}
+
+  try {
+    const rawNames = localStorage.getItem('sdetube_solved_names');
+    if (rawNames) {
+      const arr = JSON.parse(rawNames);
+      if (Array.isArray(arr)) {
+        arr.forEach(s => allSolvedSlugs.add(String(s).toLowerCase().replace(/[^a-z0-9]/g, '')));
+      }
+    }
+  } catch {}
+
+  // Automatically scan localStorage for any successful submissions in IDE
+  try {
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('edustream_submissions_')) {
+          const raw = localStorage.getItem(key);
+          if (raw && (raw.includes('"status":"SUCCESS"') || raw.includes('"passedCount"'))) {
+            try {
+              const subs = JSON.parse(raw);
+              if (Array.isArray(subs) && subs.some(s => s.status === 'SUCCESS' || (s.totalCount > 0 && s.passedCount === s.totalCount))) {
+                const slugPart = key.replace('edustream_submissions_', '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                allSolvedSlugs.add(slugPart);
+              }
+            } catch {}
+          }
+        }
+      }
+    }
+  } catch {}
+
   let dsaSolved = 0;
   let easyTotal = 0, easySolved = 0;
   let medTotal = 0, medSolved = 0;
   let hardTotal = 0, hardSolved = 0;
 
   const catMap = new Map<string, { total: number; solved: number }>();
+  const matchedSlugs = new Set<string>();
 
   for (const prob of allUniqueProblems) {
-    const isSolved = isProblemSlugSolved(prob.slug || prob.leetcode || prob.name || prob.title);
-    if (isSolved) dsaSolved++;
+    const pSlug = (prob.cleanSlug || prob.slug || getLeetCodeSlug(prob)).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pName = (prob.name || prob.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const isSolved = (
+      (prob.id && allSolvedIds.has(prob.id)) ||
+      allSolvedSlugs.has(pSlug) ||
+      allSolvedSlugs.has(pName) ||
+      isProblemSlugSolved(pSlug) ||
+      isProblemSlugSolved(pName)
+    );
+    if (isSolved) {
+      dsaSolved++;
+      if (allSolvedSlugs.has(pSlug)) matchedSlugs.add(pSlug);
+      if (allSolvedSlugs.has(pName)) matchedSlugs.add(pName);
+    }
 
     const diff = (prob.difficulty || 'Medium').toLowerCase();
     if (diff === 'easy') {
@@ -417,7 +554,16 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     catMap.set(cat, cEntry);
   }
 
-  const dsaPct = dsaTotal > 0 ? Math.round((dsaSolved / dsaTotal) * 100) : 0;
+  // Also count any additional custom, POTD, or platform problems solved that were recorded in allSolvedSlugs
+  for (const s of allSolvedSlugs) {
+    if (!matchedSlugs.has(s) && s.length > 2 && s !== 'problem') {
+      dsaSolved++;
+      matchedSlugs.add(s);
+    }
+  }
+
+  const effectiveDsaTotal = Math.max(allUniqueProblems.length, dsaSolved);
+  const dsaPct = effectiveDsaTotal > 0 ? Math.round((dsaSolved / effectiveDsaTotal) * 100) : 0;
 
   // 2. LLD Solved
   let lldSolvedIds: string[] = [];

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Sparkles, 
   Flame, 
@@ -24,9 +24,18 @@ import {
   RefreshCw,
   Play
 } from 'lucide-react';
-import { getRealAnalytics, RealAnalyticsMetrics } from '../lib/analytics';
-import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
+import { getRealAnalytics, RealAnalyticsMetrics, isProblemSlugSolved, isPotdSolvedToday, markProblemSolved } from '../lib/analytics';
+import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
+import { getSolvedIds, getLinkedProfiles } from '../lib/progressService';
+import { 
+  fetchLeetCodeFullProfile, 
+  fetchGFGProfile, 
+  LeetCodeFullProfileData, 
+  GFGProfileData, 
+  isLeetCodeProblemSolvedToday, 
+  isGfgProblemSolvedToday 
+} from '../lib/userProfileService';
 
 interface DashboardLandingPageProps {
   user: any;
@@ -45,13 +54,19 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 }) => {
   // Query 100% real computed student analytics (reactive on problem solve)
   const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics());
+  const [solveEventCount, setSolveEventCount] = useState<number>(0);
 
   useEffect(() => {
-    const handleUpdate = () => setMetrics(getRealAnalytics());
+    const handleUpdate = () => {
+      setMetrics(getRealAnalytics());
+      setSolveEventCount(c => c + 1);
+    };
     window.addEventListener('sdetube_problem_solved', handleUpdate);
+    window.addEventListener('sdetube_potd_solved', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
       window.removeEventListener('sdetube_problem_solved', handleUpdate);
+      window.removeEventListener('sdetube_potd_solved', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
@@ -74,6 +89,39 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     cnModulesCompleted,
     sdeReadinessScore
   } = metrics;
+
+  const userEmail = user?.email || 'mdalamrahman4@gmail.com';
+  const linkedConfig = useMemo(() => getLinkedProfiles(userEmail), [userEmail]);
+
+  // External Platform Profiles Data
+  const [leetcodeProfile, setLeetcodeProfile] = useState<LeetCodeFullProfileData | null>(null);
+  const [gfgProfile, setGfgProfile] = useState<GFGProfileData | null>(null);
+  const [isSyncingProfiles, setIsSyncingProfiles] = useState<boolean>(false);
+
+  const syncExternalProfiles = useCallback(async () => {
+    setIsSyncingProfiles(true);
+    const promises: Promise<any>[] = [];
+    if (linkedConfig.leetcodeUsername?.trim()) {
+      promises.push(
+        fetchLeetCodeFullProfile(linkedConfig.leetcodeUsername.trim())
+          .then(data => setLeetcodeProfile(data))
+          .catch(() => {})
+      );
+    }
+    if (linkedConfig.gfgUsername?.trim()) {
+      promises.push(
+        fetchGFGProfile(linkedConfig.gfgUsername.trim())
+          .then(data => setGfgProfile(data))
+          .catch(() => {})
+      );
+    }
+    await Promise.allSettled(promises);
+    setIsSyncingProfiles(false);
+  }, [linkedConfig.leetcodeUsername, linkedConfig.gfgUsername]);
+
+  useEffect(() => {
+    syncExternalProfiles();
+  }, [syncExternalProfiles]);
 
   // SDETube Curated POTD
   const sdePotd: SDEProblem = useMemo(() => {
@@ -101,6 +149,88 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       setIsLoadingGfg(false);
     });
   }, []);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Check Card A: SDETube SDE POTD solved status
+  const isSdePotdSolved = useMemo(() => {
+    if (isPotdSolvedToday()) return true;
+    if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
+    try {
+      const sdeList = getSolvedIds('sde');
+      if (sdeList.includes(sdePotd.id)) return true;
+      if (isProblemSlugSolved(sdePotd.slug || sdePotd.name)) return true;
+      if (sdePotd.slug) {
+        const sub = localStorage.getItem(`edustream_submissions_${sdePotd.slug}`);
+        if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+      }
+    } catch {}
+    return false;
+  }, [sdePotd, today, solveEventCount]);
+
+  // Check Card B: LeetCode POTD solved status (Local + Remote submission check)
+  const isLcPotdSolved = useMemo(() => {
+    if (!lcPotd) return false;
+    // 1. Check local marks and submissions
+    if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
+    if (isProblemSlugSolved(lcPotd.titleSlug) || isProblemSlugSolved(lcPotd.title)) return true;
+    if (lcPotd.titleSlug) {
+      const sub = localStorage.getItem(`edustream_submissions_${lcPotd.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+    // 2. Check remote LeetCode profile recentSubmissionList for same-day Accepted submission
+    if (leetcodeProfile?.recentSubmissionList && leetcodeProfile.recentSubmissionList.length > 0) {
+      const isRemoteSolved = isLeetCodeProblemSolvedToday(
+        leetcodeProfile.recentSubmissionList,
+        lcPotd.titleSlug,
+        lcPotd.title,
+        lcPotd.date
+      );
+      if (isRemoteSolved) {
+        try {
+          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          markProblemSolved(lcPotd.title, 10, lcPotd.titleSlug);
+        } catch {}
+        return true;
+      }
+    }
+    return false;
+  }, [lcPotd, leetcodeProfile, today, solveEventCount]);
+
+  // Check Card C: GFG POTD solved status (Local + Remote streak/submission check)
+  const isGfgPotdSolved = useMemo(() => {
+    if (!gfgPotd) return false;
+    // 1. Check local marks and submissions
+    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+    if (isProblemSlugSolved(gfgPotd.titleSlug) || isProblemSlugSolved(gfgPotd.title)) return true;
+    if (gfgPotd.titleSlug) {
+      const sub = localStorage.getItem(`edustream_submissions_${gfgPotd.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+    // 2. Check remote GFG profile for active POTD streak
+    if (gfgProfile) {
+      const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
+      if (isRemoteSolved) {
+        try {
+          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
+        } catch {}
+        return true;
+      }
+    }
+    return false;
+  }, [gfgPotd, gfgProfile, today, solveEventCount]);
+
+  const handleSyncPlatformPotd = async () => {
+    clearPOTDCache();
+    await Promise.allSettled([
+      syncExternalProfiles(),
+      fetchLeetCodePOTD(true).then(res => setLcPotd(res)),
+      fetchGFGPOTD(true).then(res => setGfgPotd(res))
+    ]);
+  };
 
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Engineer';
 
@@ -195,7 +325,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. TRIPLE PROBLEM OF THE DAY (POTD) SPOTLIGHT (SDETube | LeetCode | GFG)   */}
+      {/* 2. TODAY'S DAILY CODING CHALLENGES (POTD TRIFECTA)                        */}
       {/* ========================================================================= */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -203,53 +333,91 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <Flame className="w-5 h-5 text-amber-400 fill-amber-400" />
             <h2 className="text-lg font-extrabold text-slate-100">Today's Daily Coding Challenges (POTD)</h2>
           </div>
-          <span className="text-xs font-mono text-slate-400">Solve daily on SDETube IDE or official platforms</span>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-xs font-mono text-slate-400">Solve daily on SDETube IDE or official platforms</span>
+            <button
+              onClick={handleSyncPlatformPotd}
+              disabled={isSyncingProfiles}
+              className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Sync status from official LeetCode & GeeksforGeeks profiles"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingProfiles ? 'animate-spin text-emerald-400' : ''}`} />
+              <span>{isSyncingProfiles ? 'Syncing...' : 'Sync Platform'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           
           {/* Card A: SDETube Curated SDE POTD */}
-          <div className="glass-panel p-6 rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-950 via-indigo-950/20 to-slate-950 shadow-xl flex flex-col justify-between group hover:border-indigo-500/80 transition-all">
+          <div className={`glass-panel p-6 rounded-3xl border ${
+            isSdePotdSolved 
+              ? 'border-emerald-500/60 bg-gradient-to-br from-slate-950 via-emerald-950/25 to-slate-950 shadow-emerald-950/30' 
+              : 'border-indigo-500/40 bg-gradient-to-br from-slate-950 via-indigo-950/20 to-slate-950'
+          } shadow-xl flex flex-col justify-between group hover:border-indigo-500/80 transition-all`}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 font-mono text-xs font-bold text-indigo-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                   <span>SDETube SDE POTD</span>
                 </span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                  sdePotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
-                  sdePotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
-                  'bg-rose-950 border-rose-700 text-rose-300'
-                }`}>
-                  {sdePotd.difficulty}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {isSdePotdSolved && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/60 text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      Solved
+                    </span>
+                  )}
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                    sdePotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
+                    sdePotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
+                    'bg-rose-950 border-rose-700 text-rose-300'
+                  }`}>
+                    {sdePotd.difficulty}
+                  </span>
+                </div>
               </div>
 
               <div>
-                <h3 className="text-base font-bold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                <h3 className={`text-base font-bold transition-colors line-clamp-1 ${
+                  isSdePotdSolved ? 'text-emerald-200' : 'text-slate-100 group-hover:text-indigo-300'
+                }`}>
                   {sdePotd.name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 line-clamp-2">
                   High-frequency interview challenge curated from the 191 SDE Sheet with in-browser Monaco IDE and test runner.
                 </p>
-              </div>
 
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                  {sdePotd.category}
-                </span>
-                <span>&bull;</span>
-                <span className="truncate">{sdePotd.companies.slice(0, 2).join(', ')}</span>
+                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-3">
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                    {sdePotd.category}
+                  </span>
+                  <span>&bull;</span>
+                  <span className="truncate">{sdePotd.companies.slice(0, 2).join(', ')}</span>
+                </div>
               </div>
             </div>
 
             <div className="pt-4 mt-4 border-t border-slate-800/80 space-y-2">
               <button
                 onClick={() => onOpenSdeProblem(sdePotd)}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  isSdePotdSolved
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30'
+                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-indigo-600/30'
+                }`}
               >
-                <Code className="w-4 h-4" />
-                <span>⚡ Solve in SDETube IDE</span>
+                {isSdePotdSolved ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                    <span>✓ Solved • Review Solution</span>
+                  </>
+                ) : (
+                  <>
+                    <Code className="w-4 h-4" />
+                    <span>⚡ Solve in SDETube IDE</span>
+                  </>
+                )}
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -281,22 +449,34 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           </div>
 
           {/* Card B: Official LeetCode POTD */}
-          <div className="glass-panel p-6 rounded-3xl border border-amber-500/40 bg-gradient-to-br from-slate-950 via-amber-950/20 to-slate-950 shadow-xl flex flex-col justify-between group hover:border-amber-500/80 transition-all">
+          <div className={`glass-panel p-6 rounded-3xl border ${
+            isLcPotdSolved 
+              ? 'border-emerald-500/60 bg-gradient-to-br from-slate-950 via-emerald-950/25 to-slate-950 shadow-emerald-950/30' 
+              : 'border-amber-500/40 bg-gradient-to-br from-slate-950 via-amber-950/20 to-slate-950'
+          } shadow-xl flex flex-col justify-between group hover:border-amber-500/80 transition-all`}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-amber-950 border border-amber-700/60 font-mono text-xs font-bold text-amber-300 flex items-center gap-1.5">
                   <Code2 className="w-3.5 h-3.5" />
                   <span>LeetCode POTD</span>
                 </span>
-                {lcPotd && (
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                    lcPotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
-                    lcPotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
-                    'bg-rose-950 border-rose-700 text-rose-300'
-                  }`}>
-                    {lcPotd.difficulty}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {isLcPotdSolved && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/60 text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      Solved Today
+                    </span>
+                  )}
+                  {lcPotd && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                      lcPotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
+                      lcPotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
+                      'bg-rose-950 border-rose-700 text-rose-300'
+                    }`}>
+                      {lcPotd.difficulty}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {isLoadingLc ? (
@@ -306,7 +486,9 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               ) : lcPotd ? (
                 <>
                   <div>
-                    <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors line-clamp-1">
+                    <h3 className={`text-base font-bold transition-colors line-clamp-1 ${
+                      isLcPotdSolved ? 'text-emerald-200' : 'text-slate-100 group-hover:text-amber-300'
+                    }`}>
                       {lcPotd.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 font-mono">
@@ -348,10 +530,23 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                       };
                       onOpenSdeProblem(dynamicProblem);
                     }}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      isLcPotdSolved
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30'
+                        : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-amber-600/30'
+                    }`}
                   >
-                    <Code className="w-4 h-4" />
-                    <span>⚡ Solve in SDETube IDE</span>
+                    {isLcPotdSolved ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                        <span>✓ Solved Today • Review in IDE</span>
+                      </>
+                    ) : (
+                      <>
+                        <Code className="w-4 h-4" />
+                        <span>⚡ Solve in SDETube IDE</span>
+                      </>
+                    )}
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -370,22 +565,34 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           </div>
 
           {/* Card C: GeeksforGeeks POTD */}
-          <div className="glass-panel p-6 rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950 shadow-xl flex flex-col justify-between group hover:border-emerald-500/80 transition-all">
+          <div className={`glass-panel p-6 rounded-3xl border ${
+            isGfgPotdSolved 
+              ? 'border-emerald-500/60 bg-gradient-to-br from-slate-950 via-emerald-950/25 to-slate-950 shadow-emerald-950/30' 
+              : 'border-emerald-500/40 bg-gradient-to-br from-slate-950 via-emerald-950/20 to-slate-950'
+          } shadow-xl flex flex-col justify-between group hover:border-emerald-500/80 transition-all`}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-700/60 font-mono text-xs font-bold text-emerald-300 flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
                   <span>GFG POTD</span>
                 </span>
-                {gfgPotd && (
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
-                    gfgPotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
-                    gfgPotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
-                    'bg-rose-950 border-rose-700 text-rose-300'
-                  }`}>
-                    {gfgPotd.difficulty}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {isGfgPotdSolved && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/60 text-emerald-300 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                      Solved Today
+                    </span>
+                  )}
+                  {gfgPotd && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                      gfgPotd.difficulty === 'Easy' ? 'bg-emerald-950 border-emerald-700 text-emerald-300' :
+                      gfgPotd.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
+                      'bg-rose-950 border-rose-700 text-rose-300'
+                    }`}>
+                      {gfgPotd.difficulty}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {isLoadingGfg ? (
@@ -395,7 +602,9 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               ) : gfgPotd ? (
                 <>
                   <div>
-                    <h3 className="text-base font-bold text-slate-100 group-hover:text-emerald-300 transition-colors line-clamp-1">
+                    <h3 className={`text-base font-bold transition-colors line-clamp-1 ${
+                      isGfgPotdSolved ? 'text-emerald-200' : 'text-slate-100 group-hover:text-emerald-300'
+                    }`}>
                       {gfgPotd.title}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1 font-mono">
@@ -442,10 +651,23 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                       };
                       onOpenSdeProblem(dynamicProblem);
                     }}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      isGfgPotdSolved
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30'
+                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30'
+                    }`}
                   >
-                    <Code className="w-4 h-4" />
-                    <span>⚡ Solve in SDETube IDE</span>
+                    {isGfgPotdSolved ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                        <span>✓ Solved Today • Review in IDE</span>
+                      </>
+                    ) : (
+                      <>
+                        <Code className="w-4 h-4" />
+                        <span>⚡ Solve in SDETube IDE</span>
+                      </>
+                    )}
                     <ArrowRight className="w-4 h-4" />
                   </button>
 

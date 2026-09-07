@@ -2,8 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers } from 'lucide-react';
 import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
-import { isProblemSlugSolved, isPotdSolvedToday } from '../lib/analytics';
-import { getSolvedIds } from '../lib/progressService';
+import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved } from '../lib/analytics';
+import { getSolvedIds, getLinkedProfiles } from '../lib/progressService';
+import { 
+  fetchLeetCodeFullProfile, 
+  fetchGFGProfile, 
+  LeetCodeFullProfileData, 
+  GFGProfileData, 
+  isLeetCodeProblemSolvedToday, 
+  isGfgProblemSolvedToday 
+} from '../lib/userProfileService';
 
 interface POTDModalProps {
   onClose: () => void;
@@ -25,6 +33,24 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   const [isSolvedEventTriggered, setIsSolvedEventTriggered] = useState(0);
 
+  // External Platform Profiles
+  const linkedConfig = useMemo(() => getLinkedProfiles(), []);
+  const [leetcodeProfile, setLeetcodeProfile] = useState<LeetCodeFullProfileData | null>(null);
+  const [gfgProfile, setGfgProfile] = useState<GFGProfileData | null>(null);
+
+  useEffect(() => {
+    if (linkedConfig.leetcodeUsername?.trim()) {
+      fetchLeetCodeFullProfile(linkedConfig.leetcodeUsername.trim())
+        .then(data => setLeetcodeProfile(data))
+        .catch(() => {});
+    }
+    if (linkedConfig.gfgUsername?.trim()) {
+      fetchGFGProfile(linkedConfig.gfgUsername.trim())
+        .then(data => setGfgProfile(data))
+        .catch(() => {});
+    }
+  }, [linkedConfig.leetcodeUsername, linkedConfig.gfgUsername]);
+
   useEffect(() => {
     const onSolved = () => setIsSolvedEventTriggered(prev => prev + 1);
     window.addEventListener('sdetube_problem_solved', onSolved);
@@ -41,25 +67,69 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     try {
       const sdeList = getSolvedIds('sde');
       if (sdeList.includes(sdePotd.id)) return true;
-      return isProblemSlugSolved(sdePotd.slug || sdePotd.name);
+      if (isProblemSlugSolved(sdePotd.slug || sdePotd.name)) return true;
+      if (sdePotd.slug) {
+        const sub = localStorage.getItem(`edustream_submissions_${sdePotd.slug}`);
+        if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+      }
     } catch {
       return false;
     }
+    return false;
   }, [sdePotd, isSolvedEventTriggered]);
 
   // Check if LeetCode POTD is solved
   const isLcPotdSolved = useMemo(() => {
     if (!lcPotd) return false;
     if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
-    return isProblemSlugSolved(lcPotd.titleSlug || lcPotd.title);
-  }, [lcPotd, today, isSolvedEventTriggered]);
+    if (isProblemSlugSolved(lcPotd.titleSlug || lcPotd.title)) return true;
+    if (lcPotd.titleSlug) {
+      const sub = localStorage.getItem(`edustream_submissions_${lcPotd.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+    // Remote LeetCode check for same-day Accepted submission
+    if (leetcodeProfile?.recentSubmissionList && leetcodeProfile.recentSubmissionList.length > 0) {
+      const isRemoteSolved = isLeetCodeProblemSolvedToday(
+        leetcodeProfile.recentSubmissionList,
+        lcPotd.titleSlug,
+        lcPotd.title,
+        lcPotd.date
+      );
+      if (isRemoteSolved) {
+        try {
+          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          markProblemSolved(lcPotd.title, 10, lcPotd.titleSlug);
+        } catch {}
+        return true;
+      }
+    }
+    return false;
+  }, [lcPotd, leetcodeProfile, today, isSolvedEventTriggered]);
 
   // Check if GFG POTD is solved
   const isGfgPotdSolved = useMemo(() => {
     if (!gfgPotd) return false;
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    return isProblemSlugSolved(gfgPotd.titleSlug || gfgPotd.title);
-  }, [gfgPotd, today, isSolvedEventTriggered]);
+    if (isProblemSlugSolved(gfgPotd.titleSlug || gfgPotd.title)) return true;
+    if (gfgPotd.titleSlug) {
+      const sub = localStorage.getItem(`edustream_submissions_${gfgPotd.titleSlug}`);
+      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    }
+    // Remote GFG check for active streak
+    if (gfgProfile) {
+      const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
+      if (isRemoteSolved) {
+        try {
+          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
+        } catch {}
+        return true;
+      }
+    }
+    return false;
+  }, [gfgPotd, gfgProfile, today, isSolvedEventTriggered]);
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
