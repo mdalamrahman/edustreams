@@ -174,14 +174,28 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     // 1. Check local marks and submissions
     if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
     if (isProblemSlugSolved(lcPotd.titleSlug) || isProblemSlugSolved(lcPotd.title)) return true;
-    if (lcPotd.titleSlug) {
-      const sub = localStorage.getItem(`edustream_submissions_${lcPotd.titleSlug}`);
+    
+    const cleanSlug = (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanTitle = (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (isProblemSlugSolved(cleanSlug) || isProblemSlugSolved(cleanTitle)) return true;
+
+    // Check localStorage submissions for all variants
+    const subVariants = [
+      lcPotd.titleSlug,
+      cleanSlug,
+      (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    ].filter(Boolean);
+
+    for (const v of subVariants) {
+      const sub = localStorage.getItem(`edustream_submissions_${v}`);
       if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
     }
-    // 2. Check remote LeetCode profile recentSubmissionList for same-day Accepted submission
-    if (leetcodeProfile?.recentSubmissionList && leetcodeProfile.recentSubmissionList.length > 0) {
+
+    // 2. Check remote LeetCode profile for same-day Accepted submission or calendar activity
+    if (leetcodeProfile) {
       const isRemoteSolved = isLeetCodeProblemSolvedToday(
-        leetcodeProfile.recentSubmissionList,
+        leetcodeProfile,
         lcPotd.titleSlug,
         lcPotd.title,
         lcPotd.date

@@ -330,6 +330,7 @@ export async function fetchLeetCodeFullProfile(username: string): Promise<LeetCo
             count
           }
         }
+        submissionCalendar
       }
       userContestRanking(username: $username) {
         rating
@@ -337,10 +338,17 @@ export async function fetchLeetCodeFullProfile(username: string): Promise<LeetCo
         totalParticipants
         topPercentage
       }
-      recentSubmissionList(username: $username, limit: 10) {
+      recentSubmissionList(username: $username, limit: 15) {
         title
+        titleSlug
         statusDisplay
         lang
+        timestamp
+      }
+      recentAcSubmissionList(username: $username, limit: 15) {
+        id
+        title
+        titleSlug
         timestamp
       }
     }
@@ -1124,28 +1132,39 @@ export function getUserRecentSubmissions(): UserSubmissionRecord[] {
 
 /**
  * Checks if a specific problem was submitted and accepted on LeetCode on the same day.
- * Inspects the user's recentSubmissionList for accepted solutions matching slug or title.
+ * Inspects:
+ * 1. Explicit recentSubmissionList / recentAcSubmissionList for accepted solutions matching slug/title
+ * 2. matchedUser.submissionCalendar for same-day / last-30-hour active submissions
  */
 export function isLeetCodeProblemSolvedToday(
-  recentSubmissions?: Array<{
+  profileOrSubmissions?: LeetCodeFullProfileData | Array<{
     title?: string;
     titleSlug?: string;
     statusDisplay?: string;
     timestamp?: string | number;
-  }>,
+  }> | null,
   targetSlug?: string,
   targetTitle?: string,
   potdDate?: string
 ): boolean {
-  if (!Array.isArray(recentSubmissions) || recentSubmissions.length === 0) return false;
+  if (!profileOrSubmissions) return false;
 
   const today = new Date().toISOString().slice(0, 10);
   const cleanTargetSlug = (targetSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanTargetTitle = (targetTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  for (const sub of recentSubmissions) {
+  // 1. Check if array of submissions or profile with recent submissions
+  const subsList: Array<any> = Array.isArray(profileOrSubmissions)
+    ? profileOrSubmissions
+    : [
+        ...(profileOrSubmissions.recentSubmissionList || []),
+        ...((profileOrSubmissions as any).recentAcSubmissionList || [])
+      ];
+
+  for (const sub of subsList) {
     if (!sub) continue;
-    const isAccepted = (sub.statusDisplay || '').toLowerCase() === 'accepted';
+    const statusDisp = (sub.statusDisplay || 'Accepted').toLowerCase();
+    const isAccepted = statusDisp === 'accepted';
     if (!isAccepted) continue;
 
     const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1169,6 +1188,40 @@ export function isLeetCodeProblemSolvedToday(
       if (subDate === today || (potdDate && subDate === potdDate) || (diffHours >= 0 && diffHours <= 30)) {
         return true;
       }
+    }
+  }
+
+  // 2. Check matchedUser.submissionCalendar (Active submissions on same day)
+  if (typeof profileOrSubmissions === 'object' && !Array.isArray(profileOrSubmissions)) {
+    const rawCalendar = profileOrSubmissions?.matchedUser?.submissionCalendar;
+    if (rawCalendar) {
+      try {
+        const cal = typeof rawCalendar === 'string' ? JSON.parse(rawCalendar) : rawCalendar;
+        const now = new Date();
+        const todayUtcSec = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000);
+        const yesterdayUtcSec = todayUtcSec - 86400;
+        const tomorrowUtcSec = todayUtcSec + 86400;
+
+        for (const [tsStr, count] of Object.entries(cal)) {
+          const numCount = Number(count);
+          if (numCount > 0) {
+            const ts = parseInt(tsStr, 10);
+            const subDate = new Date(ts * 1000).toISOString().slice(0, 10);
+            const diffHours = Math.abs((Date.now() - ts * 1000) / (1000 * 60 * 60));
+
+            if (
+              subDate === today ||
+              (potdDate && subDate === potdDate) ||
+              ts === todayUtcSec ||
+              ts === yesterdayUtcSec ||
+              ts === tomorrowUtcSec ||
+              diffHours <= 36
+            ) {
+              return true;
+            }
+          }
+        }
+      } catch {}
     }
   }
 

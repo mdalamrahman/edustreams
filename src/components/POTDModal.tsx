@@ -82,15 +82,29 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const isLcPotdSolved = useMemo(() => {
     if (!lcPotd) return false;
     if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
-    if (isProblemSlugSolved(lcPotd.titleSlug || lcPotd.title)) return true;
-    if (lcPotd.titleSlug) {
-      const sub = localStorage.getItem(`edustream_submissions_${lcPotd.titleSlug}`);
+    if (isProblemSlugSolved(lcPotd.titleSlug) || isProblemSlugSolved(lcPotd.title)) return true;
+    
+    const cleanSlug = (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanTitle = (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (isProblemSlugSolved(cleanSlug) || isProblemSlugSolved(cleanTitle)) return true;
+
+    // Check localStorage submissions for all variants
+    const subVariants = [
+      lcPotd.titleSlug,
+      cleanSlug,
+      (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    ].filter(Boolean);
+
+    for (const v of subVariants) {
+      const sub = localStorage.getItem(`edustream_submissions_${v}`);
       if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
     }
-    // Remote LeetCode check for same-day Accepted submission
-    if (leetcodeProfile?.recentSubmissionList && leetcodeProfile.recentSubmissionList.length > 0) {
+
+    // Remote LeetCode check for same-day Accepted submission or calendar activity
+    if (leetcodeProfile) {
       const isRemoteSolved = isLeetCodeProblemSolvedToday(
-        leetcodeProfile.recentSubmissionList,
+        leetcodeProfile,
         lcPotd.titleSlug,
         lcPotd.title,
         lcPotd.date
