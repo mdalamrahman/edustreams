@@ -902,7 +902,8 @@ DO NOT write any class Solution or method implementation yourself in the driver.
    - Parse each argument matching the exact parameter types and names of the method.
    - Instantiate Solution sol;
    - Call sol.<methodName>(...) with the parsed arguments.
-   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]], tree level-order [2,1,3]) to stdout.
+   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]).
+   - CRITICAL FOR BINARY TREES (returning TreeNode* or TreeNode): You MUST serialize binary trees in exact LeetCode level-order format with "null" for missing child nodes and trailing "null"s trimmed (e.g. [0,-10,5,null,-3,null,9]). NEVER omit "null" for missing child nodes!
    - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
 7. Handle runtime exceptions gracefully.
 

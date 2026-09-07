@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   Sparkles,
@@ -78,6 +78,18 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
     message: string;
   } | null>(null);
 
+  const handleResubmit = useCallback(() => {
+    if (timerIdRef.current) {
+      clearTimeout(timerIdRef.current);
+      timerIdRef.current = null;
+    }
+    setAutoResubmitCountdown(null);
+    onClose();
+    if (onResubmit) {
+      onResubmit(latestUpdatedTemplateRef.current);
+    }
+  }, [onClose, onResubmit]);
+
   useEffect(() => {
     if (isOpen) {
       setAiResult(null);
@@ -109,9 +121,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
         timerIdRef.current = null;
       }
     };
-  }, [autoResubmitCountdown]);
-
-  if (!isOpen) return null;
+  }, [autoResubmitCountdown, handleResubmit]);
 
   const handleRunVerification = async () => {
     setIsVerifying(true);
@@ -209,17 +219,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
     }
   };
 
-  const handleResubmit = () => {
-    if (timerIdRef.current) {
-      clearTimeout(timerIdRef.current);
-      timerIdRef.current = null;
-    }
-    setAutoResubmitCountdown(null);
-    onClose();
-    if (onResubmit) {
-      onResubmit(latestUpdatedTemplateRef.current);
-    }
-  };
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">

@@ -575,12 +575,41 @@ export function isDriverHarnessValid(
       return false;
     }
 
+    if (checkContext.includes('TreeNode') && (drv.includes('treeToString') || drv.includes('printTree'))) {
+      if (!drv.includes('"null"') && !drv.includes("'null'") && !drv.includes('null')) {
+        return false;
+      }
+    }
+
     if (!drv.includes('main(') && !drv.includes('main (')) {
       return false;
     }
   }
 
   return true;
+}
+
+/**
+ * Safely replaces a C++ function implementation by tracking brace depth cleanly
+ */
+function replaceCppFunction(source: string, fnName: string, replacement: string): string {
+  const fnIdx = source.indexOf(fnName);
+  if (fnIdx === -1) return source;
+  const lineStart = source.lastIndexOf('\n', fnIdx);
+  const start = lineStart !== -1 ? lineStart + 1 : fnIdx;
+  const openBrace = source.indexOf('{', fnIdx);
+  if (openBrace === -1) return source;
+  let depth = 1;
+  let end = openBrace + 1;
+  while (end < source.length && depth > 0) {
+    if (source[end] === '{') depth++;
+    else if (source[end] === '}') depth--;
+    end++;
+  }
+  if (depth === 0) {
+    return source.substring(0, start) + replacement + source.substring(end);
+  }
+  return source;
 }
 
 /**
@@ -683,6 +712,91 @@ export function wrapLeetCodeExecutableCode(
       }
 
       if (language === 'cpp' || (language as any) === 'c++') {
+        // Guarantee authentic LeetCode binary tree serialization with 'null' and trimmed trailing nulls
+        if (replaced.includes('treeToString(')) {
+          const canonicalTreeToString = `string treeToString(TreeNode* root) {
+    if (!root) return "[]";
+    vector<string> res;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (curr) {
+            res.push_back(to_string(curr->val));
+            q.push(curr->left);
+            q.push(curr->right);
+        } else {
+            res.push_back("null");
+        }
+    }
+    while (!res.empty() && res.back() == "null") res.pop_back();
+    string out = "[";
+    for (size_t i = 0; i < res.size(); ++i) {
+        out += res[i] + (i + 1 < res.size() ? "," : "");
+    }
+    out += "]";
+    return out;
+}`;
+          replaced = replaceCppFunction(replaced, 'treeToString', canonicalTreeToString);
+        }
+
+        if (replaced.includes('printTree(')) {
+          const canonicalPrintTree = `void printTree(TreeNode* root) {
+    if (!root) { cout << "[]"; return; }
+    vector<string> res;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (curr) {
+            res.push_back(to_string(curr->val));
+            q.push(curr->left);
+            q.push(curr->right);
+        } else {
+            res.push_back("null");
+        }
+    }
+    while (!res.empty() && res.back() == "null") res.pop_back();
+    cout << "[";
+    for (size_t i = 0; i < res.size(); ++i) {
+        cout << res[i];
+        if (i + 1 < res.size()) cout << ",";
+    }
+    cout << "]";
+}`;
+          replaced = replaceCppFunction(replaced, 'printTree', canonicalPrintTree);
+        }
+
+        if (replaced.includes('tree_to_string(')) {
+          const canonicalTreeToString = `string tree_to_string(TreeNode* root) {
+    if (!root) return "[]";
+    vector<string> res;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (curr) {
+            res.push_back(to_string(curr->val));
+            q.push(curr->left);
+            q.push(curr->right);
+        } else {
+            res.push_back("null");
+        }
+    }
+    while (!res.empty() && res.back() == "null") res.pop_back();
+    string out = "[";
+    for (size_t i = 0; i < res.size(); ++i) {
+        out += res[i] + (i + 1 < res.size() ? "," : "");
+    }
+    out += "]";
+    return out;
+}`;
+          replaced = replaceCppFunction(replaced, 'tree_to_string', canonicalTreeToString);
+        }
+
         replaced = `${CPP_STANDARD_HEADERS_PRELUDE}\n${replaced}`;
       }
       return replaced;

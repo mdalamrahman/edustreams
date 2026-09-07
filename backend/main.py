@@ -2339,7 +2339,8 @@ Driver Requirements:
    - Read raw input string: string raw_input = R"RAW({sample_tc})RAW"; (or equivalent).
    - Parse arguments, instantiate Solution, invoke method.
    - For void in-place mutating methods (e.g. rotate, setZeroes), print the mutated first argument to stdout in clean JSON format.
-   - For value-returning methods, print return value in clean JSON format (including tree level-order like [2,1,3]).
+   - For value-returning methods, print return value in clean JSON format.
+   - CRITICAL FOR BINARY TREES (returning TreeNode* or TreeNode): Serialize using exact LeetCode level-order format with "null" for missing child nodes and trailing "null"s trimmed (e.g. [0,-10,5,null,-3,null,9]). NEVER omit "null" for missing children!
 
 Return ONLY a valid JSON object matching:
 {{

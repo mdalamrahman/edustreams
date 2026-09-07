@@ -274,6 +274,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           setTestInput(enriched.testCases[0]);
         }
 
+        if (targetSlug.includes('convert-sorted-array-to-binary-search-tree')) {
+          try {
+            const cachedDrv = localStorage.getItem(`edustream_driver_${targetSlug}_${language}`);
+            if (cachedDrv && !cachedDrv.includes('res.back() == "null"')) {
+              localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
+            }
+          } catch (_) {}
+        }
+
         // Prefetch & generate type-safe driver harness asynchronously
         fetchOrGenerateDriverCode(targetSlug, language, enriched.starters?.[language], enriched.testCases?.[0]).then(drv => {
           if (drv && !isCancelled) {
@@ -1089,6 +1098,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
     try {
       let preloadedDriver = activeTemplate?.driverCode?.[language];
+      if (currentProblemSlug.includes('convert-sorted-array-to-binary-search-tree')) {
+        if (preloadedDriver && !preloadedDriver.includes('res.back() == "null"')) {
+          preloadedDriver = undefined;
+        }
+      }
       if (!preloadedDriver) {
         const slug = currentProblemSlug;
         const sampleCase = testInput || activeTemplate?.testCases?.[0] || '';
