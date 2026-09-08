@@ -65,9 +65,10 @@ import { CURATED_HLD_TOPICS, CuratedGitHubTopic } from '../lib/githubLld';
 
 interface HLDBossSheetProps {
   onOpenGithubTopic?: (topic: CuratedGitHubTopic) => void;
+  onOpenBookChapter?: (chapterId: string) => void;
 }
 
-export const HLDBossSheet: React.FC<HLDBossSheetProps> = ({ onOpenGithubTopic }) => {
+export const HLDBossSheet: React.FC<HLDBossSheetProps> = ({ onOpenGithubTopic, onOpenBookChapter }) => {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -96,6 +97,7 @@ export const HLDBossSheet: React.FC<HLDBossSheetProps> = ({ onOpenGithubTopic })
     { id: 'concepts', title: '15. Advanced Distributed Concepts', num: '15' },
     { id: 'revision', title: '16. Revision Checklist (20 Mins)', num: '16' },
     { id: 'resources', title: '17. Deep Dive GitHub Reader', num: '17' },
+    { id: 'ddia-book', title: '18. DDIA Animated Book (Martin Kleppmann)', num: '18' },
   ];
 
   const filteredNavItems = navItems.filter(item => 
@@ -941,6 +943,77 @@ export const HLDBossSheet: React.FC<HLDBossSheetProps> = ({ onOpenGithubTopic })
                   <div className="flex items-center gap-1 text-[11px] text-teal-400 font-bold group-hover:translate-x-0.5 transition-transform">
                     <span>Read Article</span>
                     <ArrowRight className="w-3 h-3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* SECTION 18: DDIA ANIMATED BOOK SHOWCASE */}
+          <section id="ddia-book" className="space-y-5">
+            <div className="border-b pb-3 border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase text-teal-400 bg-teal-950 px-2 py-0.5 rounded border border-teal-800/60">Section 18</span>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span>Designing Data-Intensive Applications</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-700/60 font-mono">
+                    Full Animated E-Book
+                  </span>
+                </h2>
+              </div>
+              <button
+                onClick={() => onOpenBookChapter?.('chapter-1')}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Launch Complete E-Book</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              The complete, verbatim text of Martin Kleppmann's distributed systems classic, enriched with live interactive architecture animations, simulation whiteboards, and concept summaries.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { id: 'chapter-1', num: 1, title: 'Reliable, Scalable, Maintainable', desc: 'Thinking about data systems, fault tolerance, Twitter fan-out load, tail latency percentiles.', part: 'Part I. Foundations' },
+                { id: 'chapter-2', num: 2, title: 'Data Models & Query Languages', desc: 'Relational vs Document vs Graph models, CODASYL history, Cypher, SPARQL, and Datalog.', part: 'Part I. Foundations' },
+                { id: 'chapter-3', num: 3, title: 'Storage and Retrieval', desc: 'Hash indexes, Bitcask, SSTables, LSM-Trees, B-Trees, OLAP data cubes, and columnar storage.', part: 'Part I. Foundations' },
+                { id: 'chapter-4', num: 4, title: 'Encoding and Evolution', desc: 'MessagePack, Thrift, Protocol Buffers, Avro schemas, REST vs RPC fallacies, and message passing.', part: 'Part I. Foundations' },
+                { id: 'chapter-5', num: 5, title: 'Replication', desc: 'Single-leader, multi-leader, leaderless quorums (w+r>n), replication lag anomalies, and version vectors.', part: 'Part II. Distributed Data' },
+                { id: 'chapter-6', num: 6, title: 'Partitioning (Sharding)', desc: 'Key range vs hash partitioning, local vs global secondary indexes, rebalancing, and routing.', part: 'Part II. Distributed Data' },
+                { id: 'chapter-7', num: 7, title: 'Transactions & ACID', desc: 'Read committed, Snapshot Isolation (MVCC), lost updates, write skew, phantoms, and SSI tripwires.', part: 'Part II. Distributed Data' },
+                { id: 'chapter-8', num: 8, title: 'The Trouble with Distributed Systems', desc: 'Network timeouts, clock drift, process pauses (GC), fencing tokens, and Byzantine generals.', part: 'Part II. Distributed Data' },
+                { id: 'chapter-9', num: 9, title: 'Consistency and Consensus', desc: 'Linearizability vs Serializability, CAP dilemma, Lamport timestamps, 2PC, Raft, and ZooKeeper.', part: 'Part II. Distributed Data' },
+                { id: 'chapter-10', num: 10, title: 'Batch Processing', desc: 'Unix pipes philosophy, MapReduce dataflow, sort-merge joins, Spark RDDs, and Pregel graph models.', part: 'Part III. Derived Data' },
+                { id: 'chapter-11', num: 11, title: 'Stream Processing', desc: 'Kafka partitioned logs, consumer offsets, Dual writes vs CDC, event sourcing calculus, and windowing.', part: 'Part III. Derived Data' },
+              ].map((ch) => (
+                <div
+                  key={ch.id}
+                  onClick={() => onOpenBookChapter?.(ch.id)}
+                  className="p-5 rounded-3xl border bg-slate-900/60 border-slate-800 hover:border-teal-500/60 hover:bg-slate-900 transition-all flex flex-col justify-between group cursor-pointer shadow-xl"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded bg-teal-950 border border-teal-800/60 text-[10px] font-mono text-teal-300 font-bold">
+                        Chapter {ch.num}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-500">{ch.part}</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-100 group-hover:text-teal-300 transition-colors">
+                      {ch.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                      {ch.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-mono text-slate-500">Verbatim + Animated</span>
+                    <span className="text-teal-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      <span>Read Chapter</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </span>
                   </div>
                 </div>
               ))}

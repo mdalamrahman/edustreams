@@ -12,20 +12,22 @@ import {
   RefreshCw,
   Zap,
   Maximize2,
-  BookOpenText
+  BookOpenText,
+  BookMarked
 } from 'lucide-react';
 import { HLDArchitectureCanvas, HLDProblemSpec } from './HLDArchitectureCanvas';
 import { HLDBossSheet } from './HLDBossSheet';
 import { HLD_PRACTICE_PROBLEMS } from './SystemDesignHub';
 import { CURATED_HLD_TOPICS, CuratedGitHubTopic, fetchGitHubMarkdown } from '../lib/githubLld';
 import { GitHubArticleReader } from './GitHubArticleReader';
+import { DDIABookReader } from './books/DDIABookReader';
 
 interface HLDHubProps {
   onOpenDirectProblem?: (problemId: string) => void;
 }
 
 export const HLDHub: React.FC<HLDHubProps> = () => {
-  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'freeform_canvas' | 'practice_canvas' | 'github_reader'>('boss_sheet');
+  const [hldSubTab, setHldSubTab] = useState<'boss_sheet' | 'freeform_canvas' | 'practice_canvas' | 'github_reader' | 'books'>('boss_sheet');
   const [activeHldProblem, setActiveHldProblem] = useState<HLDProblemSpec | null>(null);
   const [isFreeformHldCanvas, setIsFreeformHldCanvas] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,12 +158,36 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
             <BookOpenText className="w-4 h-4" />
             <span>HLD Deep Dives</span>
           </button>
+
+          {/* DDIA Animated Book Tab */}
+          <button
+            onClick={() => {
+              setHldSubTab('books');
+              setActiveHldProblem(null);
+              setIsFreeformHldCanvas(false);
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              hldSubTab === 'books'
+                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg ring-1 ring-teal-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            <BookMarked className="w-4 h-4 text-teal-300" />
+            <span>DDIA Animated E-Book</span>
+            <span className="px-1.5 py-0.5 rounded bg-teal-950 text-[9px] font-mono text-teal-300 font-bold border border-teal-600/40">BOOK</span>
+          </button>
         </div>
       </div>
 
       {/* SUB-VIEW 1: HLD BOSS SHEET (REVISION NOTES) */}
       {hldSubTab === 'boss_sheet' && (
-        <HLDBossSheet onOpenGithubTopic={handleOpenGithubTopicFromSheet} />
+        <HLDBossSheet 
+          onOpenGithubTopic={handleOpenGithubTopicFromSheet}
+          onOpenBookChapter={(chId) => {
+            localStorage.setItem('ddia_last_chapter', chId);
+            setHldSubTab('books');
+          }}
+        />
       )}
 
       {/* SUB-VIEW 2: DEDICATED BLANK HLD CANVAS (NO QUESTIONS) */}
@@ -311,6 +337,13 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
             markdown={githubMarkdown}
             isLoading={isLoadingGithub}
           />
+        </div>
+      )}
+
+      {/* SUB-VIEW 5: DDIA INTERACTIVE ANIMATED E-BOOK */}
+      {hldSubTab === 'books' && (
+        <div className="space-y-4 animate-fadeIn">
+          <DDIABookReader />
         </div>
       )}
 
