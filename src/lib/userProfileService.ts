@@ -1147,18 +1147,20 @@ export function isLeetCodeProblemSolvedToday(
   targetTitle?: string,
   potdDate?: string
 ): boolean {
-  if (!profileOrSubmissions) return false;
+  if (!profileOrSubmissions || (!targetSlug && !targetTitle)) return false;
 
   const today = new Date().toISOString().slice(0, 10);
   const cleanTargetSlug = (targetSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanTargetTitle = (targetTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  // 1. Check if array of submissions or profile with recent submissions
+  if (!cleanTargetSlug && !cleanTargetTitle) return false;
+
+  // 1. Inspect recent accepted submissions list for an exact match submitted TODAY
   const subsList: Array<any> = Array.isArray(profileOrSubmissions)
     ? profileOrSubmissions
     : [
-        ...(profileOrSubmissions.recentSubmissionList || []),
-        ...((profileOrSubmissions as any).recentAcSubmissionList || [])
+        ...((profileOrSubmissions as any).recentAcSubmissionList || []),
+        ...(profileOrSubmissions.recentSubmissionList || [])
       ];
 
   for (const sub of subsList) {
@@ -1170,58 +1172,21 @@ export function isLeetCodeProblemSolvedToday(
     const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    const slugMatches = (
-      (cleanTargetSlug && subSlug === cleanTargetSlug) ||
-      (cleanTargetTitle && subTitle === cleanTargetTitle) ||
-      (cleanTargetSlug && (subSlug.includes(cleanTargetSlug) || cleanTargetSlug.includes(subSlug))) ||
-      (cleanTargetTitle && (subTitle.includes(cleanTargetTitle) || cleanTargetTitle.includes(subTitle)))
-    );
+    // Must be an exact match on slug or title
+    const isTarget = (cleanTargetSlug && subSlug === cleanTargetSlug) ||
+                     (cleanTargetTitle && subTitle === cleanTargetTitle);
 
-    if (!slugMatches) continue;
+    if (!isTarget) continue;
 
-    // Check if submitted on the same day / within ~30 hours (covering UTC/local timezone shifts)
+    // Check if submitted today (within 24 hours / matching calendar date)
     const tsSec = typeof sub.timestamp === 'string' ? parseInt(sub.timestamp, 10) : Number(sub.timestamp || 0);
     if (tsSec > 0) {
       const subDate = new Date(tsSec * 1000).toISOString().slice(0, 10);
       const diffHours = (Date.now() - tsSec * 1000) / (1000 * 60 * 60);
 
-      if (subDate === today || (potdDate && subDate === potdDate) || (diffHours >= 0 && diffHours <= 30)) {
+      if (subDate === today || (potdDate && subDate === potdDate) || (diffHours >= 0 && diffHours <= 24)) {
         return true;
       }
-    }
-  }
-
-  // 2. Check matchedUser.submissionCalendar (Active submissions on same day)
-  if (typeof profileOrSubmissions === 'object' && !Array.isArray(profileOrSubmissions)) {
-    const rawCalendar = profileOrSubmissions?.matchedUser?.submissionCalendar;
-    if (rawCalendar) {
-      try {
-        const cal = typeof rawCalendar === 'string' ? JSON.parse(rawCalendar) : rawCalendar;
-        const now = new Date();
-        const todayUtcSec = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000);
-        const yesterdayUtcSec = todayUtcSec - 86400;
-        const tomorrowUtcSec = todayUtcSec + 86400;
-
-        for (const [tsStr, count] of Object.entries(cal)) {
-          const numCount = Number(count);
-          if (numCount > 0) {
-            const ts = parseInt(tsStr, 10);
-            const subDate = new Date(ts * 1000).toISOString().slice(0, 10);
-            const diffHours = Math.abs((Date.now() - ts * 1000) / (1000 * 60 * 60));
-
-            if (
-              subDate === today ||
-              (potdDate && subDate === potdDate) ||
-              ts === todayUtcSec ||
-              ts === yesterdayUtcSec ||
-              ts === tomorrowUtcSec ||
-              diffHours <= 36
-            ) {
-              return true;
-            }
-          }
-        }
-      } catch {}
     }
   }
 
@@ -1238,22 +1203,27 @@ export function isGfgProblemSolvedToday(
 ): boolean {
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. Direct local marks
+  // 1. Direct local marks for today
   if (typeof localStorage !== 'undefined') {
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
     if (targetSlug) {
       const sub = localStorage.getItem(`edustream_submissions_${targetSlug}`);
-      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
-    }
-  }
-
-  // 2. Official GFG Profile checks (streak, pod streak)
-  if (gfgData) {
-    const curStreak = Number(gfgData.current_streak || gfgData.streak || 0);
-    const podCurrent = Number((gfgData as any).pod_solved_current_streak || 0);
-    const podTimeMachine = Number((gfgData as any).pod_solved_current_streak_incl_timemachine || 0);
-    if (curStreak > 0 || podCurrent > 0 || podTimeMachine > 0) {
-      return true;
+      if (sub) {
+        try {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list)) {
+            const solvedToday = list.some(item => {
+              if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+              if (item.id) {
+                const ts = parseInt(item.id.split('_')[0], 10);
+                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+              }
+              return false;
+            });
+            if (solvedToday) return true;
+          }
+        } catch {}
+      }
     }
   }
 

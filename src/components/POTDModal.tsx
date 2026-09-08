@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers } from 'lucide-react';
 import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
-import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved } from '../lib/analytics';
+import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
 import { getSolvedIds, getLinkedProfiles } from '../lib/progressService';
 import { 
   fetchLeetCodeFullProfile, 
@@ -52,6 +52,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   }, [linkedConfig.leetcodeUsername, linkedConfig.gfgUsername]);
 
   useEffect(() => {
+    resetUnverifiedPotdToday();
     const onSolved = () => setIsSolvedEventTriggered(prev => prev + 1);
     window.addEventListener('sdetube_problem_solved', onSolved);
     window.addEventListener('sdetube_potd_solved', onSolved);
@@ -61,47 +62,65 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     };
   }, []);
 
-  // Check if SDE POTD is solved
+  // Check if SDE POTD is solved TODAY
   const isSdePotdSolved = useMemo(() => {
-    if (isPotdSolvedToday()) return true;
+    if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
     try {
-      const sdeList = getSolvedIds('sde');
-      if (sdeList.includes(sdePotd.id)) return true;
-      if (isProblemSlugSolved(sdePotd.slug || sdePotd.name)) return true;
-      if (sdePotd.slug) {
+      if (sdePotd?.slug) {
         const sub = localStorage.getItem(`edustream_submissions_${sdePotd.slug}`);
-        if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+        if (sub) {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list) && list.some(item => {
+            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            if (item.id) {
+              const ts = parseInt(item.id.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            return false;
+          })) {
+            return true;
+          }
+        }
       }
     } catch {
       return false;
     }
     return false;
-  }, [sdePotd, isSolvedEventTriggered]);
+  }, [sdePotd, today, isSolvedEventTriggered]);
 
-  // Check if LeetCode POTD is solved
+  // Check if LeetCode POTD is solved TODAY
   const isLcPotdSolved = useMemo(() => {
     if (!lcPotd) return false;
     if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
-    if (isProblemSlugSolved(lcPotd.titleSlug) || isProblemSlugSolved(lcPotd.title)) return true;
-    
-    const cleanSlug = (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const cleanTitle = (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (isProblemSlugSolved(cleanSlug) || isProblemSlugSolved(cleanTitle)) return true;
 
-    // Check localStorage submissions for all variants
+    // Check localStorage submissions made TODAY
     const subVariants = [
       lcPotd.titleSlug,
-      cleanSlug,
+      (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
       (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       (lcPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
     ].filter(Boolean);
 
     for (const v of subVariants) {
       const sub = localStorage.getItem(`edustream_submissions_${v}`);
-      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+      if (sub) {
+        try {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list) && list.some(item => {
+            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            if (item.id) {
+              const ts = parseInt(item.id.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            return false;
+          })) {
+            return true;
+          }
+        } catch {}
+      }
     }
 
-    // Remote LeetCode check for same-day Accepted submission or calendar activity
+    // Remote LeetCode check: only if an accepted submission matching slug was made TODAY
     if (leetcodeProfile) {
       const isRemoteSolved = isLeetCodeProblemSolvedToday(
         leetcodeProfile,
@@ -112,8 +131,6 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
       if (isRemoteSolved) {
         try {
           localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          markProblemSolved(lcPotd.title, 10, lcPotd.titleSlug);
         } catch {}
         return true;
       }
