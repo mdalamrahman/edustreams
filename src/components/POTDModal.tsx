@@ -164,11 +164,68 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
+  const [isVerifyingLc, setIsVerifyingLc] = useState(false);
+  const [lcVerifyMessage, setLcVerifyMessage] = useState<string | null>(null);
+
+  const verifyLeetCodeSolved = async () => {
+    const username = linkedConfig.leetcodeUsername?.trim();
+    if (!username) {
+      setLcVerifyMessage('Please link your LeetCode username in your profile to auto-verify.');
+      return;
+    }
+    setIsVerifyingLc(true);
+    setLcVerifyMessage(`Querying LeetCode for @${username}...`);
+    try {
+      const profile = await fetchLeetCodeFullProfile(username, true);
+      if (profile) {
+        setLeetcodeProfile(profile);
+        const solved = lcPotd ? isLeetCodeProblemSolvedToday(profile, lcPotd.titleSlug, lcPotd.title, lcPotd.date) : false;
+        if (solved) {
+          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+          setIsSolvedEventTriggered(prev => prev + 1);
+          setLcVerifyMessage('Verified! Solved today on LeetCode ✓');
+        } else {
+          setLcVerifyMessage(`No accepted submission for today found yet on @${username}. If you just submitted, please wait ~30s or use "Mark as Solved" below.`);
+        }
+      } else {
+        setLcVerifyMessage(`Could not fetch profile for @${username}. You can mark it as solved manually below.`);
+      }
+    } catch {
+      setLcVerifyMessage('Network check failed. You can mark it as solved manually below.');
+    } finally {
+      setIsVerifyingLc(false);
+    }
+  };
+
+  const toggleManualLcSolved = () => {
+    const current = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
+    if (current) {
+      localStorage.removeItem(`sdetube_potd_leetcode_solved_${today}`);
+      const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
+      const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+      if (!sdeSolved && !gfgSolved) {
+        localStorage.removeItem(`sdetube_potd_solved_${today}`);
+      }
+    } else {
+      localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+      localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+    }
+    window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+    setIsSolvedEventTriggered(prev => prev + 1);
+  };
+
   const loadLeetCodePOTD = async (force = false) => {
     setIsLoadingLc(true);
     try {
       const res = await fetchLeetCodePOTD(force);
       setLcPotd(res);
+      if (force && linkedConfig.leetcodeUsername?.trim()) {
+        fetchLeetCodeFullProfile(linkedConfig.leetcodeUsername.trim(), true)
+          .then(data => setLeetcodeProfile(data))
+          .catch(() => {});
+      }
     } catch (e) {
       console.warn('Failed to load LeetCode POTD', e);
     } finally {
@@ -181,6 +238,11 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     try {
       const res = await fetchGFGPOTD(force);
       setGfgPotd(res);
+      if (force && linkedConfig.gfgUsername?.trim()) {
+        fetchGFGProfile(linkedConfig.gfgUsername.trim())
+          .then(data => setGfgProfile(data))
+          .catch(() => {});
+      }
     } catch (e) {
       console.warn('Failed to load GFG POTD', e);
     } finally {
@@ -190,7 +252,14 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   const handleRefreshAll = async () => {
     clearPOTDCache();
-    await Promise.all([loadLeetCodePOTD(true), loadGfgPOTD(true)]);
+    const lcUser = linkedConfig.leetcodeUsername?.trim();
+    const gfgUser = linkedConfig.gfgUsername?.trim();
+    await Promise.all([
+      loadLeetCodePOTD(true),
+      loadGfgPOTD(true),
+      lcUser ? fetchLeetCodeFullProfile(lcUser, true).then(d => setLeetcodeProfile(d)).catch(() => {}) : Promise.resolve(),
+      gfgUser ? fetchGFGProfile(gfgUser).then(d => setGfgProfile(d)).catch(() => {}) : Promise.resolve()
+    ]);
   };
 
   useEffect(() => {
@@ -489,11 +558,55 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     onClick={() => loadLeetCodePOTD(true)}
                     disabled={isLoadingLc}
                     className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer flex items-center justify-center transition-all disabled:opacity-50"
-                    title="Refresh LeetCode POTD"
+                    title="Refresh LeetCode POTD & Profile"
                   >
                     <RefreshCw className={`w-4 h-4 ${isLoadingLc ? 'animate-spin text-amber-400' : ''}`} />
                   </button>
                 </div>
+
+                {/* LeetCode Sync & Manual Mark Solved Strip */}
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">LeetCode Profile:</span>
+                    {linkedConfig.leetcodeUsername ? (
+                      <span className="text-amber-400 font-bold">@{linkedConfig.leetcodeUsername}</span>
+                    ) : (
+                      <span className="text-slate-500 italic">Not linked yet</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {linkedConfig.leetcodeUsername && (
+                      <button
+                        onClick={verifyLeetCodeSolved}
+                        disabled={isVerifyingLc}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingLc ? 'animate-spin' : ''}`} />
+                        <span>{isVerifyingLc ? 'Checking LeetCode...' : 'Verify Submission'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={toggleManualLcSolved}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isLcPotdSolved
+                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                          : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                      }`}
+                      title="Click to toggle solved status for today"
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isLcPotdSolved ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <span>{isLcPotdSolved ? 'Solved ✓' : 'Mark as Solved'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {lcVerifyMessage && (
+                  <div className="text-[11px] font-mono px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+                    {lcVerifyMessage}
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-6 text-slate-500 text-xs font-mono">

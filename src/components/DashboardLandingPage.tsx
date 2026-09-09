@@ -221,6 +221,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       if (isRemoteSolved) {
         try {
           localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
         } catch {}
         return true;
       }
@@ -255,10 +256,12 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
+    const lcUser = linkedConfig.leetcodeUsername?.trim();
     await Promise.allSettled([
       syncExternalProfiles(),
       fetchLeetCodePOTD(true).then(res => setLcPotd(res)),
-      fetchGFGPOTD(true).then(res => setGfgPotd(res))
+      fetchGFGPOTD(true).then(res => setGfgPotd(res)),
+      lcUser ? fetchLeetCodeFullProfile(lcUser, true).then(res => setLeetcodeProfile(res)) : Promise.resolve()
     ]);
   };
 
@@ -589,6 +592,34 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     <span>↗ Solve on LeetCode</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
+
+                  {/* LeetCode Account Status & Manual Solved Toggle */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
+                    <span className="truncate max-w-[150px]">
+                      {linkedConfig.leetcodeUsername ? `@${linkedConfig.leetcodeUsername}` : 'LC not linked'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const current = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
+                        if (current) {
+                          localStorage.removeItem(`sdetube_potd_leetcode_solved_${today}`);
+                          const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
+                          const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+                          if (!sdeSolved && !gfgSolved) {
+                            localStorage.removeItem(`sdetube_potd_solved_${today}`);
+                          }
+                        } else {
+                          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+                          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+                        }
+                        window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+                        setSolveEventCount(prev => prev + 1);
+                      }}
+                      className="text-amber-400 hover:text-amber-300 underline cursor-pointer text-[10px] font-bold"
+                    >
+                      {isLcPotdSolved ? 'Unmark Solved' : 'Mark as Solved ✓'}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

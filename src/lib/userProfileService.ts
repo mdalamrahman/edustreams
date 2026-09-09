@@ -280,18 +280,20 @@ export function saveLinkedProfiles(config: LinkedProfilesConfig, email?: string)
 /**
  * Fetches the complete LeetCode Profile dataset via GraphQL proxy
  */
-export async function fetchLeetCodeFullProfile(username: string): Promise<LeetCodeFullProfileData | null> {
+export async function fetchLeetCodeFullProfile(username: string, forceRefresh = false): Promise<LeetCodeFullProfileData | null> {
   const clean = username.trim();
   if (!clean) return null;
 
+  const queryParam = forceRefresh ? `?refresh=true&_t=${Date.now()}` : `?_t=${Date.now()}`;
+
   // 1. Try Backend FastAPI GraphQL Proxy
   try {
-    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/leetcode/full-profile/${encodeURIComponent(clean)}`, {
+    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/leetcode/full-profile/${encodeURIComponent(clean)}${queryParam}`, {
       signal: AbortSignal.timeout(8000)
     });
     if (res.ok) {
       const data = await res.json();
-      if (data && (data.matchedUser || data.allQuestionsCount)) {
+      if (data && (data.matchedUser || data.allQuestionsCount || data.recentSubmissionList || data.recentAcSubmissionList)) {
         return data;
       }
     }
@@ -1149,44 +1151,103 @@ export function isLeetCodeProblemSolvedToday(
 ): boolean {
   if (!profileOrSubmissions || (!targetSlug && !targetTitle)) return false;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const now = Date.now();
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  const todayLocal = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+
   const cleanTargetSlug = (targetSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const cleanTargetTitle = (targetTitle || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const cleanTargetTitleNoDigits = cleanTargetTitle.replace(/^\d+/, '');
 
   if (!cleanTargetSlug && !cleanTargetTitle) return false;
 
-  // 1. Inspect recent accepted submissions list for an exact match submitted TODAY
-  const subsList: Array<any> = Array.isArray(profileOrSubmissions)
-    ? profileOrSubmissions
-    : [
-        ...((profileOrSubmissions as any).recentAcSubmissionList || []),
-        ...(profileOrSubmissions.recentSubmissionList || [])
-      ];
+  // 1. Gather all candidate submissions from all profile surfaces
+  const subsList: Array<any> = [];
+  if (Array.isArray(profileOrSubmissions)) {
+    subsList.push(...profileOrSubmissions);
+  } else if (typeof profileOrSubmissions === 'object') {
+    const p = profileOrSubmissions as any;
+    if (Array.isArray(p.recentAcSubmissionList)) subsList.push(...p.recentAcSubmissionList);
+    if (Array.isArray(p.recentSubmissionList)) subsList.push(...p.recentSubmissionList);
+    if (Array.isArray(p.matchedUser?.recentAcSubmissionList)) subsList.push(...p.matchedUser.recentAcSubmissionList);
+    if (Array.isArray(p.matchedUser?.recentSubmissionList)) subsList.push(...p.matchedUser.recentSubmissionList);
+  }
 
   for (const sub of subsList) {
     if (!sub) continue;
-    const statusDisp = (sub.statusDisplay || 'Accepted').toLowerCase();
-    const isAccepted = statusDisp === 'accepted';
+    // If statusDisplay is present, must be Accepted/Success. If absent (e.g. recentAcSubmissionList), it is already accepted.
+    const status = (sub.statusDisplay || 'Accepted').toLowerCase();
+    const isAccepted = status === 'accepted' || status === 'success';
     if (!isAccepted) continue;
 
     const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const subTitleNoDigits = subTitle.replace(/^\d+/, '');
 
-    // Must be an exact match on slug or title
-    const isTarget = (cleanTargetSlug && subSlug === cleanTargetSlug) ||
-                     (cleanTargetTitle && subTitle === cleanTargetTitle);
+    // Flexible slug & title matching
+    const slugMatch = cleanTargetSlug && (
+      subSlug === cleanTargetSlug ||
+      (subSlug.length >= 4 && cleanTargetSlug.includes(subSlug)) ||
+      (cleanTargetSlug.length >= 4 && subSlug.includes(cleanTargetSlug))
+    );
 
-    if (!isTarget) continue;
+    const titleMatch = cleanTargetTitle && (
+      subTitle === cleanTargetTitle ||
+      subTitleNoDigits === cleanTargetTitleNoDigits ||
+      (cleanTargetTitleNoDigits.length >= 4 && subTitleNoDigits.includes(cleanTargetTitleNoDigits)) ||
+      (subTitleNoDigits.length >= 4 && cleanTargetTitleNoDigits.includes(subTitleNoDigits))
+    );
 
-    // Check if submitted today (within 24 hours / matching calendar date)
-    const tsSec = typeof sub.timestamp === 'string' ? parseInt(sub.timestamp, 10) : Number(sub.timestamp || 0);
-    if (tsSec > 0) {
-      const subDate = new Date(tsSec * 1000).toISOString().slice(0, 10);
-      const diffHours = (Date.now() - tsSec * 1000) / (1000 * 60 * 60);
+    if (!slugMatch && !titleMatch) continue;
 
-      if (subDate === today || (potdDate && subDate === potdDate) || (diffHours >= 0 && diffHours <= 24)) {
+    // Check submission timestamp
+    const tsRaw = typeof sub.timestamp === 'string' ? parseInt(sub.timestamp, 10) : Number(sub.timestamp || 0);
+    if (tsRaw > 0) {
+      const ms = tsRaw > 1e11 ? tsRaw : tsRaw * 1000;
+      const subUtcDate = new Date(ms).toISOString().slice(0, 10);
+      const subLocalDate = new Date(ms).toLocaleDateString('en-CA');
+      const diffHours = (now - ms) / (1000 * 60 * 60);
+
+      // Within 36-hour global daily window OR matching UTC/local calendar date
+      if (
+        subUtcDate === todayUtc ||
+        subLocalDate === todayLocal ||
+        (potdDate && (subUtcDate === potdDate || subLocalDate === potdDate)) ||
+        (diffHours >= -1 && diffHours <= 36)
+      ) {
         return true;
       }
+    } else {
+      // If timestamp is not provided on the matched problem in recentAcSubmissionList, count as solved
+      return true;
+    }
+  }
+
+  // 2. Supplementary check: Submission calendar indicates activity today + matched recent problem
+  if (typeof profileOrSubmissions === 'object' && !Array.isArray(profileOrSubmissions)) {
+    const calStr = (profileOrSubmissions as any).matchedUser?.submissionCalendar;
+    if (calStr) {
+      try {
+        const cal = JSON.parse(calStr);
+        const hasTodayActivity = Object.keys(cal).some((epochSec) => {
+          const ms = parseInt(epochSec, 10) * 1000;
+          const diffHours = (now - ms) / (1000 * 60 * 60);
+          const dateStr = new Date(ms).toISOString().slice(0, 10);
+          return dateStr === todayUtc || (diffHours >= -1 && diffHours <= 36);
+        });
+
+        if (hasTodayActivity) {
+          // If user was active today and any recent submission is for this target question
+          const hasTargetInRecent = subsList.some(sub => {
+            if (!sub) return false;
+            const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^\d+/, '');
+            return (cleanTargetSlug && subSlug === cleanTargetSlug) ||
+                   (cleanTargetTitleNoDigits && subTitle === cleanTargetTitleNoDigits);
+          });
+          if (hasTargetInRecent) return true;
+        }
+      } catch {}
     }
   }
 

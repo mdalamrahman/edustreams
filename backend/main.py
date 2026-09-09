@@ -3385,11 +3385,11 @@ _LEETCODE_PROFILE_CACHE: dict = {}
 _GITHUB_PROFILE_CACHE: dict = {}
 
 @app.get("/api/leetcode/full-profile/{username}")
-async def get_leetcode_full_profile(username: str):
+async def get_leetcode_full_profile(username: str, refresh: bool = False, nocache: bool = False):
     """
     Fetches full public profile data from LeetCode (allQuestionsCount, matchedUser,
-    profile, submitStats, languageProblemCount, badges, userContestRanking, recentSubmissionList)
-    in a single comprehensive GraphQL round-trip with 15-minute caching.
+    profile, submitStats, languageProblemCount, badges, userContestRanking, 
+    recentSubmissionList, recentAcSubmissionList) with optional cache bypass.
     """
     clean_user = username.strip()
     if not clean_user:
@@ -3397,9 +3397,11 @@ async def get_leetcode_full_profile(username: str):
 
     now = time.time()
     cache_key = clean_user.lower()
-    if cache_key in _LEETCODE_PROFILE_CACHE:
+    bypass_cache = refresh or nocache
+
+    if not bypass_cache and cache_key in _LEETCODE_PROFILE_CACHE:
         cached_time, cached_data = _LEETCODE_PROFILE_CACHE[cache_key]
-        if now - cached_time < 900:  # 15 minutes TTL
+        if now - cached_time < 60:  # 60-second fresh TTL
             return cached_data
 
     query = """
@@ -3455,12 +3457,18 @@ async def get_leetcode_full_profile(username: str):
           name
         }
       }
-      recentSubmissionList(username: $username, limit: 15) {
+      recentSubmissionList(username: $username, limit: 20) {
         title
         titleSlug
         timestamp
         statusDisplay
         lang
+      }
+      recentAcSubmissionList(username: $username, limit: 20) {
+        id
+        title
+        titleSlug
+        timestamp
       }
     }
     """

@@ -237,59 +237,24 @@ export function resetUnverifiedPotdToday(): void {
   const today = new Date().toISOString().slice(0, 10);
 
   // Verify SDETube POTD submission today
+  // Clean up stale past-day keys from previous dates
   try {
-    const sdePotd = getUniversalSdePotd();
-    let hasSdeToday = false;
-    if (sdePotd?.slug) {
-      const sub = localStorage.getItem(`edustream_submissions_${sdePotd.slug}`);
-      if (sub) {
-        const list = JSON.parse(sub);
-        if (Array.isArray(list) && list.some(item => {
-          if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-          if (item.id) {
-            const ts = parseInt(item.id.split('_')[0], 10);
-            return ts > 0 && new Date(ts).toISOString().slice(0, 10) === today;
-          }
-          return false;
-        })) {
-          hasSdeToday = true;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('sdetube_potd_solved_') ||
+        key.startsWith('sdetube_potd_leetcode_solved_') ||
+        key.startsWith('sdetube_potd_sdetube_solved_') ||
+        key.startsWith('sdetube_potd_gfg_solved_')
+      )) {
+        if (!key.endsWith(today)) {
+          localStorage.removeItem(key);
         }
       }
     }
-    if (!hasSdeToday) {
-      localStorage.removeItem(`sdetube_potd_sdetube_solved_${today}`);
-    }
   } catch {}
 
-  // Verify LeetCode POTD submission today
-  try {
-    const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode');
-    let hasLcToday = false;
-    if (lcRaw) {
-      const lc = JSON.parse(lcRaw);
-      if (lc.titleSlug) {
-        const sub = localStorage.getItem(`edustream_submissions_${lc.titleSlug}`);
-        if (sub) {
-          const list = JSON.parse(sub);
-          if (Array.isArray(list) && list.some(item => {
-            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-            if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
-              return ts > 0 && new Date(ts).toISOString().slice(0, 10) === today;
-            }
-            return false;
-          })) {
-            hasLcToday = true;
-          }
-        }
-      }
-    }
-    if (!hasLcToday) {
-      localStorage.removeItem(`sdetube_potd_leetcode_solved_${today}`);
-    }
-  } catch {}
-
-  // If neither was solved today, clear general potd flag
+  // If none of the platforms were solved today, clear today's aggregate potd flag
   const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
   const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
   const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
