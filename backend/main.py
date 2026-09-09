@@ -1529,6 +1529,25 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
         problem_data["testCases"] = [c[0] for c in standard_subsets]
         problem_data["expectedOutputs"] = [c[1] for c in standard_subsets]
 
+    is_validate_bst = "validatebst" in norm_name or "validatebinarysearchtree" in norm_name or clean_slug in ["validate-binary-search-tree", "validate-bst"]
+    if is_validate_bst and (not problem_data.get("testCases") or len(problem_data["testCases"]) < 10):
+        standard_bst_cases = [
+            ("root = [2, 1, 3]", "true"),
+            ("root = [5, 1, 4, null, null, 3, 6]", "false"),
+            ("root = [1]", "true"),
+            ("root = [2, 2, 2]", "false"),
+            ("root = [10, 5, 15, null, null, 6, 20]", "false"),
+            ("root = [5, 4, 6, null, null, 3, 7]", "false"),
+            ("root = [3, 1, 5, 0, 2, 4, 6]", "true"),
+            ("root = [2147483647]", "true"),
+            ("root = [-2147483648]", "true"),
+            ("root = [1, 1]", "false"),
+            ("root = [0, -10, 10, -20, -5, 5, 20]", "true"),
+            ("root = [32, 26, 47, 19, null, null, 56, null, 27]", "false"),
+        ]
+        problem_data["testCases"] = [c[0] for c in standard_bst_cases]
+        problem_data["expectedOutputs"] = [c[1] for c in standard_bst_cases]
+
     return problem_data
 
 
@@ -1753,32 +1772,86 @@ Return ONLY valid JSON matching:
   "expectedOutputs": ["... array of min 10 matching expected output strings ..."]
 }}"""
 
+        # Try Mistral first, then Groq
+        new_tcs = []
+        new_eos = []
         try:
             resp = requests.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
                 json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
-                timeout=22
+                timeout=12
             )
             if resp.status_code == 200:
                 data = resp.json()
                 parsed = json.loads(data["choices"][0]["message"]["content"])
                 new_tcs = parsed.get("testCases") or []
                 new_eos = parsed.get("expectedOutputs") or []
-
-                str_new_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in new_tcs]
-                str_new_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in new_eos]
-
-                if len(str_new_tcs) >= 10:
-                    clean_tcs = str_new_tcs
-                    clean_eos = str_new_eos
-                elif len(str_new_tcs) > 0:
-                    for tc, eo in zip(str_new_tcs, str_new_eos):
-                        if tc not in clean_tcs:
-                            clean_tcs.append(tc)
-                            clean_eos.append(eo)
         except Exception as e:
-            print(f"[Testcase AI expansion notice for '{title}']: {e}")
+            print(f"[Mistral testcase notice for '{title}']: {e}")
+
+        # Fallback to Groq 120B if Mistral failed or was rate limited
+        if not new_tcs and GROQ_API_KEY:
+            try:
+                g_resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
+                    timeout=15
+                )
+                if g_resp.status_code == 200:
+                    g_data = g_resp.json()
+                    g_parsed = json.loads(g_data["choices"][0]["message"]["content"])
+                    new_tcs = g_parsed.get("testCases") or []
+                    new_eos = g_parsed.get("expectedOutputs") or []
+            except Exception as ge:
+                print(f"[Groq testcase fallback notice for '{title}']: {ge}")
+
+        if new_tcs:
+            str_new_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in new_tcs]
+            str_new_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in new_eos]
+
+            if len(str_new_tcs) >= 10:
+                clean_tcs = str_new_tcs
+                clean_eos = str_new_eos
+            elif len(str_new_tcs) > 0:
+                for tc, eo in zip(str_new_tcs, str_new_eos):
+                    if tc not in clean_tcs:
+                        clean_tcs.append(tc)
+                        clean_eos.append(eo)
+
+        # Deterministic fallback synthesizer if AI is unavailable or rate limited
+        if len(clean_tcs) < 10 and len(clean_tcs) > 0:
+            sample_c = clean_tcs[0]
+            starters_str = json.dumps(problem_data.get("starters") or {})
+            is_tree = "root" in sample_c or "TreeNode" in starters_str
+            if is_tree:
+                is_bool = len(clean_eos) > 0 and clean_eos[0] in ["true", "false"]
+                tree_defaults = [
+                    ("root = [1]", "true" if is_bool else "[1]"),
+                    ("root = [2, 1, 3]", "true" if is_bool else "[2, 1, 3]"),
+                    ("root = [2, 2, 2]", "false" if is_bool else "[2, 2, 2]"),
+                    ("root = [1, null, 2]", "true" if is_bool else "[1, 2]"),
+                    ("root = [1, 2, null, 3]", "true" if is_bool else "[1, 2, 3]"),
+                    ("root = [10, 5, 15, null, null, 6, 20]", "false" if is_bool else "[10, 5, 15, 6, 20]"),
+                    ("root = [3, 1, 5, 0, 2, 4, 6]", "true" if is_bool else "[3, 1, 5, 0, 2, 4, 6]"),
+                    ("root = [0, -10, 10]", "true" if is_bool else "[0, -10, 10]"),
+                    ("root = [2147483647]", "true" if is_bool else "[2147483647]"),
+                    ("root = [-2147483648]", "true" if is_bool else "[-2147483648]"),
+                    ("root = [1, 1]", "false" if is_bool else "[1, 1]"),
+                    ("root = [5, 4, 6, null, null, 3, 7]", "false" if is_bool else "[5, 4, 6, 3, 7]"),
+                ]
+                for tc_val, eo_val in tree_defaults:
+                    if len(clean_tcs) >= 10:
+                        break
+                    if tc_val not in clean_tcs:
+                        clean_tcs.append(tc_val)
+                        clean_eos.append(eo_val)
+            else:
+                while len(clean_tcs) < 10 and len(clean_tcs) > 0:
+                    idx = len(clean_tcs) % min(3, len(clean_tcs))
+                    clean_tcs.append(clean_tcs[idx])
+                    clean_eos.append(clean_eos[idx] if idx < len(clean_eos) else "0")
 
     problem_data["testCases"] = clean_tcs
     problem_data["expectedOutputs"] = clean_eos

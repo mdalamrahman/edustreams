@@ -56,7 +56,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
@@ -250,6 +250,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         } catch {}
 
+        enriched = guaranteeAtLeast10TestCases(enriched);
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
 

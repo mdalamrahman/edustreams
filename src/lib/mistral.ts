@@ -1487,6 +1487,7 @@ export async function requestMistralTestcaseExpansion(
   }
 
   // 2. Direct Mistral AI cascade on client
+  const sampleFormat = existingCases[0] || 'input = ...';
   const prompt = `You are a Principal Test Suite and Verification Engineer for Competitive Programming.
 Problem Title: "${problemTitle}"
 Problem Statement:
@@ -1497,11 +1498,11 @@ ${JSON.stringify(existingCases)}
 Existing Sample Expected Outputs:
 ${JSON.stringify(existingOutputs)}
 
-CRITICAL REQUIREMENTS:
+CRITICAL FORMAT REQUIREMENTS:
 1. Preserve all existing sample testcases at indices 0 to ${Math.max(0, existingCases.length - 1)} so they remain the public sample cases.
-2. Generate AT LEAST 10 total test cases (add diverse edge cases: n=0, n=1, empty, single element, negative numbers, duplicates, large inputs, sorted/reverse sorted).
-3. Every testcase input MUST include named parameter assignments (e.g. 'nums = [1, 2, 3], target = 4' or 's = "abc"').
-4. Calculate exact, 100% mathematically verified expected outputs matching each testcase.
+2. Every testcase input string MUST follow the exact parameter syntax of existing cases (e.g. if existing cases use '${sampleFormat.slice(0, 40)}', all new cases MUST follow this exact same syntax). DO NOT use raw JSON objects or raw unassigned values.
+3. Generate AT LEAST 10 total test cases (add diverse edge cases: n=0, n=1, empty, single element, negative numbers, duplicates, boundary bounds, deep subtrees).
+4. Calculate 100% mathematically verified expected outputs matching each testcase.
 5. Return ONLY a valid JSON object matching:
 {
   "testCases": ["... minimum 10 input strings ..."],
@@ -1517,15 +1518,27 @@ CRITICAL REQUIREMENTS:
     if (raw) {
       const cleaned = raw.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed?.testCases) && parsed.testCases.length >= 10) {
-        return {
-          testCases: parsed.testCases,
-          expectedOutputs: Array.isArray(parsed.expectedOutputs) ? parsed.expectedOutputs : []
-        };
+      if (Array.isArray(parsed?.testCases) && parsed.testCases.length > 0) {
+        const mergedCases = [...existingCases];
+        const mergedOutputs = [...existingOutputs];
+        for (let i = 0; i < parsed.testCases.length; i++) {
+          const tc = String(parsed.testCases[i]).trim();
+          const eo = String(parsed.expectedOutputs?.[i] ?? '').trim();
+          if (tc && !mergedCases.includes(tc)) {
+            mergedCases.push(tc);
+            mergedOutputs.push(eo);
+          }
+        }
+        if (mergedCases.length >= 10) {
+          return {
+            testCases: mergedCases,
+            expectedOutputs: mergedOutputs
+          };
+        }
       }
     }
   } catch (e) {
-    console.warn('[Direct Mistral Testcase Expansion error]:', e);
+    console.warn('[Direct AI Testcase Expansion error]:', e);
   }
 
   return null;
