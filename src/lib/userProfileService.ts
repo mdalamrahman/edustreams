@@ -287,6 +287,34 @@ export async function fetchLeetCodeFullProfile(username: string, forceRefresh = 
   const queryParam = forceRefresh ? `?refresh=true&_t=${Date.now()}` : `?_t=${Date.now()}`;
 
   // 1. Try Backend FastAPI GraphQL Proxy
+  // Helper to merge all multi-year calendars (2024, 2025, 2026) into submissionCalendar
+  const normalizeLeetCodeData = (data: any): LeetCodeFullProfileData => {
+    const matched = data?.matchedUser;
+    if (matched) {
+      const mergedCal: Record<string, number> = {};
+      for (const calKey of ['c2024', 'c2025', 'c2026']) {
+        const calObj = matched[calKey];
+        if (calObj?.submissionCalendar) {
+          try {
+            const parsed = typeof calObj.submissionCalendar === 'string' ? JSON.parse(calObj.submissionCalendar) : calObj.submissionCalendar;
+            Object.assign(mergedCal, parsed);
+          } catch {}
+        }
+      }
+      if (matched.submissionCalendar) {
+        try {
+          const parsed = typeof matched.submissionCalendar === 'string' ? JSON.parse(matched.submissionCalendar) : matched.submissionCalendar;
+          Object.assign(mergedCal, parsed);
+        } catch {}
+      }
+      if (Object.keys(mergedCal).length > 0) {
+        matched.submissionCalendar = JSON.stringify(mergedCal);
+      }
+    }
+    return data;
+  };
+
+  // 1. Try Backend FastAPI GraphQL Proxy
   try {
     const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/leetcode/full-profile/${encodeURIComponent(clean)}${queryParam}`, {
       signal: AbortSignal.timeout(8000)
@@ -294,7 +322,7 @@ export async function fetchLeetCodeFullProfile(username: string, forceRefresh = 
     if (res.ok) {
       const data = await res.json();
       if (data && (data.matchedUser || data.allQuestionsCount || data.recentSubmissionList || data.recentAcSubmissionList)) {
-        return data;
+        return normalizeLeetCodeData(data);
       }
     }
   } catch (err) {
@@ -333,6 +361,18 @@ export async function fetchLeetCodeFullProfile(username: string, forceRefresh = 
           }
         }
         submissionCalendar
+        c2026: userCalendar(year: 2026) {
+          totalActiveDays
+          submissionCalendar
+        }
+        c2025: userCalendar(year: 2025) {
+          totalActiveDays
+          submissionCalendar
+        }
+        c2024: userCalendar(year: 2024) {
+          totalActiveDays
+          submissionCalendar
+        }
       }
       userContestRanking(username: $username) {
         rating
@@ -365,7 +405,7 @@ export async function fetchLeetCodeFullProfile(username: string, forceRefresh = 
     });
     if (directRes.ok) {
       const json = await directRes.json();
-      if (json?.data) return json.data;
+      if (json?.data) return normalizeLeetCodeData(json.data);
     }
   } catch {}
 

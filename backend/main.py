@@ -3446,6 +3446,18 @@ async def get_leetcode_full_profile(username: str, refresh: bool = False, nocach
           }
         }
         submissionCalendar
+        c2026: userCalendar(year: 2026) {
+          totalActiveDays
+          submissionCalendar
+        }
+        c2025: userCalendar(year: 2025) {
+          totalActiveDays
+          submissionCalendar
+        }
+        c2024: userCalendar(year: 2024) {
+          totalActiveDays
+          submissionCalendar
+        }
       }
       userContestRanking(username: $username) {
         attendedContestsCount
@@ -3495,6 +3507,26 @@ async def get_leetcode_full_profile(username: str, refresh: bool = False, nocach
             if "errors" in data and not data.get("data", {}).get("matchedUser"):
                 return JSONResponse(status_code=404, content={"error": "User not found on LeetCode", "details": data["errors"]})
             res_data = data.get("data", {})
+            matched = res_data.get("matchedUser")
+            if matched:
+                merged_cal = {}
+                for cal_key in ["c2024", "c2025", "c2026"]:
+                    cal_obj = matched.get(cal_key)
+                    if cal_obj and cal_obj.get("submissionCalendar"):
+                        try:
+                            parsed_c = json.loads(cal_obj["submissionCalendar"])
+                            merged_cal.update(parsed_c)
+                        except Exception:
+                            pass
+                default_cal = matched.get("submissionCalendar")
+                if default_cal:
+                    try:
+                        merged_cal.update(json.loads(default_cal))
+                    except Exception:
+                        pass
+                if merged_cal:
+                    matched["submissionCalendar"] = json.dumps(merged_cal)
+
             _LEETCODE_PROFILE_CACHE[cache_key] = (now, res_data)
             return res_data
         else:

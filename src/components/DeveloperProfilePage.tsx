@@ -89,7 +89,7 @@ interface PlatformHeatmapProps {
   label: string;
   accentColors: [string, string, string, string]; // level 1-4 classes
   totalLabel?: string;
-  defaultView?: 'all3' | number;
+  defaultYear?: number;
 }
 
 const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
@@ -97,11 +97,11 @@ const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
   label,
   accentColors,
   totalLabel,
-  defaultView = 'all3'
+  defaultYear
 }) => {
   const currentYear = new Date().getFullYear();
   const availableYears = useMemo(() => [currentYear, currentYear - 1, currentYear - 2], [currentYear]);
-  const [selectedView, setSelectedView] = useState<'all3' | number>(defaultView);
+  const [selectedYear, setSelectedYear] = useState<number>(defaultYear || currentYear);
 
   // Precompute data for all 3 years
   const yearData = useMemo(() => {
@@ -222,34 +222,27 @@ const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
 
   return (
     <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-      {/* Header with 3-Year Selector */}
+      {/* Header with Year Alternate Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-slate-400" />
           <div>
             <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{label}</h3>
             <p className="text-[11px] text-slate-400 font-mono">
-              Last 3 Years: <strong className="text-slate-200">{total3YearSubmissions.toLocaleString()}</strong> submissions across <strong className="text-slate-200">{total3YearActiveDays}</strong> active days
+              Year {selectedYear}: <strong className="text-slate-200">{(yearData[selectedYear]?.totalSubmissions ?? 0).toLocaleString()}</strong> {totalLabel ?? 'submissions'} across <strong className="text-slate-200">{yearData[selectedYear]?.activeDays ?? 0}</strong> active days • Max streak: <strong className="text-amber-400">{yearData[selectedYear]?.maxStreak ?? 0} days</strong>
             </p>
           </div>
         </div>
 
-        {/* View Toggle Buttons */}
+        {/* Year Alternate Selector */}
         <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
-          <button
-            onClick={() => setSelectedView('all3')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-              selectedView === 'all3' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            All (3 Years)
-          </button>
           {availableYears.map(yr => (
             <button
               key={yr}
-              onClick={() => setSelectedView(yr)}
+              type="button"
+              onClick={() => setSelectedYear(yr)}
               className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                selectedView === yr ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                selectedYear === yr ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               {yr}
@@ -258,11 +251,9 @@ const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
         </div>
       </div>
 
-      {/* Heatmap display: All 3 years or single year */}
+      {/* Heatmap display: Single year alternating view */}
       <div className="space-y-4">
-        {selectedView === 'all3'
-          ? availableYears.map(yr => renderSingleYear(yr))
-          : renderSingleYear(selectedView)}
+        {renderSingleYear(selectedYear)}
       </div>
 
       {/* Footer Legend */}

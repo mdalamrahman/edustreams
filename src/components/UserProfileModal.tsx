@@ -61,7 +61,7 @@ interface ModalPlatformHeatmapProps {
   label: string;
   accentColors: [string, string, string, string];
   totalLabel?: string;
-  defaultView?: 'all3' | number;
+  defaultYear?: number;
 }
 
 const ModalPlatformHeatmap: React.FC<ModalPlatformHeatmapProps> = ({
@@ -69,11 +69,11 @@ const ModalPlatformHeatmap: React.FC<ModalPlatformHeatmapProps> = ({
   label,
   accentColors,
   totalLabel = 'submissions',
-  defaultView = 'all3'
+  defaultYear
 }) => {
   const currentYear = new Date().getFullYear();
   const availableYears = useMemo(() => [currentYear, currentYear - 1, currentYear - 2], [currentYear]);
-  const [selectedView, setSelectedView] = useState<'all3' | number>(defaultView);
+  const [selectedYear, setSelectedYear] = useState<number>(defaultYear || currentYear);
 
   const yearData = useMemo(() => {
     const map: Record<number, YearHeatmapResult> = {};
@@ -195,27 +195,18 @@ const ModalPlatformHeatmap: React.FC<ModalPlatformHeatmapProps> = ({
             <span>{label}</span>
           </h3>
           <p className="text-xs text-slate-400 font-mono">
-            Last 3 Years: <strong className="text-slate-200">{total3YearSubmissions.toLocaleString()}</strong> submissions across <strong className="text-slate-200">{total3YearActiveDays}</strong> active days
+            Year {selectedYear}: <strong className="text-slate-200">{(yearData[selectedYear]?.totalSubmissions ?? 0).toLocaleString()}</strong> {totalLabel} across <strong className="text-slate-200">{yearData[selectedYear]?.activeDays ?? 0}</strong> active days • Max streak: <strong className="text-amber-400">{yearData[selectedYear]?.maxStreak ?? 0} days</strong>
           </p>
         </div>
 
         <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-mono">
-          <button
-            type="button"
-            onClick={() => setSelectedView('all3')}
-            className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-              selectedView === 'all3' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            All (3 Years)
-          </button>
           {availableYears.map(yr => (
             <button
               key={yr}
               type="button"
-              onClick={() => setSelectedView(yr)}
+              onClick={() => setSelectedYear(yr)}
               className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                selectedView === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+                selectedYear === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               {yr}
@@ -225,9 +216,7 @@ const ModalPlatformHeatmap: React.FC<ModalPlatformHeatmapProps> = ({
       </div>
 
       <div className="space-y-4">
-        {selectedView === 'all3'
-          ? availableYears.map(yr => renderSingleYear(yr))
-          : renderSingleYear(selectedView)}
+        {renderSingleYear(selectedYear)}
       </div>
 
       <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 font-mono flex-wrap gap-2">
