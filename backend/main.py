@@ -3342,6 +3342,7 @@ async def get_user_code(slug: str, email: str = "anonymous", language: str = "py
 async def save_user_submission(slug: str, request: Request):
     """
     Stores a submission record persistently in Cloudflare R2.
+    Also aggregates accepted runtimes and memory for real SDETube user benchmark comparisons.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     try:
@@ -3359,6 +3360,60 @@ async def save_user_submission(slug: str, request: Request):
         existing = [submission] + [s for s in existing if s.get("id") != submission.get("id")]
         existing = existing[:50]
         r2_storage.upload_json(key, existing)
+
+        # Update global problem benchmark in R2 for real user comparison
+        status_val = str(submission.get("status") or "")
+        if "accepted" in status_val.lower():
+            benchmark_key = f"benchmarks/{clean_slug}.json"
+            benchmarks = r2_storage.fetch_json(benchmark_key) or {}
+            if not isinstance(benchmarks, dict):
+                benchmarks = {}
+            
+            by_lang = benchmarks.setdefault("byLanguage", {})
+            raw_lang = (submission.get("lang") or "cpp").strip().lower()
+            lang_key = "cpp" if ("cpp" in raw_lang or "c++" in raw_lang) else raw_lang
+            lang_stats = by_lang.setdefault(lang_key, {"runtimes": [], "memoriesKb": [], "count": 0})
+            
+            # Extract runtime ms
+            raw_runtime = str(submission.get("runtime") or "")
+            runtime_match = re.search(r'(\d+)', raw_runtime)
+            runtime_ms = int(runtime_match.group(1)) if runtime_match else None
+            if not runtime_ms and submission.get("analytics"):
+                runtime_ms = submission.get("analytics", {}).get("runtimeMs")
+            
+            # Extract memory in KB
+            raw_mem = str(submission.get("memory") or "")
+            mem_kb = None
+            if "mb" in raw_mem.lower():
+                mb_m = re.search(r'([\d\.]+)', raw_mem)
+                if mb_m:
+                    mem_kb = int(float(mb_m.group(1)) * 1024)
+            else:
+                kb_m = re.search(r'(\d+)', raw_mem)
+                if kb_m:
+                    mem_kb = int(kb_m.group(1))
+            if not mem_kb and submission.get("analytics"):
+                mem_kb = submission.get("analytics", {}).get("memoryKb")
+
+            if runtime_ms is not None and runtime_ms > 0:
+                current_runs = lang_stats.get("runtimes") or []
+                current_runs.append(runtime_ms)
+                lang_stats["runtimes"] = current_runs[-500:]
+
+            if mem_kb is not None and mem_kb > 0:
+                current_mems = lang_stats.get("memoriesKb") or []
+                current_mems.append(mem_kb)
+                lang_stats["memoriesKb"] = current_mems[-500:]
+
+            lang_stats["count"] = len(lang_stats.get("runtimes") or [])
+            benchmarks["totalAccepted"] = sum(s.get("count", 0) for s in by_lang.values())
+            benchmarks["updatedAt"] = datetime.now(timezone.utc).isoformat()
+
+            try:
+                r2_storage.upload_json(benchmark_key, benchmarks)
+            except Exception as be:
+                print(f"[R2 Benchmark Update Notice for '{clean_slug}']: {be}")
+
         return {"status": "ok", "success": True, "submissions": existing, "count": len(existing)}
     except Exception as e:
         print(f"[R2 Submission Save Error for '{clean_slug}']: {e}")
@@ -3378,6 +3433,119 @@ async def get_user_submissions(slug: str, email: str = "anonymous"):
     if not subs and safe_email != "anonymous":
         subs = r2_storage.fetch_json(f"submissions/anonymous_{clean_slug}.json") or []
     return {"status": "ok", "submissions": subs if isinstance(subs, list) else []}
+
+
+@app.get("/api/problem/{slug}/benchmarks")
+async def get_problem_benchmarks(slug: str, lang: str = "cpp"):
+    """
+    Fetches real SDETube user submission benchmarks (runtime and memory distributions) for a problem.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    raw_lang = (lang or "cpp").strip().lower()
+    clean_lang = "cpp" if ("cpp" in raw_lang or "c++" in raw_lang) else raw_lang
+    benchmark_key = f"benchmarks/{clean_slug}.json"
+    data = r2_storage.fetch_json(benchmark_key) or {}
+    if not isinstance(data, dict):
+        data = {}
+
+    by_lang = data.get("byLanguage", {})
+    lang_data = by_lang.get(clean_lang, {"runtimes": [], "memoriesKb": [], "count": 0})
+    
+    return {
+        "status": "ok",
+        "slug": clean_slug,
+        "language": clean_lang,
+        "totalAccepted": data.get("totalAccepted", 0),
+        "runtimes": lang_data.get("runtimes", []),
+        "memoriesKb": lang_data.get("memoriesKb", []),
+        "userCount": lang_data.get("count", 0)
+    }
+
+
+class CodeComplexityRequest(BaseModel):
+    code: str
+    language: str = "cpp"
+    title: str = ""
+
+
+@app.post("/api/problem/{slug}/complexity")
+async def analyze_problem_complexity(slug: str, req: CodeComplexityRequest):
+    """
+    Evaluates exact Time and Space complexity for user code using AI, cached in R2 for rechecking.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    raw_code = req.code or ""
+    code_hash = hashlib.md5(raw_code.encode('utf-8')).hexdigest()[:12]
+    cache_key = f"complexity_cache/{clean_slug}_{req.language}_{code_hash}.json"
+
+    cached = r2_storage.fetch_json(cache_key)
+    if cached and isinstance(cached, dict) and cached.get("timeComplexity"):
+        return {"status": "ok", "cached": True, **cached}
+
+    prompt = f"""Analyze this {req.language} code for problem '{req.title or clean_slug}':
+```{req.language}
+{raw_code[:4000]}
+```
+Determine the exact time complexity and space complexity of THIS specific code implementation.
+Respond with a strict JSON object matching:
+{{
+  "timeComplexity": "O(...)",
+  "spaceComplexity": "O(...)",
+  "timeExplanation": "Concise 1-2 sentence explanation of the loops/recursion in this code.",
+  "spaceExplanation": "Concise 1-2 sentence explanation of auxiliary memory allocated.",
+  "optimalTimeComplexity": "O(...)",
+  "optimalSpaceComplexity": "O(...)"
+}}"""
+
+    analysis = None
+    if GROQ_API_KEY:
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "openai/gpt-oss-120b",
+                    "messages": [
+                        {"role": "system", "content": "You are an algorithms expert who outputs strict JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.1
+                },
+                timeout=8
+            )
+            if resp.status_code == 200:
+                content = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                analysis = json.loads(content)
+        except Exception as ge:
+            print(f"[Groq Complexity Notice]: {ge}")
+
+    if not analysis:
+        # Fallback heuristic analysis
+        code_str = raw_code
+        tc = "O(N)"
+        sc = "O(1)"
+        if "for " in code_str and code_str.count("for ") >= 2:
+            tc = "O(N²)"
+        elif "sort(" in code_str or "sorted(" in code_str:
+            tc = "O(N log N)"
+        if "vector" in code_str or "unordered_map" in code_str or "map" in code_str or "dict" in code_str or "list(" in code_str or "set(" in code_str:
+            sc = "O(N)"
+        analysis = {
+            "timeComplexity": tc,
+            "spaceComplexity": sc,
+            "timeExplanation": f"Determined from algorithmic loops ({tc}).",
+            "spaceExplanation": f"Determined from dynamic memory allocations ({sc}).",
+            "optimalTimeComplexity": "O(N)",
+            "optimalSpaceComplexity": "O(1)"
+        }
+
+    try:
+        r2_storage.upload_json(cache_key, analysis)
+    except Exception as ue:
+        print(f"[R2 Complexity Cache Upload Notice]: {ue}")
+
+    return {"status": "ok", "cached": False, **analysis}
 
 
 

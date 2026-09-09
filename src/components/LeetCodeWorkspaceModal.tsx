@@ -55,7 +55,7 @@ import {
   Radio
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
-import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage } from '../lib/mistral';
+import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames } from '../lib/problemService';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
@@ -362,6 +362,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   } | null>(null);
   
   const [submissionAnalytics, setSubmissionAnalytics] = useState<SubmissionAnalyticsData | null>(null);
+  const [userBenchmarks, setUserBenchmarks] = useState<{
+    runtimes: number[];
+    memoriesKb: number[];
+    userCount: number;
+  } | null>(null);
   const [isSubmissionVisualizerOpen, setIsSubmissionVisualizerOpen] = useState<boolean>(false);
   
   // AI Test Case Verification and Repair Modal State
@@ -1282,6 +1287,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           else memoryPct = 75.0;
         }
 
+        const slug = currentProblemSlug;
+        const student = getCurrentStudent();
+        const email = student?.email || 'anonymous';
+
         const analytics: SubmissionAnalyticsData = {
           isSuccess: isAllSuccess,
           status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : 'Wrong Answer',
@@ -1307,7 +1316,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           },
           language,
           problemTitle: cleanTitle,
-          submittedCode: code
+          submittedCode: code,
+          userBenchmarks: userBenchmarks || undefined,
+          isAiEvaluated: false
         };
 
         setSubmissionAnalytics(analytics);
@@ -1344,8 +1355,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           analytics: analytics
         };
 
-        const slug = currentProblemSlug;
-
         setSubmissionsList(prev => {
           const updated = [newSubItem, ...prev];
           try {
@@ -1354,9 +1363,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           return updated;
         });
 
-        // Sync submission to backend Cloudflare R2
-        const student = getCurrentStudent();
-        const email = student?.email || 'anonymous';
+        // Sync initial submission to backend Cloudflare R2
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1365,6 +1372,74 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             submission: newSubItem
           })
         }).catch(() => {});
+
+        // Fetch real SDETube user benchmarks for this problem & language to compare against our own users
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/benchmarks?lang=${encodeURIComponent(language)}`)
+          .then(res => res.json())
+          .then(bData => {
+            if (bData && bData.status === 'ok') {
+              const bObj = {
+                runtimes: bData.runtimes || [],
+                memoriesKb: bData.memoriesKb || [],
+                userCount: bData.userCount || (bData.runtimes ? bData.runtimes.length : 0)
+              };
+              setUserBenchmarks(bObj);
+              setSubmissionAnalytics(prev => prev ? { ...prev, userBenchmarks: bObj } : null);
+            }
+          })
+          .catch(() => {});
+
+        // AI-Powered Time and Space Complexity Analysis: Evaluates actual user code & stores in Cloudflare R2
+        if (isAllSuccess) {
+          requestSubmissionCodeComplexityAnalysis(code, language, cleanTitle, slug)
+            .then(aiRes => {
+              if (aiRes && aiRes.timeComplexity) {
+                setSubmissionAnalytics(prev => {
+                  if (!prev) return null;
+                  const updatedAnalytics: SubmissionAnalyticsData = {
+                    ...prev,
+                    timeComplexity: aiRes.timeComplexity,
+                    spaceComplexity: aiRes.spaceComplexity,
+                    timeExplanation: aiRes.timeExplanation || prev.timeExplanation,
+                    spaceExplanation: aiRes.spaceExplanation || prev.spaceExplanation,
+                    optimalTimeComplexity: aiRes.optimalTimeComplexity || prev.optimalTimeComplexity,
+                    optimalSpaceComplexity: aiRes.optimalSpaceComplexity || prev.optimalSpaceComplexity,
+                    isAiEvaluated: true
+                  };
+
+                  // Update submission item in local state and browser cache
+                  setSubmissionsList(currSubs => {
+                    const nextSubs = currSubs.map((item, idx) => {
+                      if (idx === 0 || item.id === newSubItem.id) {
+                        return { ...item, analytics: updatedAnalytics };
+                      }
+                      return item;
+                    });
+                    try {
+                      localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(nextSubs));
+                    } catch {}
+                    return nextSubs;
+                  });
+
+                  // Persist AI complexity update in Cloudflare R2 for rechecking
+                  fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      email,
+                      submission: {
+                        ...newSubItem,
+                        analytics: updatedAnalytics
+                      }
+                    })
+                  }).catch(() => {});
+
+                  return updatedAnalytics;
+                });
+              }
+            })
+            .catch(aiErr => console.warn('[AI Complexity Analysis Notice]:', aiErr));
+        }
 
         if (isAllSuccess) {
           confetti({
@@ -2563,6 +2638,40 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 onClick={() => {
                                   setSubmissionAnalytics(sub.analytics!);
                                   setIsSubmissionVisualizerOpen(true);
+                                  const targetLang = (sub.lang || 'cpp').toLowerCase();
+                                  fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(currentProblemSlug)}/benchmarks?lang=${encodeURIComponent(targetLang)}`)
+                                    .then(r => r.json())
+                                    .then(b => {
+                                      if (b && b.status === 'ok') {
+                                        const bObj = {
+                                          runtimes: b.runtimes || [],
+                                          memoriesKb: b.memoriesKb || [],
+                                          userCount: b.userCount || (b.runtimes ? b.runtimes.length : 0)
+                                        };
+                                        setUserBenchmarks(bObj);
+                                        setSubmissionAnalytics(prev => prev ? { ...prev, userBenchmarks: bObj } : null);
+                                      }
+                                    })
+                                    .catch(() => {});
+
+                                  if (!sub.analytics?.isAiEvaluated && sub.code) {
+                                    requestSubmissionCodeComplexityAnalysis(sub.code, sub.lang, cleanTitle, currentProblemSlug)
+                                      .then(aiComp => {
+                                        if (aiComp && aiComp.timeComplexity) {
+                                          setSubmissionAnalytics(prev => prev ? {
+                                            ...prev,
+                                            timeComplexity: aiComp.timeComplexity,
+                                            spaceComplexity: aiComp.spaceComplexity,
+                                            timeExplanation: aiComp.timeExplanation || prev.timeExplanation,
+                                            spaceExplanation: aiComp.spaceExplanation || prev.spaceExplanation,
+                                            optimalTimeComplexity: aiComp.optimalTimeComplexity || prev.optimalTimeComplexity,
+                                            optimalSpaceComplexity: aiComp.optimalSpaceComplexity || prev.optimalSpaceComplexity,
+                                            isAiEvaluated: true
+                                          } : null);
+                                        }
+                                      })
+                                      .catch(() => {});
+                                  }
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-purple-950/60 hover:bg-purple-900 border border-purple-700/50 text-purple-300 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                                 title="Open Graphical Complexity & Big-O Visualizer"
@@ -3519,6 +3628,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
             <SubmissionVisualizer
               data={submissionAnalytics}
+              userBenchmarks={userBenchmarks || undefined}
               onClose={() => setIsSubmissionVisualizerOpen(false)}
               onRetry={() => {
                 setIsSubmissionVisualizerOpen(false);

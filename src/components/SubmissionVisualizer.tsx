@@ -46,10 +46,21 @@ export interface SubmissionAnalyticsData {
   language: SupportedLanguage;
   problemTitle: string;
   submittedCode: string;
+  userBenchmarks?: {
+    runtimes: number[];
+    memoriesKb: number[];
+    userCount: number;
+  };
+  isAiEvaluated?: boolean;
 }
 
 interface SubmissionVisualizerProps {
   data: SubmissionAnalyticsData;
+  userBenchmarks?: {
+    runtimes: number[];
+    memoriesKb: number[];
+    userCount: number;
+  };
   onClose?: () => void;
   onRetry?: () => void;
   onAskAi?: (prompt: string) => void;
@@ -68,6 +79,7 @@ export interface DynamicHistogramBucket {
 
 export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
   data,
+  userBenchmarks,
   onClose,
   onRetry,
   onAskAi,
@@ -84,7 +96,15 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
   const [copiedSubmittedCode, setCopiedSubmittedCode] = useState<boolean>(false);
   const [appliedSubmittedCode, setAppliedSubmittedCode] = useState<boolean>(false);
 
-  // Dynamic Runtime distribution calibrated to language and user's actual execution time
+  // Extract active benchmarks (from props or submission data)
+  const benchmarks = userBenchmarks || data.userBenchmarks;
+  const realRuntimes = useMemo(() => benchmarks?.runtimes || [], [benchmarks]);
+  const realMemoriesKb = useMemo(() => benchmarks?.memoriesKb || [], [benchmarks]);
+  const realUserCount = (benchmarks?.userCount && benchmarks.userCount > 0)
+    ? benchmarks.userCount
+    : realRuntimes.length;
+
+  // Dynamic Runtime distribution calibrated to real SDETube user submissions and language benchmarks
   const runtimeDistribution = useMemo<DynamicHistogramBucket[]>(() => {
     const lang = (data.language || 'cpp').toLowerCase();
     const userMs = Math.max(0, Math.round(data.runtimeMs));
@@ -112,9 +132,12 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
       ];
     }
 
+    const allRuntimes = realRuntimes.length > 0 ? [...realRuntimes, userMs] : [userMs];
+    const maxObserved = Math.max(...allRuntimes);
+
     const maxStandardMs = baseRanges[baseRanges.length - 1][1];
-    if (userMs > maxStandardMs) {
-      const scale = (userMs * 1.25) / maxStandardMs;
+    if (maxObserved > maxStandardMs) {
+      const scale = (maxObserved * 1.25) / maxStandardMs;
       baseRanges = baseRanges.map(([lo, hi]) => [
         Math.round(lo * scale),
         Math.round(hi * scale)
@@ -124,12 +147,39 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
     }
 
     const basePcts = [12, 34, 26, 14, 7, 4, 2, 1];
-    const totalSubmissions = 2450;
+    const totalSubmissions = realUserCount > 0 ? realUserCount : 2450;
 
     let userIdx = baseRanges.findIndex(([lo, hi]) => userMs >= lo && userMs <= hi);
     if (userIdx === -1) {
       if (userMs <= baseRanges[0][0]) userIdx = 0;
       else userIdx = baseRanges.length - 1;
+    }
+
+    // If real SDETube user submissions exist, calculate bucket counts from real users
+    if (realRuntimes.length > 0) {
+      const bucketCounts = baseRanges.map(([lo, hi]) => {
+        return allRuntimes.filter(r => r >= lo && r <= hi).length;
+      });
+      const totalAll = allRuntimes.length;
+
+      return baseRanges.map(([lo, hi], i) => {
+        const rawCount = bucketCounts[i];
+        let pct = (rawCount / totalAll) * 100;
+        // Blend lightly if sample size is small to maintain a smooth histogram shape
+        if (totalAll < 15) {
+          pct = parseFloat((pct * 0.7 + basePcts[i] * 0.3).toFixed(1));
+        } else {
+          pct = parseFloat(pct.toFixed(1));
+        }
+        return {
+          min: lo,
+          max: hi,
+          label: lo === hi ? `${lo}` : `${lo}-${hi}`,
+          count: rawCount,
+          pct: Math.max(1, pct),
+          isUser: i === userIdx
+        };
+      });
     }
 
     return baseRanges.map(([lo, hi], i) => {
@@ -144,9 +194,9 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
         isUser: i === userIdx
       };
     });
-  }, [data.language, data.runtimeMs]);
+  }, [data.language, data.runtimeMs, realRuntimes, realUserCount]);
 
-  // Dynamic Memory distribution calibrated to language and user's actual memory footprint
+  // Dynamic Memory distribution calibrated to real SDETube user submissions and language footprint
   const memoryDistribution = useMemo<DynamicHistogramBucket[]>(() => {
     const lang = (data.language || 'cpp').toLowerCase();
     const userMb = parseFloat((data.memoryKb / 1024).toFixed(1));
@@ -170,10 +220,15 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
       ];
     }
 
+    const allMemsMb = realMemoriesKb.length > 0 
+      ? [...realMemoriesKb.map(m => parseFloat((m / 1024).toFixed(1))), userMb]
+      : [userMb];
+    const maxObservedMb = Math.max(...allMemsMb);
+
     const maxMb = baseRanges[baseRanges.length - 1][1];
     const minMb = baseRanges[0][0];
-    if (userMb > maxMb) {
-      const scale = (userMb * 1.2) / maxMb;
+    if (maxObservedMb > maxMb) {
+      const scale = (maxObservedMb * 1.2) / maxMb;
       baseRanges = baseRanges.map(([lo, hi]) => [
         parseFloat((lo * scale).toFixed(1)),
         parseFloat((hi * scale).toFixed(1))
@@ -187,12 +242,37 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
     }
 
     const basePcts = [8, 28, 33, 18, 8, 3, 2];
-    const totalSubmissions = 2450;
+    const totalSubmissions = realUserCount > 0 ? realUserCount : 2450;
 
     let userIdx = baseRanges.findIndex(([lo, hi]) => userMb >= lo && userMb <= hi);
     if (userIdx === -1) {
       if (userMb <= baseRanges[0][0]) userIdx = 0;
       else userIdx = baseRanges.length - 1;
+    }
+
+    if (realMemoriesKb.length > 0) {
+      const bucketCounts = baseRanges.map(([lo, hi]) => {
+        return allMemsMb.filter(m => m >= lo && m <= hi).length;
+      });
+      const totalAll = allMemsMb.length;
+
+      return baseRanges.map(([lo, hi], i) => {
+        const rawCount = bucketCounts[i];
+        let pct = (rawCount / totalAll) * 100;
+        if (totalAll < 15) {
+          pct = parseFloat((pct * 0.7 + basePcts[i] * 0.3).toFixed(1));
+        } else {
+          pct = parseFloat(pct.toFixed(1));
+        }
+        return {
+          min: lo,
+          max: hi,
+          label: `${lo}-${hi}`,
+          count: rawCount,
+          pct: Math.max(1, pct),
+          isUser: i === userIdx
+        };
+      });
     }
 
     return baseRanges.map(([lo, hi], i) => {
@@ -207,7 +287,7 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
         isUser: i === userIdx
       };
     });
-  }, [data.language, data.memoryKb]);
+  }, [data.language, data.memoryKb, realMemoriesKb, realUserCount]);
 
   // Derived percentiles that mathematically align with the dynamic histogram curves
   const dynamicRuntimePercentile = useMemo(() => {
@@ -237,6 +317,29 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
     }
     return Math.min(99.2, Math.max(8.0, largerPct));
   }, [memoryDistribution]);
+
+  // Real SDETube User Beats Percentiles (Like LeetCode compares against all user submissions)
+  const effectiveRuntimePercentile = useMemo(() => {
+    if (realRuntimes.length > 0) {
+      const userMs = Math.max(0, Math.round(data.runtimeMs));
+      const strictlySlower = realRuntimes.filter(r => r > userMs).length;
+      const exactMatch = realRuntimes.filter(r => r === userMs).length;
+      const pct = ((strictlySlower + Math.max(1, exactMatch) * 0.5) / Math.max(1, realRuntimes.length)) * 100;
+      return Math.min(99.9, Math.max(5.0, parseFloat(pct.toFixed(1))));
+    }
+    return dynamicRuntimePercentile;
+  }, [realRuntimes, data.runtimeMs, dynamicRuntimePercentile]);
+
+  const effectiveMemoryPercentile = useMemo(() => {
+    if (realMemoriesKb.length > 0) {
+      const userKb = data.memoryKb;
+      const strictlyLarger = realMemoriesKb.filter(m => m > userKb).length;
+      const exactMatch = realMemoriesKb.filter(m => m === userKb).length;
+      const pct = ((strictlyLarger + Math.max(1, exactMatch) * 0.5) / Math.max(1, realMemoriesKb.length)) * 100;
+      return Math.min(99.9, Math.max(5.0, parseFloat(pct.toFixed(1))));
+    }
+    return dynamicMemoryPercentile;
+  }, [realMemoriesKb, data.memoryKb, dynamicMemoryPercentile]);
 
   // Theoretical Big-O Growth calculations for N
   const complexityCurves = useMemo(() => {
@@ -302,8 +405,13 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
             <div className="hidden sm:flex items-center space-x-2 bg-emerald-950/50 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
               <Award className="w-4 h-4 text-emerald-400" />
               <span className="text-xs font-bold text-emerald-300">
-                Beats {dynamicRuntimePercentile.toFixed(1)}% Speed
+                Beats {effectiveRuntimePercentile.toFixed(1)}% Speed
               </span>
+              {realUserCount > 0 && (
+                <span className="text-[10px] text-emerald-400/80 font-mono">
+                  (vs {realUserCount} {realUserCount === 1 ? 'user' : 'users'})
+                </span>
+              )}
             </div>
           )}
 
@@ -423,14 +531,14 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Runtime Performance</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                    Beats {dynamicRuntimePercentile.toFixed(1)}%
+                    Beats {effectiveRuntimePercentile.toFixed(1)}%
                   </span>
                 </div>
 
                 <div className="mt-3 flex items-baseline space-x-2">
                   <span className="text-3xl font-black text-slate-100 font-mono">{data.runtimeMs}</span>
                   <span className="text-sm font-semibold text-slate-400">ms</span>
-                  <span className="text-xs text-slate-500 ml-auto font-mono">Rank: Top {(100 - dynamicRuntimePercentile).toFixed(1)}%</span>
+                  <span className="text-xs text-slate-500 ml-auto font-mono">Rank: Top {(100 - effectiveRuntimePercentile).toFixed(1)}%</span>
                 </div>
 
                 {/* SVG Bell-Curve & Distribution Bars */}
@@ -477,8 +585,15 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                       );
                     })}
                   </div>
-                  <div className="text-[10px] text-slate-500 text-center mt-2 font-mono">
-                    Runtime Distribution (ms) across all {data.language.toUpperCase()} submissions
+                  <div className="text-[10px] text-slate-500 text-center mt-2 font-mono flex items-center justify-center gap-1.5">
+                    <span>
+                      Runtime Distribution (ms) across {realUserCount > 0 ? `${realUserCount} SDETube` : 'all'} {data.language.toUpperCase()} submissions
+                    </span>
+                    {realUserCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[9px] font-bold">
+                        Live SDETube Users
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -491,7 +606,7 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Memory Allocation</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-500/30">
-                    Beats {dynamicMemoryPercentile.toFixed(1)}%
+                    Beats {effectiveMemoryPercentile.toFixed(1)}%
                   </span>
                 </div>
 
@@ -542,8 +657,15 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                       );
                     })}
                   </div>
-                  <div className="text-[10px] text-slate-500 text-center mt-2 font-mono">
-                    Memory Footprint (MB) across all submissions
+                  <div className="text-[10px] text-slate-500 text-center mt-2 font-mono flex items-center justify-center gap-1.5">
+                    <span>
+                      Memory Footprint (MB) across {realUserCount > 0 ? `${realUserCount} SDETube` : 'all'} submissions
+                    </span>
+                    {realUserCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/40 text-purple-300 text-[9px] font-bold">
+                        Live SDETube Users
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -636,13 +758,26 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                 
                 {/* User's Complexity Card */}
                 <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-950/60 to-purple-950/40 border-2 border-indigo-500/50 shadow-lg relative">
-                  <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/40 text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
-                    Your Solution
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/40 text-indigo-200 text-[10px] font-bold uppercase tracking-wider">
+                    {data.isAiEvaluated ? (
+                      <>
+                        <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                        <span>AI Evaluated (R2 Cached)</span>
+                      </>
+                    ) : (
+                      <span>Your Solution</span>
+                    )}
                   </div>
                   <div className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Time Complexity</div>
                   <div className="text-2xl font-black text-slate-100 font-mono mt-1">
                     {data.timeComplexity || 'O(N)'}
                   </div>
+                  {data.isAiEvaluated && (
+                    <div className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 mt-0.5">
+                      <Check className="w-3 h-3 text-emerald-400" />
+                      <span>Evaluated from your code structure</span>
+                    </div>
+                  )}
                   <div className="text-xs text-slate-300 font-mono mt-2 flex items-center justify-between">
                     <span>Operations at N={scaleN.toLocaleString()}:</span>
                     <strong className="text-indigo-300">

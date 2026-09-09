@@ -1326,3 +1326,122 @@ Respond ONLY with valid JSON:
     allTestCasesOptions: []
   };
 }
+
+export interface AIComplexityAnalysis {
+  timeComplexity: string;
+  spaceComplexity: string;
+  timeExplanation: string;
+  spaceExplanation: string;
+  optimalTimeComplexity: string;
+  optimalSpaceComplexity: string;
+}
+
+/**
+ * Accurately analyzes the user's submitted code using AI to determine true Time and Space complexity,
+ * persisted in Cloudflare R2 for instant rechecking after submission.
+ */
+export async function requestSubmissionCodeComplexityAnalysis(
+  code: string,
+  language: string,
+  problemTitle: string,
+  slug?: string
+): Promise<AIComplexityAnalysis | null> {
+  const normLang = (language || 'cpp').toLowerCase();
+  const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const codeHash = `${code.length}_${code.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '')}`;
+  const localKey = `edustream_ai_complexity_${cleanSlug}_${normLang}_${codeHash}`;
+
+  // 1. Check local cache
+  try {
+    const cached = localStorage.getItem(localKey);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.timeComplexity && parsed?.spaceComplexity) {
+        return parsed;
+      }
+    }
+  } catch {}
+
+  // 2. Try Backend API (/api/problem/{slug}/complexity) with Cloudflare R2 persistence
+  try {
+    const backendUrl = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/complexity`;
+    const resp = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        language: normLang,
+        title: problemTitle
+      }),
+      signal: AbortSignal.timeout(6000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data?.timeComplexity && data?.spaceComplexity) {
+        const result: AIComplexityAnalysis = {
+          timeComplexity: data.timeComplexity,
+          spaceComplexity: data.spaceComplexity,
+          timeExplanation: data.timeExplanation || 'Computed from loop and recursion structures.',
+          spaceExplanation: data.spaceExplanation || 'Computed from auxiliary memory footprint.',
+          optimalTimeComplexity: data.optimalTimeComplexity || 'O(N)',
+          optimalSpaceComplexity: data.optimalSpaceComplexity || 'O(1)'
+        };
+        try { localStorage.setItem(localKey, JSON.stringify(result)); } catch {}
+        return result;
+      }
+    }
+  } catch (be) {
+    console.warn('[Backend Complexity API notice, falling back to direct AI cascade]:', be);
+  }
+
+  // 3. Fallback: Direct frontend AI Cascade (Groq OSS 120B / Mistral)
+  const prompt = `Analyze this ${normLang} solution code written for the algorithm problem "${problemTitle}".
+
+STUDENT SUBMITTED CODE:
+\`\`\`${normLang}
+${code.slice(0, 4000)}
+\`\`\`
+
+Evaluate the true time complexity and auxiliary space complexity of THIS SPECIFIC CODE implementation.
+- Check loop nesting, recursions, branching, and sorting calls for Time Complexity.
+- Check auxiliary memory (hash tables, vectors, heap, recursion stack) for Space Complexity.
+
+Respond strictly with a JSON object:
+{
+  "timeComplexity": "O(...)",
+  "spaceComplexity": "O(...)",
+  "timeExplanation": "1-2 sentence precise explanation of why it has this time complexity.",
+  "spaceExplanation": "1-2 sentence precise explanation of auxiliary memory usage.",
+  "optimalTimeComplexity": "O(...)",
+  "optimalSpaceComplexity": "O(...)"
+}`;
+
+  try {
+    const rawJson = await executeAIChatCascade([
+      { role: 'system', content: 'You are an algorithms expert who outputs strict JSON without Markdown formatting.' },
+      { role: 'user', content: prompt }
+    ], { temperature: 0.1, responseFormatJson: true, timeoutMs: 6000 });
+
+    if (rawJson) {
+      const cleaned = rawJson.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed?.timeComplexity && parsed?.spaceComplexity) {
+        const result: AIComplexityAnalysis = {
+          timeComplexity: parsed.timeComplexity,
+          spaceComplexity: parsed.spaceComplexity,
+          timeExplanation: parsed.timeExplanation || 'Analyzed algorithm structure.',
+          spaceExplanation: parsed.spaceExplanation || 'Analyzed auxiliary memory allocation.',
+          optimalTimeComplexity: parsed.optimalTimeComplexity || 'O(N)',
+          optimalSpaceComplexity: parsed.optimalSpaceComplexity || 'O(1)'
+        };
+        try { localStorage.setItem(localKey, JSON.stringify(result)); } catch {}
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn('[Direct AI Complexity Cascade notice]:', e);
+  }
+
+  return null;
+}
+
