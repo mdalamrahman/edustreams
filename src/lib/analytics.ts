@@ -4,6 +4,37 @@ import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
 
+// Dedicated per-sheet maps for accurate O(1) problem ID lookup (prevents cross-sheet ID collisions)
+const sdeProblemMap = new Map<number, any>();
+(SDE_SHEET_191_DATA || []).forEach(p => sdeProblemMap.set(p.id, p));
+
+const a2zProblemMap = new Map<number, any>();
+(A2Z_DSA_SHEET_473_DATA || []).forEach(p => a2zProblemMap.set(p.id, p));
+
+const sde79ProblemMap = new Map<number, any>();
+(SDETUBE_79_SHEET_DATA || []).forEach(p => sde79ProblemMap.set(p.id, p));
+
+const blind75ProblemMap = new Map<number, any>();
+(BLIND_75_SHEET_DATA || []).forEach(p => blind75ProblemMap.set(p.id, p));
+
+const mikProblemMap = new Map<number, any>();
+(CODESTORYWITHMIK_SHEET_DATA || []).forEach(p => mikProblemMap.set(p.id, p));
+
+/**
+ * Normalizes any problem title, slug, or key into a clean, canonical slug.
+ * Strips leading problem numbers (e.g. '3871-count-commas...' -> 'count-commas...')
+ * to ensure compiler submissions and sheet items map to the exact same unique problem.
+ */
+export function normalizeCanonicalSlug(raw?: string): string {
+  if (!raw) return '';
+  let s = String(raw).trim().toLowerCase();
+  // Strip leading question numbers (e.g. "3871. Count Commas" or "3871-count-commas")
+  s = s.replace(/^\d+[\s\.\-_]+/, '');
+  // Normalize symbols/spaces to hyphens
+  s = s.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return s;
+}
+
 export interface DailyActivityItem {
   date: string; // 'YYYY-MM-DD'
   dayName: string; // 'Mon', 'Tue', etc.
@@ -142,16 +173,27 @@ export function recordRealActivity(
  */
 export function isProblemSlugSolved(slugOrName?: string): boolean {
   if (!slugOrName || typeof window === 'undefined') return false;
-  const clean = String(slugOrName).toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!clean) return false;
+  const canonical = normalizeCanonicalSlug(slugOrName);
+  const compact = canonical.replace(/[^a-z0-9]/g, '');
+  if (!compact) return false;
   try {
     const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
-    const slugs: string[] = rawSlugs ? JSON.parse(rawSlugs) : [];
-    if (slugs.includes(clean)) return true;
+    if (rawSlugs) {
+      const slugs: string[] = JSON.parse(rawSlugs);
+      if (slugs.some(s => {
+        const c = normalizeCanonicalSlug(s);
+        return c === canonical || c.replace(/[^a-z0-9]/g, '') === compact;
+      })) return true;
+    }
 
     const rawNames = localStorage.getItem('sdetube_solved_names');
-    const names: string[] = rawNames ? JSON.parse(rawNames) : [];
-    if (names.includes(clean)) return true;
+    if (rawNames) {
+      const names: string[] = JSON.parse(rawNames);
+      if (names.some(n => {
+        const c = normalizeCanonicalSlug(n);
+        return c === canonical || c.replace(/[^a-z0-9]/g, '') === compact;
+      })) return true;
+    }
   } catch {}
   return false;
 }
@@ -270,8 +312,9 @@ export function resetUnverifiedPotdToday(): void {
 export function markProblemSolved(identifier: string | number, timeMins: number = 5, problemSlug?: string): boolean {
   if (typeof window === 'undefined') return false;
 
-  const strId = String(identifier).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const cleanSlug = problemSlug ? String(problemSlug).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+  const cleanSlug = normalizeCanonicalSlug(problemSlug || (typeof identifier === 'string' ? identifier : ''));
+  const cleanCompact = cleanSlug.replace(/[^a-z0-9]/g, '');
+  const strId = typeof identifier === 'string' ? normalizeCanonicalSlug(identifier) : '';
 
   // 1. Search across ALL 5 DSA Sheets (SDE, A2Z, Striver 79, Blind 75, CodeStoryWithMIK)
   const allProblems = [
@@ -283,79 +326,65 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
   ];
 
   const matchedProblems = allProblems.filter(p => {
-    const pName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const pSlug = (p.slug || getLeetCodeSlug(p)).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pSlug = normalizeCanonicalSlug(p.slug || getLeetCodeSlug(p));
+    const pNameSlug = normalizeCanonicalSlug(p.name);
     return (
-      (typeof identifier === 'number' && p.id === identifier) ||
-      pName === strId ||
-      pSlug === strId ||
-      (cleanSlug && pSlug === cleanSlug) ||
-      (strId && pName.includes(strId)) ||
-      (strId && strId.includes(pName))
+      (cleanSlug && (pSlug === cleanSlug || pNameSlug === cleanSlug)) ||
+      (cleanCompact && (pSlug.replace(/[^a-z0-9]/g, '') === cleanCompact || pNameSlug.replace(/[^a-z0-9]/g, '') === cleanCompact)) ||
+      (strId && (pSlug === strId || pNameSlug === strId)) ||
+      (typeof identifier === 'number' && p.id === identifier && (!cleanSlug || pSlug === cleanSlug))
     );
   });
 
   const matchedId = matchedProblems.length > 0 ? matchedProblems[0].id : (typeof identifier === 'number' && identifier > 0 ? identifier : null);
 
-  // 2. Update all sheet solved storage keys (both per-sheet and legacy keys)
-  const sheetKeys = [
-    'sdetube_sde_sheet_solved_ids',
-    'sdetube_dsa_solved_sde',
-    'sdetube_dsa_solved_a2z',
-    'sdetube_dsa_solved_79',
-    'sdetube_dsa_sheet_solved_sde',
-    'sdetube_dsa_sheet_solved_a2z',
-    'sdetube_dsa_sheet_solved_79',
-    'sdetube_dsa_sheet_solved_blind75',
-    'sdetube_dsa_sheet_solved_mik',
-    'sdetube_dsa_sheet_solved_codestorywithmik',
-    'sdestream_solved_problems'
-  ];
-
-  // Specific sheet type mapping for each matched problem
+  // 2. Update each sheet strictly for its OWN matched problems to prevent cross-sheet ID pollution
+  const sheetUpdates: Record<string, number[]> = {};
   matchedProblems.forEach(p => {
-    const specificKey = `sdetube_dsa_sheet_solved_${p.sheetType}`;
-    if (!sheetKeys.includes(specificKey)) sheetKeys.push(specificKey);
+    const sheet = p.sheetType || 'sde';
+    if (!sheetUpdates[sheet]) sheetUpdates[sheet] = [];
+    sheetUpdates[sheet].push(p.id);
   });
 
-  sheetKeys.forEach(k => {
+  // If no sheet problem matched but a numeric ID was provided, attribute only to active or default 'sde'
+  if (matchedProblems.length === 0 && typeof identifier === 'number' && identifier > 0) {
+    sheetUpdates['sde'] = [identifier];
+  }
+
+  Object.entries(sheetUpdates).forEach(([sheet, ids]) => {
     try {
-      const raw = localStorage.getItem(k);
+      const specificKey = `sdetube_dsa_sheet_solved_${sheet}`;
+      const raw = localStorage.getItem(specificKey);
       const set = new Set<number>(raw ? JSON.parse(raw) : []);
-      if (matchedId !== null) set.add(matchedId);
-      matchedProblems.forEach(p => set.add(p.id));
-      localStorage.setItem(k, JSON.stringify(Array.from(set)));
-    } catch {}
-  });
+      ids.forEach(id => set.add(id));
+      localStorage.setItem(specificKey, JSON.stringify(Array.from(set)));
 
-  // Sync with central Supabase progressService
-  matchedProblems.forEach(p => {
-    try {
-      const sheet = p.sheetType || 'sde';
-      const curr = getSolvedIds(sheet);
-      if (!curr.includes(p.id)) {
-        setSolvedIds(sheet, [...curr, p.id]).catch(() => {});
+      if (sheet === 'sde') {
+        localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(Array.from(set)));
       }
+
+      // Sync strictly to this sheet in Supabase
+      const curr = getSolvedIds(sheet);
+      const next = Array.from(new Set([...curr, ...ids]));
+      setSolvedIds(sheet, next).catch(() => {});
     } catch {}
   });
 
-  // 3. Persist solved slug and name for cross-sheet & cross-platform instant ticking
+  // 3. Persist canonical solved slug for cross-sheet instant ticking
   try {
     const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
     const slugs = new Set<string>(rawSlugs ? JSON.parse(rawSlugs) : []);
     if (cleanSlug) slugs.add(cleanSlug);
-    if (strId) slugs.add(strId);
     matchedProblems.forEach(p => {
-      if (p.slug) slugs.add(p.slug.toLowerCase().replace(/[^a-z0-9]/g, ''));
-      slugs.add(p.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const ps = normalizeCanonicalSlug(p.slug || getLeetCodeSlug(p));
+      if (ps) slugs.add(ps);
     });
     localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(slugs)));
 
     const rawNames = localStorage.getItem('sdetube_solved_names');
     const names = new Set<string>(rawNames ? JSON.parse(rawNames) : []);
     if (strId) names.add(strId);
-    if (cleanSlug) names.add(cleanSlug);
-    matchedProblems.forEach(p => names.add(p.name.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    matchedProblems.forEach(p => names.add(p.name));
     localStorage.setItem('sdetube_solved_names', JSON.stringify(Array.from(names)));
   } catch {}
 
@@ -492,52 +521,69 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const allUniqueProblems = getAllPlatformUniqueProblems();
   const dsaTotal = Math.max(allUniqueProblems.length, 1);
 
-  // Load all solved problem IDs across all sheets and Supabase sync
-  const allSolvedIds = new Set<number>();
-  const allSolvedSlugs = new Set<string>();
+  // Set of strictly UNIQUE canonical problem slugs solved by user (deduplicates across sheets and compiler)
+  const uniqueSolvedSlugs = new Set<string>();
 
+  const addProblem = (prob?: any) => {
+    if (!prob) return;
+    const raw = getLeetCodeSlug(prob) || prob.slug || prob.name;
+    const slug = normalizeCanonicalSlug(raw);
+    if (slug && slug.length > 2 && slug !== 'problem' && slug !== 'undefined' && slug !== 'null') {
+      uniqueSolvedSlugs.add(slug);
+    }
+  };
+
+  const addRawSlug = (raw?: string) => {
+    if (!raw) return;
+    const slug = normalizeCanonicalSlug(raw);
+    if (slug && slug.length > 2 && slug !== 'problem' && slug !== 'undefined' && slug !== 'null') {
+      uniqueSolvedSlugs.add(slug);
+    }
+  };
+
+  // 1. Sheet progress: resolve IDs strictly against each sheet's OWN problem definitions (prevents cross-sheet ID collisions)
   try {
     const syncProg = getUserProgressSync();
     if (syncProg) {
-      (syncProg.solved_sde || []).forEach(id => allSolvedIds.add(id));
-      (syncProg.solved_a2z || []).forEach(id => allSolvedIds.add(id));
-      (syncProg.solved_79 || []).forEach(id => allSolvedIds.add(id));
-      (syncProg.solved_blind75 || []).forEach(id => allSolvedIds.add(id));
-      (syncProg.solved_mik || []).forEach(id => allSolvedIds.add(id));
+      (syncProg.solved_sde || []).forEach(id => addProblem(sdeProblemMap.get(id)));
+      (syncProg.solved_a2z || []).forEach(id => addProblem(a2zProblemMap.get(id)));
+      (syncProg.solved_79 || []).forEach(id => addProblem(sde79ProblemMap.get(id)));
+      (syncProg.solved_blind75 || []).forEach(id => addProblem(blind75ProblemMap.get(id)));
+      (syncProg.solved_mik || []).forEach(id => addProblem(mikProblemMap.get(id)));
     }
   } catch {}
 
-  const sheetKeys = [
-    'sdetube_sde_sheet_solved_ids',
-    'sdetube_dsa_solved_sde',
-    'sdetube_dsa_solved_a2z',
-    'sdetube_dsa_solved_79',
-    'sdetube_dsa_sheet_solved_sde',
-    'sdetube_dsa_sheet_solved_a2z',
-    'sdetube_dsa_sheet_solved_79',
-    'sdetube_dsa_sheet_solved_blind75',
-    'sdetube_dsa_sheet_solved_mik',
-    'sdetube_dsa_sheet_solved_codestorywithmik',
-    'sdestream_solved_problems'
-  ];
-  sheetKeys.forEach(k => {
+  // 2. Sheet-specific localStorage keys (resolve each key ONLY against its own sheet)
+  const resolveStorageKey = (key: string, map: Map<number, any>) => {
     try {
-      const raw = localStorage.getItem(k);
+      const raw = localStorage.getItem(key);
       if (raw) {
         const arr = JSON.parse(raw);
         if (Array.isArray(arr)) {
-          arr.forEach(id => typeof id === 'number' && allSolvedIds.add(id));
+          arr.forEach(id => typeof id === 'number' && addProblem(map.get(id)));
         }
       }
     } catch {}
-  });
+  };
 
+  resolveStorageKey('sdetube_dsa_sheet_solved_sde', sdeProblemMap);
+  resolveStorageKey('sdetube_sde_sheet_solved_ids', sdeProblemMap);
+  resolveStorageKey('sdetube_dsa_solved_sde', sdeProblemMap);
+  resolveStorageKey('sdetube_dsa_sheet_solved_a2z', a2zProblemMap);
+  resolveStorageKey('sdetube_dsa_solved_a2z', a2zProblemMap);
+  resolveStorageKey('sdetube_dsa_sheet_solved_79', sde79ProblemMap);
+  resolveStorageKey('sdetube_dsa_solved_79', sde79ProblemMap);
+  resolveStorageKey('sdetube_dsa_sheet_solved_blind75', blind75ProblemMap);
+  resolveStorageKey('sdetube_dsa_sheet_solved_mik', mikProblemMap);
+  resolveStorageKey('sdetube_dsa_sheet_solved_codestorywithmik', mikProblemMap);
+
+  // 3. User explicitly solved slugs and names stored in localStorage
   try {
     const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
     if (rawSlugs) {
       const arr = JSON.parse(rawSlugs);
       if (Array.isArray(arr)) {
-        arr.forEach(s => allSolvedSlugs.add(String(s).toLowerCase().replace(/[^a-z0-9]/g, '')));
+        arr.forEach(s => addRawSlug(String(s)));
       }
     }
   } catch {}
@@ -547,24 +593,25 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     if (rawNames) {
       const arr = JSON.parse(rawNames);
       if (Array.isArray(arr)) {
-        arr.forEach(s => allSolvedSlugs.add(String(s).toLowerCase().replace(/[^a-z0-9]/g, '')));
+        arr.forEach(s => addRawSlug(String(s)));
       }
     }
   } catch {}
 
-  // Automatically scan localStorage for any successful submissions in IDE
+  // 4. Compiler / IDE accepted submissions: count each unique problem once
+  // STRICT RULE: Do NOT count test runs or submission attempts; only count unique problems with Accepted/SUCCESS status
   try {
     if (typeof localStorage !== 'undefined') {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('edustream_submissions_')) {
+        if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
           const raw = localStorage.getItem(key);
-          if (raw && (raw.includes('"status":"SUCCESS"') || raw.includes('"passedCount"'))) {
+          if (raw && (raw.includes('"status":"SUCCESS"') || raw.includes('"status":"Accepted"'))) {
             try {
               const subs = JSON.parse(raw);
-              if (Array.isArray(subs) && subs.some(s => s.status === 'SUCCESS' || (s.totalCount > 0 && s.passedCount === s.totalCount))) {
-                const slugPart = key.replace('edustream_submissions_', '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                allSolvedSlugs.add(slugPart);
+              if (Array.isArray(subs) && subs.some(s => s && (s.status === 'SUCCESS' || s.status === 'Accepted'))) {
+                const slugPart = key.replace(/^edustream_(sql_)?submissions_/, '');
+                addRawSlug(slugPart);
               }
             } catch {}
           }
@@ -573,7 +620,8 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     }
   } catch {}
 
-  let dsaSolved = 0;
+  // Strictly count UNIQUE problems solved (never number of submissions)
+  const dsaSolved = uniqueSolvedSlugs.size;
   let easyTotal = 0, easySolved = 0;
   let medTotal = 0, medSolved = 0;
   let hardTotal = 0, hardSolved = 0;
@@ -582,32 +630,27 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const matchedSlugs = new Set<string>();
 
   for (const prob of allUniqueProblems) {
-    const pSlug = (prob.cleanSlug || prob.slug || getLeetCodeSlug(prob)).toLowerCase().replace(/[^a-z0-9]/g, '');
-    const pName = (prob.name || prob.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pSlug = normalizeCanonicalSlug(prob.cleanSlug || prob.slug || getLeetCodeSlug(prob));
+    const pNameSlug = normalizeCanonicalSlug(prob.name || prob.title);
 
-    const isSolved = (
-      (prob.id && allSolvedIds.has(prob.id)) ||
-      allSolvedSlugs.has(pSlug) ||
-      allSolvedSlugs.has(pName) ||
-      isProblemSlugSolved(pSlug) ||
-      isProblemSlugSolved(pName)
-    );
+    const isSolved = (pSlug && uniqueSolvedSlugs.has(pSlug)) || (pNameSlug && uniqueSolvedSlugs.has(pNameSlug));
     if (isSolved) {
-      dsaSolved++;
-      if (allSolvedSlugs.has(pSlug)) matchedSlugs.add(pSlug);
-      if (allSolvedSlugs.has(pName)) matchedSlugs.add(pName);
+      if (pSlug) matchedSlugs.add(pSlug);
+      if (pNameSlug) matchedSlugs.add(pNameSlug);
+
+      const diff = (prob.difficulty || 'Medium').toLowerCase();
+      if (diff === 'easy') easySolved++;
+      else if (diff === 'hard') hardSolved++;
+      else medSolved++;
     }
 
     const diff = (prob.difficulty || 'Medium').toLowerCase();
     if (diff === 'easy') {
       easyTotal++;
-      if (isSolved) easySolved++;
     } else if (diff === 'hard') {
       hardTotal++;
-      if (isSolved) hardSolved++;
     } else {
       medTotal++;
-      if (isSolved) medSolved++;
     }
 
     const cat = prob.category || 'Algorithms';
@@ -617,11 +660,10 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     catMap.set(cat, cEntry);
   }
 
-  // Also count any additional custom, POTD, or platform problems solved that were recorded in allSolvedSlugs
-  for (const s of allSolvedSlugs) {
-    if (!matchedSlugs.has(s) && s.length > 2 && s !== 'problem') {
-      dsaSolved++;
-      matchedSlugs.add(s);
+  // Account for any off-sheet unique solved problems (e.g. daily POTD, custom compiler challenges)
+  for (const s of uniqueSolvedSlugs) {
+    if (!matchedSlugs.has(s)) {
+      medSolved++;
     }
   }
 

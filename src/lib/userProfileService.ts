@@ -905,12 +905,19 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
   const prog = getUserProgressSync(userEmail);
   const solvedMap = new Map<string, CanonicalProblemInfo>();
 
+  const toCleanSlug = (p: DSAProblem): string => {
+    const raw = getLeetCodeSlug(p) || p.slug || p.name;
+    return raw.toLowerCase().replace(/^\d+[\s\.\-_]+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
+
   // 1. SDE Sheet 191
   (prog.solved_sde || []).forEach(id => {
     const p = sdeProblemMap.get(id);
     if (p) {
-      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'sde' });
+      const slug = toCleanSlug(p);
+      if (slug && !solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'sde' });
+      }
     }
   });
 
@@ -918,8 +925,10 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
   (prog.solved_a2z || []).forEach(id => {
     const p = a2zProblemMap.get(id);
     if (p) {
-      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'a2z' });
+      const slug = toCleanSlug(p);
+      if (slug && !solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'a2z' });
+      }
     }
   });
 
@@ -927,8 +936,10 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
   (prog.solved_79 || []).forEach(id => {
     const p = sde79ProblemMap.get(id);
     if (p) {
-      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: '79' });
+      const slug = toCleanSlug(p);
+      if (slug && !solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: '79' });
+      }
     }
   });
 
@@ -936,8 +947,10 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
   (prog.solved_blind75 || []).forEach(id => {
     const p = blind75ProblemMap.get(id);
     if (p) {
-      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'blind75' });
+      const slug = toCleanSlug(p);
+      if (slug && !solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'blind75' });
+      }
     }
   });
 
@@ -945,8 +958,10 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
   (prog.solved_mik || []).forEach(id => {
     const p = mikProblemMap.get(id);
     if (p) {
-      const slug = (getLeetCodeSlug(p) || p.slug || p.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      if (slug) solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'mik' });
+      const slug = toCleanSlug(p);
+      if (slug && !solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: p.name, slug, difficulty: p.difficulty, category: p.category, sourceSheet: 'mik' });
+      }
     }
   });
 
@@ -955,35 +970,42 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
     const lld = typeof id === 'number' ? LLD_PROBLEMS[id] || LLD_PROBLEMS.find(p => p.id === `lld-${id}`) : LLD_PROBLEMS.find(p => p.id === String(id));
     if (lld) {
       const slug = (lld.id || `lld-${id}`).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      solvedMap.set(slug, { name: lld.title, slug, difficulty: lld.difficulty, category: lld.category, sourceSheet: 'lld' });
+      if (!solvedMap.has(slug)) {
+        solvedMap.set(slug, { name: lld.title, slug, difficulty: lld.difficulty, category: lld.category, sourceSheet: 'lld' });
+      }
     }
   });
 
   // 7. Also scan accepted submissions from localStorage code runner
+  // STRICT RULE: Only count verified Accepted/SUCCESS full submissions (NOT test runs or draft submissions)
   try {
     if (typeof localStorage !== 'undefined') {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
           const raw = localStorage.getItem(key);
-          if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list) && list.some(s => s.status === 'Accepted' || (s.passedCount && s.totalCount && s.passedCount === s.totalCount))) {
-              const cleanSlug = key.replace(/^edustream_(sql_)?submissions_/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-              if (cleanSlug && !solvedMap.has(cleanSlug)) {
-                const known = canonicalProblemMap.get(cleanSlug);
-                if (known) {
-                  solvedMap.set(cleanSlug, known);
-                } else {
-                  const title = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                  solvedMap.set(cleanSlug, {
-                    name: title,
-                    slug: cleanSlug,
-                    difficulty: key.startsWith('edustream_sql_submissions_') ? 'Medium' : 'Medium'
-                  });
+          if (raw && (raw.includes('"status":"Accepted"') || raw.includes('"status":"SUCCESS"'))) {
+            try {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list) && list.some(s => s && (s.status === 'Accepted' || s.status === 'SUCCESS'))) {
+                let cleanSlug = key.replace(/^edustream_(sql_)?submissions_/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                // Strip leading problem numbers (e.g. 3871-count-commas -> count-commas)
+                cleanSlug = cleanSlug.replace(/^\d+[\s\.\-_]+/, '');
+                if (cleanSlug && cleanSlug.length > 2 && cleanSlug !== 'problem' && cleanSlug !== 'undefined' && cleanSlug !== 'null' && !solvedMap.has(cleanSlug)) {
+                  const known = canonicalProblemMap.get(cleanSlug);
+                  if (known) {
+                    solvedMap.set(cleanSlug, known);
+                  } else {
+                    const title = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    solvedMap.set(cleanSlug, {
+                      name: title,
+                      slug: cleanSlug,
+                      difficulty: key.startsWith('edustream_sql_submissions_') ? 'Medium' : 'Medium'
+                    });
+                  }
                 }
               }
-            }
+            } catch {}
           }
         }
       }

@@ -6,6 +6,7 @@
 
 import { supabase, supabaseAdmin } from './supabase';
 import { TELEGRAM_BACKEND_URL } from './telegram';
+import { SDE_SHEET_191_DATA, A2Z_DSA_SHEET_474_DATA, SDETUBE_79_SHEET_DATA, BLIND_75_SHEET_DATA, CODESTORYWITHMIK_SHEET_DATA, getLeetCodeSlug } from './dsaSheetsData';
 
 export interface LinkedProfilesConfig {
   leetcodeUsername: string;
@@ -46,6 +47,21 @@ const DEFAULT_LINKED_PROFILES: LinkedProfilesConfig = {
 const progressCache = new Map<string, UserDSAProgress>();
 const solvedSlugsCache = new Set<string>();
 const solvedNamesCache = new Set<string>();
+
+const sdeProblemMap = new Map<number, any>();
+(SDE_SHEET_191_DATA || []).forEach(p => sdeProblemMap.set(p.id, p));
+
+const a2zProblemMap = new Map<number, any>();
+(A2Z_DSA_SHEET_474_DATA || []).forEach(p => a2zProblemMap.set(p.id, p));
+
+const sde79ProblemMap = new Map<number, any>();
+(SDETUBE_79_SHEET_DATA || []).forEach(p => sde79ProblemMap.set(p.id, p));
+
+const blind75ProblemMap = new Map<number, any>();
+(BLIND_75_SHEET_DATA || []).forEach(p => blind75ProblemMap.set(p.id, p));
+
+const mikProblemMap = new Map<number, any>();
+(CODESTORYWITHMIK_SHEET_DATA || []).forEach(p => mikProblemMap.set(p.id, p));
 
 /**
  * Gets the active logged-in user email
@@ -187,9 +203,20 @@ export async function loadUserProgress(targetEmail?: string): Promise<UserDSAPro
     saveUserProgress(supaProgress, email).catch(() => {});
   }
 
-  // 5. Populate caches
+  // 5. Populate caches and heal/sanitize any contaminated local storage keys
   progressCache.set(email, supaProgress);
   updateSlugsCacheFromProgress(supaProgress);
+
+  if (typeof localStorage !== 'undefined' && supaProgress) {
+    try {
+      localStorage.setItem('sdetube_dsa_sheet_solved_sde', JSON.stringify(supaProgress.solved_sde || []));
+      localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(supaProgress.solved_sde || []));
+      localStorage.setItem('sdetube_dsa_sheet_solved_a2z', JSON.stringify(supaProgress.solved_a2z || []));
+      localStorage.setItem('sdetube_dsa_sheet_solved_79', JSON.stringify(supaProgress.solved_79 || []));
+      localStorage.setItem('sdetube_dsa_sheet_solved_blind75', JSON.stringify(supaProgress.solved_blind75 || []));
+      localStorage.setItem('sdetube_dsa_sheet_solved_mik', JSON.stringify(supaProgress.solved_mik || []));
+    } catch {}
+  }
 
   return supaProgress;
 }
@@ -457,20 +484,19 @@ export async function recordStudyMinutes(deltaMins: number, email?: string): Pro
  */
 export function isProblemSlugSolved(slugOrName?: string, email?: string): boolean {
   if (!slugOrName) return false;
-  const clean = String(slugOrName).toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!clean) return false;
+  const raw = String(slugOrName).toLowerCase().replace(/^\d+[\s\.\-_]+/, '');
+  const canonical = raw.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const compact = raw.replace(/[^a-z0-9]/g, '');
+  if (!compact) return false;
 
-  if (solvedSlugsCache.has(clean) || solvedNamesCache.has(clean)) return true;
+  if (solvedSlugsCache.has(canonical) || solvedSlugsCache.has(compact) || solvedNamesCache.has(compact)) {
+    return true;
+  }
 
   const prog = getUserProgressSync(email);
-  const allSolved = [
-    ...prog.solved_sde,
-    ...prog.solved_a2z,
-    ...prog.solved_79,
-    ...prog.solved_blind75,
-    ...prog.solved_mik
-  ];
-  return allSolved.some(id => String(id) === clean);
+  updateSlugsCacheFromProgress(prog);
+
+  return solvedSlugsCache.has(canonical) || solvedSlugsCache.has(compact) || solvedNamesCache.has(compact);
 }
 
 /**
@@ -523,15 +549,23 @@ export async function fetchAllUsersProgressForAdmin(): Promise<UserDSAProgress[]
  * Internal helper to populate slug lookup cache
  */
 function updateSlugsCacheFromProgress(prog: UserDSAProgress): void {
-  [
-    ...prog.solved_sde,
-    ...prog.solved_a2z,
-    ...prog.solved_79,
-    ...prog.solved_blind75,
-    ...prog.solved_mik
-  ].forEach(id => {
-    solvedSlugsCache.add(String(id));
-  });
+  const addProblem = (prob?: any) => {
+    if (!prob) return;
+    const raw = getLeetCodeSlug(prob) || prob.slug || prob.name;
+    const clean = String(raw).toLowerCase().replace(/^\d+[\s\.\-_]+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (clean && clean.length > 2 && clean !== 'problem') {
+      solvedSlugsCache.add(clean);
+      solvedSlugsCache.add(clean.replace(/[^a-z0-9]/g, ''));
+    }
+    const nameClean = String(prob.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (nameClean) solvedNamesCache.add(nameClean);
+  };
+
+  (prog.solved_sde || []).forEach(id => addProblem(sdeProblemMap.get(id)));
+  (prog.solved_a2z || []).forEach(id => addProblem(a2zProblemMap.get(id)));
+  (prog.solved_79 || []).forEach(id => addProblem(sde79ProblemMap.get(id)));
+  (prog.solved_blind75 || []).forEach(id => addProblem(blind75ProblemMap.get(id)));
+  (prog.solved_mik || []).forEach(id => addProblem(mikProblemMap.get(id)));
 }
 
 // Pre-load current user on startup
