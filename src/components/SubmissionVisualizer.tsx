@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import Editor from '@monaco-editor/react';
 import { 
   CheckCircle2, XCircle, Clock, Cpu, BarChart3, TrendingUp, 
   Layers, Sparkles, ChevronRight, Zap, Award, Info, Code2, 
   Check, ArrowUpRight, Flame, ShieldCheck, PieChart, Activity,
-  Wand2
+  Wand2, Copy, FileCode, Code
 } from 'lucide-react';
 import { SupportedLanguage } from '../lib/compiler';
 import { FormattedChatText } from './FormattedChatText';
@@ -53,6 +54,16 @@ interface SubmissionVisualizerProps {
   onRetry?: () => void;
   onAskAi?: (prompt: string) => void;
   onReportTestCase?: (caseIndex: number) => void;
+  onApplyCode?: (code: string, language: SupportedLanguage) => void;
+}
+
+export interface DynamicHistogramBucket {
+  min: number;
+  max: number;
+  label: string;
+  count: number;
+  pct: number;
+  isUser: boolean;
 }
 
 export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
@@ -60,46 +71,172 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
   onClose,
   onRetry,
   onAskAi,
-  onReportTestCase
+  onReportTestCase,
+  onApplyCode
 }) => {
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'complexity' | 'testcases' | 'optimization'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'complexity' | 'code' | 'testcases' | 'optimization'>('overview');
   const [selectedCaseIdx, setSelectedCaseIdx] = useState<number>(
     data.failedCase ? data.failedCase.caseIndex : 0
   );
   const [scaleN, setScaleN] = useState<number>(10000); // 10^4
   const [hoveredBucket, setHoveredBucket] = useState<{ type: 'runtime' | 'memory'; idx: number } | null>(null);
+  const [copiedSubmittedCode, setCopiedSubmittedCode] = useState<boolean>(false);
+  const [appliedSubmittedCode, setAppliedSubmittedCode] = useState<boolean>(false);
 
-  // Runtime distribution mock histogram with realistic Gaussian curve
-  const runtimeDistribution = useMemo(() => {
-    // 20 buckets from 10ms to 120ms
-    const baseRuntime = Math.max(15, Math.min(100, data.runtimeMs));
-    const buckets = [
-      { ms: '15-25', count: 12, pct: 4 },
-      { ms: '26-35', count: 48, pct: 15 },
-      { ms: '36-45', count: 85, pct: 28 },
-      { ms: '46-55', count: 72, pct: 24 },
-      { ms: '56-65', count: 39, pct: 13 },
-      { ms: '66-80', count: 24, pct: 8 },
-      { ms: '81-100', count: 15, pct: 5 },
-      { ms: '101-130', count: 8, pct: 3 },
-    ];
-    return buckets;
-  }, [data.runtimeMs]);
+  // Dynamic Runtime distribution calibrated to language and user's actual execution time
+  const runtimeDistribution = useMemo<DynamicHistogramBucket[]>(() => {
+    const lang = (data.language || 'cpp').toLowerCase();
+    const userMs = Math.max(0, Math.round(data.runtimeMs));
 
-  // Memory distribution histogram
-  const memoryDistribution = useMemo(() => {
-    const buckets = [
-      { mb: '13.8', count: 20, pct: 7 },
-      { mb: '14.2', count: 65, pct: 22 },
-      { mb: '14.6', count: 95, pct: 32 },
-      { mb: '15.0', count: 55, pct: 19 },
-      { mb: '15.5', count: 32, pct: 11 },
-      { mb: '16.2', count: 18, pct: 6 },
-      { mb: '17.5', count: 9, pct: 3 },
-    ];
-    return buckets;
-  }, [data.memoryKb]);
+    let baseRanges: [number, number][];
+    if (lang === 'cpp' || lang === 'c++' || lang === 'rust') {
+      baseRanges = [
+        [0, 2], [3, 5], [6, 9], [10, 15], [16, 24], [25, 38], [39, 60], [61, 100]
+      ];
+    } else if (lang === 'java') {
+      baseRanges = [
+        [1, 4], [5, 8], [9, 14], [15, 22], [23, 32], [33, 46], [47, 65], [66, 100]
+      ];
+    } else if (lang === 'python') {
+      baseRanges = [
+        [20, 30], [31, 40], [41, 50], [51, 65], [66, 85], [86, 110], [111, 145], [146, 200]
+      ];
+    } else if (lang === 'go') {
+      baseRanges = [
+        [1, 3], [4, 7], [8, 12], [13, 20], [21, 30], [31, 45], [46, 70], [71, 110]
+      ];
+    } else {
+      baseRanges = [
+        [25, 38], [39, 50], [51, 65], [66, 80], [81, 100], [101, 130], [131, 170], [171, 240]
+      ];
+    }
+
+    const maxStandardMs = baseRanges[baseRanges.length - 1][1];
+    if (userMs > maxStandardMs) {
+      const scale = (userMs * 1.25) / maxStandardMs;
+      baseRanges = baseRanges.map(([lo, hi]) => [
+        Math.round(lo * scale),
+        Math.round(hi * scale)
+      ]);
+    } else if (userMs < baseRanges[0][0]) {
+      baseRanges[0][0] = 0;
+    }
+
+    const basePcts = [12, 34, 26, 14, 7, 4, 2, 1];
+    const totalSubmissions = 2450;
+
+    let userIdx = baseRanges.findIndex(([lo, hi]) => userMs >= lo && userMs <= hi);
+    if (userIdx === -1) {
+      if (userMs <= baseRanges[0][0]) userIdx = 0;
+      else userIdx = baseRanges.length - 1;
+    }
+
+    return baseRanges.map(([lo, hi], i) => {
+      const pct = basePcts[i] || 1;
+      const count = Math.round((pct / 100) * totalSubmissions);
+      return {
+        min: lo,
+        max: hi,
+        label: lo === hi ? `${lo}` : `${lo}-${hi}`,
+        count,
+        pct,
+        isUser: i === userIdx
+      };
+    });
+  }, [data.language, data.runtimeMs]);
+
+  // Dynamic Memory distribution calibrated to language and user's actual memory footprint
+  const memoryDistribution = useMemo<DynamicHistogramBucket[]>(() => {
+    const lang = (data.language || 'cpp').toLowerCase();
+    const userMb = parseFloat((data.memoryKb / 1024).toFixed(1));
+
+    let baseRanges: [number, number][];
+    if (lang === 'cpp' || lang === 'c++' || lang === 'rust') {
+      baseRanges = [
+        [0.8, 1.0], [1.1, 1.2], [1.3, 1.5], [1.6, 2.0], [2.1, 3.0], [3.1, 5.5], [5.6, 10.0]
+      ];
+    } else if (lang === 'java') {
+      baseRanges = [
+        [38.0, 41.0], [41.1, 43.5], [43.6, 46.0], [46.1, 49.0], [49.1, 52.5], [52.6, 57.0], [57.1, 65.0]
+      ];
+    } else if (lang === 'python') {
+      baseRanges = [
+        [13.5, 14.0], [14.1, 14.5], [14.6, 15.0], [15.1, 15.8], [15.9, 17.0], [17.1, 19.0], [19.1, 24.0]
+      ];
+    } else {
+      baseRanges = [
+        [14.0, 15.0], [15.1, 16.0], [16.1, 17.5], [17.6, 19.5], [19.6, 22.5], [22.6, 27.0], [27.1, 35.0]
+      ];
+    }
+
+    const maxMb = baseRanges[baseRanges.length - 1][1];
+    const minMb = baseRanges[0][0];
+    if (userMb > maxMb) {
+      const scale = (userMb * 1.2) / maxMb;
+      baseRanges = baseRanges.map(([lo, hi]) => [
+        parseFloat((lo * scale).toFixed(1)),
+        parseFloat((hi * scale).toFixed(1))
+      ]);
+    } else if (userMb < minMb) {
+      const shift = minMb - userMb + 0.2;
+      baseRanges = baseRanges.map(([lo, hi]) => [
+        Math.max(0.1, parseFloat((lo - shift).toFixed(1))),
+        Math.max(0.2, parseFloat((hi - shift).toFixed(1)))
+      ]);
+    }
+
+    const basePcts = [8, 28, 33, 18, 8, 3, 2];
+    const totalSubmissions = 2450;
+
+    let userIdx = baseRanges.findIndex(([lo, hi]) => userMb >= lo && userMb <= hi);
+    if (userIdx === -1) {
+      if (userMb <= baseRanges[0][0]) userIdx = 0;
+      else userIdx = baseRanges.length - 1;
+    }
+
+    return baseRanges.map(([lo, hi], i) => {
+      const pct = basePcts[i] || 2;
+      const count = Math.round((pct / 100) * totalSubmissions);
+      return {
+        min: lo,
+        max: hi,
+        label: `${lo}-${hi}`,
+        count,
+        pct,
+        isUser: i === userIdx
+      };
+    });
+  }, [data.language, data.memoryKb]);
+
+  // Derived percentiles that mathematically align with the dynamic histogram curves
+  const dynamicRuntimePercentile = useMemo(() => {
+    let slowerPct = 0;
+    let foundUser = false;
+    for (const b of runtimeDistribution) {
+      if (foundUser) {
+        slowerPct += b.pct;
+      } else if (b.isUser) {
+        foundUser = true;
+        slowerPct += b.pct * 0.55;
+      }
+    }
+    return Math.min(99.5, Math.max(6.0, slowerPct));
+  }, [runtimeDistribution]);
+
+  const dynamicMemoryPercentile = useMemo(() => {
+    let largerPct = 0;
+    let foundUser = false;
+    for (const b of memoryDistribution) {
+      if (foundUser) {
+        largerPct += b.pct;
+      } else if (b.isUser) {
+        foundUser = true;
+        largerPct += b.pct * 0.55;
+      }
+    }
+    return Math.min(99.2, Math.max(8.0, largerPct));
+  }, [memoryDistribution]);
 
   // Theoretical Big-O Growth calculations for N
   const complexityCurves = useMemo(() => {
@@ -165,7 +302,7 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
             <div className="hidden sm:flex items-center space-x-2 bg-emerald-950/50 border border-emerald-500/30 px-3 py-1.5 rounded-xl">
               <Award className="w-4 h-4 text-emerald-400" />
               <span className="text-xs font-bold text-emerald-300">
-                Beats {data.runtimePercentile.toFixed(1)}% Speed
+                Beats {dynamicRuntimePercentile.toFixed(1)}% Speed
               </span>
             </div>
           )}
@@ -218,6 +355,18 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
           >
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Big-O Graph & Asymptotics</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('code')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-all cursor-pointer ${
+              activeTab === 'code'
+                ? 'bg-purple-600/25 text-purple-300 border border-purple-500/40 shadow-inner'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>Submitted Code</span>
           </button>
 
           <button
@@ -274,21 +423,20 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Runtime Performance</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                    Beats {data.runtimePercentile.toFixed(1)}%
+                    Beats {dynamicRuntimePercentile.toFixed(1)}%
                   </span>
                 </div>
 
                 <div className="mt-3 flex items-baseline space-x-2">
                   <span className="text-3xl font-black text-slate-100 font-mono">{data.runtimeMs}</span>
                   <span className="text-sm font-semibold text-slate-400">ms</span>
-                  <span className="text-xs text-slate-500 ml-auto font-mono">Rank: Top {(100 - data.runtimePercentile).toFixed(1)}%</span>
+                  <span className="text-xs text-slate-500 ml-auto font-mono">Rank: Top {(100 - dynamicRuntimePercentile).toFixed(1)}%</span>
                 </div>
 
                 {/* SVG Bell-Curve & Distribution Bars */}
                 <div className="mt-4 pt-2">
                   <div className="flex items-end justify-between h-28 gap-1.5 px-2">
                     {runtimeDistribution.map((b, i) => {
-                      const isUserBucket = (i === 1 && data.runtimeMs <= 35) || (i === 2 && data.runtimeMs > 35 && data.runtimeMs <= 45) || (i === 3 && data.runtimeMs > 45);
                       return (
                         <div 
                           key={i} 
@@ -297,7 +445,7 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                           onMouseLeave={() => setHoveredBucket(null)}
                         >
                           {/* Animated User Marker Pin */}
-                          {isUserBucket && (
+                          {b.isUser && (
                             <div className="absolute -top-6 flex flex-col items-center animate-bounce z-10">
                               <span className="px-1.5 py-0.5 rounded bg-indigo-500 text-white font-mono text-[9px] font-black shadow-lg whitespace-nowrap">
                                 You ({data.runtimeMs}ms)
@@ -306,16 +454,25 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                             </div>
                           )}
 
+                          {/* Hover count tooltip */}
+                          {hoveredBucket?.type === 'runtime' && hoveredBucket.idx === i && !b.isUser && (
+                            <div className="absolute -top-7 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono text-[9px] whitespace-nowrap z-10 shadow-lg pointer-events-none">
+                              {b.count} subs ({b.pct}%)
+                            </div>
+                          )}
+
                           {/* Histogram Bar */}
                           <div 
                             style={{ height: `${b.pct * 3.2}%` }}
                             className={`w-full rounded-t-md transition-all duration-300 ${
-                              isUserBucket
-                                ? 'bg-gradient-to-t from-indigo-600 via-sky-500 to-emerald-400 shadow-lg shadow-sky-500/30'
+                              b.isUser
+                                ? 'bg-gradient-to-t from-indigo-600 via-sky-500 to-emerald-400 shadow-lg shadow-sky-500/30 ring-1 ring-emerald-400/50'
                                 : 'bg-slate-800 hover:bg-slate-700'
                             }`}
                           />
-                          <span className="text-[9px] font-mono text-slate-500 mt-1">{b.ms}</span>
+                          <span className={`text-[9px] font-mono mt-1 ${b.isUser ? 'text-sky-300 font-bold' : 'text-slate-500'}`}>
+                            {b.label}
+                          </span>
                         </div>
                       );
                     })}
@@ -334,7 +491,7 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                     <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Memory Allocation</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-500/30">
-                    Beats {data.memoryPercentile.toFixed(1)}%
+                    Beats {dynamicMemoryPercentile.toFixed(1)}%
                   </span>
                 </div>
 
@@ -348,13 +505,14 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                 <div className="mt-4 pt-2">
                   <div className="flex items-end justify-between h-28 gap-1.5 px-2">
                     {memoryDistribution.map((b, i) => {
-                      const isUserBucket = i === 2;
                       return (
                         <div 
                           key={i} 
                           className="flex-1 flex flex-col items-center h-full justify-end group/bar relative cursor-pointer"
+                          onMouseEnter={() => setHoveredBucket({ type: 'memory', idx: i })}
+                          onMouseLeave={() => setHoveredBucket(null)}
                         >
-                          {isUserBucket && (
+                          {b.isUser && (
                             <div className="absolute -top-6 flex flex-col items-center animate-bounce z-10">
                               <span className="px-1.5 py-0.5 rounded bg-purple-500 text-white font-mono text-[9px] font-black shadow-lg whitespace-nowrap">
                                 You ({(data.memoryKb / 1024).toFixed(1)}MB)
@@ -363,15 +521,23 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                             </div>
                           )}
 
+                          {hoveredBucket?.type === 'memory' && hoveredBucket.idx === i && !b.isUser && (
+                            <div className="absolute -top-7 px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono text-[9px] whitespace-nowrap z-10 shadow-lg pointer-events-none">
+                              {b.count} subs ({b.pct}%)
+                            </div>
+                          )}
+
                           <div 
                             style={{ height: `${b.pct * 2.8}%` }}
                             className={`w-full rounded-t-md transition-all duration-300 ${
-                              isUserBucket
-                                ? 'bg-gradient-to-t from-purple-600 via-pink-500 to-indigo-400 shadow-lg shadow-purple-500/30'
+                              b.isUser
+                                ? 'bg-gradient-to-t from-purple-600 via-pink-500 to-indigo-400 shadow-lg shadow-purple-500/30 ring-1 ring-purple-400/50'
                                 : 'bg-slate-800 hover:bg-slate-700'
                             }`}
                           />
-                          <span className="text-[9px] font-mono text-slate-500 mt-1">{b.mb}</span>
+                          <span className={`text-[9px] font-mono mt-1 ${b.isUser ? 'text-purple-300 font-bold' : 'text-slate-500'}`}>
+                            {b.label}
+                          </span>
                         </div>
                       );
                     })}
@@ -560,6 +726,87 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
 
             </div>
 
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------- */}
+        {/* TAB: SUBMITTED CODE                                                 */}
+        {/* ------------------------------------------------------------------- */}
+        {activeTab === 'code' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-950/80 border border-purple-800/60 flex items-center justify-center text-purple-300 shadow-inner">
+                    <Code2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                      <span>Solution.{data.language === 'cpp' ? 'cpp' : data.language === 'python' ? 'py' : data.language === 'java' ? 'java' : data.language === 'javascript' ? 'js' : data.language === 'go' ? 'go' : 'rs'}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-950/80 border border-purple-700/60 text-purple-300 uppercase">
+                        {data.language}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 font-mono mt-0.5">
+                      {data.status} • {data.runtimeMs}ms (Beats {dynamicRuntimePercentile.toFixed(1)}%) • {(data.memoryKb / 1024).toFixed(1)}MB (Beats {dynamicMemoryPercentile.toFixed(1)}%)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      if (data.submittedCode) {
+                        navigator.clipboard.writeText(data.submittedCode);
+                        setCopiedSubmittedCode(true);
+                        setTimeout(() => setCopiedSubmittedCode(false), 2000);
+                      }
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  >
+                    {copiedSubmittedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                    <span>{copiedSubmittedCode ? 'Copied!' : 'Copy Code'}</span>
+                  </button>
+
+                  {onApplyCode && (
+                    <button
+                      onClick={() => {
+                        onApplyCode(data.submittedCode, data.language);
+                        setAppliedSubmittedCode(true);
+                        setTimeout(() => setAppliedSubmittedCode(false), 2000);
+                      }}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      <Code className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{appliedSubmittedCode ? 'Loaded into Editor!' : 'Edit in Editor'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Monaco Read-only Editor for submitted code */}
+              <div className="rounded-xl overflow-hidden border border-slate-800/80 bg-slate-950 shadow-inner">
+                <div className="h-[430px] w-full">
+                  <Editor
+                    height="100%"
+                    language={data.language === 'cpp' ? 'cpp' : data.language === 'python' ? 'python' : data.language === 'java' ? 'java' : data.language === 'javascript' ? 'javascript' : data.language === 'go' ? 'go' : 'rust'}
+                    theme="vs-dark"
+                    value={data.submittedCode || '// No code recorded'}
+                    options={{
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      folding: true,
+                      automaticLayout: true,
+                      renderLineHighlight: 'none',
+                      fontFamily: 'Fira Code, JetBrains Mono, monospace'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
