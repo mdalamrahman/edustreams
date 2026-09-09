@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers } from 'lucide-react';
+import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers, AlertTriangle } from 'lucide-react';
 import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
@@ -10,7 +10,8 @@ import {
   LeetCodeFullProfileData, 
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
-  isGfgProblemSolvedToday 
+  isGfgProblemSolvedToday,
+  checkLeetCodeProfilePrivacy
 } from '../lib/userProfileService';
 
 interface POTDModalProps {
@@ -566,12 +567,31 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
                 {/* LeetCode Sync & Manual Mark Solved Strip */}
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs font-mono">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-slate-400">LeetCode Profile:</span>
                     {linkedConfig.leetcodeUsername ? (
                       <span className="text-amber-400 font-bold">@{linkedConfig.leetcodeUsername}</span>
                     ) : (
                       <span className="text-slate-500 italic">Not linked yet</span>
+                    )}
+                    {leetcodeProfile && (
+                      checkLeetCodeProfilePrivacy(leetcodeProfile).isPublic ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Public ✓</span>
+                        </span>
+                      ) : (
+                        <a
+                          href="https://leetcode.com/profile/account/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1 hover:bg-amber-900 transition-colors"
+                          title="Click to make your profile public on LeetCode"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span>Private (Make Public ↗)</span>
+                        </a>
+                      )
                     )}
                   </div>
 
@@ -601,6 +621,43 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     </button>
                   </div>
                 </div>
+
+                {/* Private Submissions Alert Notification Banner */}
+                {leetcodeProfile && checkLeetCodeProfilePrivacy(leetcodeProfile).isPrivate && (
+                  <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs space-y-2">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-amber-300">LeetCode Submissions Are Private</span>
+                          <span className="px-1.5 py-0.5 rounded bg-amber-900/80 text-[9px] font-mono text-amber-300 border border-amber-700/60">Action Recommended</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 leading-relaxed">
+                          Your LeetCode account has recent submissions set to <strong>Private</strong>. Make them public in LeetCode settings so SDETube can automatically verify your POTD solve.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <a
+                        href="https://leetcode.com/profile/account/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20"
+                      >
+                        <span>Make Public on LeetCode</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        onClick={verifyLeetCodeSolved}
+                        disabled={isVerifyingLc}
+                        className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingLc ? 'animate-spin' : ''}`} />
+                        <span>Re-check</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {lcVerifyMessage && (
                   <div className="text-[11px] font-mono px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">

@@ -36,7 +36,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Clock,
-  Coins
+  Coins,
+  AlertTriangle
 } from 'lucide-react';
 import {
   LeetCodeFullProfileData,
@@ -50,6 +51,9 @@ import {
   fetchGFGProfile,
   fetchCodeforcesProfile,
   generateUserSubmissionHeatmap,
+  buildAnnualHeatmapWeeks,
+  checkLeetCodeProfilePrivacy,
+  YearHeatmapResult,
   getUserBadges,
   getUserTracksCertificates,
   getUserRecentSubmissions,
@@ -79,91 +83,199 @@ interface DeveloperProfilePageProps {
 
 export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode' | 'github' | 'gfg' | 'codeforces';
 
-// ── Shared heatmap utility ──────────────────────────────────────────────────
-function buildHeatmapWeeks(heatmapData: Record<string, number>) {
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - 364);
-  // align to Sunday
-  startDate.setDate(startDate.getDate() - startDate.getDay());
-
-  const weeks: Array<Array<{ date: string; count: number; level: number }>> = [];
-  const cursor = new Date(startDate);
-  const maxCount = Math.max(1, ...Object.values(heatmapData));
-
-  while (cursor <= today) {
-    const week: typeof weeks[0] = [];
-    for (let d = 0; d < 7; d++) {
-      const iso = cursor.toISOString().slice(0, 10);
-      const count = heatmapData[iso] ?? 0;
-      const level = count === 0 ? 0 : count <= maxCount * 0.25 ? 1 : count <= maxCount * 0.5 ? 2 : count <= maxCount * 0.75 ? 3 : 4;
-      week.push({ date: iso, count, level });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
-  }
-  const totalSubmissions = Object.values(heatmapData).reduce((a, b) => a + b, 0);
-  const activeDays = Object.values(heatmapData).filter(v => v > 0).length;
-  return { weeks, totalSubmissions, activeDays };
-}
-
+// ── 3-Year Platform Heatmap Component ──────────────────────────────────────────
 interface PlatformHeatmapProps {
   heatmap: Record<string, number>;
   label: string;
   accentColors: [string, string, string, string]; // level 1-4 classes
   totalLabel?: string;
+  defaultView?: 'all3' | number;
 }
 
-const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({ heatmap, label, accentColors, totalLabel }) => {
-  const { weeks, totalSubmissions, activeDays } = React.useMemo(() => buildHeatmapWeeks(heatmap), [heatmap]);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  // month labels: pick roughly every 4.3 weeks
-  const monthLabels: string[] = [];
-  weeks.forEach((week, i) => {
-    if (i % 4 === 0) {
-      const m = new Date(week[0].date).getMonth();
-      monthLabels.push(months[m]);
-    }
-  });
+const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
+  heatmap,
+  label,
+  accentColors,
+  totalLabel,
+  defaultView = 'all3'
+}) => {
+  const currentYear = new Date().getFullYear();
+  const availableYears = useMemo(() => [currentYear, currentYear - 1, currentYear - 2], [currentYear]);
+  const [selectedView, setSelectedView] = useState<'all3' | number>(defaultView);
 
+  // Precompute data for all 3 years
+  const yearData = useMemo(() => {
+    const map: Record<number, YearHeatmapResult> = {};
+    const globalMax = Math.max(1, ...Object.values(heatmap));
+    availableYears.forEach(yr => {
+      map[yr] = buildAnnualHeatmapWeeks(heatmap, yr, globalMax);
+    });
+    return map;
+  }, [heatmap, availableYears]);
+
+  const total3YearSubmissions = useMemo(() => {
+    return availableYears.reduce((acc, yr) => acc + (yearData[yr]?.totalSubmissions || 0), 0);
+  }, [yearData, availableYears]);
+
+  const total3YearActiveDays = useMemo(() => {
+    const activeDates = new Set<string>();
+    for (const [date, cnt] of Object.entries(heatmap)) {
+      if (cnt > 0) {
+        const yr = parseInt(date.slice(0, 4), 10);
+        if (availableYears.includes(yr)) {
+          activeDates.add(date);
+        }
+      }
+    }
+    return activeDates.size;
+  }, [heatmap, availableYears]);
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const levelClasses = [
     'bg-slate-900 border border-slate-800/60',
-    accentColors[0], accentColors[1], accentColors[2], accentColors[3]
+    accentColors[0],
+    accentColors[1],
+    accentColors[2],
+    accentColors[3]
   ];
 
-  return (
-    <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-slate-400" />
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{label}</h3>
-        </div>
-        <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500">
-          <span><strong className="text-slate-300">{totalSubmissions.toLocaleString()}</strong> {totalLabel ?? 'submissions'}</span>
-          <span>•</span>
-          <span><strong className="text-slate-300">{activeDays}</strong> active days</span>
-        </div>
-      </div>
-      <div className="overflow-x-auto pb-1 custom-scrollbar">
-        <div className="inline-flex flex-col gap-1 min-w-[640px]">
-          <div className="flex gap-1 px-1">
-            {monthLabels.map((m, i) => (
-              <span key={i} className="text-[9px] text-slate-600 font-mono" style={{ width: `${4 * 14}px` }}>{m}</span>
-            ))}
+  const renderSingleYear = (year: number) => {
+    const data = yearData[year];
+    if (!data) return null;
+
+    // Month headers aligned to week columns
+    const monthHeaders: Array<{ label: string; colIndex: number }> = [];
+    let lastMonth = -1;
+    data.weeks.forEach((week, colIdx) => {
+      const dayInYear = week.find(d => new Date(d.date).getFullYear() === year);
+      if (dayInYear) {
+        const m = new Date(dayInYear.date).getMonth();
+        if (m !== lastMonth) {
+          monthHeaders.push({ label: months[m], colIndex: colIdx });
+          lastMonth = m;
+        }
+      }
+    });
+
+    return (
+      <div key={year} className="space-y-2 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/70">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/50 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-xs font-black font-mono text-amber-300">
+              {year}
+            </span>
+            <span className="text-xs text-slate-300 font-mono">
+              <strong>{data.totalSubmissions.toLocaleString()}</strong> {totalLabel ?? 'submissions'}
+            </span>
           </div>
-          <div className="flex gap-1">
-            {weeks.map((week, wIdx) => (
-              <div key={wIdx} className="flex flex-col gap-1">
-                {week.map(day => (
-                  <div
-                    key={day.date}
-                    className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
-                    title={`${day.date}: ${day.count}`}
-                  />
+          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
+            <span><strong className="text-slate-200">{data.activeDays}</strong> active days</span>
+            <span>•</span>
+            <span>Max streak: <strong className="text-amber-400">{data.maxStreak} days</strong></span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto pb-1 custom-scrollbar">
+          <div className="inline-flex flex-col gap-1 min-w-[720px] pt-1">
+            {/* Month Labels */}
+            <div className="relative h-4 text-[9px] text-slate-500 font-mono pl-7">
+              {monthHeaders.map((mh, idx) => (
+                <span
+                  key={idx}
+                  className="absolute"
+                  style={{ left: `${mh.colIndex * 15 + 28}px` }}
+                >
+                  {mh.label}
+                </span>
+              ))}
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="flex gap-1.5 items-start">
+              {/* Day Labels */}
+              <div className="flex flex-col justify-between text-[9px] text-slate-500 font-mono pr-1 h-[88px] select-none">
+                <span>Mon</span>
+                <span>Wed</span>
+                <span>Fri</span>
+              </div>
+
+              {/* 52+ Week Columns */}
+              <div className="flex gap-1">
+                {data.weeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-1">
+                    {week.map(day => (
+                      <div
+                        key={day.date}
+                        className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
+                        title={`${day.date}: ${day.count} ${totalLabel ?? 'submissions'}`}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
+            </div>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+      {/* Header with 3-Year Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-slate-400" />
+          <div>
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">{label}</h3>
+            <p className="text-[11px] text-slate-400 font-mono">
+              Last 3 Years: <strong className="text-slate-200">{total3YearSubmissions.toLocaleString()}</strong> submissions across <strong className="text-slate-200">{total3YearActiveDays}</strong> active days
+            </p>
+          </div>
+        </div>
+
+        {/* View Toggle Buttons */}
+        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+          <button
+            onClick={() => setSelectedView('all3')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+              selectedView === 'all3' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            All (3 Years)
+          </button>
+          {availableYears.map(yr => (
+            <button
+              key={yr}
+              onClick={() => setSelectedView(yr)}
+              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                selectedView === yr ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {yr}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Heatmap display: All 3 years or single year */}
+      <div className="space-y-4">
+        {selectedView === 'all3'
+          ? availableYears.map(yr => renderSingleYear(yr))
+          : renderSingleYear(selectedView)}
+      </div>
+
+      {/* Footer Legend */}
+      <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 font-mono flex-wrap gap-2">
+        <span>Click or hover on any day to inspect daily submissions</span>
+        <div className="flex items-center gap-1.5">
+          <span>Less</span>
+          <div className="w-2.5 h-2.5 rounded-[2px] bg-slate-900 border border-slate-800" />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[0]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[1]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[2]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[3]}`} />
+          <span>More</span>
         </div>
       </div>
     </div>
@@ -323,6 +435,21 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const lcPastYearSubmissions = useMemo(() => {
     return Object.values(lcHeatmap).reduce((a, b) => a + b, 0);
   }, [lcHeatmap]);
+
+  const combinedHeatmap = useMemo<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    if (heatmap?.dateCounts) {
+      Object.assign(map, heatmap.dateCounts);
+    } else if (heatmap?.days) {
+      for (const d of heatmap.days) {
+        if (d.count > 0) map[d.date] = d.count;
+      }
+    }
+    for (const [d, c] of Object.entries(lcHeatmap)) {
+      map[d] = (map[d] || 0) + c;
+    }
+    return map;
+  }, [heatmap, lcHeatmap]);
 
   const lcEasySolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Easy')?.count ?? 0;
   const lcMedSolved = leetcodeData?.matchedUser?.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'Medium')?.count ?? 0;
@@ -907,45 +1034,23 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
               </div>
             </div>
 
-            {/* SDETube Heatmap */}
-            <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    <span>
-                      {profileMode === 'sdetube' 
-                        ? `${heatmap.totalSubmissions} SDETube submissions in past year` 
-                        : `${heatmap.totalSubmissions + lcPastYearSubmissions} combined submissions in past year`
-                      }
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Active days: <strong className="text-slate-200 font-mono">{heatmap.activeDaysCount}</strong> • Max streak: <strong className="text-amber-400 font-mono">{heatmap.maxStreak} days</strong> • Current streak: <strong className="text-emerald-400 font-mono">{heatmap.currentStreak} days</strong></p>
-                </div>
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-mono">
-                  {[2026, 2025].map((yr) => (
-                    <button key={yr} onClick={() => setSelectedYear(yr)} className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${selectedYear === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}>{yr}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="overflow-x-auto pb-2 custom-scrollbar">
-                <div className="inline-flex flex-col gap-1.5 min-w-[760px] p-2 bg-slate-950/80 rounded-2xl border border-slate-800/80">
-                  <div className="flex justify-between px-2 text-[10px] text-slate-500 font-mono">
-                    {monthLabels.map((m) => <span key={m}>{m}</span>)}
-                  </div>
-                  <div className="flex gap-1">
-                    {weeks.map((week, wIdx) => (
-                      <div key={wIdx} className="flex flex-col gap-1">
-                        {week.map((day) => {
-                          const lv = ['bg-slate-900 border border-slate-800/60','bg-emerald-950/80 border border-emerald-800/70','bg-emerald-700 border border-emerald-600','bg-emerald-500 border border-emerald-400','bg-emerald-400 border border-emerald-300 shadow-sm shadow-emerald-400/60'];
-                          return <div key={day.date} className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${lv[day.level]}`} title={`${day.date}: ${day.count} submissions`} />;
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* SDETube / Combined 3-Year Activity Heatmap */}
+            <PlatformHeatmap
+              heatmap={profileMode === 'sdetube' ? (heatmap?.dateCounts || {}) : combinedHeatmap}
+              label={profileMode === 'sdetube' ? 'SDETube Submissions & Practice Calendar' : 'Combined Omnichannel Activity Calendar (SDETube + LeetCode)'}
+              totalLabel="submissions"
+              accentColors={profileMode === 'sdetube' ? [
+                'bg-purple-950/70 border border-purple-800/60',
+                'bg-purple-700 border border-purple-600',
+                'bg-purple-500 border border-purple-400',
+                'bg-purple-400 border border-purple-300 shadow-sm shadow-purple-400/50'
+              ] : [
+                'bg-emerald-950/70 border border-emerald-800/60',
+                'bg-emerald-700 border border-emerald-600',
+                'bg-emerald-500 border border-emerald-400',
+                'bg-emerald-400 border border-emerald-300 shadow-sm shadow-emerald-400/50'
+              ]}
+            />
 
             {/* Billing */}
             <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
@@ -1050,6 +1155,49 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                 <p className="text-xs text-slate-400 font-mono">Fetching LeetCode data for <strong className="text-amber-300">@{formLcUsername}</strong>…</p>
               </div>
             ) : (<>
+              {(() => {
+                const lcPrivacy = checkLeetCodeProfilePrivacy(leetcodeData);
+                if (lcPrivacy.isPrivate) {
+                  return (
+                    <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/50 via-slate-900 to-amber-950/30 border border-amber-500/50 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+                      <div className="flex items-start gap-3.5">
+                        <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex-shrink-0 mt-0.5">
+                          <AlertTriangle className="w-5 h-5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm font-bold text-amber-300">LeetCode Profile Submissions Are Private</h4>
+                            <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">Action Recommended</span>
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                            Your LeetCode account has recent submissions set to <strong>Private</strong>. To allow SDETube to automatically detect your daily POTD solves and sync problem submissions in real time, enable public submissions in your LeetCode account settings.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                        <a
+                          href={lcPrivacy.settingsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                        >
+                          <span>Make Public on LeetCode</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          onClick={() => loadLeetcode(formLcUsername)}
+                          disabled={isLoadingLC}
+                          className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isLoadingLC ? 'animate-spin' : ''}`} />
+                          <span>Check Again</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* LC: Solved Stats + Contest */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -1060,9 +1208,27 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                     <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                       <Code2 className="w-4 h-4" /><span>LeetCode Solved</span>
                     </h3>
-                    {leetcodeData?.matchedUser?.activeBadge && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-bold font-mono">{leetcodeData.matchedUser.activeBadge.displayName}</span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {checkLeetCodeProfilePrivacy(leetcodeData).isPublic ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span>Public Profile ✓</span>
+                        </span>
+                      ) : (
+                        <a
+                          href="https://leetcode.com/profile/account/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1 hover:bg-amber-900 transition-colors"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span>Private (Make Public ↗)</span>
+                        </a>
+                      )}
+                      {leetcodeData?.matchedUser?.activeBadge && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-bold font-mono">{leetcodeData.matchedUser.activeBadge.displayName}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-center py-2">
                     <div className="relative w-36 h-36 rounded-full bg-gradient-to-tr from-amber-500 via-orange-400 to-yellow-400 p-2 shadow-xl flex items-center justify-center">

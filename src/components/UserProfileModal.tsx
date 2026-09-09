@@ -25,7 +25,8 @@ import {
   Download,
   ShieldCheck,
   GraduationCap,
-  Cloud
+  Cloud,
+  AlertTriangle
 } from 'lucide-react';
 import {
   LeetCodeFullProfileData,
@@ -45,10 +46,205 @@ import {
   LinkedProfilesConfig,
   SDETubeRealStats,
   isCloudAutoSyncEnabled,
-  setCloudAutoSyncEnabled
+  setCloudAutoSyncEnabled,
+  buildAnnualHeatmapWeeks,
+  checkLeetCodeProfilePrivacy,
+  generateUserSubmissionHeatmap,
+  YearHeatmapResult
 } from '../lib/userProfileService';
 import { getUserWallet } from '../lib/billing';
 import { getUserProgressSync } from '../lib/progressService';
+
+// ── Multi-Year Platform Heatmap Component for Profile Modal ─────────────────
+interface ModalPlatformHeatmapProps {
+  heatmap: Record<string, number>;
+  label: string;
+  accentColors: [string, string, string, string];
+  totalLabel?: string;
+  defaultView?: 'all3' | number;
+}
+
+const ModalPlatformHeatmap: React.FC<ModalPlatformHeatmapProps> = ({
+  heatmap,
+  label,
+  accentColors,
+  totalLabel = 'submissions',
+  defaultView = 'all3'
+}) => {
+  const currentYear = new Date().getFullYear();
+  const availableYears = useMemo(() => [currentYear, currentYear - 1, currentYear - 2], [currentYear]);
+  const [selectedView, setSelectedView] = useState<'all3' | number>(defaultView);
+
+  const yearData = useMemo(() => {
+    const map: Record<number, YearHeatmapResult> = {};
+    const globalMax = Math.max(1, ...Object.values(heatmap));
+    availableYears.forEach(yr => {
+      map[yr] = buildAnnualHeatmapWeeks(heatmap, yr, globalMax);
+    });
+    return map;
+  }, [heatmap, availableYears]);
+
+  const total3YearSubmissions = useMemo(() => {
+    return availableYears.reduce((acc, yr) => acc + (yearData[yr]?.totalSubmissions || 0), 0);
+  }, [yearData, availableYears]);
+
+  const total3YearActiveDays = useMemo(() => {
+    const activeDates = new Set<string>();
+    for (const [date, cnt] of Object.entries(heatmap)) {
+      if (cnt > 0) {
+        const yr = parseInt(date.slice(0, 4), 10);
+        if (availableYears.includes(yr)) {
+          activeDates.add(date);
+        }
+      }
+    }
+    return activeDates.size;
+  }, [heatmap, availableYears]);
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const levelClasses = [
+    'bg-slate-900 border border-slate-800/60',
+    accentColors[0],
+    accentColors[1],
+    accentColors[2],
+    accentColors[3]
+  ];
+
+  const renderSingleYear = (year: number) => {
+    const data = yearData[year];
+    if (!data) return null;
+
+    const monthHeaders: Array<{ label: string; colIndex: number }> = [];
+    let lastMonth = -1;
+    data.weeks.forEach((week, colIdx) => {
+      const dayInYear = week.find(d => new Date(d.date).getFullYear() === year);
+      if (dayInYear) {
+        const m = new Date(dayInYear.date).getMonth();
+        if (m !== lastMonth) {
+          monthHeaders.push({ label: months[m], colIndex: colIdx });
+          lastMonth = m;
+        }
+      }
+    });
+
+    return (
+      <div key={year} className="space-y-2 p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/70">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/50 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-xs font-black font-mono text-amber-300">
+              {year}
+            </span>
+            <span className="text-xs text-slate-300 font-mono">
+              <strong>{data.totalSubmissions.toLocaleString()}</strong> {totalLabel}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
+            <span><strong className="text-slate-200">{data.activeDays}</strong> active days</span>
+            <span>•</span>
+            <span>Max streak: <strong className="text-amber-400">{data.maxStreak} days</strong></span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto pb-1 custom-scrollbar">
+          <div className="inline-flex flex-col gap-1 min-w-[720px] pt-1">
+            <div className="relative h-4 text-[9px] text-slate-500 font-mono pl-7">
+              {monthHeaders.map((mh, idx) => (
+                <span
+                  key={idx}
+                  className="absolute"
+                  style={{ left: `${mh.colIndex * 15 + 28}px` }}
+                >
+                  {mh.label}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex gap-1.5 items-start">
+              <div className="flex flex-col justify-between text-[9px] text-slate-500 font-mono pr-1 h-[88px] select-none">
+                <span>Mon</span>
+                <span>Wed</span>
+                <span>Fri</span>
+              </div>
+
+              <div className="flex gap-1">
+                {data.weeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-1">
+                    {week.map(day => (
+                      <div
+                        key={day.date}
+                        className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
+                        title={`${day.date}: ${day.count} ${totalLabel}`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800/90 shadow-2xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-purple-400" />
+            <span>{label}</span>
+          </h3>
+          <p className="text-xs text-slate-400 font-mono">
+            Last 3 Years: <strong className="text-slate-200">{total3YearSubmissions.toLocaleString()}</strong> submissions across <strong className="text-slate-200">{total3YearActiveDays}</strong> active days
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setSelectedView('all3')}
+            className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+              selectedView === 'all3' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            All (3 Years)
+          </button>
+          {availableYears.map(yr => (
+            <button
+              key={yr}
+              type="button"
+              onClick={() => setSelectedView(yr)}
+              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                selectedView === yr ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {yr}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {selectedView === 'all3'
+          ? availableYears.map(yr => renderSingleYear(yr))
+          : renderSingleYear(selectedView)}
+      </div>
+
+      <div className="flex items-center justify-between pt-1 text-[10px] text-slate-500 font-mono flex-wrap gap-2">
+        <span>Click or hover on any day to inspect daily submissions</span>
+        <div className="flex items-center gap-1.5">
+          <span>Less</span>
+          <div className="w-2.5 h-2.5 rounded-[2px] bg-slate-900 border border-slate-800" />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[0]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[1]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[2]}`} />
+          <div className={`w-2.5 h-2.5 rounded-[2px] ${accentColors[3]}`} />
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -246,15 +442,31 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const blindSolvedCount = (userProgress.solved_blind75 || []).length;
   const mikSolvedCount = (userProgress.solved_mik || []).length;
 
-  // 52-week heatmap grid (364 days divided into 52 weeks of 7 days)
-  const heatmapWeeks: Array<Array<{ date: string; count: number; level: number }>> = [];
-  const heatmapDays = generateHeatmapDays(sdeStats);
-  for (let i = 0; i < heatmapDays.length; i += 7) {
-    heatmapWeeks.push(heatmapDays.slice(i, i + 7));
-  }
+  // SDETube submission heatmap from localStorage & platform runs
+  const sdeHeatmapResult = useMemo(() => generateUserSubmissionHeatmap(), [sdeStats.totalSubmissions, isOpen]);
 
-  // Month labels for heatmap
-  const monthLabels = getMonthHeaders(heatmapDays);
+  // Parse LeetCode submissionCalendar: {"<unix_ts>": count, ...} → {"YYYY-MM-DD": count}
+  const lcHeatmap = useMemo<Record<string, number>>(() => {
+    const raw = leetcodeData?.matchedUser?.submissionCalendar;
+    if (!raw) return {};
+    try {
+      const parsed: Record<string, number> = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const result: Record<string, number> = {};
+      for (const [ts, count] of Object.entries(parsed)) {
+        const date = new Date(Number(ts) * 1000).toISOString().slice(0, 10);
+        result[date] = (result[date] ?? 0) + (count as number);
+      }
+      return result;
+    } catch { return {}; }
+  }, [leetcodeData?.matchedUser?.submissionCalendar]);
+
+  const combinedHeatmap = useMemo<Record<string, number>>(() => {
+    const map: Record<string, number> = { ...sdeHeatmapResult.dateCounts };
+    for (const [d, c] of Object.entries(lcHeatmap)) {
+      map[d] = (map[d] || 0) + c;
+    }
+    return map;
+  }, [sdeHeatmapResult.dateCounts, lcHeatmap]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn overflow-y-auto">
@@ -530,75 +742,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
 
-              {/* 364-Day Activity Heatmap */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800/90 shadow-2xl space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-purple-400" />
-                      <span>{sdeStats.totalSubmissions} SDETube Submissions & Practice Runs</span>
-                    </h3>
-                    <p className="text-xs text-slate-400">Live activity heatmap across all DSA sheets, SQL challenges, and coding workspaces</p>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
-                    <span>Less</span>
-                    <div className="w-3 h-3 rounded-[3px] bg-slate-900 border border-slate-800" />
-                    <div className="w-3 h-3 rounded-[3px] bg-purple-950 border border-purple-800" />
-                    <div className="w-3 h-3 rounded-[3px] bg-purple-700" />
-                    <div className="w-3 h-3 rounded-[3px] bg-purple-500" />
-                    <div className="w-3 h-3 rounded-[3px] bg-purple-400 shadow-sm shadow-purple-400/50" />
-                    <span>More</span>
-                  </div>
-                </div>
-
-                {/* Heatmap 52-Week Grid with Month Headers */}
-                <div className="overflow-x-auto pb-2 custom-scrollbar">
-                  <div className="inline-flex flex-col gap-1 min-w-[760px]">
-                    {/* Month header row */}
-                    <div className="flex text-[10px] text-slate-500 font-mono pl-6 pb-1">
-                      {monthLabels.map((m, idx) => (
-                        <span key={idx} style={{ width: `${m.width}px` }} className="truncate">
-                          {m.label}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-1.5">
-                      {/* Day of week labels */}
-                      <div className="flex flex-col justify-between text-[9px] text-slate-500 font-mono pr-1 h-[90px]">
-                        <span>Mon</span>
-                        <span>Wed</span>
-                        <span>Fri</span>
-                      </div>
-
-                      {/* 52 Weeks Grid */}
-                      <div className="flex gap-1">
-                        {heatmapWeeks.map((week, wIdx) => (
-                          <div key={wIdx} className="flex flex-col gap-1">
-                            {week.map((day) => {
-                              const levelClasses = [
-                                'bg-slate-900/90 border border-slate-800/60',
-                                'bg-purple-950/80 border border-purple-800/70',
-                                'bg-purple-700 border border-purple-600',
-                                'bg-purple-500 border border-purple-400',
-                                'bg-purple-400 border border-purple-300 shadow-sm shadow-purple-400/60'
-                              ];
-                              return (
-                                <div
-                                  key={day.date}
-                                  className={`w-3 h-3 rounded-[3px] transition-transform hover:scale-125 cursor-pointer ${levelClasses[day.level]}`}
-                                  title={`${day.date}: ${day.count} submissions on SDETube`}
-                                />
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* 3-Year SDETube Activity Heatmap */}
+              <ModalPlatformHeatmap
+                heatmap={sdeHeatmapResult.dateCounts}
+                label={`${sdeStats.totalSubmissions} SDETube Submissions & Practice Runs`}
+                totalLabel="runs"
+                accentColors={[
+                  'bg-purple-950/80 border border-purple-800/70',
+                  'bg-purple-700 border border-purple-600',
+                  'bg-purple-500 border border-purple-400',
+                  'bg-purple-400 border border-purple-300 shadow-sm shadow-purple-400/60'
+                ]}
+              />
 
               {/* Solved Breakdown by Difficulty & DSA Sheet Mastery Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -858,7 +1013,52 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               ) : leetcodeData?.matchedUser ? (
                 <div className="space-y-6">
-                  
+                  {/* Privacy Check Alert Notification Banner */}
+                  {(() => {
+                    const lcPrivacy = checkLeetCodeProfilePrivacy(leetcodeData);
+                    if (lcPrivacy.isPrivate) {
+                      return (
+                        <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/50 via-slate-900 to-amber-950/30 border border-amber-500/50 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+                          <div className="flex items-start gap-3.5">
+                            <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex-shrink-0 mt-0.5">
+                              <AlertTriangle className="w-5 h-5" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-bold text-amber-300">LeetCode Profile Submissions Are Private</h4>
+                                <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">Action Recommended</span>
+                              </div>
+                              <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                                Your LeetCode account has recent submissions set to <strong>Private</strong>. To allow SDETube to automatically detect your daily POTD solves and sync problem submissions in real time, enable public submissions in your LeetCode account settings.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                            <a
+                              href={lcPrivacy.settingsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs inline-flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                            >
+                              <span>Make Public on LeetCode</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => loadLeetcode(linkedConfig.leetcodeUsername || '')}
+                              disabled={isLoadingLC}
+                              className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingLC ? 'animate-spin' : ''}`} />
+                              <span>Check Again</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   {/* LeetCode Bio Header */}
                   <div className="p-5 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -868,11 +1068,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         className="w-16 h-16 rounded-2xl object-cover border border-amber-500/50 shadow-md"
                       />
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-base font-bold text-white">
                             {leetcodeData.matchedUser.profile.realName || leetcodeData.matchedUser.username}
                           </h3>
                           <span className="text-xs text-amber-400 font-mono">(@{leetcodeData.matchedUser.username})</span>
+                          {checkLeetCodeProfilePrivacy(leetcodeData).isPublic ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>Public Profile ✓</span>
+                            </span>
+                          ) : (
+                            <a
+                              href="https://leetcode.com/profile/account/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1 hover:bg-amber-900 transition-colors"
+                              title="Click to make your profile public on LeetCode"
+                            >
+                              <AlertTriangle className="w-3 h-3 text-amber-400" />
+                              <span>Private (Make Public ↗)</span>
+                            </a>
+                          )}
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5">
                           Global Ranking: <strong className="text-slate-200 font-mono">#{leetcodeData.matchedUser.profile.ranking?.toLocaleString()}</strong>
@@ -1013,6 +1230,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                         })}
                       </div>
                     </div>
+                  )}
+
+                  {/* LeetCode 3-Year Submission Calendar Heatmap */}
+                  {Object.keys(lcHeatmap).length > 0 && (
+                    <ModalPlatformHeatmap
+                      heatmap={lcHeatmap}
+                      label="LeetCode Submission Calendar (3 Years)"
+                      totalLabel="submissions"
+                      accentColors={[
+                        'bg-amber-950/70 border border-amber-800/60',
+                        'bg-amber-700 border border-amber-600',
+                        'bg-amber-500 border border-amber-400',
+                        'bg-amber-400 border border-amber-300 shadow-sm shadow-amber-400/50'
+                      ]}
+                    />
                   )}
                 </div>
               ) : null}
@@ -1578,6 +1810,19 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* 3-Year Unified Platform Activity Heatmap */}
+                <ModalPlatformHeatmap
+                  heatmap={combinedHeatmap}
+                  label="Unified Multi-Platform Activity Heatmap (3 Years)"
+                  totalLabel="contributions"
+                  accentColors={[
+                    'bg-indigo-950/70 border border-indigo-800/60',
+                    'bg-indigo-700 border border-indigo-600',
+                    'bg-indigo-500 border border-indigo-400',
+                    'bg-indigo-400 border border-indigo-300 shadow-sm shadow-indigo-400/50'
+                  ]}
+                />
               </div>
             </div>
           )}
@@ -1786,78 +2031,4 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     </div>
   );
 };
-
-// Helper: Generates 364 days array for heatmap
-function generateHeatmapDays(stats: SDETubeRealStats): Array<{ date: string; count: number; level: number }> {
-  const today = new Date();
-  const dateCounts: Record<string, number> = {};
-
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const list = JSON.parse(raw);
-          if (Array.isArray(list)) {
-            list.forEach((sub: any) => {
-              const str = String(sub.timestamp || sub.id?.split('_')[0]);
-              let ymd = str.slice(0, 10);
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
-                const d = new Date(sub.timestamp || Date.now());
-                if (!isNaN(d.getTime())) ymd = d.toISOString().slice(0, 10);
-              }
-              dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
-            });
-          }
-        }
-      }
-    }
-  } catch {}
-
-  const result: Array<{ date: string; count: number; level: number }> = [];
-  for (let i = 363; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const count = dateCounts[dateStr] || 0;
-
-    let level = 0;
-    if (count >= 6) level = 4;
-    else if (count >= 4) level = 3;
-    else if (count >= 2) level = 2;
-    else if (count >= 1) level = 1;
-
-    result.push({ date: dateStr, count, level });
-  }
-
-  return result;
-}
-
-// Helper: Computes Month labels header for 52-week heatmap
-function getMonthHeaders(days: Array<{ date: string }>): Array<{ label: string; width: number }> {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const headers: Array<{ label: string; width: number }> = [];
-  let currentMonth = -1;
-  let weekCount = 0;
-
-  for (let i = 0; i < days.length; i += 7) {
-    const d = new Date(days[i].date);
-    const m = d.getMonth();
-    if (m !== currentMonth) {
-      if (currentMonth !== -1) {
-        headers.push({ label: months[currentMonth], width: weekCount * 14 });
-      }
-      currentMonth = m;
-      weekCount = 1;
-    } else {
-      weekCount++;
-    }
-  }
-  if (currentMonth !== -1) {
-    headers.push({ label: months[currentMonth], width: weekCount * 14 });
-  }
-
-  return headers;
-}
 

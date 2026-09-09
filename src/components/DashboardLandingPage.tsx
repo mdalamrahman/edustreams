@@ -22,7 +22,8 @@ import {
   Award,
   TrendingUp,
   RefreshCw,
-  Play
+  Play,
+  AlertTriangle
 } from 'lucide-react';
 import { getRealAnalytics, RealAnalyticsMetrics, isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
 import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
@@ -34,7 +35,8 @@ import {
   LeetCodeFullProfileData, 
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
-  isGfgProblemSolvedToday 
+  isGfgProblemSolvedToday,
+  checkLeetCodeProfilePrivacy
 } from '../lib/userProfileService';
 
 interface DashboardLandingPageProps {
@@ -537,6 +539,25 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                       </span>
                     ))}
                   </div>
+
+                  {/* LeetCode Private Submissions Alert Pill */}
+                  {leetcodeProfile && checkLeetCodeProfilePrivacy(leetcodeProfile).isPrivate && (
+                    <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between gap-2 text-[11px] font-mono">
+                      <div className="flex items-center gap-1.5 text-amber-300 min-w-0">
+                        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+                        <span className="truncate">LeetCode submissions are Private</span>
+                      </div>
+                      <a
+                        href="https://leetcode.com/profile/account/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] inline-flex items-center gap-1 transition-all flex-shrink-0 cursor-pointer"
+                        title="Open LeetCode Privacy Settings"
+                      >
+                        <span>Make Public ↗</span>
+                      </a>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-xs text-slate-500 font-mono py-4">

@@ -505,8 +505,82 @@ export function parseDateToYMD(rawDate: any): string | null {
   return null;
 }
 
+export interface YearHeatmapResult {
+  year: number;
+  weeks: Array<Array<{ date: string; count: number; level: number }>>;
+  totalSubmissions: number;
+  activeDays: number;
+  maxStreak: number;
+}
+
 /**
- * Generates past 364 days (52 weeks) submission heatmap from real user activity and submissions
+ * Builds standard 52-week calendar grid for any specific annual year (or current year to-date)
+ */
+export function buildAnnualHeatmapWeeks(
+  heatmapData: Record<string, number>,
+  year: number,
+  maxGlobalCount?: number
+): YearHeatmapResult {
+  const isCurrentYear = year === new Date().getFullYear();
+  const today = new Date();
+
+  // Start from Jan 1 of target year, aligned to Sunday
+  const jan1 = new Date(year, 0, 1);
+  const startDate = new Date(jan1);
+  startDate.setDate(jan1.getDate() - jan1.getDay());
+
+  // End date: Dec 31 of year or today if current year
+  const dec31 = new Date(year, 11, 31);
+  const endDate = isCurrentYear ? today : dec31;
+
+  const weeks: Array<Array<{ date: string; count: number; level: number }>> = [];
+  const cursor = new Date(startDate);
+
+  const yearCounts = Object.entries(heatmapData)
+    .filter(([d]) => d.startsWith(`${year}-`))
+    .map(([, c]) => c);
+  const maxCount = maxGlobalCount || Math.max(1, ...yearCounts, ...Object.values(heatmapData));
+
+  let totalSubmissions = 0;
+  let activeDays = 0;
+  let maxStreak = 0;
+  let tempStreak = 0;
+
+  while (cursor <= endDate || (weeks.length < 52 && cursor.getFullYear() <= year)) {
+    const week: Array<{ date: string; count: number; level: number }> = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cursor.toISOString().slice(0, 10);
+      const isWithinYear = cursor.getFullYear() === year;
+      const count = isWithinYear ? (heatmapData[iso] ?? 0) : 0;
+
+      if (isWithinYear && count > 0) {
+        totalSubmissions += count;
+        activeDays++;
+        tempStreak++;
+        if (tempStreak > maxStreak) maxStreak = tempStreak;
+      } else if (isWithinYear) {
+        tempStreak = 0;
+      }
+
+      const level = count === 0 ? 0 : count <= maxCount * 0.25 ? 1 : count <= maxCount * 0.5 ? 2 : count <= maxCount * 0.75 ? 3 : 4;
+      week.push({ date: iso, count, level: isWithinYear ? level : 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+    if (cursor > endDate && cursor.getDay() === 0 && weeks.length >= 52) break;
+  }
+
+  return {
+    year,
+    weeks,
+    totalSubmissions,
+    activeDays,
+    maxStreak
+  };
+}
+
+/**
+ * Generates past 364 days (52 weeks) submission heatmap with multi-year 3-year support
  */
 export function generateUserSubmissionHeatmap(providedCounts?: Record<string, number>): {
   days: DayActivity[];
@@ -514,6 +588,8 @@ export function generateUserSubmissionHeatmap(providedCounts?: Record<string, nu
   activeDaysCount: number;
   currentStreak: number;
   maxStreak: number;
+  dateCounts: Record<string, number>;
+  byYear: Record<number, YearHeatmapResult>;
 } {
   const dateCounts: Record<string, number> = providedCounts ? { ...providedCounts } : {};
 
@@ -601,12 +677,21 @@ export function generateUserSubmissionHeatmap(providedCounts?: Record<string, nu
     }
   }
 
+  // Precompute 3-year breakdowns (e.g. 2026, 2025, 2024)
+  const currentYear = today.getFullYear();
+  const byYear: Record<number, YearHeatmapResult> = {};
+  [currentYear, currentYear - 1, currentYear - 2].forEach(yr => {
+    byYear[yr] = buildAnnualHeatmapWeeks(dateCounts, yr);
+  });
+
   return {
     days,
     totalSubmissions,
     activeDaysCount,
     currentStreak,
-    maxStreak: Math.max(maxStreak, currentStreak)
+    maxStreak: Math.max(maxStreak, currentStreak),
+    dateCounts,
+    byYear
   };
 }
 
@@ -1321,5 +1406,56 @@ export function isGfgProblemSolvedToday(
   return false;
 }
 
+export interface LeetCodePrivacyCheckResult {
+  isPublic: boolean;
+  isPrivate: boolean;
+  hasSubmissions: boolean;
+  recentCount: number;
+  totalSolved: number;
+  settingsUrl: string;
+}
 
+/**
+ * Checks if the user's LeetCode profile recent submissions are public or private.
+ * Returns settingsUrl and actionable guidance so the user can make it public.
+ */
+export function checkLeetCodeProfilePrivacy(profile: LeetCodeFullProfileData | null | undefined): LeetCodePrivacyCheckResult {
+  const settingsUrl = 'https://leetcode.com/profile/account/';
+  if (!profile || !profile.matchedUser) {
+    return {
+      isPublic: false,
+      isPrivate: false,
+      hasSubmissions: false,
+      recentCount: 0,
+      totalSolved: 0,
+      settingsUrl
+    };
+  }
 
+  const totalSolved = profile.matchedUser.submitStats?.acSubmissionNum?.find(s => s.difficulty === 'All')?.count ?? 0;
+  const recentList = profile.recentSubmissionList || (profile as any).recentAcSubmissionList || [];
+  const recentCount = Array.isArray(recentList) ? recentList.length : 0;
+
+  let calendarCount = 0;
+  const calRaw = profile.matchedUser.submissionCalendar || (profile as any).submissionCalendar;
+  if (calRaw) {
+    try {
+      const parsed = typeof calRaw === 'string' ? JSON.parse(calRaw) : calRaw;
+      calendarCount = Object.keys(parsed).length;
+    } catch {}
+  }
+
+  // If user has solved problems or active submission calendar days, but recentSubmissionList is empty:
+  // this is the definitive indicator of private submissions on LeetCode!
+  const isPrivate = (totalSolved > 0 || calendarCount > 0) && recentCount === 0;
+  const isPublic = recentCount > 0;
+
+  return {
+    isPublic,
+    isPrivate,
+    hasSubmissions: totalSolved > 0 || calendarCount > 0 || recentCount > 0,
+    recentCount,
+    totalSolved,
+    settingsUrl
+  };
+}
