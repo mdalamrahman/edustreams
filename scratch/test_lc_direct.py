@@ -1,41 +1,32 @@
-import requests
-import json
-import re
+import requests, json
 
 query = """
-query getQuestionDetail($titleSlug: String!) {
-  question(titleSlug: $titleSlug) {
-    questionId
-    questionFrontendId
+query userProfile($username: String!) {
+  recentSubmissionList(username: $username, limit: 15) {
     title
     titleSlug
-    content
-    difficulty
-    topicTags {
-      name
-      slug
-    }
-    codeSnippets {
-      lang
-      langSlug
-      code
-    }
-    exampleTestcases
-    hints
+    statusDisplay
+    lang
+    timestamp
+  }
+  recentAcSubmissionList(username: $username, limit: 15) {
+    id
+    title
+    titleSlug
+    timestamp
   }
 }
 """
 
-slug = "lowest-common-ancestor-of-a-binary-search-tree"
-resp = requests.post(
-    "https://leetcode.com/graphql",
-    json={"query": query, "variables": {"titleSlug": slug}},
-    headers={
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Referer": f"https://leetcode.com/problems/{slug}/"
-    },
-    timeout=10
-)
-print("STATUS CODE:", resp.status_code)
-print("RESPONSE TEXT:", resp.text[:500])
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://leetcode.com',
+    'Content-Type': 'application/json'
+}
+
+try:
+    r = requests.post('https://leetcode.com/graphql', json={'query': query, 'variables': {'username': 'mdalamrahman4'}}, headers=headers, timeout=10)
+    print('Leetcode direct status:', r.status_code)
+    print('Response:', r.text[:600])
+except Exception as e:
+    print('Error:', e)

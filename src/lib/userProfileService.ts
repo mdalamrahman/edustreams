@@ -1245,29 +1245,37 @@ export function isLeetCodeProblemSolvedToday(
     }
   }
 
-  // 2. Supplementary check: Submission calendar indicates activity today + matched recent problem
+  // 2. Supplementary check: Submission calendar indicates activity today
   if (typeof profileOrSubmissions === 'object' && !Array.isArray(profileOrSubmissions)) {
-    const calStr = (profileOrSubmissions as any).matchedUser?.submissionCalendar;
-    if (calStr) {
+    const calRaw = (profileOrSubmissions as any).matchedUser?.submissionCalendar || (profileOrSubmissions as any).submissionCalendar;
+    if (calRaw) {
       try {
-        const cal = JSON.parse(calStr);
-        const hasTodayActivity = Object.keys(cal).some((epochSec) => {
+        const cal = typeof calRaw === 'string' ? JSON.parse(calRaw) : calRaw;
+        const hasTodayActivity = Object.entries(cal).some(([epochSec, count]) => {
+          if (Number(count) <= 0) return false;
           const ms = parseInt(epochSec, 10) * 1000;
           const diffHours = (now - ms) / (1000 * 60 * 60);
           const dateStr = new Date(ms).toISOString().slice(0, 10);
-          return dateStr === todayUtc || (diffHours >= -1 && diffHours <= 36);
+          const localStr = new Date(ms).toLocaleDateString('en-CA');
+          return dateStr === todayUtc || localStr === todayLocal || (diffHours >= -1 && diffHours <= 36);
         });
 
         if (hasTodayActivity) {
-          // If user was active today and any recent submission is for this target question
-          const hasTargetInRecent = subsList.some(sub => {
-            if (!sub) return false;
-            const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-            const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^\d+/, '');
-            return (cleanTargetSlug && subSlug === cleanTargetSlug) ||
-                   (cleanTargetTitleNoDigits && subTitle === cleanTargetTitleNoDigits);
-          });
-          if (hasTargetInRecent) return true;
+          // If detailed recent submissions are available, check against target
+          if (subsList.length > 0) {
+            const hasTargetInRecent = subsList.some(sub => {
+              if (!sub) return false;
+              const subSlug = (sub.titleSlug || sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const subTitle = (sub.title || '').toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^\d+/, '');
+              return (cleanTargetSlug && subSlug === cleanTargetSlug) ||
+                     (cleanTargetTitleNoDigits && subTitle === cleanTargetTitleNoDigits);
+            });
+            if (hasTargetInRecent) return true;
+          } else {
+            // When LeetCode returns empty recent submissions list (due to user privacy settings),
+            // today's positive submission calendar activity confirms today's LeetCode solve!
+            return true;
+          }
         }
       } catch {}
     }

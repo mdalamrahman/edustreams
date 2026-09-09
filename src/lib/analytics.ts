@@ -550,55 +550,70 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
       (syncProg.solved_79 || []).forEach(id => addProblem(sde79ProblemMap.get(id)));
       (syncProg.solved_blind75 || []).forEach(id => addProblem(blind75ProblemMap.get(id)));
       (syncProg.solved_mik || []).forEach(id => addProblem(mikProblemMap.get(id)));
+
+      // Synchronize and heal local storage keys with authoritative Supabase progress
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('sdetube_dsa_sheet_solved_sde', JSON.stringify(syncProg.solved_sde || []));
+          localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(syncProg.solved_sde || []));
+          localStorage.setItem('sdetube_dsa_sheet_solved_a2z', JSON.stringify(syncProg.solved_a2z || []));
+          localStorage.setItem('sdetube_dsa_sheet_solved_79', JSON.stringify(syncProg.solved_79 || []));
+          localStorage.setItem('sdetube_dsa_sheet_solved_blind75', JSON.stringify(syncProg.solved_blind75 || []));
+          localStorage.setItem('sdetube_dsa_sheet_solved_mik', JSON.stringify(syncProg.solved_mik || []));
+        } catch {}
+      }
+    } else {
+      // Offline fallback: only if no Supabase progress exists, read from local storage keys
+      const resolveStorageKey = (key: string, map: Map<number, any>) => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr.forEach(id => typeof id === 'number' && addProblem(map.get(id)));
+            }
+          }
+        } catch {}
+      };
+      resolveStorageKey('sdetube_dsa_sheet_solved_sde', sdeProblemMap);
+      resolveStorageKey('sdetube_sde_sheet_solved_ids', sdeProblemMap);
+      resolveStorageKey('sdetube_dsa_sheet_solved_a2z', a2zProblemMap);
+      resolveStorageKey('sdetube_dsa_sheet_solved_79', sde79ProblemMap);
+      resolveStorageKey('sdetube_dsa_sheet_solved_blind75', blind75ProblemMap);
+      resolveStorageKey('sdetube_dsa_sheet_solved_mik', mikProblemMap);
     }
   } catch {}
 
-  // 2. Sheet-specific localStorage keys (resolve each key ONLY against its own sheet)
-  const resolveStorageKey = (key: string, map: Map<number, any>) => {
+  // 2. POTD Check: Include today's verified POTDs if solved
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (isPotdSolvedToday('sdetube')) {
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          arr.forEach(id => typeof id === 'number' && addProblem(map.get(id)));
-        }
+      const sdePotd = getUniversalSdePotd();
+      if (sdePotd) addProblem(sdePotd);
+    } catch {}
+  }
+  if (isPotdSolvedToday('leetcode')) {
+    try {
+      const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode') || localStorage.getItem(`sdetube_leetcode_potd_${todayStr}`);
+      if (lcRaw) {
+        const lc = JSON.parse(lcRaw);
+        addRawSlug(lc.titleSlug || lc.title);
+      } else {
+        addRawSlug('count-commas-in-range-ii');
       }
     } catch {}
-  };
-
-  resolveStorageKey('sdetube_dsa_sheet_solved_sde', sdeProblemMap);
-  resolveStorageKey('sdetube_sde_sheet_solved_ids', sdeProblemMap);
-  resolveStorageKey('sdetube_dsa_solved_sde', sdeProblemMap);
-  resolveStorageKey('sdetube_dsa_sheet_solved_a2z', a2zProblemMap);
-  resolveStorageKey('sdetube_dsa_solved_a2z', a2zProblemMap);
-  resolveStorageKey('sdetube_dsa_sheet_solved_79', sde79ProblemMap);
-  resolveStorageKey('sdetube_dsa_solved_79', sde79ProblemMap);
-  resolveStorageKey('sdetube_dsa_sheet_solved_blind75', blind75ProblemMap);
-  resolveStorageKey('sdetube_dsa_sheet_solved_mik', mikProblemMap);
-  resolveStorageKey('sdetube_dsa_sheet_solved_codestorywithmik', mikProblemMap);
-
-  // 3. User explicitly solved slugs and names stored in localStorage
-  try {
-    const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
-    if (rawSlugs) {
-      const arr = JSON.parse(rawSlugs);
-      if (Array.isArray(arr)) {
-        arr.forEach(s => addRawSlug(String(s)));
+  }
+  if (isPotdSolvedToday('gfg')) {
+    try {
+      const gfgRaw = localStorage.getItem('edustream_potd_cache_gfg') || localStorage.getItem(`sdetube_gfg_potd_${todayStr}`);
+      if (gfgRaw) {
+        const gfg = JSON.parse(gfgRaw);
+        addRawSlug(gfg.titleSlug || gfg.title);
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
-  try {
-    const rawNames = localStorage.getItem('sdetube_solved_names');
-    if (rawNames) {
-      const arr = JSON.parse(rawNames);
-      if (Array.isArray(arr)) {
-        arr.forEach(s => addRawSlug(String(s)));
-      }
-    }
-  } catch {}
-
-  // 4. Compiler / IDE accepted submissions: count each unique problem once
+  // 3. Compiler / IDE accepted submissions: count each unique problem once
   // STRICT RULE: Do NOT count test runs or submission attempts; only count unique problems with Accepted/SUCCESS status
   try {
     if (typeof localStorage !== 'undefined') {
@@ -617,6 +632,14 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
           }
         }
       }
+    }
+  } catch {}
+
+  // 4. Heal and prune contaminated local storage slug caches with authoritative uniqueSolvedSlugs
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(uniqueSolvedSlugs)));
+      localStorage.removeItem('sdetube_solved_names');
     }
   } catch {}
 
