@@ -19,7 +19,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        mono: ['Fira Code', 'monospace'],
+        serif: ['Lora', 'Merriweather', 'Georgia', 'Cambria', '"Times New Roman"', 'serif'],
+        mono: ['Fira Code', 'JetBrains Mono', 'monospace'],
       }
     },
   },
