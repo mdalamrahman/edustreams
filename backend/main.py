@@ -1803,6 +1803,15 @@ Return ONLY valid JSON matching:
 
     problem_data["testCases"] = clean_tcs
     problem_data["expectedOutputs"] = clean_eos
+
+    # Guarantee problem statement examples are populated with the visible sample test cases
+    if not problem_data.get("examples") and len(clean_tcs) > 0:
+        ex_limit = min(3, len(clean_tcs))
+        problem_data["examples"] = [
+            {"input": clean_tcs[i], "output": clean_eos[i] if i < len(clean_eos) else ""}
+            for i in range(ex_limit)
+        ]
+
     return problem_data
 
 
@@ -2204,6 +2213,40 @@ async def upload_problem_route(slug: str, req: Request):
     except Exception as e:
         print(f"[Upload Problem Notice]: {e}")
         return {"success": True, "slug": clean_slug, "cached": True}
+
+
+@app.post("/api/problem/{slug}/expand-testcases")
+async def expand_testcases_endpoint(slug: str, req: Request):
+    """
+    Expands problem test cases to at least 10 comprehensive cases using Mistral AI,
+    persisting into Cloudflare R2 and cache.
+    """
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
+    problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug)
+    if not problem:
+        try:
+            body = await req.json()
+            if body and isinstance(body, dict):
+                problem = body
+        except Exception:
+            pass
+    if not problem:
+        return JSONResponse(status_code=404, content={"error": "Problem not found"})
+
+    problem = expand_problem_testcases_to_min_10(problem)
+    _PROBLEM_CACHE[clean_slug] = problem
+    try:
+        r2_storage.upload_problem(clean_slug, problem)
+    except Exception as e:
+        print(f"[R2 upload after expansion notice for '{clean_slug}']: {e}")
+
+    return {
+        "success": True,
+        "slug": clean_slug,
+        "testCases": problem.get("testCases", []),
+        "expectedOutputs": problem.get("expectedOutputs", []),
+        "totalCases": len(problem.get("testCases", []))
+    }
 
 
 @app.delete("/api/problem/{slug}")

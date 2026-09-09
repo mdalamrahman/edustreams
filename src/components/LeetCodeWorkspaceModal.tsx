@@ -423,6 +423,39 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const hasVideoSolution = Boolean(youtubeEmbedUrl || validMatchingVideo?.stream_url);
 
+  // Sample test cases: Shown in problem statement examples and bottom console while running
+  // Hidden test cases: Edge / stress tests (minimum 10 total cases) computed only on Submit
+  const sampleCount = useMemo(() => {
+    const exLen = problemTemplate.examples?.length || 0;
+    const tcLen = problemTemplate.testCases?.length || 0;
+    if (tcLen === 0) return 0;
+    if (exLen > 0) return Math.min(exLen, tcLen);
+    return Math.min(3, tcLen);
+  }, [problemTemplate.examples, problemTemplate.testCases]);
+
+  const sampleCases = useMemo(() => {
+    return (problemTemplate.testCases || []).slice(0, sampleCount);
+  }, [problemTemplate.testCases, sampleCount]);
+
+  const hiddenCasesCount = useMemo(() => {
+    return Math.max(0, (problemTemplate.testCases?.length || 0) - sampleCount);
+  }, [problemTemplate.testCases, sampleCount]);
+
+  const problemStatementExamples = useMemo(() => {
+    if (problemTemplate.examples && problemTemplate.examples.length > 0) {
+      return problemTemplate.examples;
+    }
+    const limit = Math.min(3, problemTemplate.testCases?.length || 0);
+    const fallbackList = [];
+    for (let i = 0; i < limit; i++) {
+      fallbackList.push({
+        input: problemTemplate.testCases[i] || '',
+        output: problemTemplate.expectedOutputs?.[i] || ''
+      });
+    }
+    return fallbackList;
+  }, [problemTemplate.examples, problemTemplate.testCases, problemTemplate.expectedOutputs]);
+
   // Sync code state whenever problem or language changes
   useEffect(() => {
     const slug = currentProblemSlug;
@@ -1050,8 +1083,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Strict Output Validation Logic (Handles order-independent nested subsets, bools, ints, whitespace)
   const currentExpectedOutput = useMemo(() => {
+    if (submissionResult && !submissionResult.isSuccess && submissionResult.failedInput === testInput && submissionResult.failedExpected) {
+      return submissionResult.failedExpected;
+    }
     return problemTemplate.expectedOutputs?.[activeTestCaseIdx] || problemTemplate.expectedOutputs?.[0] || '';
-  }, [problemTemplate, activeTestCaseIdx]);
+  }, [problemTemplate, activeTestCaseIdx, submissionResult, testInput]);
 
   const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput, caseInput?: string): boolean => {
     // Only treat as fatal error if stderr contains genuine error/exception signatures (not harmless GCC compiler warnings)
@@ -1211,7 +1247,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             passed: item.passed,
             runtimeMs: item.runtimeMs,
             memoryKb: item.memoryKb,
-            errorMessage: item.errorMessage
+            errorMessage: item.errorMessage,
+            isSample: item.caseIndex < sampleCount
           });
 
           if (item.passed) {
@@ -1342,10 +1379,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           isSuccess: isAllSuccess
         });
 
+        const isHiddenFailure = failedIdx >= sampleCount;
         const newSubItem = {
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           timestamp: new Date().toLocaleString(),
-          status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : `Wrong Answer (${passed}/${allCases.length})`,
+          status: isAllSuccess 
+            ? 'Accepted' 
+            : failedErr 
+              ? 'Runtime Error' 
+              : isHiddenFailure 
+                ? `Wrong Answer (Hidden Case ${failedIdx + 1})`
+                : `Wrong Answer (${passed}/${allCases.length})`,
           runtime: `${realisticRuntimeMs} ms`,
           memory: `${(memoryKb / 1024).toFixed(1)} MB`,
           lang: language.toUpperCase(),
@@ -2094,9 +2138,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                   {/* Example Test Cases */}
                   <div className="space-y-4 pt-2">
-                    {(problemTemplate.examples || []).map((ex, idx) => (
+                    {problemStatementExamples.map((ex, idx) => (
                       <div key={idx} className="space-y-2">
-                        <div className="font-bold text-[14px] text-white tracking-tight">Example {idx + 1}:</div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[14px] text-white tracking-tight">Example {idx + 1}:</span>
+                          <span className="text-[11px] font-mono text-indigo-400 bg-indigo-950/60 border border-indigo-700/40 px-2 py-0.5 rounded-md">
+                            Runnable in Console (Case {idx + 1})
+                          </span>
+                        </div>
                         
                         <div className="p-4 rounded-xl bg-white/[0.04] border-l-2 border-slate-600/70 space-y-1.5 font-mono text-[13px]">
                           {/* LeetCode Example Illustration / Tree / Graph Diagram */}
@@ -2135,6 +2184,22 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         </div>
                       </div>
                     ))}
+
+                    {/* Hidden Testcases Information Card */}
+                    {hiddenCasesCount > 0 && (
+                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between gap-3 text-xs text-slate-400">
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>
+                            <strong>{sampleCount} sample test cases</strong> above are runnable in the console. 
+                            <strong> {hiddenCasesCount} hidden test cases</strong> are computed only when submitting.
+                          </span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px] whitespace-nowrap">
+                          {problemTemplate.testCases?.length || 0} Cases Total
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Constraints */}
@@ -3143,7 +3208,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 overflow-x-auto pb-1 max-w-[70%] no-scrollbar">
-                        {(problemTemplate.testCases || []).map((tc, idx) => (
+                        {sampleCases.map((tc, idx) => (
                           <button
                             key={idx}
                             onClick={() => {
@@ -3159,6 +3224,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                             Case {idx + 1}
                           </button>
                         ))}
+
+                        {hiddenCasesCount > 0 && (
+                          <div 
+                            title={`${hiddenCasesCount} hidden edge and stress testcases will be computed and verified when you click Submit`}
+                            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-slate-950/80 border border-amber-500/30 text-amber-300 text-xs font-mono select-none flex-shrink-0"
+                          >
+                            <Lock className="w-3 h-3 text-amber-400" />
+                            <span>+{hiddenCasesCount} Hidden Cases</span>
+                            <span className="text-[10px] text-slate-500 hidden md:inline">(Evaluated on Submit)</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -3186,7 +3262,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         </button>
 
                         <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap">
-                          {problemTemplate.testCases?.length || 0} Cases
+                          {sampleCount} Sample • {hiddenCasesCount} Hidden
                         </span>
                       </div>
                     </div>
@@ -3243,17 +3319,28 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                                 <span className="text-emerald-400">
                                   {submissionResult.isSubmission
-                                    ? `Accepted (Passed all ${submissionResult.totalCount}/${submissionResult.totalCount} Test Cases)`
+                                    ? `Accepted (Passed all ${submissionResult.totalCount} Test Cases: ${sampleCount} Sample + ${hiddenCasesCount} Hidden)`
                                     : `Accepted (Case ${activeTestCaseIdx + 1})`}
                                 </span>
                               </>
                             ) : (
                               <>
                                 <XCircle className="w-5 h-5 text-amber-400" />
-                                <span className="text-amber-400">
-                                  {submissionResult.isSubmission
-                                    ? `Wrong Answer (Failed Case ${(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})`
-                                    : `Wrong Answer (Case ${activeTestCaseIdx + 1})`}
+                                <span className="text-amber-400 flex items-center gap-1.5 flex-wrap">
+                                  {submissionResult.isSubmission ? (
+                                    (submissionResult.failedCaseIdx ?? 0) >= sampleCount ? (
+                                      <>
+                                        <span>Wrong Answer (Failed on Hidden Test Case {(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})</span>
+                                        <span className="px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1">
+                                          <Lock className="w-3 h-3" /> Hidden Case
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span>Wrong Answer (Failed on Sample Case {(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})</span>
+                                    )
+                                  ) : (
+                                    <span>Wrong Answer (Case ${activeTestCaseIdx + 1})</span>
+                                  )}
                                 </span>
                               </>
                             )}
@@ -3306,13 +3393,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {submissionResult.failedInput && (
                           <div className="space-y-1">
                             <div className="text-[10px] text-amber-400 font-bold uppercase flex items-center justify-between">
-                              <span>Failed Test Case Input (Case {(submissionResult.failedCaseIdx ?? 0) + 1}):</span>
+                              <span className="flex items-center gap-1.5">
+                                {(submissionResult.failedCaseIdx ?? 0) >= sampleCount && <Lock className="w-3 h-3 text-amber-400" />}
+                                <span>
+                                  Failed {(submissionResult.failedCaseIdx ?? 0) >= sampleCount ? 'Hidden' : 'Sample'} Test Case Input (Case {(submissionResult.failedCaseIdx ?? 0) + 1}):
+                                </span>
+                              </span>
                               <button
                                 onClick={() => {
                                   if (submissionResult.failedInput) {
                                     setTestInput(submissionResult.failedInput);
                                     setConsoleTab('testcase');
-                                    if (typeof submissionResult.failedCaseIdx === 'number') {
+                                    if (typeof submissionResult.failedCaseIdx === 'number' && submissionResult.failedCaseIdx < sampleCount) {
                                       setActiveTestCaseIdx(submissionResult.failedCaseIdx);
                                     }
                                   }

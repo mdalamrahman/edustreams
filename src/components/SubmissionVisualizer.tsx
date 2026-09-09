@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, Clock, Cpu, BarChart3, TrendingUp, 
   Layers, Sparkles, ChevronRight, Zap, Award, Info, Code2, 
   Check, ArrowUpRight, Flame, ShieldCheck, PieChart, Activity,
-  Wand2, Copy, FileCode, Code
+  Wand2, Copy, FileCode, Code, Lock
 } from 'lucide-react';
 import { SupportedLanguage } from '../lib/compiler';
 import { FormattedChatText } from './FormattedChatText';
@@ -18,6 +18,7 @@ export interface TestCaseResultItem {
   runtimeMs: number;
   memoryKb: number;
   errorMessage?: string;
+  isSample?: boolean;
 }
 
 export interface SubmissionAnalyticsData {
@@ -688,28 +689,38 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-10 gap-2">
-                {data.testCasesResults.map((tc, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setSelectedCaseIdx(idx);
-                      setActiveTab('testcases');
-                    }}
-                    className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                      tc.passed
-                        ? 'bg-emerald-950/30 border-emerald-500/30 hover:border-emerald-400 text-emerald-300'
-                        : 'bg-rose-950/30 border-rose-500/40 hover:border-rose-400 text-rose-300'
-                    }`}
-                  >
-                    <span className="text-[10px] font-mono font-bold">Case {idx + 1}</span>
-                    <span className="text-[9px] font-mono text-slate-400 mt-0.5">{tc.runtimeMs}ms</span>
-                    {tc.passed ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400 mt-1" />
-                    ) : (
-                      <XCircle className="w-3.5 h-3.5 text-rose-400 mt-1" />
-                    )}
-                  </button>
-                ))}
+                {data.testCasesResults.map((tc, idx) => {
+                  const isSampleCase = tc.isSample ?? (idx < 3);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedCaseIdx(idx);
+                        setActiveTab('testcases');
+                      }}
+                      className={`p-2 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer relative ${
+                        tc.passed
+                          ? 'bg-emerald-950/30 border-emerald-500/30 hover:border-emerald-400 text-emerald-300'
+                          : 'bg-rose-950/30 border-rose-500/40 hover:border-rose-400 text-rose-300'
+                      }`}
+                    >
+                      <span className="text-[10px] font-mono font-bold">Case {idx + 1}</span>
+                      <span className={`text-[8px] font-mono font-medium px-1 rounded my-0.5 ${
+                        isSampleCase
+                          ? 'text-indigo-300 bg-indigo-950/70 border border-indigo-700/40'
+                          : 'text-amber-300 bg-amber-950/70 border border-amber-700/40'
+                      }`}>
+                        {isSampleCase ? 'Sample' : 'Hidden'}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-400">{tc.runtimeMs}ms</span>
+                      {tc.passed ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-rose-400 mt-0.5" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -956,43 +967,56 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
               
               {/* Case selector column */}
               <div className="lg:col-span-4 space-y-2 max-h-[440px] overflow-y-auto pr-1">
-                {data.testCasesResults.map((tc, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedCaseIdx(idx)}
-                    className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-                      selectedCaseIdx === idx
-                        ? 'bg-purple-950/40 border-purple-500/60 shadow-md text-purple-200'
-                        : tc.passed
-                          ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
-                          : 'bg-rose-950/20 border-rose-800/50 hover:border-rose-700 text-rose-300'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      {tc.passed ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                      )}
-                      <div>
-                        <div className="text-xs font-bold font-mono">Case {idx + 1}</div>
-                        <div className="text-[10px] text-slate-400 line-clamp-1 max-w-[140px] font-mono">
-                          {tc.input}
+                {data.testCasesResults.map((tc, idx) => {
+                  const isSample = tc.isSample ?? (idx < 3);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedCaseIdx(idx)}
+                      className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                        selectedCaseIdx === idx
+                          ? 'bg-purple-950/40 border-purple-500/60 shadow-md text-purple-200'
+                          : tc.passed
+                            ? 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                            : 'bg-rose-950/20 border-rose-800/50 hover:border-rose-700 text-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        {tc.passed ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                        )}
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold font-mono">Case {idx + 1}</span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-medium flex items-center gap-0.5 ${
+                              isSample
+                                ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                                : 'bg-amber-950/80 text-amber-300 border border-amber-700/50'
+                            }`}>
+                              {!isSample && <Lock className="w-2.5 h-2.5" />}
+                              <span>{isSample ? 'Sample' : 'Hidden'}</span>
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 line-clamp-1 max-w-[140px] font-mono">
+                            {tc.input}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right font-mono text-xs">
-                      <span className="text-slate-400">{tc.runtimeMs} ms</span>
-                    </div>
-                  </button>
-                ))}
+                      <div className="text-right font-mono text-xs">
+                        <span className="text-slate-400">{tc.runtimeMs} ms</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Case details inspector */}
               <div className="lg:col-span-8 p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-1">
                     <span className="text-xs font-bold text-slate-300 font-mono">Test Case {selectedCaseIdx + 1} of {data.totalCases}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                       selectedCase.passed
@@ -1000,6 +1024,14 @@ export const SubmissionVisualizer: React.FC<SubmissionVisualizerProps> = ({
                         : 'bg-rose-950 border border-rose-500/30 text-rose-400'
                     }`}>
                       {selectedCase.passed ? 'PASSED' : 'FAILED'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium flex items-center gap-1 ${
+                      selectedCase.isSample ?? (selectedCaseIdx < 3)
+                        ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                        : 'bg-amber-950/80 text-amber-300 border border-amber-700/50'
+                    }`}>
+                      {!(selectedCase.isSample ?? (selectedCaseIdx < 3)) && <Lock className="w-2.5 h-2.5" />}
+                      <span>{selectedCase.isSample ?? (selectedCaseIdx < 3) ? 'Sample Case' : 'Hidden Case (Evaluated on Submit)'}</span>
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">

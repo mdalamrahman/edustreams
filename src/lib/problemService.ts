@@ -1,6 +1,6 @@
 import { SupportedLanguage, isDriverHarnessValid } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
-import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade } from './mistral';
+import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
 
 export interface ProblemApproach {
   id: string;
@@ -431,6 +431,30 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     if (!problem.testCases || problem.testCases.length < 10) {
       problem.testCases = standardSubsetsCases.map(c => c.input);
       problem.expectedOutputs = standardSubsetsCases.map(c => c.output);
+    }
+  }
+
+  // Ensure problem statement examples and sample test cases are 100% synchronized
+  if ((!problem.examples || problem.examples.length === 0) && problem.testCases && problem.testCases.length > 0) {
+    const sampleLimit = Math.min(3, problem.testCases.length);
+    problem.examples = [];
+    for (let i = 0; i < sampleLimit; i++) {
+      problem.examples.push({
+        input: problem.testCases[i] || '',
+        output: problem.expectedOutputs?.[i] || ''
+      });
+    }
+  } else if (problem.examples && problem.examples.length > 0 && problem.testCases) {
+    // If examples exist, ensure the first K test cases strictly match the examples
+    const exCount = Math.min(problem.examples.length, problem.testCases.length);
+    for (let i = 0; i < exCount; i++) {
+      const ex = problem.examples[i];
+      if (ex && ex.input) {
+        problem.testCases[i] = ex.input;
+        if (ex.output && problem.expectedOutputs && i < problem.expectedOutputs.length) {
+          problem.expectedOutputs[i] = ex.output;
+        }
+      }
     }
   }
 
@@ -913,6 +937,37 @@ export async function fetchEnrichedProblem(
     return p;
   };
 
+  const ensureAtLeast10Cases = async (prob: ProblemTemplate): Promise<ProblemTemplate> => {
+    if (!prob.testCases || prob.testCases.length < 10 || !prob.expectedOutputs || prob.expectedOutputs.length < 10) {
+      try {
+        const expanded = await requestMistralTestcaseExpansion(
+          prob.name,
+          prob.description,
+          prob.testCases || [],
+          prob.expectedOutputs || [],
+          slug
+        );
+        if (expanded && Array.isArray(expanded.testCases) && expanded.testCases.length >= 10) {
+          prob.testCases = expanded.testCases;
+          prob.expectedOutputs = expanded.expectedOutputs;
+          prob = repairAndHardenProblem(prob);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(prob));
+            localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(prob));
+            fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(prob)
+            }).catch(() => {});
+          } catch (_) {}
+        }
+      } catch (e) {
+        console.warn('[Auto-expand 10 testcases notice]:', e);
+      }
+    }
+    return prob;
+  };
+
   // 1. Check local spec cache
   try {
     const cached = localStorage.getItem(cacheKey);
@@ -920,7 +975,10 @@ export async function fetchEnrichedProblem(
       let parsed = JSON.parse(cached) as ProblemTemplate;
       parsed = repairAndHardenProblem(parsed);
       if (isProblemValidAndAuthentic(parsed)) {
-        return applyOverride(parsed);
+        if (parsed.testCases && parsed.testCases.length >= 10) {
+          return applyOverride(parsed);
+        }
+        return applyOverride(await ensureAtLeast10Cases(parsed));
       } else {
         localStorage.removeItem(cacheKey);
       }
@@ -937,11 +995,12 @@ export async function fetchEnrichedProblem(
       if (problemData && problemData.name && !data.error) {
         const problemObj = repairAndHardenProblem(problemData);
         if (isProblemValidAndAuthentic(problemObj)) {
+          const finalObj = await ensureAtLeast10Cases(problemObj);
           try {
-            localStorage.setItem(cacheKey, JSON.stringify(problemObj));
-            localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(problemObj));
+            localStorage.setItem(cacheKey, JSON.stringify(finalObj));
+            localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj));
           } catch (_) {}
-          return applyOverride(problemObj);
+          return applyOverride(finalObj);
         }
       }
     }
@@ -953,17 +1012,17 @@ export async function fetchEnrichedProblem(
   try {
     const lcData = await fetchFromLeetCodeAPI(slugOrTitle);
     if (lcData && isProblemValidAndAuthentic(lcData)) {
+      const finalLc = await ensureAtLeast10Cases(lcData);
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(lcData));
-        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(lcData));
-        // Save to R2 in background
+        localStorage.setItem(cacheKey, JSON.stringify(finalLc));
+        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc));
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lcData)
+          body: JSON.stringify(finalLc)
         }).catch(() => {});
       } catch (_) {}
-      return applyOverride(lcData);
+      return applyOverride(finalLc);
     }
   } catch (err) {
     console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
@@ -973,11 +1032,12 @@ export async function fetchEnrichedProblem(
   try {
     const gfgData = await fetchFromGFGAPI(slugOrTitle);
     if (gfgData && isProblemValidAndAuthentic(gfgData)) {
+      const finalGfg = await ensureAtLeast10Cases(gfgData);
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(gfgData));
-        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(gfgData));
+        localStorage.setItem(cacheKey, JSON.stringify(finalGfg));
+        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg));
       } catch (_) {}
-      return applyOverride(gfgData);
+      return applyOverride(finalGfg);
     }
   } catch (err) {
     console.warn(`[GFG API fetch notice for '${slug}']:`, err);
@@ -986,12 +1046,13 @@ export async function fetchEnrichedProblem(
   // 5. If not found on LeetCode or GFG (custom non-LeetCode problem), generate with Mistral AI
   let generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
   generated = repairAndHardenProblem(generated);
+  const finalGen = await ensureAtLeast10Cases(generated);
   try {
-    localStorage.setItem(cacheKey, JSON.stringify(generated));
-    localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(generated));
+    localStorage.setItem(cacheKey, JSON.stringify(finalGen));
+    localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen));
   } catch (_) {}
 
-  return applyOverride(generated);
+  return applyOverride(finalGen);
 }
 
 /**

@@ -1445,3 +1445,89 @@ Respond strictly with a JSON object:
   return null;
 }
 
+/**
+ * Asks Mistral AI to expand problem testcases to AT LEAST 10 diverse, comprehensive testcases
+ * (sample cases + hidden edge cases: min/max bounds, negatives, duplicates, scale, etc.)
+ * with mathematically verified expected outputs.
+ */
+export async function requestMistralTestcaseExpansion(
+  problemTitle: string,
+  description: string,
+  existingCases: string[] = [],
+  existingOutputs: string[] = [],
+  slug?: string
+): Promise<{ testCases: string[]; expectedOutputs: string[] } | null> {
+  const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // 1. Try backend R2 endpoint first
+  try {
+    const backendUrl = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/expand-testcases`;
+    const resp = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: problemTitle,
+        description,
+        testCases: existingCases,
+        expectedOutputs: existingOutputs
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (Array.isArray(data?.testCases) && data.testCases.length >= 10) {
+        return {
+          testCases: data.testCases,
+          expectedOutputs: Array.isArray(data.expectedOutputs) ? data.expectedOutputs : []
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[Backend Testcase Expansion Notice]:', err);
+  }
+
+  // 2. Direct Mistral AI cascade on client
+  const prompt = `You are a Principal Test Suite and Verification Engineer for Competitive Programming.
+Problem Title: "${problemTitle}"
+Problem Statement:
+${description.slice(0, 2000)}
+
+Existing Sample Test Cases:
+${JSON.stringify(existingCases)}
+Existing Sample Expected Outputs:
+${JSON.stringify(existingOutputs)}
+
+CRITICAL REQUIREMENTS:
+1. Preserve all existing sample testcases at indices 0 to ${Math.max(0, existingCases.length - 1)} so they remain the public sample cases.
+2. Generate AT LEAST 10 total test cases (add diverse edge cases: n=0, n=1, empty, single element, negative numbers, duplicates, large inputs, sorted/reverse sorted).
+3. Every testcase input MUST include named parameter assignments (e.g. 'nums = [1, 2, 3], target = 4' or 's = "abc"').
+4. Calculate exact, 100% mathematically verified expected outputs matching each testcase.
+5. Return ONLY a valid JSON object matching:
+{
+  "testCases": ["... minimum 10 input strings ..."],
+  "expectedOutputs": ["... minimum 10 matching expected output strings ..."]
+}`;
+
+  try {
+    const raw = await executeAIChatCascade([
+      { role: 'system', content: 'You are an algorithms testing expert who outputs strictly valid JSON.' },
+      { role: 'user', content: prompt }
+    ], { temperature: 0.1, responseFormatJson: true, timeoutMs: 16000 });
+
+    if (raw) {
+      const cleaned = raw.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed?.testCases) && parsed.testCases.length >= 10) {
+        return {
+          testCases: parsed.testCases,
+          expectedOutputs: Array.isArray(parsed.expectedOutputs) ? parsed.expectedOutputs : []
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('[Direct Mistral Testcase Expansion error]:', e);
+  }
+
+  return null;
+}
+
