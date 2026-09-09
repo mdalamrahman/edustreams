@@ -227,7 +227,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   // Solved status for SDE POTD (checks SDE solved list + POTD today key)
   const isPotdSolved = useMemo(() => {
     if (!potdProblem) return false;
-    if (isPotdSolvedToday()) return true;
+    if (isPotdSolvedToday('sdetube')) return true;
     try {
       const sdeSaved = localStorage.getItem(`${STORAGE_SOLVED_PREFIX}sde`) || localStorage.getItem('sdetube_sde_sheet_solved_ids');
       const sdeSolvedList: number[] = sdeSaved ? JSON.parse(sdeSaved) : [];

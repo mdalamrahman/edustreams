@@ -105,10 +105,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     }, 6000);
   };
 
-  const [isPotdSolved, setIsPotdSolved] = useState<boolean>(() => isPotdSolvedToday());
+  const [isPotdSolved, setIsPotdSolved] = useState<boolean>(() => isPotdSolvedToday('sdetube'));
 
   useEffect(() => {
-    const checkPotd = () => setIsPotdSolved(isPotdSolvedToday());
+    const checkPotd = () => setIsPotdSolved(isPotdSolvedToday('sdetube'));
     checkPotd();
     window.addEventListener('sdetube_potd_solved', checkPotd);
     window.addEventListener('sdetube_problem_solved', checkPotd);
@@ -293,7 +293,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-emerald-500/10'
                     : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border-amber-500/40 text-amber-300 hover:text-amber-200'
                 }`}
-                title={isPotdSolved ? "Today's POTD Solved! Click to review" : "Open Today's Problem of the Day"}
+                title={isPotdSolved ? "Today's SDETube POTD Solved! Click to review" : "Open Today's Problem of the Day"}
               >
                 {isPotdSolved ? (
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20 group-hover:scale-110 transition-transform" />
