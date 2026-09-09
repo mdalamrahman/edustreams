@@ -560,6 +560,8 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
           localStorage.setItem('sdetube_dsa_sheet_solved_79', JSON.stringify(syncProg.solved_79 || []));
           localStorage.setItem('sdetube_dsa_sheet_solved_blind75', JSON.stringify(syncProg.solved_blind75 || []));
           localStorage.setItem('sdetube_dsa_sheet_solved_mik', JSON.stringify(syncProg.solved_mik || []));
+          localStorage.setItem(STORAGE_LLD_SOLVED_KEY, JSON.stringify(syncProg.lld_solved_ids || []));
+          localStorage.setItem('sdetube_lld_solved_problems', JSON.stringify(syncProg.lld_solved_ids || []));
         } catch {}
       }
     } else {
@@ -694,10 +696,15 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const dsaPct = effectiveDsaTotal > 0 ? Math.round((dsaSolved / effectiveDsaTotal) * 100) : 0;
 
   // 2. LLD Solved
-  let lldSolvedIds: string[] = [];
+  let lldSolvedIds: (string | number)[] = [];
   try {
-    const rawLld = localStorage.getItem(STORAGE_LLD_SOLVED_KEY);
-    if (rawLld) lldSolvedIds = JSON.parse(rawLld);
+    const syncProg = getUserProgressSync();
+    if (syncProg && Array.isArray(syncProg.lld_solved_ids)) {
+      lldSolvedIds = syncProg.lld_solved_ids;
+    } else {
+      const rawLld = localStorage.getItem(STORAGE_LLD_SOLVED_KEY) || localStorage.getItem('sdetube_lld_solved_problems');
+      if (rawLld) lldSolvedIds = JSON.parse(rawLld);
+    }
   } catch {
     lldSolvedIds = [];
   }

@@ -222,6 +222,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
         try {
           localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
           localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
         } catch {}
         return true;
       }
