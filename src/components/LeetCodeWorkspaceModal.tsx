@@ -56,7 +56,7 @@ import {
   Radio,
   ZoomIn
 } from 'lucide-react';
-import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
+import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
 import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
@@ -1155,6 +1155,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         if (preloadedDriver && !preloadedDriver.includes('res.back() == "null"')) {
           preloadedDriver = undefined;
         }
+      }
+      if (currentProblemSlug.includes('lowest-common-ancestor')) {
+        if (preloadedDriver && (preloadedDriver.includes('serializeTree(ans)') || !preloadedDriver.includes('ans->val'))) {
+          preloadedDriver = undefined;
+        }
+      }
+      if (preloadedDriver && !isDriverHarnessValid(preloadedDriver, language, activeTemplate?.starters?.[language])) {
+        preloadedDriver = undefined;
       }
       if (!preloadedDriver) {
         const slug = currentProblemSlug;
@@ -3932,19 +3940,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         sampleTestInput={problemTemplate.testCases?.[activeTestCaseIdx] || testInput}
         sampleExpectedOutput={problemTemplate.expectedOutputs?.[activeTestCaseIdx]}
         executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
-        userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
-        onApplyCorrection={(correctedDriver, correctedSolution) => {
+        onApplyCorrection={(correctedDriver) => {
           setProblemTemplate((prev) => {
             const next = {
               ...prev,
               driverCode: {
                 ...(prev.driverCode || {}),
                 [language]: correctedDriver
-              } as Record<SupportedLanguage, string>,
-              solutions: correctedSolution ? ({
-                ...(prev.solutions || {}),
-                [language]: correctedSolution
-              } as Record<SupportedLanguage, string>) : prev.solutions
+              } as Record<SupportedLanguage, string>
             };
             try {
               const slug = currentProblemSlug;
@@ -3955,13 +3958,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             } catch (_) {}
             return next;
           });
-
-          if (correctedSolution) {
-            setCode(correctedSolution);
-            try {
-              localStorage.setItem(`edustream_user_code_${currentProblemSlug}_${language}`, correctedSolution);
-            } catch (_) {}
-          }
         }}
         onRerun={() => {
           setIsReportDriverOpen(false);

@@ -586,6 +586,16 @@ export function isDriverHarnessValid(
     }
   }
 
+  // 5. Lowest Common Ancestor check:
+  // LCA returns a TreeNode pointer, but the expected output is the node's integer value (ans->val or ans.val)
+  // Any driver for LCA that calls serializeTree(ans) or treeToString(ans) is invalid!
+  const isLCAContext = drv.includes('lowestCommonAncestor') || (codeOrStarter && codeOrStarter.includes('lowestCommonAncestor'));
+  if (isLCAContext) {
+    if (drv.includes('serializeTree(ans)') || drv.includes('printTree(ans)') || drv.includes('treeToString(ans)')) {
+      return false;
+    }
+  }
+
   return true;
 }
 

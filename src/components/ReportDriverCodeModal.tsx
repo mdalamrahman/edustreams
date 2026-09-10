@@ -18,13 +18,17 @@ import {
   ChevronUp,
   Terminal,
   Cloud,
-  FileCode,
-  CheckCheck
+  RotateCcw
 } from 'lucide-react';
 import {
   verifyAndCorrectDriverCodeAI,
   DriverCorrectionResult
 } from '../lib/mistral';
+import {
+  getDefaultDriverForProblem,
+  fetchOrGenerateDriverCode
+} from '../lib/problemService';
+import { SupportedLanguage } from '../lib/compiler';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { creditUserReward } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
@@ -42,7 +46,7 @@ interface ReportDriverCodeModalProps {
   sampleExpectedOutput?: string;
   executionError?: string;
   userEmail?: string;
-  onApplyCorrection: (correctedDriverCode: string, correctedSolutionCode?: string) => void;
+  onApplyCorrection: (correctedDriverCode: string) => void;
   onRerun?: () => void;
 }
 
@@ -64,8 +68,8 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
 }) => {
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [aiResult, setAiResult] = useState<DriverCorrectionResult | null>(null);
-  const [activePreviewTab, setActivePreviewTab] = useState<'driver' | 'solution'>('solution');
   const [showDriverPreview, setShowDriverPreview] = useState(false);
   const [copied, setCopied] = useState(false);
   const [autoRerunCountdown, setAutoRerunCountdown] = useState<number | null>(null);
@@ -80,7 +84,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
     storedInR2: boolean;
   } | null>(null);
 
-  const handleApplyAndRerun = useCallback((withSolution: boolean = true) => {
+  const handleApplyAndRerun = useCallback(() => {
     if (timerIdRef.current) {
       clearTimeout(timerIdRef.current);
       timerIdRef.current = null;
@@ -88,10 +92,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
     setAutoRerunCountdown(null);
 
     if (aiResult?.correctedDriverCode) {
-      onApplyCorrection(
-        aiResult.correctedDriverCode,
-        withSolution ? aiResult.correctedSolutionCode : undefined
-      );
+      onApplyCorrection(aiResult.correctedDriverCode);
     }
 
     onClose();
@@ -107,7 +108,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
       setResolvedStatus(null);
       setAutoRerunCountdown(null);
       setShowDriverPreview(false);
-      setActivePreviewTab('solution');
+      setIsResetting(false);
     } else {
       if (timerIdRef.current) {
         clearTimeout(timerIdRef.current);
@@ -120,7 +121,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
   useEffect(() => {
     if (autoRerunCountdown === null) return;
     if (autoRerunCountdown <= 0) {
-      handleApplyAndRerun(true);
+      handleApplyAndRerun();
       return;
     }
 
@@ -138,6 +139,73 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  /**
+   * Directly resets the driver to the verified authentic default driver for this problem.
+   * Purges broken custom driver from R2 and caches, applies immediately, and reruns code.
+   */
+  const handleResetToDefault = async () => {
+    setIsResetting(true);
+    try {
+      const slug = problemSlug;
+      const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+      // 1. Purge stale cache keys
+      localStorage.removeItem(`edustream_driver_${slug}_${lang}`);
+      localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
+
+      // 2. Fetch or retrieve authentic default driver
+      let defaultDriver = getDefaultDriverForProblem(slug, lang);
+      if (!defaultDriver) {
+        defaultDriver = await fetchOrGenerateDriverCode(slug, lang, starterCode, sampleTestInput);
+      }
+
+      if (defaultDriver) {
+        // 3. Update localStorage cache
+        localStorage.setItem(`edustream_driver_${slug}_${lang}`, defaultDriver);
+
+        // Synchronize problem spec cache
+        try {
+          const specStr = localStorage.getItem(`edustream_problem_spec_${slug}`);
+          if (specStr) {
+            const spec = JSON.parse(specStr);
+            if (!spec.driverCode) spec.driverCode = {};
+            spec.driverCode[lang] = defaultDriver;
+            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(spec));
+          }
+        } catch (_) {}
+
+        // 4. Update Cloudflare R2
+        const endpoints = [
+          `/api/problem/${encodeURIComponent(slug)}/correct-driver`,
+          `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/correct-driver`,
+          `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/correct-driver`
+        ];
+        for (const ep of endpoints) {
+          try {
+            await fetch(ep, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ language: lang, driverCode: defaultDriver }),
+              signal: AbortSignal.timeout(5000)
+            });
+            break;
+          } catch (_) {}
+        }
+
+        // 5. Apply to workspace state and rerun
+        onApplyCorrection(defaultDriver);
+        onClose();
+        if (onRerun) {
+          setTimeout(() => onRerun(), 250);
+        }
+      }
+    } catch (err) {
+      console.error('[Reset Driver Error]:', err);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const handleInspectAndCorrect = async () => {
@@ -159,6 +227,19 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
         userReportReason: userNote
       });
 
+      // Special safety check for LCA: ensure the driver outputs the node's integer value
+      const isLCA = problemSlug.includes('lowest-common-ancestor') || problemSlug.includes('lowestcommonancestor');
+      if (isLCA && result.correctedDriverCode) {
+        if (result.correctedDriverCode.includes('serializeTree(ans)') || !result.correctedDriverCode.includes('ans->val')) {
+          const defaultLCA = getDefaultDriverForProblem(problemSlug, (language || 'cpp').toLowerCase() as SupportedLanguage);
+          if (defaultLCA) {
+            result.correctedDriverCode = defaultLCA;
+            result.identifiedIssue = 'Return type is TreeNode* but LeetCode expected output is node integer value. Replaced serializeTree with ans->val output.';
+            result.explanation = 'Corrected driver output to print ans->val instead of serializing the entire tree.';
+          }
+        }
+      }
+
       setAiResult(result);
 
       if (result.correctedDriverCode && result.correctedDriverCode.length > 50) {
@@ -170,10 +251,10 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
         const localCredit = creditUserReward(1.00, bountyDesc, activeEmail);
 
         let backendBalance = localCredit.newBalance;
-        let backendMessage = `Boilerplate code & verified solution for ${language.toUpperCase()} were successfully auto-corrected and saved in Cloudflare R2! ₹1.00 has been credited to your balance.`;
+        let backendMessage = `Boilerplate driver for ${language.toUpperCase()} was successfully auto-corrected and saved in Cloudflare R2! ₹1.00 has been credited to your balance.`;
         let storedInR2 = true;
 
-        // 2. Multi-tier upload to Cloudflare R2 (tries edge function proxy, direct backend, and failover)
+        // 2. Multi-tier upload to Cloudflare R2 (edge function proxy, direct backend, and failover)
         const endpoints = [
           `/api/problem/${encodeURIComponent(problemSlug)}/correct-driver`,
           `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-driver`,
@@ -188,7 +269,6 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               body: JSON.stringify({
                 language,
                 driverCode: result.correctedDriverCode,
-                solutionCode: result.correctedSolutionCode || undefined,
                 problemTitle,
                 email: activeEmail,
                 explanation: result.explanation
@@ -215,27 +295,18 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           localStorage.setItem(`edustream_driver_${slug}_${lang}`, result.correctedDriverCode);
           localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
 
-          // Synchronize problem spec cache so refreshes use corrected driver & solution
+          // Synchronize problem spec cache
           const specStr = localStorage.getItem(`edustream_problem_spec_${slug}`);
           if (specStr) {
             const spec = JSON.parse(specStr);
             if (!spec.driverCode) spec.driverCode = {};
             spec.driverCode[lang] = result.correctedDriverCode;
-            if (result.correctedSolutionCode) {
-              if (!spec.solutions) spec.solutions = {};
-              spec.solutions[lang] = result.correctedSolutionCode;
-            }
             localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(spec));
-          }
-
-          // Save verified solution into user code cache
-          if (result.correctedSolutionCode) {
-            localStorage.setItem(`edustream_user_code_${slug}_${lang}`, result.correctedSolutionCode);
           }
         } catch (_) {}
 
         // 4. Apply to workspace state immediately
-        onApplyCorrection(result.correctedDriverCode, result.correctedSolutionCode);
+        onApplyCorrection(result.correctedDriverCode);
 
         setResolvedStatus({
           autoResolved: true,
@@ -246,7 +317,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           storedInR2
         });
 
-        // 5. Trigger 2-second countdown to auto-rerun code with verified solution
+        // 5. Trigger 2-second countdown to auto-rerun code
         setAutoRerunCountdown(2);
       }
     } catch (err) {
@@ -280,17 +351,29 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                AI Boilerplate Code & Solution Auto-Resolver &bull; Problem: <strong className="text-slate-200">{problemTitle}</strong> ({problemSlug})
+                AI Boilerplate Code Inspector &bull; Problem: <strong className="text-slate-200">{problemTitle}</strong> ({problemSlug})
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleResetToDefault}
+              disabled={isResetting}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+              title="Reset to default correct driver code and re-execute"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+              <span>Reset to Default</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -356,7 +439,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               <textarea
                 value={userNote}
                 onChange={(e) => setUserNote(e.target.value)}
-                placeholder="e.g. Missing standard library headers, TreeNode struct ordering bug, wrong input parsing, or solution method signature mismatch..."
+                placeholder="e.g. Return type should print integer node value (ans->val) instead of serializing entire tree, missing header, or struct ordering..."
                 rows={2}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500"
               />
@@ -369,7 +452,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5 flex-wrap gap-2">
                 <div className="flex items-center space-x-2 text-xs font-bold text-emerald-400">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Boilerplate & Solution Verified by AI</span>
+                  <span>Boilerplate Harness Auto-Corrected</span>
                 </div>
                 <div className="flex items-center space-x-1.5 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full bg-cyan-950 border border-cyan-700/60 text-[10px] font-mono text-cyan-300 flex items-center gap-1">
@@ -392,44 +475,12 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
                 </div>
               </div>
 
-              {/* Tab Switcher for Boilerplate Code vs Solution Code */}
-              <div className="pt-2 border-t border-slate-800">
-                <div className="flex items-center justify-between pb-2">
-                  <div className="flex items-center space-x-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-                    {aiResult.correctedSolutionCode && (
-                      <button
-                        onClick={() => setActivePreviewTab('solution')}
-                        className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          activePreviewTab === 'solution'
-                            ? 'bg-emerald-600 text-white shadow-md'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        <FileCode className="w-3.5 h-3.5" />
-                        <span>Corrected Working Solution</span>
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setActivePreviewTab('driver')}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        activePreviewTab === 'driver'
-                          ? 'bg-cyan-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      <Code2 className="w-3.5 h-3.5" />
-                      <span>Corrected Boilerplate Harness</span>
-                    </button>
-                  </div>
-
+              {/* Corrected Boilerplate Code Preview */}
+              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-cyan-300">Corrected Boilerplate Harness:</span>
                   <button
-                    onClick={() =>
-                      handleCopyCode(
-                        activePreviewTab === 'solution'
-                          ? aiResult.correctedSolutionCode || ''
-                          : aiResult.correctedDriverCode
-                      )
-                    }
+                    onClick={() => handleCopyCode(aiResult.correctedDriverCode)}
                     className="flex items-center space-x-1 text-[10px] font-mono text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer"
                   >
                     {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -437,15 +488,9 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
                   </button>
                 </div>
 
-                {activePreviewTab === 'solution' && aiResult.correctedSolutionCode ? (
-                  <pre className="text-[11px] font-mono text-emerald-300/90 bg-black/60 p-3 rounded-xl border border-emerald-900/40 max-h-48 overflow-y-auto whitespace-pre-wrap select-text">
-                    {aiResult.correctedSolutionCode}
-                  </pre>
-                ) : (
-                  <pre className="text-[11px] font-mono text-cyan-300/90 bg-black/60 p-3 rounded-xl border border-cyan-900/40 max-h-48 overflow-y-auto whitespace-pre-wrap select-text">
-                    {aiResult.correctedDriverCode}
-                  </pre>
-                )}
+                <pre className="text-[11px] font-mono text-cyan-300/90 bg-black/60 p-3 rounded-xl border border-cyan-900/40 max-h-56 overflow-y-auto whitespace-pre-wrap select-text">
+                  {aiResult.correctedDriverCode}
+                </pre>
               </div>
 
               {/* Resolution Banner */}
@@ -477,40 +522,52 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           </button>
 
           {!aiResult ? (
-            <button
-              disabled={isVerifying}
-              onClick={handleInspectAndCorrect}
-              className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {isVerifying ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-cyan-200" />
-                  <span>Diagnosing & Resolving Boilerplate Code with AI...</span>
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-4 h-4 text-amber-300" />
-                  <span>Auto-Correct Boilerplate Code & Solution in R2</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => handleApplyAndRerun(false)}
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
-                title="Only apply the boilerplate runner without changing current code"
+                onClick={handleResetToDefault}
+                disabled={isResetting}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
               >
-                Apply Boilerplate Only
+                <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                <span>Reset to Default Boilerplate</span>
               </button>
 
               <button
-                onClick={() => handleApplyAndRerun(true)}
+                disabled={isVerifying}
+                onClick={handleInspectAndCorrect}
+                className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white text-xs font-bold shadow-lg shadow-cyan-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isVerifying ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-cyan-200" />
+                    <span>Diagnosing & Resolving Boilerplate Code with AI...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 text-amber-300" />
+                    <span>Auto-Correct Boilerplate Code in R2</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleResetToDefault}
+                disabled={isResetting}
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                <span>Reset to Default</span>
+              </button>
+
+              <button
+                onClick={handleApplyAndRerun}
                 className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
               >
-                <CheckCheck className="w-4 h-4 text-emerald-200" />
+                <Check className="w-4 h-4" />
                 <span>
-                  Apply Boilerplate + Solution
+                  Apply Corrected Boilerplate
                   {autoRerunCountdown !== null && autoRerunCountdown > 0 ? ` (${autoRerunCountdown}s)` : ''}
                 </span>
                 <ArrowRight className="w-4 h-4" />

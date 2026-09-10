@@ -1260,6 +1260,202 @@ export async function fetchEnrichedProblem(
   return applyOverride(finalGen);
 }
 
+export function getDefaultDriverForProblem(slugOrTitle: string, language: SupportedLanguage): string | null {
+  const slug = toSlug(slugOrTitle);
+  const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+  const isLCA = slug.includes('lowest-common-ancestor') || slug.includes('lowestcommonancestor');
+  if (isLCA) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+#include <unordered_map>
+#include <cctype>
+
+using namespace std;
+
+// === DATA STRUCTURES ===
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+static TreeNode* findNode(TreeNode* root, int val) {
+    if (!root) return nullptr;
+    if (root->val == val) return root;
+    TreeNode* left = findNode(root->left, val);
+    if (left) return left;
+    return findNode(root->right, val);
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+
+    string raw_input = R"RAW(root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8)RAW";
+    
+    // Parse root array
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+
+    // Parse p
+    int pVal = 0, qVal = 0;
+    size_t pPos = raw_input.find("p =");
+    if (pPos == string::npos) pPos = raw_input.find("p=");
+    if (pPos != string::npos) {
+        size_t comma = raw_input.find(',', pPos);
+        string pStr = raw_input.substr(pPos + 3, (comma != string::npos ? comma - (pPos + 3) : string::npos));
+        pVal = stoi(trim(pStr));
+    }
+
+    // Parse q
+    size_t qPos = raw_input.find("q =");
+    if (qPos == string::npos) qPos = raw_input.find("q=");
+    if (qPos != string::npos) {
+        size_t comma = raw_input.find(',', qPos);
+        string qStr = raw_input.substr(qPos + 3, (comma != string::npos ? comma - (qPos + 3) : string::npos));
+        qVal = stoi(trim(qStr));
+    }
+
+    TreeNode* pNode = findNode(root, pVal);
+    TreeNode* qNode = findNode(root, qVal);
+
+    Solution sol;
+    TreeNode* ans = sol.lowestCommonAncestor(root, pNode, qNode);
+
+    if (ans) {
+        cout << ans->val << endl;
+    } else {
+        cout << "null" << endl;
+    }
+
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from collections import deque
+
+class TreeNode:
+    def __init__(self, x):
+        self.val = x
+        self.left = None
+        self.right = None
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def find_node(root, val):
+    if not root:
+        return None
+    if root.val == val:
+        return root
+    left = find_node(root.left, val)
+    if left:
+        return left
+    return find_node(root.right, val)
+
+def main():
+    raw_input = """root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                tree_vals.append(int(it))
+    root = build_tree(tree_vals)
+
+    p_match = re.search(r'p\\s*=\\s*(-?\\d+)', raw_input)
+    q_match = re.search(r'q\\s*=\\s*(-?\\d+)', raw_input)
+    p_val = int(p_match.group(1)) if p_match else 0
+    q_val = int(q_match.group(1)) if q_match else 0
+
+    p_node = find_node(root, p_val)
+    q_node = find_node(root, q_val)
+
+    sol = Solution()
+    ans = sol.lowestCommonAncestor(root, p_node, q_node)
+    if ans:
+        print(ans.val)
+    else:
+        print("null")
+
+if __name__ == '__main__':
+    main()`;
+    }
+  }
+  return null;
+}
+
 /**
  * Fetches pre-generated driver execution harness from Cloudflare R2 or dynamically generates
  * an authentic type-safe driver with Mistral AI and caches it in localStorage + R2.
@@ -1307,7 +1503,21 @@ export async function fetchOrGenerateDriverCode(
     } catch (_) {}
   }
 
-  // 3. If R2 does not have it, dynamically generate with Mistral AI directly on the client
+  // 3. Check for built-in authentic default driver (e.g. for LCA where return type is TreeNode* but output is integer)
+  const builtInDriver = getDefaultDriverForProblem(slug, lang);
+  if (builtInDriver && isDriverHarnessValid(builtInDriver, lang, starterCode)) {
+    try {
+      localStorage.setItem(localKey, builtInDriver);
+      fetch(`/api/problem/${encodeURIComponent(slug)}/correct-driver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: lang, driverCode: builtInDriver })
+      }).catch(() => {});
+    } catch (_) {}
+    return builtInDriver;
+  }
+
+  // 4. If R2 does not have it, dynamically generate with Mistral AI directly on the client
   if (starterCode) {
     try {
       const aiDriver = await requestAIDriverGeneration(slugOrTitle, lang, starterCode, sampleTestInput || '', slug);

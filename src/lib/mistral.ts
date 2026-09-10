@@ -1015,12 +1015,11 @@ TASK:
    - Fragile argument parsing: splitting strings on commas inside nested arrays/matrices without tracking bracket depth
    - Incorrect method parameter order or types
    - Incorrect serialization of outputs (e.g. binary tree level-order format with 'null's, boolean true/false, void in-place mutated argument)
+   - CRITICAL FOR NODE POINTER RETURN TYPES (e.g. Lowest Common Ancestor TreeNode* / ListNode*): Check Sample Expected Output! For Lowest Common Ancestor, the method signature returns TreeNode*, but the expected output is the node's integer value (e.g. "6", "2"). The driver MUST print the node's integer value (e.g. 'if (ans) cout << ans->val << endl; else cout << "null" << endl;') and NEVER call serializeTree(ans) or printTree(ans)!
 3. Generate the complete, fully compilable, hardened replacement boilerplate driver code for ${normLang.toUpperCase()}.
    - Must contain '// === USER SOLUTION ==='
    - Must contain '// === HIDDEN DRIVER ===' marking the main execution block.
-4. ALSO generate a complete, 100% verified, optimal WORKING SOLUTION for ${normLang.toUpperCase()}:
-   - Implement the complete 'class Solution' or function that solves "${problemTitle}" correctly.
-   - It MUST match the method signature in the boilerplate code and pass all sample and edge test cases without any compilation or runtime errors.
+   - CRITICAL: DO NOT implement or include the Solution class inside the boilerplate driver code! The driver code MUST leave '// === USER SOLUTION ===' as a placeholder for the user's code.
 
 You must respond in strict JSON format (and nothing else):
 {
