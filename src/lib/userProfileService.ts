@@ -667,6 +667,25 @@ export function generateUserSubmissionHeatmap(providedCounts?: Record<string, nu
           });
         }
       }
+
+      // 3. POTD solved dates: any platform flag counts as activity on that date
+      for (let k = 0; k < localStorage.length; k++) {
+        const key = localStorage.key(k);
+        if (!key) continue;
+        if (
+          key.startsWith('sdetube_potd_solved_') ||
+          key.startsWith('sdetube_potd_sdetube_solved_') ||
+          key.startsWith('sdetube_potd_leetcode_solved_') ||
+          key.startsWith('sdetube_potd_gfg_solved_')
+        ) {
+          if (localStorage.getItem(key) === 'true') {
+            const datePart = key.slice(-10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+              dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
+            }
+          }
+        }
+      }
     } catch {}
   }
 
@@ -796,7 +815,68 @@ export function getUserBadges(userEmail?: string): SDETubeBadge[] {
   ]);
   const totalSolved = allSolvedSet.size;
 
-  const { maxStreak, currentStreak } = generateUserSubmissionHeatmap();
+  // Build a date-count map that merges:
+  // 1. Internal code-runner submission dates (sdetube_submissions_*)
+  // 2. POTD solved dates (sdetube_potd_solved_YYYY-MM-DD) for ALL platforms
+  // 3. Practice activity logs
+  // This ensures POTD streaks properly feed into streak badge progress.
+  const dateCounts: Record<string, number> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      // Internal submission keys
+      if (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_')) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              list.forEach((sub: any) => {
+                const tsRaw = sub.timestamp || (sub.id ? parseInt(sub.id.split('_')[0], 10) : 0);
+                if (!tsRaw) return;
+                const ms = typeof tsRaw === 'number' && tsRaw < 1e11 ? tsRaw * 1000 : tsRaw;
+                const ymd = new Date(Number(ms)).toISOString().slice(0, 10);
+                if (ymd && ymd.length === 10) dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
+              });
+            }
+          }
+        } catch {}
+      }
+
+      // POTD solved keys — any of the four platform flags count as activity on that date
+      if (
+        key.startsWith('sdetube_potd_solved_') ||
+        key.startsWith('sdetube_potd_sdetube_solved_') ||
+        key.startsWith('sdetube_potd_leetcode_solved_') ||
+        key.startsWith('sdetube_potd_gfg_solved_')
+      ) {
+        if (localStorage.getItem(key) === 'true') {
+          // Extract YYYY-MM-DD from the end of the key
+          const datePart = key.slice(-10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+            dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
+          }
+        }
+      }
+    }
+
+    // Practice activity logs
+    const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
+    if (rawLogs) {
+      const logs = JSON.parse(rawLogs);
+      if (Array.isArray(logs)) {
+        logs.forEach((l: any) => {
+          if (l?.date && typeof l.date === 'string') {
+            dateCounts[l.date] = (dateCounts[l.date] || 0) + (l.count || 1);
+          }
+        });
+      }
+    }
+  } catch {}
+
+  const { maxStreak, currentStreak } = generateUserSubmissionHeatmap(dateCounts);
   const bestStreak = Math.max(maxStreak, currentStreak);
 
   return [
@@ -1411,6 +1491,11 @@ export function isLeetCodeProblemSolvedToday(
 
 /**
  * Checks if GFG POTD is solved today on official GeeksforGeeks platform or locally.
+ * Checks (in order):
+ * 1. Local sdetube_potd_gfg_solved_YYYY-MM-DD flag
+ * 2. Local submission key for the problem slug (with today's timestamp)
+ * 3. GFG profile current_streak >= 1 — GFG resets streak to 0 if you miss a day,
+ *    so a streak of 1+ means the problem was solved on today's POTD cycle.
  */
 export function isGfgProblemSolvedToday(
   gfgData?: GFGProfileData | null,
@@ -1441,6 +1526,17 @@ export function isGfgProblemSolvedToday(
         } catch {}
       }
     }
+  }
+
+  // 2. GFG profile-based detection:
+  //    GFG API exposes current_streak which resets to 0 when a POTD day is missed.
+  //    A current_streak >= 1 confirms today's POTD was solved on GFG.
+  if (gfgData && typeof gfgData.current_streak === 'number' && gfgData.current_streak >= 1) {
+    return true;
+  }
+  // Also check streak alias field
+  if (gfgData && typeof (gfgData as any).streak === 'number' && (gfgData as any).streak >= 1) {
+    return true;
   }
 
   return false;
