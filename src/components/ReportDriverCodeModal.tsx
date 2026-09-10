@@ -2,24 +2,16 @@ import React, { useState, useEffect } from 'react';
 import {
   X,
   Sparkles,
-  AlertTriangle,
   CheckCircle2,
-  XCircle,
   RefreshCw,
-  ArrowRight,
   ShieldCheck,
   Wand2,
-  Code2,
   Check,
   Coins,
   Cpu,
-  Copy,
-  ChevronDown,
-  ChevronUp,
   Terminal,
   Cloud,
-  RotateCcw,
-  Save
+  RotateCcw
 } from 'lucide-react';
 import {
   verifyAndCorrectDriverCodeAI,
@@ -68,11 +60,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [isSavingManual, setIsSavingManual] = useState(false);
   const [aiResult, setAiResult] = useState<DriverCorrectionResult | null>(null);
-  const [showDriverPreview, setShowDriverPreview] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [editableDriver, setEditableDriver] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [resolvedStatus, setResolvedStatus] = useState<{
@@ -89,20 +77,10 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
       setAiResult(null);
       setUserNote('');
       setResolvedStatus(null);
-      setShowDriverPreview(true);
       setIsResetting(false);
-      setIsSavingManual(false);
       setSuccessMessage(null);
-      setEditableDriver(currentDriverCode || '');
     }
-  }, [isOpen, currentDriverCode]);
-
-  const handleCopyCode = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  }, [isOpen]);
 
   /**
    * Directly resets the driver to the verified authentic default driver for this problem.
@@ -159,64 +137,13 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
         }
 
         // 5. Apply to workspace state immediately WITHOUT running
-        setEditableDriver(defaultDriver);
         onApplyCorrection(defaultDriver);
-        setSuccessMessage('✓ Boilerplate driver reset to default and updated immediately! (Ready to use when you click Run)');
+        setSuccessMessage('✓ Boilerplate driver reset to default and updated immediately!');
       }
     } catch (err) {
       console.error('[Reset Driver Error]:', err);
     } finally {
       setIsResetting(false);
-    }
-  };
-
-  /**
-   * Directly saves manually edited driver code to cache, state, and R2 without running.
-   */
-  const handleSaveManualDriver = async () => {
-    if (!editableDriver.trim()) return;
-    setIsSavingManual(true);
-    setSuccessMessage(null);
-    try {
-      const slug = problemSlug;
-      const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
-
-      localStorage.setItem(`edustream_driver_${slug}_${lang}`, editableDriver);
-      localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
-
-      try {
-        const specStr = localStorage.getItem(`edustream_problem_spec_${slug}`);
-        if (specStr) {
-          const spec = JSON.parse(specStr);
-          if (!spec.driverCode) spec.driverCode = {};
-          spec.driverCode[lang] = editableDriver;
-          localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(spec));
-        }
-      } catch (_) {}
-
-      const endpoints = [
-        `/api/problem/${encodeURIComponent(slug)}/correct-driver`,
-        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/correct-driver`,
-        `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/correct-driver`
-      ];
-      for (const ep of endpoints) {
-        try {
-          await fetch(ep, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: lang, driverCode: editableDriver }),
-            signal: AbortSignal.timeout(5000)
-          });
-          break;
-        } catch (_) {}
-      }
-
-      onApplyCorrection(editableDriver);
-      setSuccessMessage('✓ Custom driver code updated immediately! (Ready to use when you click Run)');
-    } catch (err) {
-      console.error('[Save Driver Error]:', err);
-    } finally {
-      setIsSavingManual(false);
     }
   };
 
@@ -319,7 +246,6 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
 
         // 4. Apply to workspace state immediately without running
         onApplyCorrection(result.correctedDriverCode);
-        setEditableDriver(result.correctedDriverCode);
 
         setResolvedStatus({
           autoResolved: true,
@@ -330,7 +256,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           storedInR2
         });
 
-        setSuccessMessage('✓ Boilerplate driver auto-corrected and updated immediately in R2 & cache! (No auto-run triggered)');
+        setSuccessMessage('✓ Boilerplate driver auto-corrected and saved to R2 & cache silently!');
       }
     } catch (err) {
       console.error('[Inspect Boilerplate Code Error]:', err);
@@ -420,59 +346,18 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
             </div>
           )}
 
-          {/* Current Boilerplate / Driver Code Collapsible Preview & Editor */}
-          <div className="rounded-2xl bg-slate-950/80 border border-slate-800 overflow-hidden">
-            <button
-              onClick={() => setShowDriverPreview(!showDriverPreview)}
-              className="w-full flex items-center justify-between p-3 text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
-            >
-              <div className="flex items-center space-x-2">
-                <Code2 className="w-4 h-4 text-cyan-400" />
-                <span>Boilerplate Driver Code ({language.toUpperCase()})</span>
-                <span className="text-[10px] font-mono text-slate-500">
-                  {editableDriver ? `${editableDriver.split('\n').length} lines` : 'Default Boilerplate'}
-                </span>
-              </div>
-              <div className="flex items-center space-x-1 text-slate-400">
-                <span>{showDriverPreview ? 'Hide' : 'Inspect & Edit Boilerplate'}</span>
-                {showDriverPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </div>
-            </button>
-
-            {showDriverPreview && (
-              <div className="p-3.5 border-t border-slate-800/80 bg-black/50 space-y-2.5">
-                <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
-                  <span className="text-[11px] text-slate-400">
-                    Directly inspect or edit the hidden driver harness below. Click <strong>Update Driver Code</strong> to save without running.
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleCopyCode(editableDriver)}
-                      className="flex items-center space-x-1 text-[10px] font-mono text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer"
-                    >
-                      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copied ? 'Copied' : 'Copy'}</span>
-                    </button>
-                    <button
-                      onClick={handleSaveManualDriver}
-                      disabled={isSavingManual || !editableDriver.trim()}
-                      className="flex items-center space-x-1 text-[11px] font-bold text-cyan-200 hover:text-white px-3 py-1 rounded-lg bg-cyan-950 border border-cyan-600 hover:bg-cyan-900 cursor-pointer disabled:opacity-50 transition-all"
-                    >
-                      {isSavingManual ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      <span>{isSavingManual ? 'Saving...' : 'Update Driver Code'}</span>
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  value={editableDriver}
-                  onChange={(e) => setEditableDriver(e.target.value)}
-                  rows={9}
-                  className="w-full text-[11px] font-mono text-cyan-200/90 p-3 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-cyan-500 resize-y leading-relaxed"
-                  placeholder="Driver harness code..."
-                  spellCheck={false}
-                />
-              </div>
-            )}
+          {/* Info card: AI handles correction silently */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex-shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-slate-200">AI Auto-Correction</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                The AI will silently inspect and correct the internal driver harness for this problem.
+                Corrections are saved directly to <span className="text-cyan-400 font-mono">Cloudflare R2</span> and your local cache — no code is exposed or run automatically.
+              </p>
+            </div>
           </div>
 
           {/* User Notes Input */}
@@ -519,24 +404,6 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
                 <div className="text-slate-400 leading-relaxed">
                   <strong className="text-slate-200">Resolution:</strong> {aiResult.explanation}
                 </div>
-              </div>
-
-              {/* Corrected Boilerplate Code Preview */}
-              <div className="pt-2 border-t border-slate-800 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-cyan-300">Corrected Boilerplate Harness:</span>
-                  <button
-                    onClick={() => handleCopyCode(aiResult.correctedDriverCode)}
-                    className="flex items-center space-x-1 text-[10px] font-mono text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-
-                <pre className="text-[11px] font-mono text-cyan-300/90 bg-black/60 p-3 rounded-xl border border-cyan-900/40 max-h-56 overflow-y-auto whitespace-pre-wrap select-text">
-                  {aiResult.correctedDriverCode}
-                </pre>
               </div>
 
               {/* Resolution Banner */}
@@ -608,16 +475,11 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               </button>
 
               <button
-                onClick={() => {
-                  if (aiResult?.correctedDriverCode) {
-                    onApplyCorrection(aiResult.correctedDriverCode);
-                  }
-                  onClose();
-                }}
+                onClick={onClose}
                 className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                <span>Apply & Close</span>
+                <span>Done</span>
               </button>
             </div>
           )}
