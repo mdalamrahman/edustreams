@@ -948,6 +948,7 @@ export interface DriverCorrectionResult {
   identifiedIssue: string;
   explanation: string;
   correctedDriverCode: string;
+  correctedSolutionCode?: string;
 }
 
 export async function verifyAndCorrectDriverCodeAI(
@@ -969,15 +970,15 @@ export async function verifyAndCorrectDriverCodeAI(
   const normLang = (language || 'cpp').toLowerCase();
   const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-  const prompt = `You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
-A user reported that the execution driver harness for the problem "${problemTitle}" (${cleanSlug}) in ${normLang.toUpperCase()} is defective, failed to compile, or has incorrect parsing/serialization logic.
+  const prompt = `You are a Principal Compiler Architect, Test Harness Engineer, and Competitive Programming Grandmaster for LeetCode.
+A user reported that the boilerplate code (execution driver harness / runner) for the problem "${problemTitle}" (${cleanSlug}) in ${normLang.toUpperCase()} is defective, failed to compile, or has incorrect parsing/serialization logic.
 
 Method signature / starter code:
 \`\`\`${normLang}
 ${starterCode}
 \`\`\`
 
-Current Driver Code:
+Current Boilerplate (Driver) Code:
 \`\`\`${normLang}
 ${currentDriverCode}
 \`\`\`
@@ -1006,24 +1007,28 @@ User Report / Notes:
 "${userReportReason}"
 
 TASK:
-1. Examine the current driver code against the starter code, user solution, and compiler/execution error.
-2. Identify the specific defect(s) in the driver code:
+1. Examine the current boilerplate driver code and the user solution against the method signature and compiler/execution error.
+2. Identify the specific defect(s) in the boilerplate code:
    - Missing required standard library headers (#include <vector>, <string>, <algorithm>, <queue>, <stack>, <unordered_map>, <map>, <set>, <sstream>, <cmath>, <climits>, etc.)
    - Missing or misordered structs: struct TreeNode, struct ListNode, or class Node MUST BE DEFINED AT THE VERY TOP OF THE FILE, STRICTLY BEFORE '// === USER SOLUTION ==='
    - Using 'cin' or 'getline(cin' instead of reading raw_input variable in main()
    - Fragile argument parsing: splitting strings on commas inside nested arrays/matrices without tracking bracket depth
    - Incorrect method parameter order or types
    - Incorrect serialization of outputs (e.g. binary tree level-order format with 'null's, boolean true/false, void in-place mutated argument)
-3. Generate the complete, fully compilable, hardened replacement driver code for ${normLang.toUpperCase()}.
-   - Must contain '// === USER SOLUTION ===' (do not implement Solution class yourself).
+3. Generate the complete, fully compilable, hardened replacement boilerplate driver code for ${normLang.toUpperCase()}.
+   - Must contain '// === USER SOLUTION ==='
    - Must contain '// === HIDDEN DRIVER ===' marking the main execution block.
+4. ALSO generate a complete, 100% verified, optimal WORKING SOLUTION for ${normLang.toUpperCase()}:
+   - Implement the complete 'class Solution' or function that solves "${problemTitle}" correctly.
+   - It MUST match the method signature in the boilerplate code and pass all sample and edge test cases without any compilation or runtime errors.
 
 You must respond in strict JSON format (and nothing else):
 {
   "isWrong": true,
-  "identifiedIssue": "1-2 sentence summary of the specific defect in the driver",
+  "identifiedIssue": "1-2 sentence summary of the specific defect in the boilerplate code",
   "explanation": "Clear explanation of how the bug occurred and what was corrected",
-  "correctedDriverCode": "Complete replacement driver code without markdown fences"
+  "correctedDriverCode": "Complete replacement boilerplate driver code without markdown fences",
+  "correctedSolutionCode": "Complete verified working solution (e.g. class Solution { ... }) without markdown fences"
 }`;
 
   try {
@@ -1037,13 +1042,16 @@ You must respond in strict JSON format (and nothing else):
       if (match) {
         try {
           const parsed = JSON.parse(match[0]);
-          let code = (parsed.correctedDriverCode || '').replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
-          if (code && code.includes('// === USER SOLUTION ===')) {
+          let driverCode = (parsed.correctedDriverCode || '').replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+          let solutionCode = (parsed.correctedSolutionCode || '').replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+          
+          if (driverCode && driverCode.includes('// === USER SOLUTION ===')) {
             return {
               isWrong: Boolean(parsed.isWrong ?? true),
-              identifiedIssue: parsed.identifiedIssue || 'Driver harness compilation or input parsing defect identified.',
-              explanation: parsed.explanation || 'Corrected headers, struct declarations, and input/output serialization in driver harness.',
-              correctedDriverCode: code
+              identifiedIssue: parsed.identifiedIssue || 'Boilerplate driver harness compilation or input parsing defect identified.',
+              explanation: parsed.explanation || 'Corrected headers, struct declarations, input/output serialization in boilerplate code, and verified working solution.',
+              correctedDriverCode: driverCode,
+              correctedSolutionCode: solutionCode || undefined
             };
           }
         } catch (_) {}
@@ -1057,9 +1065,10 @@ You must respond in strict JSON format (and nothing else):
   const regenerated = await requestAIDriverGeneration(problemTitle, normLang, starterCode, sampleTestInput, cleanSlug);
   return {
     isWrong: true,
-    identifiedIssue: 'Driver harness encountered syntax or parsing failure.',
-    explanation: 'Regenerated a fresh, authentic LeetCode-compliant driver harness with complete type-safe argument parsing.',
-    correctedDriverCode: regenerated || currentDriverCode
+    identifiedIssue: 'Boilerplate harness encountered syntax or parsing failure.',
+    explanation: 'Regenerated a fresh, authentic LeetCode-compliant boilerplate driver harness with complete type-safe argument parsing.',
+    correctedDriverCode: regenerated || currentDriverCode,
+    correctedSolutionCode: userCode && userCode.length > 20 ? userCode : undefined
   };
 }
 

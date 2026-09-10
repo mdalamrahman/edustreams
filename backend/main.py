@@ -3196,6 +3196,7 @@ Return ONLY valid JSON matching:
 class CorrectDriverPayload(BaseModel):
     language: str
     driverCode: str
+    solutionCode: Optional[str] = None
     problemTitle: Optional[str] = ""
     email: Optional[str] = None
     explanation: Optional[str] = None
@@ -3204,32 +3205,42 @@ class CorrectDriverPayload(BaseModel):
 @app.post("/api/problem/{slug}/correct-driver")
 async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
     """
-    Applies the AI-verified driver code correction to the problem definition in Cloudflare R2 and memory cache.
+    Applies the AI-verified boilerplate driver code and solution code correction to the problem definition in Cloudflare R2 and memory cache.
     Auto-credits ₹1.00 Bug Bounty Reward to the user's wallet if email is provided.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     clean_lang = payload.language.lower().strip()
     driver_code = payload.driverCode.strip()
+    solution_code = (payload.solutionCode or "").strip()
 
     if not driver_code:
         return JSONResponse(status_code=400, content={"success": False, "error": "Driver code cannot be empty"})
 
     # 1. Save directly into Cloudflare R2 (both drivers/{slug}_{lang}.txt and inside problems/{slug}.json)
-    stored = r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
+    stored_driver = r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
 
-    # 2. Update memory cache if present
+    # 2. Save solution code to R2 if provided
+    stored_sol = False
+    if solution_code:
+        stored_sol = r2_storage.save_solution_to_problem(clean_slug, clean_lang, solution_code)
+
+    # 3. Update memory cache if present
     if clean_slug in _PROBLEM_CACHE:
         if "driverCode" not in _PROBLEM_CACHE[clean_slug] or not isinstance(_PROBLEM_CACHE[clean_slug]["driverCode"], dict):
             _PROBLEM_CACHE[clean_slug]["driverCode"] = {}
         _PROBLEM_CACHE[clean_slug]["driverCode"][clean_lang] = driver_code
+        if solution_code:
+            if "solutions" not in _PROBLEM_CACHE[clean_slug] or not isinstance(_PROBLEM_CACHE[clean_slug]["solutions"], dict):
+                _PROBLEM_CACHE[clean_slug]["solutions"] = {}
+            _PROBLEM_CACHE[clean_slug]["solutions"][clean_lang] = solution_code
 
-    # 3. Auto-credit ₹1.00 bounty to user's wallet if email provided
+    # 4. Auto-credit ₹1.00 bounty to user's wallet if email provided
     credited = False
     new_balance = None
     if payload.email:
         try:
             prob_title = payload.problemTitle or clean_slug
-            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and correcting {clean_lang.upper()} driver code harness in {prob_title}"
+            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_lang.upper()} boilerplate code in {prob_title}"
             credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
             credited = credit_res.get("success", False)
             new_balance = credit_res.get("newBalance")
@@ -3237,14 +3248,16 @@ async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
             print(f"[Credit Driver Bounty Error]: {e}")
 
     message = (
-        f"Driver harness for {clean_lang.upper()} was successfully corrected and replaced in Cloudflare R2! ₹1.00 has been credited to your balance."
+        f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2! ₹1.00 has been credited to your balance."
         if credited
-        else f"Driver harness for {clean_lang.upper()} was successfully corrected and replaced in Cloudflare R2!"
+        else f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2!"
     )
 
     return {
         "success": True,
-        "stored_in_r2": stored,
+        "stored_in_r2": stored_driver,
+        "stored_solution_in_r2": stored_sol,
+        "has_solution": bool(solution_code),
         "slug": clean_slug,
         "language": clean_lang,
         "credited": credited,

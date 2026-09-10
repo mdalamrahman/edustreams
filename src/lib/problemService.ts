@@ -111,9 +111,11 @@ export const clearProblemCache = (slugOrTitle?: string): void => {
       localStorage.removeItem(`edustream_testcases_txt_${slug}`);
       localStorage.removeItem(`edustream_editorial_${slug}`);
       localStorage.removeItem(`edustream_problem_override_${slug}`);
+      localStorage.removeItem(`edustream_testcase_override_${slug}`);
       const langs = ['cpp', 'python', 'java', 'javascript', 'go', 'rust'];
       langs.forEach(lang => {
         localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
+        localStorage.removeItem(`edustream_driver_${slug}_${lang}`);
       });
     } else {
       const keysToRemove: string[] = [];
@@ -124,7 +126,8 @@ export const clearProblemCache = (slugOrTitle?: string): void => {
           (key.startsWith('edustream_problem_spec_') ||
             key.startsWith('edustream_testcases_txt_') ||
             key.startsWith('edustream_driver_') ||
-            key.startsWith('edustream_editorial_'))
+            key.startsWith('edustream_editorial_') ||
+            key.startsWith('edustream_testcase_override_'))
         ) {
           keysToRemove.push(key);
         }
@@ -1283,20 +1286,26 @@ export async function fetchOrGenerateDriverCode(
     }
   } catch (_) {}
 
-  // 2. Try fetching from Cloudflare R2 via Backend API
-  try {
-    const url = `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (resp.ok) {
-      const data = await resp.json();
-      if (data?.driverCode && isDriverHarnessValid(data.driverCode, lang, starterCode)) {
-        try {
-          localStorage.setItem(localKey, data.driverCode);
-        } catch (_) {}
-        return data.driverCode;
+  // 2. Try fetching from Cloudflare R2 via Edge & Backend API
+  const endpoints = [
+    `/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`,
+    `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`,
+    `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`
+  ];
+  for (const url of endpoints) {
+    try {
+      const resp = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data?.driverCode && isDriverHarnessValid(data.driverCode, lang, starterCode)) {
+          try {
+            localStorage.setItem(localKey, data.driverCode);
+          } catch (_) {}
+          return data.driverCode;
+        }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 
   // 3. If R2 does not have it, dynamically generate with Mistral AI directly on the client
   if (starterCode) {

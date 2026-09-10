@@ -544,12 +544,12 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
             </div>
           )}
 
-          {/* Switch to Driver Report link if user suspects driver issue */}
+          {/* Switch to Driver Report link if user suspects boilerplate code issue */}
           {onSwitchToDriverReport && (
             <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5 text-slate-400 text-[11px]">
                 <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Suspect compiler or execution driver harness is wrong instead?</span>
+                <span>Suspect compiler or boilerplate code harness is wrong instead?</span>
               </span>
               <button
                 onClick={() => {
@@ -558,7 +558,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                 }}
                 className="px-2.5 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-700/50 text-cyan-300 text-[11px] font-bold transition-all cursor-pointer shadow-sm"
               >
-                Inspect Driver in R2 &rarr;
+                Report Boilerplate Code &rarr;
               </button>
             </div>
           )}

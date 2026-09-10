@@ -3091,14 +3091,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
             {/* Right: LeetCode Toolbar Actions */}
             <div className="flex items-center space-x-1.5">
-              {/* Driver Code Inspector & R2 Fix Button */}
+              {/* Boilerplate Code Inspector & R2 Fix Button */}
               <button
                 onClick={() => setIsReportDriverOpen(true)}
                 className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-white/[0.06] hover:bg-cyan-950/60 text-slate-300 hover:text-cyan-200 border border-white/10 hover:border-cyan-500/40 transition-all cursor-pointer"
-                title="Inspect or fix wrong driver execution harness with AI and replace in Cloudflare R2"
+                title="Inspect or auto-correct wrong boilerplate code with AI and replace in Cloudflare R2"
               >
                 <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline text-[11px] font-bold">Driver R2</span>
+                <span className="hidden sm:inline text-[11px] font-bold text-cyan-300">REPORT BOILER PLATE CODE</span>
               </button>
 
               {/* Cloud Auto-Sync Toggle Button */}
@@ -3361,10 +3361,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <button
                           onClick={() => setIsReportDriverOpen(true)}
                           className="px-2.5 py-1 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-600/50 text-cyan-300 hover:text-cyan-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                          title="Report wrong driver code, auto-correct with AI, and replace in Cloudflare R2"
+                          title="Report wrong boilerplate code, auto-correct with AI, and replace in Cloudflare R2"
                         >
                           <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Fix Driver in R2</span>
+                          <span>Report Boiler Plate Code</span>
                         </button>
 
                         <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap">
@@ -3463,7 +3463,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                             <div className="flex items-center gap-2 text-amber-300">
                               <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                              <span className="text-[11px] font-medium">Issue with testcase data or driver execution harness?</span>
+                              <span className="text-[11px] font-medium">Issue with testcase data or boilerplate code harness?</span>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
@@ -3480,10 +3480,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                               <button
                                 onClick={() => setIsReportDriverOpen(true)}
                                 className="px-2.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
-                                title="Inspect wrong driver code, auto-correct with AI, and replace in Cloudflare R2"
+                                title="Inspect wrong boilerplate code, auto-correct with AI, and replace in Cloudflare R2"
                               >
                                 <Cpu className="w-3 h-3 text-cyan-200" />
-                                <span>Fix Driver in R2</span>
+                                <span>Report Boiler Plate Code</span>
                               </button>
                             </div>
                           </div>
@@ -3919,7 +3919,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }}
       />
 
-      {/* AI Driver Code Inspector & Auto-Resolver Modal */}
+      {/* AI Boilerplate Code Inspector & Auto-Resolver Modal */}
       <ReportDriverCodeModal
         isOpen={isReportDriverOpen}
         onClose={() => setIsReportDriverOpen(false)}
@@ -3933,20 +3933,35 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         sampleExpectedOutput={problemTemplate.expectedOutputs?.[activeTestCaseIdx]}
         executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
         userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
-        onApplyCorrection={(correctedDriver) => {
+        onApplyCorrection={(correctedDriver, correctedSolution) => {
           setProblemTemplate((prev) => {
             const next = {
               ...prev,
               driverCode: {
                 ...(prev.driverCode || {}),
                 [language]: correctedDriver
-              } as Record<SupportedLanguage, string>
+              } as Record<SupportedLanguage, string>,
+              solutions: correctedSolution ? ({
+                ...(prev.solutions || {}),
+                [language]: correctedSolution
+              } as Record<SupportedLanguage, string>) : prev.solutions
             };
             try {
-              localStorage.setItem(`edustream_driver_${currentProblemSlug}_${language.toLowerCase()}`, correctedDriver);
+              const slug = currentProblemSlug;
+              const lang = language.toLowerCase();
+              localStorage.setItem(`edustream_driver_${slug}_${lang}`, correctedDriver);
+              localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
+              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
             } catch (_) {}
             return next;
           });
+
+          if (correctedSolution) {
+            setCode(correctedSolution);
+            try {
+              localStorage.setItem(`edustream_user_code_${currentProblemSlug}_${language}`, correctedSolution);
+            } catch (_) {}
+          }
         }}
         onRerun={() => {
           setIsReportDriverOpen(false);

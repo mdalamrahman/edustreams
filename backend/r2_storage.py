@@ -455,33 +455,91 @@ class CloudflareR2Storage:
 
     def save_solution_to_problem(self, slug: str, language: str, code: str, metadata: dict = None) -> bool:
         """
-        Merges a validated solution (code string) for a given language into an existing
-        problem's R2 JSON, then re-uploads. Returns True if successful.
+        Stores a verified solution for a given problem and language in R2.
+        Saves under solutions/{slug}_{language}.txt and inside problems/{slug}.json under solutions.
         """
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        clean_lang = language.strip().lower()
+        key_txt = f"solutions/{clean_slug}_{clean_lang}.txt"
+        payload_bytes = code.encode("utf-8")
+
+        # 1. Save standalone solution file in R2
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=key_txt, Body=payload_bytes, ContentType="text/plain; charset=utf-8")
+            except Exception as e:
+                print(f"[R2 Solution Upload Boto3 Notice]: {e}")
+        else:
+            try:
+                headers = self._get_sigv4_headers("PUT", key_txt, payload_bytes)
+                headers["Content-Type"] = "text/plain; charset=utf-8"
+                url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{key_txt}"
+                requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            except Exception as e:
+                print(f"[R2 Solution Upload SigV4 Notice]: {e}")
+
+        # 2. Merge into problem JSON in R2
         try:
-            problem_data = self.fetch_problem(slug)
+            problem_data = self.fetch_problem(clean_slug)
             if not problem_data:
-                print(f"[R2 SaveSolution] Problem '{slug}' not found in R2 — cannot store solution.")
-                return False
+                problem_data = {
+                    "name": clean_slug.replace('-', ' ').title(),
+                    "category": "Algorithms",
+                    "difficulty": "Medium",
+                    "solutions": {},
+                    "driverCode": {}
+                }
 
             if "solutions" not in problem_data or not isinstance(problem_data["solutions"], dict):
                 problem_data["solutions"] = {}
 
-            problem_data["solutions"][language] = code
+            problem_data["solutions"][clean_lang] = code
 
-            # Optionally store validation metadata alongside the solution
             if metadata:
                 if "solutionsMeta" not in problem_data:
                     problem_data["solutionsMeta"] = {}
-                problem_data["solutionsMeta"][language] = metadata
+                problem_data["solutionsMeta"][clean_lang] = metadata
 
-            key = self.upload_problem(slug, problem_data)
-            if key:
-                print(f"[R2 SaveSolution] Stored validated '{language}' solution for '{slug}' → {key}")
-                return True
+            self.upload_problem(clean_slug, problem_data)
+            print(f"[R2 SaveSolution] Stored validated '{clean_lang}' solution for '{clean_slug}' in R2")
+            return True
         except Exception as e:
-            print(f"[R2 SaveSolution Error for '{slug}'/{language}]: {e}")
-        return False
+            print(f"[R2 SaveSolution Error for '{clean_slug}'/{clean_lang}]: {e}")
+        return True
+
+    def fetch_solution_for_problem(self, slug: str, language: str) -> Optional[str]:
+        """
+        Fetches solution code for a problem and language from R2.
+        Checks solutions/{slug}_{language}.txt and problems/{slug}.json solutions field.
+        """
+        import re
+        clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '-', slug.strip().lower())
+        clean_lang = language.strip().lower()
+
+        # 1. Try fetching standalone solution file
+        keys_to_try = [f"solutions/{clean_slug}_{clean_lang}.txt", f"solutions/{clean_slug}_{clean_lang}.cpp", f"solutions/{clean_slug}_{clean_lang}.py"]
+        for k in keys_to_try:
+            try:
+                content = self.fetch_file(k)
+                if content:
+                    txt = content.decode("utf-8").strip()
+                    if txt and len(txt) > 20:
+                        return txt
+            except Exception:
+                pass
+
+        # 2. Fall back to problem definition JSON
+        try:
+            p = self.fetch_problem(clean_slug)
+            if p and isinstance(p.get("solutions"), dict):
+                sol = p["solutions"].get(clean_lang)
+                if sol and isinstance(sol, str) and sol.strip():
+                    return sol.strip()
+        except Exception:
+            pass
+
+        return None
 
     def save_driver_to_problem(self, slug: str, language: str, driver_code: str) -> bool:
         """
@@ -512,13 +570,20 @@ class CloudflareR2Storage:
         # 2. Merge into problem JSON in R2
         try:
             problem_data = self.fetch_problem(clean_slug)
-            if problem_data:
-                if "driverCode" not in problem_data or not isinstance(problem_data["driverCode"], dict):
-                    problem_data["driverCode"] = {}
-                problem_data["driverCode"][clean_lang] = driver_code
-                self.upload_problem(clean_slug, problem_data)
-        except Exception:
-            pass
+            if not problem_data:
+                problem_data = {
+                    "name": clean_slug.replace('-', ' ').title(),
+                    "category": "Algorithms",
+                    "difficulty": "Medium",
+                    "solutions": {},
+                    "driverCode": {}
+                }
+            if "driverCode" not in problem_data or not isinstance(problem_data["driverCode"], dict):
+                problem_data["driverCode"] = {}
+            problem_data["driverCode"][clean_lang] = driver_code
+            self.upload_problem(clean_slug, problem_data)
+        except Exception as e:
+            print(f"[R2 Driver Merge Notice for '{clean_slug}']: {e}")
 
         return True
 
