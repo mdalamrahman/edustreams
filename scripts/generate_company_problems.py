@@ -144,6 +144,7 @@ def main():
         '6_months': {},
         'more_6_months': {}
     }
+    problem_companies = {}
 
     for c in companies:
         c_dir = os.path.join(base_dir, c)
@@ -176,6 +177,12 @@ def main():
                         if int_pid not in global_timeframe_occurrences[tf_key]:
                             global_timeframe_occurrences[tf_key][int_pid] = []
                         global_timeframe_occurrences[tf_key][int_pid].append(freq)
+
+                        if c != 'all_companies':
+                            c_name = format_company_name(c)
+                            if int_pid not in problem_companies:
+                                problem_companies[int_pid] = {}
+                            problem_companies[int_pid][c_name] = max(problem_companies[int_pid].get(c_name, 0.0), freq)
 
                         if int_pid not in problems:
                             url = row.get('URL', '').strip()
@@ -246,6 +253,12 @@ def main():
         'total': len(problems),
         'timeframes': all_companies_tf
     }
+
+    # Attach sorted companies list to each problem
+    for int_pid, comp_map in problem_companies.items():
+        if int_pid in problems:
+            sorted_comps = [name for name, _ in sorted(comp_map.items(), key=lambda x: x[1], reverse=True)]
+            problems[int_pid]['companies'] = sorted_comps
 
     # Collect and count all distinct topics across all problems
     topic_counts = {}

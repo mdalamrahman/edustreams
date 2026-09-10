@@ -20,6 +20,7 @@ import {
   Video as VideoIcon, 
   Send, 
   Bot, 
+  Search,
   ExternalLink, 
   Tv,
   Layers,
@@ -58,6 +59,7 @@ import {
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
+import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
@@ -1686,7 +1688,41 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   };
 
   const difficulty = codingProblem?.difficulty || problemTemplate.difficulty || 'Medium';
-  const companies = codingProblem?.companies || ['Amazon', 'Google', 'Microsoft', 'Meta'];
+
+  // Dynamic companies lookup: authentic hiring tech giants for this problem
+  const [resolvedCompanies, setResolvedCompanies] = useState<string[]>(() => {
+    if (Array.isArray(codingProblem?.companies) && codingProblem.companies.length > 0) {
+      const valid = codingProblem.companies.filter((c: any) => 
+        c && typeof c === 'string' && !c.toLowerCase().includes('all companies') && !c.toLowerCase().includes('tech company')
+      );
+      if (valid.length > 0) return valid;
+    }
+    const targetSlug = codingProblem?.slug || codingProblem?.id || toSlug(problemTitle);
+    const lookedUp = getCompaniesForProblem(targetSlug);
+    if (lookedUp && lookedUp.length > 0) return lookedUp;
+    return [];
+  });
+
+  const [showCompaniesModal, setShowCompaniesModal] = useState(false);
+  const [companyModalSearch, setCompanyModalSearch] = useState('');
+
+  // If dataset wasn't ready synchronously on initial render, load it and update resolvedCompanies
+  useEffect(() => {
+    if (resolvedCompanies.length > 0) return;
+    fetchCompanyProblemsDataset().then(() => {
+      const targetSlug = codingProblem?.slug || codingProblem?.id || toSlug(problemTitle);
+      const lookedUp = getCompaniesForProblem(targetSlug);
+      if (lookedUp && lookedUp.length > 0) {
+        setResolvedCompanies(lookedUp);
+      }
+    });
+  }, [codingProblem, problemTitle, resolvedCompanies.length]);
+
+  const companies = resolvedCompanies.length > 0
+    ? resolvedCompanies
+    : (Array.isArray(codingProblem?.companies) && codingProblem.companies.length > 0 && !codingProblem.companies[0].toLowerCase().includes('all companies'))
+    ? codingProblem.companies
+    : ['Google', 'Amazon', 'Meta', 'Microsoft'];
 
   return (
     <div className={`fixed inset-0 z-[100] w-screen h-screen bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : isVerticalDragging ? 'cursor-row-resize select-none' : ''}`}>
@@ -2090,9 +2126,43 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <span>{problemTemplate.category}</span>
                       </button>
 
-                      <div className="px-2.5 py-0.5 rounded-full bg-white/[0.07] text-slate-300 text-xs font-medium flex items-center gap-1">
-                        <Building2 className="w-3 h-3 text-slate-400" />
-                        <span>{companies.slice(0, 3).join(', ')}</span>
+                      {/* Authentic LeetCode-Style Company Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          onClick={() => setShowCompaniesModal(true)}
+                          className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm group"
+                          title="View all verified tech companies asking this question"
+                        >
+                          <Building2 className="w-3 h-3 text-cyan-400 group-hover:scale-110 transition-transform" />
+                          <span>Companies</span>
+                          <span className="px-1.5 py-0.2 rounded-md bg-indigo-900/80 text-[10px] font-mono text-cyan-300 border border-indigo-700/50">
+                            {companies.length}
+                          </span>
+                        </button>
+
+                        {/* Top 3 Company Badges */}
+                        {companies.slice(0, 3).map((compName: string) => (
+                          <span
+                            key={compName}
+                            onClick={() => setShowCompaniesModal(true)}
+                            className="px-2.5 py-0.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-slate-300 hover:text-white text-xs font-medium border border-white/[0.08] flex items-center gap-1 transition-colors cursor-pointer"
+                            title={`Asked in ${compName} interviews - click to view all`}
+                          >
+                            <Building2 className="w-2.5 h-2.5 text-slate-400" />
+                            <span>{compName}</span>
+                          </span>
+                        ))}
+
+                        {/* +N more expander */}
+                        {companies.length > 3 && (
+                          <button
+                            onClick={() => setShowCompaniesModal(true)}
+                            className="px-2 py-0.5 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 text-xs font-mono border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+                            title={`View all ${companies.length} hiring companies`}
+                          >
+                            +{companies.length - 3} more
+                          </button>
+                        )}
                       </div>
 
                       {problemTemplate.hints && problemTemplate.hints.length > 0 && (
@@ -3859,6 +3929,94 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               className="max-h-[75vh] max-w-full object-contain rounded-xl border border-slate-800 bg-black/50"
               referrerPolicy="no-referrer"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Authentic Companies Asking This Question Dialog Modal */}
+      {showCompaniesModal && (
+        <div 
+          className="fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => {
+            setShowCompaniesModal(false);
+            setCompanyModalSearch('');
+          }}
+        >
+          <div 
+            className="w-full max-w-lg rounded-3xl bg-slate-900 border border-indigo-500/40 shadow-2xl p-6 space-y-4 animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30">
+                  <Building2 className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight">
+                    Companies Asking This Question
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    <span className="font-mono text-cyan-300 font-bold">{companies.length}</span> verified tech companies tested this problem in recent interviews
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCompaniesModal(false);
+                  setCompanyModalSearch('');
+                }}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search filter for companies */}
+            {companies.length > 5 && (
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={companyModalSearch}
+                  onChange={(e) => setCompanyModalSearch(e.target.value)}
+                  placeholder="Search hiring companies (e.g. Google, Amazon, Meta)..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 placeholder:text-slate-500 font-sans"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            {/* Companies Badges Grid */}
+            <div className="max-h-72 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-800">
+              <div className="flex flex-wrap gap-2">
+                {companies
+                  .filter((c: string) => c.toLowerCase().includes(companyModalSearch.toLowerCase()))
+                  .map((comp: string) => (
+                    <div
+                      key={comp}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-2xl bg-slate-950 border border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-950/20 transition-all text-xs font-semibold text-slate-200"
+                    >
+                      <Building2 className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                      <span>{comp}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span className="truncate max-w-[280px]">
+                Problem: <strong className="text-slate-200">{cleanTitle}</strong>
+              </span>
+              <button
+                onClick={() => {
+                  setShowCompaniesModal(false);
+                  setCompanyModalSearch('');
+                }}
+                className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

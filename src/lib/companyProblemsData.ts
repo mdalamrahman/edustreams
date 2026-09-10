@@ -17,6 +17,7 @@ export interface CompanyProblemItem {
   acceptance: number;
   frequency: number; // in current company/timeframe context
   topicTags: string[];
+  companies?: string[];
   isSolved?: boolean;
 }
 
@@ -54,6 +55,7 @@ export interface CompanyProblemsDataset {
     difficulty: 'Easy' | 'Medium' | 'Hard';
     acceptance: number;
     topicTags?: string[];
+    companies?: string[];
   }>;
   companies: Record<string, RawCompanyData>;
 }
@@ -227,7 +229,50 @@ export function getCompanyProblemsForTimeframe(
       acceptance: rawProb?.acceptance || 50.0,
       frequency: freq,
       topicTags: rawProb?.topicTags || [],
+      companies: rawProb?.companies || [],
       isSolved: solved
     };
   });
 }
+
+/**
+ * Synchronously looks up authentic company names for a problem by its slug, title, or numeric ID.
+ * Falls back gracefully to empty array if dataset is not yet loaded or problem not indexed.
+ */
+export function getCompaniesForProblem(slugOrId: string | number): string[] {
+  if (!cachedDataset || !cachedDataset.problems) return [];
+  const key = String(slugOrId).toLowerCase().trim();
+
+  // 1. Direct ID lookup
+  if (cachedDataset.problems[key]?.companies?.length) {
+    return cachedDataset.problems[key].companies;
+  }
+
+  // 2. Slug or exact title lookup
+  for (const prob of Object.values(cachedDataset.problems)) {
+    if (
+      prob.slug.toLowerCase() === key ||
+      String(prob.id) === key ||
+      prob.title.toLowerCase() === key
+    ) {
+      if (prob.companies && prob.companies.length > 0) {
+        return prob.companies;
+      }
+    }
+  }
+
+  // 3. Loose slug lookup (e.g. ignoring special characters or hyphens)
+  const normalizedKey = key.replace(/[^a-z0-9]/g, '');
+  for (const prob of Object.values(cachedDataset.problems)) {
+    const normSlug = prob.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normTitle = prob.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normSlug === normalizedKey || normTitle === normalizedKey) {
+      if (prob.companies && prob.companies.length > 0) {
+        return prob.companies;
+      }
+    }
+  }
+
+  return [];
+}
+
