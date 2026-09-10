@@ -155,6 +155,43 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Build monthly POTD calendar from localStorage for the current month
+  const potdMonthCalendar = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-indexed
+    const todayDate = now.getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
+
+    const days: Array<{
+      date: number;
+      dateStr: string;
+      isFuture: boolean;
+      isToday: boolean;
+      lcSolved: boolean;
+      gfgSolved: boolean;
+      sdeSolved: boolean;
+      anySolved: boolean;
+    }> = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const mm = String(month + 1).padStart(2, '0');
+      const dd = String(d).padStart(2, '0');
+      const dateStr = `${year}-${mm}-${dd}`;
+      const isFuture = d > todayDate;
+      const isToday = d === todayDate;
+      const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${dateStr}`) === 'true';
+      const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${dateStr}`) === 'true';
+      const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${dateStr}`) === 'true' ||
+        localStorage.getItem(`sdetube_potd_solved_${dateStr}`) === 'true';
+      const anySolved = lcSolved || gfgSolved || sdeSolved;
+      days.push({ date: d, dateStr, isFuture, isToday, lcSolved, gfgSolved, sdeSolved, anySolved });
+    }
+
+    return { days, firstDayOfWeek, daysInMonth, monthLabel: now.toLocaleString('default', { month: 'long', year: 'numeric' }) };
+  }, [solveEventCount]);
+
   // Check Card A: SDETube SDE POTD solved status TODAY
   const isSdePotdSolved = useMemo(() => {
     if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
@@ -260,11 +297,13 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
     const lcUser = linkedConfig.leetcodeUsername?.trim();
+    const gfgUser = linkedConfig.gfgUsername?.trim();
     await Promise.allSettled([
       syncExternalProfiles(),
       fetchLeetCodePOTD(true).then(res => setLcPotd(res)),
       fetchGFGPOTD(true).then(res => setGfgPotd(res)),
-      lcUser ? fetchLeetCodeFullProfile(lcUser, true).then(res => setLeetcodeProfile(res)) : Promise.resolve()
+      lcUser ? fetchLeetCodeFullProfile(lcUser, true).then(res => setLeetcodeProfile(res)) : Promise.resolve(),
+      gfgUser ? fetchGFGProfile(gfgUser).then(res => setGfgProfile(res)) : Promise.resolve()
     ]);
   };
 
@@ -615,6 +654,45 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     <ExternalLink className="w-3 h-3" />
                   </a>
 
+                  {/* Monthly POTD Calendar */}
+                  <div className="mt-3 p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-400 font-mono uppercase tracking-wider">📅 {potdMonthCalendar.monthLabel} — POTD Calendar</span>
+                      <div className="flex items-center gap-2 text-[9px] font-mono text-slate-500">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>LC</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>GFG</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400 inline-block"></span>SDE</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-0.5 text-[9px] font-mono">
+                      {['S','M','T','W','T','F','S'].map((d, i) => (
+                        <div key={i} className="text-center text-slate-600 font-bold pb-0.5">{d}</div>
+                      ))}
+                      {/* Empty cells for day offset */}
+                      {Array.from({ length: potdMonthCalendar.firstDayOfWeek }).map((_, i) => (
+                        <div key={`empty-${i}`} />
+                      ))}
+                      {potdMonthCalendar.days.map((day) => (
+                        <div
+                          key={day.date}
+                          title={day.isFuture ? 'N/A' : day.anySolved ? `${day.dateStr}: Solved ✓ ${day.lcSolved ? '(LC)' : ''}${day.gfgSolved ? '(GFG)' : ''}${day.sdeSolved ? '(SDE)' : ''}` : `${day.dateStr}: Not solved`}
+                          className={`relative aspect-square flex items-center justify-center rounded-md text-[9px] font-bold transition-all cursor-default
+                            ${day.isToday ? 'ring-1 ring-amber-400' : ''}
+                            ${day.isFuture ? 'text-slate-700 bg-slate-950/40' :
+                              day.anySolved ?
+                                day.lcSolved ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50' :
+                                day.gfgSolved ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50' :
+                                'bg-indigo-500/30 text-indigo-300 border border-indigo-500/50'
+                              : 'text-slate-500 hover:bg-slate-900'
+                            }`}
+                        >
+                          {day.anySolved && !day.isFuture ? '✓' : day.date}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[9px] text-slate-600 font-mono text-center">Hover any day for details • Future days show N/A</div>
+                  </div>
+
                   {/* LeetCode Account Status & Manual Solved Toggle */}
                   <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
                     <span className="truncate max-w-[150px]">
@@ -642,6 +720,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                       {isLcPotdSolved ? 'Unmark Solved' : 'Mark as Solved ✓'}
                     </button>
                   </div>
+
                 </>
               )}
             </div>

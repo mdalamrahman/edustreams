@@ -805,20 +805,15 @@ export function getUserBadges(userEmail?: string): SDETubeBadge[] {
   const mikSolved = prog.solved_mik || [];
   const lldSolved = prog.lld_solved_ids || [];
 
-  const allSolvedSet = new Set([
-    ...sdeSolved,
-    ...a2zSolved,
-    ...fast79Solved,
-    ...blindSolved,
-    ...mikSolved,
-    ...lldSolved
-  ]);
-  const totalSolved = allSolvedSet.size;
+  // Strictly use authoritative canonical unique solved count from getRealSheetSolvedBreakdown
+  const breakdown = getRealSheetSolvedBreakdown(userEmail);
+  const totalSolved = breakdown.totalSolved;
 
   // Build a date-count map that merges:
   // 1. Internal code-runner submission dates (sdetube_submissions_*)
   // 2. POTD solved dates (sdetube_potd_solved_YYYY-MM-DD) for ALL platforms
   // 3. Practice activity logs
+  // 4. Linked LeetCode submissionCalendar
   // This ensures POTD streaks properly feed into streak badge progress.
   const dateCounts: Record<string, number> = {};
   try {
@@ -874,12 +869,80 @@ export function getUserBadges(userEmail?: string): SDETubeBadge[] {
         });
       }
     }
+
+    // Merge linked LeetCode profile submissionCalendar into dateCounts
+    const rawLinked = localStorage.getItem('edustream_linked_profiles');
+    const lcUser = rawLinked ? JSON.parse(rawLinked)?.leetcodeUsername?.trim() : '';
+    if (lcUser) {
+      const cachedProfile = localStorage.getItem(`sdetube_leetcode_profile_${lcUser.toLowerCase()}`);
+      if (cachedProfile) {
+        const parsed = JSON.parse(cachedProfile);
+        const subCal = parsed?.matchedUser?.submissionCalendar;
+        if (subCal) {
+          const calObj = typeof subCal === 'string' ? JSON.parse(subCal) : subCal;
+          for (const [secStr, count] of Object.entries(calObj)) {
+            if (Number(count) > 0) {
+              const ymd = new Date(Number(secStr) * 1000).toISOString().slice(0, 10);
+              dateCounts[ymd] = (dateCounts[ymd] || 0) + Number(count);
+            }
+          }
+        }
+      }
+    }
   } catch {}
 
   const { maxStreak, currentStreak } = generateUserSubmissionHeatmap(dateCounts);
   const bestStreak = Math.max(maxStreak, currentStreak);
 
   return [
+    {
+      id: 'badge-1',
+      name: 'First Step',
+      description: 'Solve your first coding problem across DSA sheets',
+      iconName: 'Sparkles',
+      category: 'milestone',
+      unlocked: totalSolved >= 1,
+      progress: Math.min(totalSolved, 1),
+      target: 1,
+      color: 'text-emerald-400',
+      accentBg: 'bg-emerald-950/60 border-emerald-600/40'
+    },
+    {
+      id: 'badge-5',
+      name: 'Rising Coder',
+      description: 'Solve 5 coding problems across DSA sheets',
+      iconName: 'Zap',
+      category: 'milestone',
+      unlocked: totalSolved >= 5,
+      progress: Math.min(totalSolved, 5),
+      target: 5,
+      color: 'text-cyan-400',
+      accentBg: 'bg-cyan-950/60 border-cyan-600/40'
+    },
+    {
+      id: 'badge-10',
+      name: 'Deca Striker',
+      description: 'Solve 10 coding problems across DSA sheets',
+      iconName: 'Award',
+      category: 'milestone',
+      unlocked: totalSolved >= 10,
+      progress: Math.min(totalSolved, 10),
+      target: 10,
+      color: 'text-indigo-400',
+      accentBg: 'bg-indigo-950/60 border-indigo-600/40'
+    },
+    {
+      id: 'badge-25',
+      name: 'Quarter Century',
+      description: 'Solve 25 coding problems across DSA sheets',
+      iconName: 'Medal',
+      category: 'milestone',
+      unlocked: totalSolved >= 25,
+      progress: Math.min(totalSolved, 25),
+      target: 25,
+      color: 'text-purple-400',
+      accentBg: 'bg-purple-950/60 border-purple-600/40'
+    },
     {
       id: 'badge-50',
       name: 'Bronze Pioneer',
@@ -927,6 +990,18 @@ export function getUserBadges(userEmail?: string): SDETubeBadge[] {
       target: 500,
       color: 'text-cyan-300',
       accentBg: 'bg-cyan-950/60 border-cyan-500/50'
+    },
+    {
+      id: 'badge-streak-3',
+      name: '3-Day Momentum',
+      description: 'Maintain a 3-day continuous daily coding streak',
+      iconName: 'Flame',
+      category: 'streak',
+      unlocked: bestStreak >= 3,
+      progress: Math.min(bestStreak, 3),
+      target: 3,
+      color: 'text-amber-400',
+      accentBg: 'bg-amber-950/60 border-amber-600/40'
     },
     {
       id: 'badge-streak-7',

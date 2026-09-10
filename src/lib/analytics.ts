@@ -322,28 +322,11 @@ export function isPotdSolvedToday(platform?: 'sdetube' | 'leetcode' | 'gfg'): bo
 
 /**
  * Resets falsely cached POTD keys if no actual submission exists for today.
+ * NEVER deletes past-day keys so historical streaks and monthly calendars remain intact.
  */
 export function resetUnverifiedPotdToday(): void {
   if (typeof window === 'undefined') return;
   const today = new Date().toISOString().slice(0, 10);
-
-  // Verify SDETube POTD submission today
-  // Clean up stale past-day keys from previous dates
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (
-        key.startsWith('sdetube_potd_solved_') ||
-        key.startsWith('sdetube_potd_leetcode_solved_') ||
-        key.startsWith('sdetube_potd_sdetube_solved_') ||
-        key.startsWith('sdetube_potd_gfg_solved_')
-      )) {
-        if (!key.endsWith(today)) {
-          localStorage.removeItem(key);
-        }
-      }
-    }
-  } catch {}
 
   // If none of the platforms were solved today, clear today's aggregate potd flag
   const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
@@ -648,9 +631,9 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
       const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode') || localStorage.getItem(`sdetube_leetcode_potd_${todayStr}`);
       if (lcRaw) {
         const lc = JSON.parse(lcRaw);
-        addRawSlug(lc.titleSlug || lc.title);
-      } else {
-        addRawSlug('count-commas-in-range-ii');
+        if (lc.titleSlug || lc.title) {
+          addRawSlug(lc.titleSlug || lc.title);
+        }
       }
     } catch {}
   }
@@ -761,7 +744,8 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const lldTotal = LLD_PROBLEMS.length;
   const lldPct = lldTotal > 0 ? Math.round((lldSolved / lldTotal) * 100) : 0;
 
-  const totalSolved = dsaSolved + lldSolved;
+  const totalSolved = uniqueSolvedSlugs.size;
+  const dsaSolvedCanonical = Math.max(0, totalSolved - lldSolved);
   const totalAvailableProblems = dsaTotal + lldTotal;
 
   // 3. Bonus Points (DBMS & CN)

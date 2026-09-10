@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getRealSheetSolvedBreakdown } from './userProfileService';
 
 export interface SupabaseAdminMetrics {
   totalActiveUsers: number;
@@ -114,13 +115,20 @@ export async function fetchSupabaseLiveTelemetry(): Promise<Partial<SupabaseAdmi
           if (!email) continue;
           const uid = dp.user_id || email;
 
-          const sde = Array.isArray(dp.solved_sde) ? dp.solved_sde.length : 0;
-          const a2z = Array.isArray(dp.solved_a2z) ? dp.solved_a2z.length : 0;
-          const s79 = Array.isArray(dp.solved_79) ? dp.solved_79.length : 0;
-          const b75 = Array.isArray(dp.solved_blind75) ? dp.solved_blind75.length : 0;
-          const mik = Array.isArray(dp.solved_mik) ? dp.solved_mik.length : 0;
-          const lld = Array.isArray(dp.lld_solved_ids) ? dp.lld_solved_ids.length : 0;
-          const totalSolved = sde + a2z + s79 + b75 + mik + lld;
+          let totalSolved = 0;
+          try {
+            totalSolved = getRealSheetSolvedBreakdown(email).totalSolved;
+          } catch {
+            const set = new Set([
+              ...(dp.solved_sde || []).map((id: any) => `sde_${id}`),
+              ...(dp.solved_a2z || []).map((id: any) => `a2z_${id}`),
+              ...(dp.solved_79 || []).map((id: any) => `s79_${id}`),
+              ...(dp.solved_blind75 || []).map((id: any) => `b75_${id}`),
+              ...(dp.solved_mik || []).map((id: any) => `mik_${id}`),
+              ...(dp.lld_solved_ids || []).map((id: any) => `lld_${id}`)
+            ]);
+            totalSolved = set.size;
+          }
           const studyHours = Number((Number(dp.active_mins || 0) / 60).toFixed(1));
 
           if (!userStatsMap.has(uid) && !userStatsMap.has(email)) {

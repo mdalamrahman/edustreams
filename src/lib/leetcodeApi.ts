@@ -15,6 +15,20 @@ export interface LeetCodeDailyQuestion {
   acRate?: number;
 }
 
+export interface LeetCodeMonthlyChallengeItem {
+  date: string;
+  day: number;
+  link?: string;
+  userStatus?: string;
+  question?: {
+    questionFrontendId?: string;
+    title: string;
+    titleSlug: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+    topicTags?: string[];
+  };
+}
+
 export interface GFGDailyQuestion {
   id?: number;
   date: string;
@@ -291,3 +305,139 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     totalSubmissions: 12890
   };
 }
+
+/**
+ * Fetches the entire month's LeetCode daily coding challenges.
+ * Used by the monthly calendar widget in the DSA Problems view and Dashboard.
+ */
+export async function fetchLeetCodeMonthlyPOTD(
+  year?: number,
+  month?: number,
+  forceRefresh = false
+): Promise<LeetCodeMonthlyChallengeItem[]> {
+  const now = new Date();
+  const y = year || now.getFullYear();
+  const m = month || (now.getMonth() + 1);
+  const cacheKey = `sdetube_leetcode_monthly_potd_${y}_${m}`;
+
+  if (!forceRefresh && typeof localStorage !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+
+  // 1. Try internal edge proxy endpoints
+  const endpoints = [
+    `/api/potd/leetcode-month?year=${y}&month=${m}`,
+    `/api/potd/leetcode?month=${m}&year=${y}`
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.challenges) && data.challenges.length > 0) {
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(data.challenges));
+          } catch {}
+          return data.challenges;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Direct GraphQL Query to LeetCode
+  try {
+    const query = `query dailyCodingQuestionRecords($year: Int!, $month: Int!) {
+      dailyCodingChallengeV2(year: $year, month: $month) {
+        challenges {
+          date
+          userStatus
+          link
+          question {
+            questionFrontendId
+            title
+            titleSlug
+            difficulty
+            topicTags { name }
+          }
+        }
+      }
+    }`;
+
+    const gqlRes = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      body: JSON.stringify({ query, variables: { year: y, month: m } }),
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (gqlRes.ok) {
+      const json: any = await gqlRes.json();
+      const rawChallenges = json?.data?.dailyCodingChallengeV2?.challenges;
+      if (Array.isArray(rawChallenges) && rawChallenges.length > 0) {
+        const challenges: LeetCodeMonthlyChallengeItem[] = rawChallenges.map((c: any) => {
+          const q = c.question || {};
+          const dayNum = parseInt(c.date?.split('-')[2] || '1', 10);
+          return {
+            date: c.date,
+            day: dayNum,
+            link: c.link,
+            userStatus: c.userStatus,
+            question: {
+              questionFrontendId: q.questionFrontendId || '1',
+              title: q.title || 'Daily Problem',
+              titleSlug: q.titleSlug || '',
+              difficulty: q.difficulty || 'Medium',
+              topicTags: (q.topicTags || []).map((t: any) => typeof t === 'string' ? t : t?.name)
+            }
+          };
+        });
+
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(challenges));
+        } catch {}
+        return challenges;
+      }
+    }
+  } catch (err) {
+    console.warn('[LeetCode Monthly Challenges Fallback]:', err);
+  }
+
+  // Fallback: build basic calendar up to today using today's POTD if cached
+  const fallbackList: LeetCodeMonthlyChallengeItem[] = [];
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const today = now.toISOString().slice(0, 10);
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mm = String(m).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const dateStr = `${y}-${mm}-${dd}`;
+    if (d > now.getDate() && y === now.getFullYear() && m === now.getMonth() + 1) {
+      // Future day: not published yet
+      continue;
+    }
+    fallbackList.push({
+      date: dateStr,
+      day: d,
+      question: {
+        title: dateStr === today ? 'Today\'s Daily Challenge' : `Challenge Day ${d}`,
+        titleSlug: dateStr === today ? 'leetcode-potd-today' : `daily-${dateStr}`,
+        difficulty: 'Medium'
+      }
+    });
+  }
+
+  return fallbackList;
+}
+
