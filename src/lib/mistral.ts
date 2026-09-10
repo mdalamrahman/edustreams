@@ -930,6 +930,140 @@ Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// ==
   return null;
 }
 
+export interface DriverVerificationPayload {
+  slug?: string;
+  problemTitle: string;
+  language: string;
+  starterCode?: string;
+  currentDriverCode?: string;
+  userCode?: string;
+  sampleTestInput?: string;
+  sampleExpectedOutput?: string;
+  executionError?: string;
+  userReportReason?: string;
+}
+
+export interface DriverCorrectionResult {
+  isWrong: boolean;
+  identifiedIssue: string;
+  explanation: string;
+  correctedDriverCode: string;
+}
+
+export async function verifyAndCorrectDriverCodeAI(
+  payload: DriverVerificationPayload
+): Promise<DriverCorrectionResult> {
+  const {
+    slug,
+    problemTitle,
+    language,
+    starterCode = '',
+    currentDriverCode = '',
+    userCode = '',
+    sampleTestInput = '',
+    sampleExpectedOutput = '',
+    executionError = '',
+    userReportReason = ''
+  } = payload;
+
+  const normLang = (language || 'cpp').toLowerCase();
+  const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  const prompt = `You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
+A user reported that the execution driver harness for the problem "${problemTitle}" (${cleanSlug}) in ${normLang.toUpperCase()} is defective, failed to compile, or has incorrect parsing/serialization logic.
+
+Method signature / starter code:
+\`\`\`${normLang}
+${starterCode}
+\`\`\`
+
+Current Driver Code:
+\`\`\`${normLang}
+${currentDriverCode}
+\`\`\`
+
+User Solution Code (if available):
+\`\`\`${normLang}
+${userCode}
+\`\`\`
+
+Sample Testcase Input:
+\`\`\`
+${sampleTestInput}
+\`\`\`
+
+Sample Expected Output:
+\`\`\`
+${sampleExpectedOutput}
+\`\`\`
+
+Execution / Compilation Error:
+\`\`\`
+${executionError}
+\`\`\`
+
+User Report / Notes:
+"${userReportReason}"
+
+TASK:
+1. Examine the current driver code against the starter code, user solution, and compiler/execution error.
+2. Identify the specific defect(s) in the driver code:
+   - Missing required standard library headers (#include <vector>, <string>, <algorithm>, <queue>, <stack>, <unordered_map>, <map>, <set>, <sstream>, <cmath>, <climits>, etc.)
+   - Missing or misordered structs: struct TreeNode, struct ListNode, or class Node MUST BE DEFINED AT THE VERY TOP OF THE FILE, STRICTLY BEFORE '// === USER SOLUTION ==='
+   - Using 'cin' or 'getline(cin' instead of reading raw_input variable in main()
+   - Fragile argument parsing: splitting strings on commas inside nested arrays/matrices without tracking bracket depth
+   - Incorrect method parameter order or types
+   - Incorrect serialization of outputs (e.g. binary tree level-order format with 'null's, boolean true/false, void in-place mutated argument)
+3. Generate the complete, fully compilable, hardened replacement driver code for ${normLang.toUpperCase()}.
+   - Must contain '// === USER SOLUTION ===' (do not implement Solution class yourself).
+   - Must contain '// === HIDDEN DRIVER ===' marking the main execution block.
+
+You must respond in strict JSON format (and nothing else):
+{
+  "isWrong": true,
+  "identifiedIssue": "1-2 sentence summary of the specific defect in the driver",
+  "explanation": "Clear explanation of how the bug occurred and what was corrected",
+  "correctedDriverCode": "Complete replacement driver code without markdown fences"
+}`;
+
+  try {
+    const rawResp = await executeAIChatCascade([
+      { role: 'user', content: prompt }
+    ], { temperature: 0.1 });
+
+    if (rawResp) {
+      let cleaned = rawResp.trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          let code = (parsed.correctedDriverCode || '').replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+          if (code && code.includes('// === USER SOLUTION ===')) {
+            return {
+              isWrong: Boolean(parsed.isWrong ?? true),
+              identifiedIssue: parsed.identifiedIssue || 'Driver harness compilation or input parsing defect identified.',
+              explanation: parsed.explanation || 'Corrected headers, struct declarations, and input/output serialization in driver harness.',
+              correctedDriverCode: code
+            };
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    console.error('[verifyAndCorrectDriverCodeAI Error]:', err);
+  }
+
+  // Fallback: use requestAIDriverGeneration to create a brand-new hardened driver
+  const regenerated = await requestAIDriverGeneration(problemTitle, normLang, starterCode, sampleTestInput, cleanSlug);
+  return {
+    isWrong: true,
+    identifiedIssue: 'Driver harness encountered syntax or parsing failure.',
+    explanation: 'Regenerated a fresh, authentic LeetCode-compliant driver harness with complete type-safe argument parsing.',
+    correctedDriverCode: regenerated || currentDriverCode
+  };
+}
+
+
 export interface TestCaseVerificationPayload {
   slug?: string;
   problemTitle: string;

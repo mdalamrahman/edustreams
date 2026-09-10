@@ -15,7 +15,8 @@ import {
   Check,
   Coins,
   Play,
-  Layers
+  Layers,
+  Cpu
 } from 'lucide-react';
 import {
   verifyAndCorrectTestCaseAI,
@@ -43,6 +44,7 @@ interface ReportTestCaseModalProps {
   allProblemExpectedOutputs?: string[];
   onApplyCorrection: (correctedInput: string, correctedExpectedOutput: string) => any;
   onResubmit?: (updatedTemplate?: any) => void;
+  onSwitchToDriverReport?: () => void;
 }
 
 export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
@@ -61,7 +63,8 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
   allProblemTestCases,
   allProblemExpectedOutputs,
   onApplyCorrection,
-  onResubmit
+  onResubmit,
+  onSwitchToDriverReport
 }) => {
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -538,6 +541,25 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                   Close
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Switch to Driver Report link if user suspects driver issue */}
+          {onSwitchToDriverReport && (
+            <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <span className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Suspect compiler or execution driver harness is wrong instead?</span>
+              </span>
+              <button
+                onClick={() => {
+                  onClose();
+                  onSwitchToDriverReport();
+                }}
+                className="px-2.5 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-700/50 text-cyan-300 text-[11px] font-bold transition-all cursor-pointer shadow-sm"
+              >
+                Inspect Driver in R2 &rarr;
+              </button>
             </div>
           )}
 
