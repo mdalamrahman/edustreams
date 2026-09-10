@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 generate_company_problems.py
-Parses the extracted companywise interview questions dataset (snehasishroy/leetcode-companywise-interview-questions)
+Parses the extracted companywise interview questions dataset (snehasishroy/leetcode-companywise-interview-questions),
+attaches official LeetCode topic tags, creates an 'all_companies' aggregated collection,
 and produces an optimized, indexed JSON file for both client-side and backend consumption.
 """
 
@@ -13,6 +14,7 @@ import gzip
 def format_company_name(slug: str) -> str:
     words = slug.split('-')
     custom = {
+        'all_companies': 'All Companies (All 3,400+ Problems)',
         'browserstack': 'BrowserStack',
         'google': 'Google',
         'amazon': 'Amazon',
@@ -106,6 +108,17 @@ def main():
         return
     base_dir = os.path.join(root, subdirs[0])
 
+    # Load topic tags map if available
+    tags_map_path = os.path.join(os.path.dirname(__file__), '..', 'scratch', 'leetcode_tags_map.json')
+    tags_map = {}
+    if os.path.exists(tags_map_path):
+        try:
+            with open(tags_map_path, 'r', encoding='utf-8') as f:
+                tags_map = json.load(f)
+            print(f"Loaded {len(tags_map)} tag lookups from {tags_map_path}")
+        except Exception as e:
+            print("Notice: Could not load tags map:", e)
+
     companies = sorted([
         d for d in os.listdir(base_dir)
         if os.path.isdir(os.path.join(base_dir, d)) and not d.startswith('.')
@@ -122,6 +135,15 @@ def main():
     problems = {}
     company_index = {}
     total_occurrences = 0
+
+    # Aggregates for all_companies
+    global_timeframe_occurrences = {
+        'all': {},
+        '30_days': {},
+        '3_months': {},
+        '6_months': {},
+        'more_6_months': {}
+    }
 
     for c in companies:
         c_dir = os.path.join(base_dir, c)
@@ -150,6 +172,11 @@ def main():
 
                         items.append([int_pid, freq])
 
+                        # Track global occurrences
+                        if int_pid not in global_timeframe_occurrences[tf_key]:
+                            global_timeframe_occurrences[tf_key][int_pid] = []
+                        global_timeframe_occurrences[tf_key][int_pid].append(freq)
+
                         if int_pid not in problems:
                             url = row.get('URL', '').strip()
                             slug = url.split('/problems/')[-1].strip('/') if '/problems/' in url else ''
@@ -160,16 +187,22 @@ def main():
                             except Exception:
                                 acc_num = 50.0
 
+                            # Lookup official topic tags
+                            ptags = tags_map.get(str(int_pid)) or tags_map.get(slug) or []
+                            if not ptags:
+                                # Simple fallback tag infer
+                                ptags = ['Algorithms']
+
                             problems[int_pid] = {
                                 'id': int_pid,
                                 'title': (row.get('Title') or '').strip(),
                                 'slug': slug,
                                 'url': url,
                                 'difficulty': diff,
-                                'acceptance': acc_num
+                                'acceptance': acc_num,
+                                'topicTags': ptags
                             }
                     if items:
-                        # Sort items by frequency % descending
                         items.sort(key=lambda x: x[1], reverse=True)
                         tf_data[tf_key] = items
 
@@ -181,8 +214,60 @@ def main():
                 'timeframes': tf_data
             }
 
+    # Build 'all_companies' synthetic entry
+    all_companies_tf = {}
+    for tf_key, p_dict in global_timeframe_occurrences.items():
+        if tf_key == 'all':
+            # For 'all', ensure all 3399 problems are included
+            items = []
+            for int_pid in problems:
+                freq_list = p_dict.get(int_pid, [])
+                # Frequency score: average of reported frequencies weighted by company count
+                avg_freq = round(sum(freq_list) / max(1, len(freq_list)), 1) if freq_list else 10.0
+                comp_count = len(freq_list)
+                # Combined metric: high company count + high frequency
+                combined_score = round(min(100.0, avg_freq * 0.4 + min(60.0, comp_count * 3.0)), 1)
+                items.append([int_pid, combined_score])
+            items.sort(key=lambda x: x[1], reverse=True)
+            all_companies_tf[tf_key] = items
+        else:
+            items = []
+            for int_pid, freq_list in p_dict.items():
+                avg_freq = round(sum(freq_list) / max(1, len(freq_list)), 1) if freq_list else 10.0
+                comp_count = len(freq_list)
+                combined_score = round(min(100.0, avg_freq * 0.4 + min(60.0, comp_count * 3.0)), 1)
+                items.append([int_pid, combined_score])
+            items.sort(key=lambda x: x[1], reverse=True)
+            all_companies_tf[tf_key] = items
+
+    company_index['all_companies'] = {
+        'slug': 'all_companies',
+        'name': 'All Companies (All 3,400+ Problems)',
+        'total': len(problems),
+        'timeframes': all_companies_tf
+    }
+
+    # Collect and count all distinct topics across all problems
+    topic_counts = {}
+    for p in problems.values():
+        for t in p.get('topicTags', []):
+            topic_counts[t] = topic_counts.get(t, 0) + 1
+
+    topics_summary = [
+        {'name': t, 'count': cnt}
+        for t, cnt in sorted(topic_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
     # Generate summary list of companies sorted by total problems descending
     companies_summary = [
+        {
+            'slug': 'all_companies',
+            'name': 'All Companies (All 3,400+ Problems)',
+            'total': len(problems),
+            'available_timeframes': list(all_companies_tf.keys()),
+            'counts': { tf: len(all_companies_tf[tf]) for tf in all_companies_tf }
+        }
+    ] + [
         {
             'slug': c_data['slug'],
             'name': c_data['name'],
@@ -191,12 +276,14 @@ def main():
             'counts': { tf: len(c_data['timeframes'][tf]) for tf in c_data['timeframes'] }
         }
         for c_data in sorted(company_index.values(), key=lambda x: x['total'], reverse=True)
+        if c_data['slug'] != 'all_companies'
     ]
 
     payload = {
         'total_problems': len(problems),
-        'total_companies': len(company_index),
+        'total_companies': len(company_index) - 1, # excluding the synthetic all_companies
         'total_occurrences': total_occurrences,
+        'topics_summary': topics_summary,
         'companies_summary': companies_summary,
         'problems': problems,
         'companies': company_index
@@ -218,7 +305,9 @@ def main():
     raw_mb = os.path.getsize(out_public) / (1024 * 1024)
     print(f"Successfully generated company problems dataset:")
     print(f" - Total Unique Problems: {len(problems)}")
-    print(f" - Total Companies: {len(company_index)}")
+    print(f" - Total Companies: {len(company_index) - 1}")
+    print(f" - Total Topics Identified: {len(topics_summary)}")
+    print(f" - Top 5 Topics: {[t['name'] + ' (' + str(t['count']) + ')' for t in topics_summary[:5]]}")
     print(f" - Total Occurrences: {total_occurrences}")
     print(f" - Output File: {out_public} ({raw_mb:.2f} MB)")
     print(f" - Backend File: {out_backend}")

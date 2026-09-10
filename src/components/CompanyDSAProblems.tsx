@@ -18,7 +18,8 @@ import {
   BookOpen,
   Zap,
   Clock,
-  ShieldAlert
+  Tag,
+  Globe
 } from 'lucide-react';
 import {
   fetchCompanyProblemsDataset,
@@ -28,6 +29,7 @@ import {
   TimeframeKey,
   TIMEFRAME_LABELS,
   FEATURED_COMPANIES,
+  POPULAR_TOPICS,
   getCompanyProblemsForTimeframe
 } from '../lib/companyProblemsData';
 import { isProblemSlugSolved, toggleProblemSolvedGlobally } from '../lib/analytics';
@@ -42,7 +44,7 @@ interface CompanyDSAProblemsProps {
 export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
   onOpenCodingWorkspace,
   onOpenNotes,
-  initialCompany = 'google'
+  initialCompany = 'all_companies'
 }) => {
   const [dataset, setDataset] = useState<CompanyProblemsDataset | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     }
   });
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeKey>('all');
+  const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'Solved' | 'Unsolved'>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -65,6 +68,11 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Topic Dropdown Combobox Search
+  const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
+  const [topicSearchQuery, setTopicSearchQuery] = useState('');
+  const topicDropdownRef = useRef<HTMLDivElement>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,11 +114,14 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     }
   }, [selectedCompany]);
 
-  // Click outside to close company dropdown
+  // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsCompanyDropdownOpen(false);
+      }
+      if (topicDropdownRef.current && !topicDropdownRef.current.contains(e.target as Node)) {
+        setIsTopicDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -120,32 +131,29 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
   // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCompany, selectedTimeframe, selectedDifficulty, selectedStatus, searchQuery, sortBy]);
+  }, [selectedCompany, selectedTimeframe, selectedTopic, selectedDifficulty, selectedStatus, searchQuery, sortBy]);
 
   // Active Company Object
   const currentCompanyData = useMemo(() => {
     if (!dataset || !dataset.companies) return null;
-    return dataset.companies[selectedCompany] || null;
+    return dataset.companies[selectedCompany] || dataset.companies['all_companies'] || null;
   }, [dataset, selectedCompany]);
-
-  // Timeframe counts for active company
-  const availableTimeframes = useMemo(() => {
-    if (!currentCompanyData || !currentCompanyData.timeframes) return [];
-    const keys = Object.keys(currentCompanyData.timeframes) as TimeframeKey[];
-    return keys;
-  }, [currentCompanyData]);
 
   // Raw list of problems for this company & timeframe
   const rawCompanyProblems = useMemo(() => {
     if (!dataset) return [];
-    // Dependency on syncVersion triggers instant re-evaluation of isSolved
-    void syncVersion;
+    void syncVersion; // triggers re-eval when syncVersion updates
     return getCompanyProblemsForTimeframe(dataset, selectedCompany, selectedTimeframe);
   }, [dataset, selectedCompany, selectedTimeframe, syncVersion]);
 
   // Filtered & Sorted Problems List
   const filteredProblems = useMemo(() => {
     let list = [...rawCompanyProblems];
+
+    // Topic Filter
+    if (selectedTopic !== 'ALL') {
+      list = list.filter((p) => p.topicTags && p.topicTags.includes(selectedTopic));
+    }
 
     // Difficulty filter
     if (selectedDifficulty !== 'All') {
@@ -165,7 +173,8 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
       list = list.filter((p) =>
         p.title.toLowerCase().includes(q) ||
         p.slug.toLowerCase().includes(q) ||
-        String(p.id).includes(q)
+        String(p.id).includes(q) ||
+        (p.topicTags && p.topicTags.some(t => t.toLowerCase().includes(q)))
       );
     }
 
@@ -180,11 +189,25 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     });
 
     return list;
-  }, [rawCompanyProblems, selectedDifficulty, selectedStatus, searchQuery, sortBy]);
+  }, [rawCompanyProblems, selectedTopic, selectedDifficulty, selectedStatus, searchQuery, sortBy]);
 
   // Total solved in current company set
   const companySolvedCount = useMemo(() => {
     return rawCompanyProblems.filter((p) => p.isSolved).length;
+  }, [rawCompanyProblems]);
+
+  // Available topics for the current filtered company set
+  const topicsSummaryForCompany = useMemo(() => {
+    if (!rawCompanyProblems) return [];
+    const counts: Record<string, number> = {};
+    rawCompanyProblems.forEach((p) => {
+      (p.topicTags || []).forEach((t) => {
+        counts[t] = (counts[t] || 0) + 1;
+      });
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
   }, [rawCompanyProblems]);
 
   // Paginated Problems
@@ -204,6 +227,14 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     );
   }, [dataset, companySearchQuery]);
 
+  // Filtered topics for dropdown
+  const filteredTopicsForDropdown = useMemo(() => {
+    const list = topicsSummaryForCompany.length > 0 ? topicsSummaryForCompany : (dataset?.topics_summary || []);
+    if (!topicSearchQuery.trim()) return list;
+    const q = topicSearchQuery.toLowerCase().trim();
+    return list.filter((t) => t.name.toLowerCase().includes(q));
+  }, [topicsSummaryForCompany, dataset, topicSearchQuery]);
+
   // Toggle problem solved
   const handleToggleSolved = (item: CompanyProblemItem) => {
     toggleProblemSolvedGlobally(item.slug, item.title, item.id);
@@ -215,7 +246,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     const sdeProblem: SDEProblem = {
       id: item.id,
       sheetType: 'sde',
-      category: `${currentCompanyData?.name || 'Company'} Interview Questions`,
+      category: item.topicTags?.[0] || `${currentCompanyData?.name || 'Company'} Interview Questions`,
       subcategory: TIMEFRAME_LABELS[selectedTimeframe]?.label || 'Curated',
       name: item.title,
       leetcode: item.url,
@@ -234,7 +265,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
     const sdeProblem: SDEProblem = {
       id: item.id,
       sheetType: 'sde',
-      category: `${currentCompanyData?.name || 'Company'} Interview Questions`,
+      category: item.topicTags?.[0] || `${currentCompanyData?.name || 'Company'} Interview Questions`,
       subcategory: TIMEFRAME_LABELS[selectedTimeframe]?.label || 'Curated',
       name: item.title,
       leetcode: item.url,
@@ -252,10 +283,12 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="w-12 h-12 rounded-2xl border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
         <p className="text-sm font-semibold text-slate-300">Loading 3,400+ Company-Wise DSA Problems...</p>
-        <span className="text-xs text-slate-500">Indexing 659 companies and 5 timeframe horizons</span>
+        <span className="text-xs text-slate-500">Indexing 659 companies, 170+ topic tags and 5 timeframe horizons</span>
       </div>
     );
   }
+
+  const isAllCompanies = selectedCompany === 'all_companies';
 
   return (
     <div className="space-y-6 animate-fadeIn pb-16">
@@ -272,11 +305,14 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             </div>
 
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-              Company-Wise <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">DSA Interview Problems</span>
+              {isAllCompanies ? 'All Curated ' : `${currentCompanyData?.name || 'Company'} `}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400">
+                DSA Problems
+              </span>
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-              Target your dream company with precision. Browse 3,400+ authentic interview problems asked at 650+ tech giants, filtered across 30 Days, 3 Months, 6 Months, 1 Year+, and All Time.
+              Target your dream company with precision. Browse 3,400+ authentic interview problems asked at 650+ tech giants, filtered by Topic (DP, Trees, Arrays), Timeframe (30d, 3m, 6m, 1y+, All Time), and Difficulty with direct LeetCode redirection and cloud compiler.
             </p>
           </div>
 
@@ -291,7 +327,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-md flex flex-col">
-              <span className="text-[11px] font-medium text-slate-400">Unique Problems</span>
+              <span className="text-[11px] font-medium text-slate-400">Available Problems</span>
               <span className="text-lg sm:text-xl font-black text-slate-100 mt-0.5">
                 {dataset?.total_problems.toLocaleString() || '3,399'}
               </span>
@@ -299,7 +335,9 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             </div>
 
             <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 backdrop-blur-md flex flex-col">
-              <span className="text-[11px] font-medium text-slate-400">{currentCompanyData?.name || 'Company'} Questions</span>
+              <span className="text-[11px] font-medium text-slate-400">
+                {isAllCompanies ? 'All Problems' : `${currentCompanyData?.name || 'Company'} Qs`}
+              </span>
               <span className="text-lg sm:text-xl font-black text-amber-300 mt-0.5">
                 {rawCompanyProblems.length}
               </span>
@@ -323,11 +361,13 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
           </div>
         </div>
 
-        {/* Real-time Company Solved Progress Bar */}
+        {/* Real-time Solved Progress Bar */}
         {rawCompanyProblems.length > 0 && (
           <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center space-x-2 text-xs text-slate-300">
-              <span className="font-bold text-slate-100">{currentCompanyData?.name} Interview Readiness:</span>
+              <span className="font-bold text-slate-100">
+                {isAllCompanies ? 'Overall Curriculum' : currentCompanyData?.name} Interview Readiness:
+              </span>
               <span className="font-mono text-emerald-400 font-bold">{companySolvedCount}</span>
               <span>of</span>
               <span className="font-mono font-bold">{rawCompanyProblems.length}</span>
@@ -345,36 +385,38 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
         )}
       </div>
 
-      {/* 2. TOP FEATURED COMPANIES QUICK-PICK BAR */}
+      {/* 2. TOP FEATURED COMPANIES QUICK-PICK BAR (WITH "ALL COMPANIES" AS OPTION 1) */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             Top Hiring Tech Giants (Quick Select)
           </span>
-          <span className="text-xs text-slate-500">659 total companies available</span>
+          <span className="text-xs text-slate-500">659 total companies + All Problems view</span>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800">
           {FEATURED_COMPANIES.map((fc) => {
             const isSelected = selectedCompany === fc.slug;
             const companyObj = dataset?.companies[fc.slug];
-            const qCount = companyObj?.total || 0;
+            const qCount = companyObj?.total || (fc.slug === 'all_companies' ? dataset?.total_problems : 0) || 0;
 
             return (
               <button
                 key={fc.slug}
                 onClick={() => {
                   setSelectedCompany(fc.slug);
-                  // Default to all time if available
                   setSelectedTimeframe('all');
                 }}
                 className={`flex-shrink-0 flex items-center space-x-2 px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white border-cyan-400/50 shadow-lg shadow-indigo-500/20 scale-[1.02]'
+                    : fc.slug === 'all_companies'
+                    ? 'bg-slate-900 text-cyan-300 border-cyan-500/40 hover:bg-slate-800'
                     : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800'
                 }`}
               >
+                {fc.slug === 'all_companies' && <Globe className="w-3.5 h-3.5 text-cyan-300" />}
                 <span>{fc.name}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-md text-[10px] font-mono font-bold ${
@@ -391,25 +433,29 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
         </div>
       </div>
 
-      {/* 3. CONTROLS BAR: COMPANY SEARCHABLE COMBOBOX + TIMEFRAME HORIZONS */}
+      {/* 3. CONTROLS BAR: COMPANY COMBOBOX + TIMEFRAME HORIZONS */}
       <div className="p-4 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Company Searchable Combobox */}
           <div className="relative w-full md:w-80" ref={dropdownRef}>
             <label className="text-[11px] font-semibold text-slate-400 block mb-1">
-              Select Company (659 Available):
+              Select Company or All Problems:
             </label>
             <button
               onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
               className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-indigo-500/60 text-slate-100 text-xs font-bold transition-all shadow-inner cursor-pointer"
             >
               <div className="flex items-center space-x-2 truncate">
-                <Building2 className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                {isAllCompanies ? (
+                  <Globe className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                ) : (
+                  <Building2 className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                )}
                 <span className="truncate">{currentCompanyData?.name || selectedCompany}</span>
               </div>
               <div className="flex items-center space-x-1.5 flex-shrink-0">
                 <span className="px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 text-[10px] font-mono border border-indigo-800/60">
-                  {currentCompanyData?.total || 0} Qs
+                  {currentCompanyData?.total || dataset?.total_problems || 0} Qs
                 </span>
                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </div>
@@ -424,7 +470,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                     type="text"
                     value={companySearchQuery}
                     onChange={(e) => setCompanySearchQuery(e.target.value)}
-                    placeholder="Search 659 companies (e.g. BrowserStack, Meta)..."
+                    placeholder="Search companies (e.g. BrowserStack, Meta, All)..."
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-sans"
                     autoFocus
                   />
@@ -445,10 +491,19 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
                           isCur
                             ? 'bg-indigo-600 text-white font-bold'
+                            : c.slug === 'all_companies'
+                            ? 'bg-cyan-950/40 text-cyan-200 border border-cyan-800/50 hover:bg-cyan-900/40'
                             : 'hover:bg-slate-900 text-slate-300 hover:text-slate-100'
                         }`}
                       >
-                        <span className="truncate">{c.name}</span>
+                        <div className="flex items-center space-x-2 truncate">
+                          {c.slug === 'all_companies' ? (
+                            <Globe className="w-3.5 h-3.5 text-cyan-300" />
+                          ) : (
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                          <span className="truncate">{c.name}</span>
+                        </div>
                         <span
                           className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                             isCur ? 'bg-indigo-800 text-white' : 'bg-slate-900 text-slate-400'
@@ -518,7 +573,128 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
         </div>
       </div>
 
-      {/* 4. SECONDARY FILTERS: SEARCH, DIFFICULTY, STATUS, SORT */}
+      {/* 4. TOPIC FILTERING BAR (WITH COMBOBOX & POPULAR PILLS) */}
+      <div className="space-y-2.5 p-4 rounded-3xl bg-slate-900/70 border border-slate-800/80 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Tag className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-bold text-slate-300">Filter by Topic / Pattern:</span>
+            {selectedTopic !== 'ALL' && (
+              <span className="px-2 py-0.5 rounded-full bg-purple-950 border border-purple-700 text-[11px] font-bold text-purple-200 flex items-center gap-1">
+                <span>{selectedTopic}</span>
+                <button
+                  onClick={() => setSelectedTopic('ALL')}
+                  className="hover:text-white ml-1 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
+
+          {/* Searchable Topic Combobox */}
+          <div className="relative w-full sm:w-72" ref={topicDropdownRef}>
+            <button
+              onClick={() => setIsTopicDropdownOpen(!isTopicDropdownOpen)}
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold cursor-pointer"
+            >
+              <span className="truncate">
+                {selectedTopic === 'ALL' ? 'All Topics (170+ Topics)' : `Topic: ${selectedTopic}`}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-2" />
+            </button>
+
+            {isTopicDropdownOpen && (
+              <div className="absolute top-full right-0 mt-2 w-72 rounded-2xl bg-slate-950 border border-purple-500/40 shadow-2xl z-50 p-2 space-y-2 backdrop-blur-xl animate-fadeIn">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={topicSearchQuery}
+                    onChange={(e) => setTopicSearchQuery(e.target.value)}
+                    placeholder="Search topics (e.g. DP, Tree, Sliding)..."
+                    className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-purple-500 font-sans"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="max-h-56 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-slate-800 pr-1">
+                  <button
+                    onClick={() => {
+                      setSelectedTopic('ALL');
+                      setIsTopicDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs cursor-pointer ${
+                      selectedTopic === 'ALL'
+                        ? 'bg-purple-600 text-white font-bold'
+                        : 'hover:bg-slate-900 text-slate-300'
+                    }`}
+                  >
+                    <span>All Topics</span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {rawCompanyProblems.length} Qs
+                    </span>
+                  </button>
+
+                  {filteredTopicsForDropdown.map((t) => {
+                    const isCur = t.name === selectedTopic;
+                    return (
+                      <button
+                        key={t.name}
+                        onClick={() => {
+                          setSelectedTopic(t.name);
+                          setIsTopicDropdownOpen(false);
+                          setTopicSearchQuery('');
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs cursor-pointer ${
+                          isCur
+                            ? 'bg-purple-600 text-white font-bold'
+                            : 'hover:bg-slate-900 text-slate-300'
+                        }`}
+                      >
+                        <span className="truncate">{t.name}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{t.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Horizontal Quick-Pick Topic Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-800">
+          <button
+            onClick={() => setSelectedTopic('ALL')}
+            className={`flex-shrink-0 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              selectedTopic === 'ALL'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            All Topics
+          </button>
+          {POPULAR_TOPICS.map((topName) => {
+            const isSel = selectedTopic === topName;
+            return (
+              <button
+                key={topName}
+                onClick={() => setSelectedTopic(isSel ? 'ALL' : topName)}
+                className={`flex-shrink-0 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  isSel
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20 border border-purple-400/40'
+                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                {topName}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. SECONDARY FILTERS: SEARCH, DIFFICULTY, STATUS, SORT */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-3xl bg-slate-900/60 border border-slate-800/80">
         {/* Search Bar */}
         <div className="relative w-full md:w-72">
@@ -527,7 +703,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${currentCompanyData?.name || ''} problems (e.g. 739, Daily)...`}
+            placeholder={`Search ${isAllCompanies ? 'all' : currentCompanyData?.name || ''} problems (e.g. 739, Two Sum)...`}
             className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-sans shadow-inner"
           />
           {searchQuery && (
@@ -603,7 +779,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
         </div>
       </div>
 
-      {/* 5. PROBLEMS TABLE */}
+      {/* 6. PROBLEMS TABLE */}
       <div className="glass-panel rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -611,11 +787,11 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
               <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
                 <th className="py-3.5 px-4 w-12 text-center">Status</th>
                 <th className="py-3.5 px-3 w-16 text-center"># ID</th>
-                <th className="py-3.5 px-4">Problem Title</th>
+                <th className="py-3.5 px-4">Problem Title & Topics</th>
                 <th className="py-3.5 px-3 w-28 text-center">Difficulty</th>
-                <th className="py-3.5 px-3 w-32 text-center">Acceptance</th>
-                <th className="py-3.5 px-4 w-44">Interview Frequency</th>
-                <th className="py-3.5 px-4 w-44 text-right">Actions</th>
+                <th className="py-3.5 px-3 w-28 text-center">Acceptance</th>
+                <th className="py-3.5 px-4 w-40">Interview Frequency</th>
+                <th className="py-3.5 px-4 w-60 text-right">Practice & Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-xs">
@@ -629,12 +805,13 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                       </p>
                       <button
                         onClick={() => {
+                          setSelectedTopic('ALL');
                           setSelectedDifficulty('All');
                           setSelectedStatus('All');
                           setSearchQuery('');
                           setSelectedTimeframe('all');
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-colors cursor-pointer"
                       >
                         Reset Filters
                       </button>
@@ -660,7 +837,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                               ? 'text-emerald-400 hover:text-emerald-300'
                               : 'text-slate-600 hover:text-slate-400'
                           }`}
-                          title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved (Single Submission Tracking)'}
+                          title={isSolved ? 'Mark as Unsolved' : 'Mark as Solved (Single Submission Tracking Across All Sheets)'}
                         >
                           {isSolved ? (
                             <CheckCircle2 className="w-5 h-5 fill-emerald-500/20" />
@@ -675,24 +852,46 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                         {item.id}
                       </td>
 
-                      {/* Title & External Link */}
+                      {/* Title & Topic Tags */}
                       <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleSolveInWorkspace(item)}
-                            className="font-bold text-slate-100 hover:text-indigo-300 transition-colors text-left line-clamp-1 cursor-pointer"
-                          >
-                            {item.title}
-                          </button>
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-slate-500 hover:text-slate-300 flex-shrink-0"
-                            title="Open on LeetCode"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleSolveInWorkspace(item)}
+                              className="font-bold text-slate-100 hover:text-indigo-300 transition-colors text-left line-clamp-1 cursor-pointer"
+                              title="Open in SDETube IDE"
+                            >
+                              {item.title}
+                            </button>
+                          </div>
+
+                          {/* Topic Tags Pills */}
+                          {item.topicTags && item.topicTags.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {item.topicTags.slice(0, 3).map((tag) => (
+                                <button
+                                  key={tag}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTopic(tag);
+                                  }}
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                                    selectedTopic === tag
+                                      ? 'bg-purple-900 text-purple-200 border border-purple-600'
+                                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                  }`}
+                                  title={`Filter by ${tag}`}
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                              {item.topicTags.length > 3 && (
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  +{item.topicTags.length - 3}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -732,23 +931,37 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                         </div>
                       </td>
 
-                      {/* Actions */}
+                      {/* Practice & Actions (Including Prominent LeetCode Redirection Link) */}
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end space-x-1.5">
+                        <div className="flex items-center justify-end space-x-2">
+                          {/* Dedicated LeetCode Practice Link */}
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-bold transition-all shadow-sm active:scale-95"
+                            title="Open question on LeetCode in a new tab"
+                          >
+                            <span>LeetCode</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+
+                          {/* Solve in SDETube IDE */}
                           <button
                             onClick={() => handleSolveInWorkspace(item)}
-                            className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20 active:scale-95 cursor-pointer"
-                            title="Open in LeetCode Monaco Workspace with Testcases & Compiler"
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20 active:scale-95 cursor-pointer"
+                            title="Open in Monaco Workspace with Compiler, Testcases & AI"
                           >
                             <Code2 className="w-3.5 h-3.5" />
                             <span>Solve</span>
                           </button>
 
+                          {/* Notes */}
                           {onOpenNotes && (
                             <button
                               onClick={() => handleOpenProblemNotes(item)}
                               className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer"
-                              title="Problem Study Notes"
+                              title="Problem Notes"
                             >
                               <FileText className="w-3.5 h-3.5" />
                             </button>
@@ -763,7 +976,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
           </table>
         </div>
 
-        {/* 6. PAGINATION CONTROLS */}
+        {/* 7. PAGINATION CONTROLS */}
         {filteredProblems.length > 0 && (
           <div className="p-4 bg-slate-950/80 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
             <div className="flex items-center space-x-2">
@@ -796,7 +1009,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
               <button
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold"
+                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
               >
                 Previous
               </button>
@@ -808,7 +1021,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
               <button
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold"
+                className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-bold cursor-pointer"
               >
                 Next
               </button>

@@ -16,6 +16,7 @@ export interface CompanyProblemItem {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   acceptance: number;
   frequency: number; // in current company/timeframe context
+  topicTags: string[];
   isSolved?: boolean;
 }
 
@@ -25,6 +26,11 @@ export interface CompanySummary {
   total: number;
   available_timeframes: TimeframeKey[];
   counts: Partial<Record<TimeframeKey, number>>;
+}
+
+export interface TopicSummary {
+  name: string;
+  count: number;
 }
 
 export interface RawCompanyData {
@@ -38,6 +44,7 @@ export interface CompanyProblemsDataset {
   total_problems: number;
   total_companies: number;
   total_occurrences: number;
+  topics_summary: TopicSummary[];
   companies_summary: CompanySummary[];
   problems: Record<string, {
     id: number;
@@ -46,6 +53,7 @@ export interface CompanyProblemsDataset {
     url: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
     acceptance: number;
+    topicTags?: string[];
   }>;
   companies: Record<string, RawCompanyData>;
 }
@@ -87,6 +95,7 @@ export interface FeaturedCompany {
 }
 
 export const FEATURED_COMPANIES: FeaturedCompany[] = [
+  { slug: 'all_companies', name: 'All Companies (All 3.4k Qs)', tagline: 'Complete curated LeetCode problemset', badgeColor: 'text-cyan-300 border-cyan-500/40 bg-cyan-500/10', iconBg: 'from-cyan-500 to-indigo-600' },
   { slug: 'google', name: 'Google', tagline: 'Hard algorithms & dynamic graphs', badgeColor: 'text-rose-400 border-rose-500/40 bg-rose-500/10', iconBg: 'from-rose-500 to-amber-500' },
   { slug: 'browserstack', name: 'BrowserStack', tagline: 'High-frequency systems & data structures', badgeColor: 'text-sky-400 border-sky-500/40 bg-sky-500/10', iconBg: 'from-sky-500 to-indigo-500' },
   { slug: 'amazon', name: 'Amazon', tagline: 'Trees, heaps & sliding window', badgeColor: 'text-amber-400 border-amber-500/40 bg-amber-500/10', iconBg: 'from-amber-500 to-orange-500' },
@@ -102,6 +111,32 @@ export const FEATURED_COMPANIES: FeaturedCompany[] = [
   { slug: 'adobe', name: 'Adobe', tagline: 'Strings, matrix traversal & BST', badgeColor: 'text-red-400 border-red-500/40 bg-red-500/10', iconBg: 'from-red-500 to-orange-500' },
   { slug: 'salesforce', name: 'Salesforce', tagline: 'Hash tables & trees', badgeColor: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10', iconBg: 'from-cyan-500 to-blue-500' },
   { slug: 'flipkart', name: 'Flipkart', tagline: 'DP, graphs & greedy algorithms', badgeColor: 'text-yellow-400 border-yellow-500/40 bg-yellow-500/10', iconBg: 'from-yellow-400 to-amber-500' }
+];
+
+// Popular core DSA topics for quick-pick filters
+export const POPULAR_TOPICS = [
+  'Array',
+  'String',
+  'Hash Table',
+  'Dynamic Programming',
+  'Math',
+  'Depth-First Search',
+  'Binary Search',
+  'Tree',
+  'Breadth-First Search',
+  'Two Pointers',
+  'Binary Tree',
+  'Heap (Priority Queue)',
+  'Stack',
+  'Graph',
+  'Sliding Window',
+  'Greedy',
+  'Backtracking',
+  'Linked List',
+  'Bit Manipulation',
+  'Recursion',
+  'Trie',
+  'Design'
 ];
 
 // In-memory cached dataset
@@ -153,6 +188,7 @@ export async function fetchCompanyProblemsDataset(): Promise<CompanyProblemsData
       total_problems: 0,
       total_companies: 0,
       total_occurrences: 0,
+      topics_summary: [],
       companies_summary: [],
       problems: {},
       companies: {}
@@ -163,14 +199,14 @@ export async function fetchCompanyProblemsDataset(): Promise<CompanyProblemsData
 }
 
 /**
- * Gets problems for a specific company and timeframe, enriched with current user solved status.
+ * Gets problems for a specific company and timeframe, enriched with current user solved status and topic tags.
  */
 export function getCompanyProblemsForTimeframe(
   dataset: CompanyProblemsDataset,
   companySlug: string,
   timeframe: TimeframeKey
 ): CompanyProblemItem[] {
-  const comp = dataset.companies[companySlug];
+  const comp = dataset.companies[companySlug] || dataset.companies['all_companies'];
   if (!comp || !comp.timeframes) return [];
 
   // If requested timeframe doesn't exist for this company, fall back to 'all' or first available
@@ -190,6 +226,7 @@ export function getCompanyProblemsForTimeframe(
       difficulty: rawProb?.difficulty || 'Medium',
       acceptance: rawProb?.acceptance || 50.0,
       frequency: freq,
+      topicTags: rawProb?.topicTags || [],
       isSolved: solved
     };
   });
