@@ -57,11 +57,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
     const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/) || trimmed.match(/<img[^>]+src=["']([^"']+)["'][^>]*\/?>/);
     if (imgMatch) {
       const alt = imgMatch[1] || 'Problem Diagram';
-      let src = imgMatch[2] || imgMatch[1];
-      if (src.includes('assets.leetcode.com/uploads/')) {
-        const relPath = src.split('assets.leetcode.com/uploads/')[1];
-        src = `${TELEGRAM_BACKEND_URL}/api/image/${relPath}`;
-      }
+      const src = imgMatch[2] || imgMatch[1];
       blocks.push({ type: 'image', src, alt });
       i++;
       continue;
@@ -154,11 +150,7 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
       const raw = match[0];
       if (raw.startsWith('![') && raw.endsWith(')')) {
         const alt = match[2] || 'Diagram';
-        let src = match[3];
-        if (src.includes('assets.leetcode.com/uploads/')) {
-          const relPath = src.split('assets.leetcode.com/uploads/')[1];
-          src = `${TELEGRAM_BACKEND_URL}/api/image/${relPath}`;
-        }
+        const src = match[3];
         parts.push(
           <span key={match.index} className="inline-block my-2">
             <img
@@ -167,6 +159,16 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
               referrerPolicy="no-referrer"
               className="rounded-xl border border-slate-800 max-h-56 object-contain bg-slate-900 shadow-md inline-block"
               loading="lazy"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (target.src.includes('assets.leetcode.com/uploads/')) {
+                  const rel = target.src.split('assets.leetcode.com/uploads/')[1];
+                  target.src = `${TELEGRAM_BACKEND_URL}/api/image/${rel}`;
+                } else if (target.src.includes('/api/image/')) {
+                  const rel = target.src.split('/api/image/')[1];
+                  target.src = `https://assets.leetcode.com/uploads/${rel}`;
+                }
+              }}
             />
           </span>
         );
@@ -220,9 +222,11 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
                   className="rounded-xl max-h-72 object-contain bg-[#141414] border border-white/10 mx-auto"
                   loading="lazy"
                   onError={(e) => {
-                    // Fallback to direct LeetCode URL if proxy fails
                     const target = e.currentTarget;
-                    if (target.src.includes('/api/image/')) {
+                    if (target.src.includes('assets.leetcode.com/uploads/')) {
+                      const rel = target.src.split('assets.leetcode.com/uploads/')[1];
+                      target.src = `${TELEGRAM_BACKEND_URL}/api/image/${rel}`;
+                    } else if (target.src.includes('/api/image/')) {
                       const rel = target.src.split('/api/image/')[1];
                       target.src = `https://assets.leetcode.com/uploads/${rel}`;
                     }

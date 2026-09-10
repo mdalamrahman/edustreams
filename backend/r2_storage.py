@@ -407,6 +407,52 @@ class CloudflareR2Storage:
                 continue
         return None
 
+    def upload_file(self, key: str, data: bytes, content_type: str = "text/plain; charset=utf-8") -> Optional[str]:
+        """Uploads arbitrary binary/text payload into Cloudflare R2."""
+        clean_key = key.lstrip("/")
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(Bucket=R2_BUCKET_NAME, Key=clean_key, Body=data, ContentType=content_type)
+                return clean_key
+            except Exception as e:
+                print(f"[R2 upload_file Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("PUT", clean_key, data)
+            headers["Content-Type"] = content_type
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.put(url, headers=headers, data=data, timeout=15)
+            if resp.status_code in [200, 201]:
+                return clean_key
+        except Exception as e:
+            print(f"[R2 upload_file SigV4 Error]: {e}")
+        return None
+
+    def fetch_file(self, key: str) -> Optional[bytes]:
+        """Fetches raw bytes for any object key from Cloudflare R2."""
+        clean_key = key.lstrip("/")
+        if self._boto_client:
+            try:
+                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=clean_key)
+                return resp["Body"].read()
+            except Exception:
+                pass
+
+        try:
+            headers = self._get_sigv4_headers("GET", clean_key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                return resp.content
+        except Exception:
+            pass
+        return None
+
+    def save_note(self, key: str, content: str) -> Optional[str]:
+        """Saves a text note or user code snippet into Cloudflare R2."""
+        payload_bytes = content.encode("utf-8")
+        return self.upload_file(key, payload_bytes, content_type="text/plain; charset=utf-8")
+
     def save_solution_to_problem(self, slug: str, language: str, code: str, metadata: dict = None) -> bool:
         """
         Merges a validated solution (code string) for a given language into an existing

@@ -52,7 +52,8 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Radio
+  Radio,
+  ZoomIn
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
@@ -215,6 +216,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   });
 
   const [isLoadingEnriched, setIsLoadingEnriched] = useState<boolean>(true);
+  const [zoomedDiagram, setZoomedDiagram] = useState<string | null>(null);
 
   // Fetch enriched LeetCode problem description, examples, constraints & starter code from Cloudflare R2 / LeetCode GraphQL
   useEffect(() => {
@@ -2150,21 +2152,32 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         
                         <div className="p-4 rounded-xl bg-white/[0.04] border-l-2 border-slate-600/70 space-y-1.5 font-mono text-[13px]">
                           {/* LeetCode Example Illustration / Tree / Graph Diagram */}
-                          {(ex.image || (ex as any).img) && (
-                            <div className="my-2 p-2 rounded-xl bg-black/40 border border-white/10 inline-block max-w-full">
+                          {(ex.image || (ex as any).img || (idx === 0 && (problemTemplate.images?.[0] || (problemTemplate as any).image))) && (
+                            <div 
+                              onClick={() => setZoomedDiagram(ex.image || (ex as any).img || (idx === 0 ? (problemTemplate.images?.[0] || (problemTemplate as any).image) : null))}
+                              className="my-2.5 p-2 rounded-xl bg-black/40 border border-white/10 inline-block max-w-full group cursor-zoom-in relative hover:border-teal-500/30 transition-all"
+                              title="Click to zoom illustration"
+                            >
                               <img 
-                                src={ex.image || (ex as any).img} 
+                                src={ex.image || (ex as any).img || (idx === 0 ? (problemTemplate.images?.[0] || (problemTemplate as any).image) : '')} 
                                 alt={`Example ${idx + 1} Diagram`} 
-                                className="max-h-60 rounded-lg object-contain mx-auto"
+                                className="max-h-64 rounded-lg object-contain mx-auto transition-transform group-hover:scale-[1.01]"
                                 loading="lazy"
+                                referrerPolicy="no-referrer"
                                 onError={(e) => {
                                   const target = e.currentTarget;
-                                  if (target.src.includes('/api/image/')) {
+                                  if (target.src.includes('assets.leetcode.com/uploads/')) {
+                                    const rel = target.src.split('assets.leetcode.com/uploads/')[1];
+                                    target.src = `${TELEGRAM_BACKEND_URL}/api/image/${rel}`;
+                                  } else if (target.src.includes('/api/image/')) {
                                     const rel = target.src.split('/api/image/')[1];
                                     target.src = `https://assets.leetcode.com/uploads/${rel}`;
                                   }
                                 }}
                               />
+                              <div className="absolute top-3 right-3 p-1 rounded-md bg-slate-900/80 border border-slate-700 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <ZoomIn className="w-3.5 h-3.5" />
+                              </div>
                             </div>
                           )}
 
@@ -3820,6 +3833,35 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           });
         }}
       />
+      {/* Problem Diagram Fullscreen Zoom Lightbox */}
+      {zoomedDiagram && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-zoom-out"
+          onClick={() => setZoomedDiagram(null)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setZoomedDiagram(null)}
+              className="absolute top-3 right-3 p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              title="Close Diagram"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="text-xs text-slate-400 font-mono mb-2 flex items-center gap-1.5">
+              <span>Problem Illustration / Tree / Graph Diagram</span>
+            </div>
+            <img 
+              src={zoomedDiagram} 
+              alt="Zoomed Diagram"
+              className="max-h-[75vh] max-w-full object-contain rounded-xl border border-slate-800 bg-black/50"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

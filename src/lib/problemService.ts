@@ -17,6 +17,7 @@ export interface ProblemTemplate {
   category: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   description: string;
+  images?: string[];
   examples: {
     input: string;
     output: string;
@@ -455,6 +456,41 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     problem.expectedOutputs = standardValidateBSTCases.map(c => c.output);
   }
 
+  // Harden Lowest Common Ancestor in BST / Binary Tree
+  const isLCA = normProblemName.includes('lowestcommonancestor') || probSlug.includes('lowest-common-ancestor');
+  if (isLCA) {
+    const lcaDiagram = 'https://assets.leetcode.com/uploads/2018/12/14/binarysearchtree_improved.png';
+    if (!problem.images) problem.images = [];
+    if (!problem.images.includes(lcaDiagram)) problem.images.unshift(lcaDiagram);
+    if (problem.examples && problem.examples.length > 0) {
+      if (!problem.examples[0].image) problem.examples[0].image = lcaDiagram;
+      if (problem.examples.length > 1 && !problem.examples[1].image) problem.examples[1].image = lcaDiagram;
+    }
+    if (!problem.testCases || problem.testCases.length < 10) {
+      const standardLCACases = [
+        { input: 'root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8', output: '6' },
+        { input: 'root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 4', output: '2' },
+        { input: 'root = [2,1], p = 2, q = 1', output: '2' },
+        { input: 'root = [6,2,8,0,4,7,9,null,null,3,5], p = 0, q = 5', output: '2' },
+        { input: 'root = [6,2,8,0,4,7,9,null,null,3,5], p = 7, q = 9', output: '8' },
+        { input: 'root = [6,2,8,0,4,7,9,null,null,3,5], p = 3, q = 5', output: '4' },
+        { input: 'root = [5,3,6,2,4,null,null,1], p = 1, q = 4', output: '3' },
+        { input: 'root = [5,3,6,2,4,null,null,1], p = 1, q = 6', output: '5' },
+        { input: 'root = [3,1,4,null,2], p = 2, q = 4', output: '3' },
+        { input: 'root = [3,1,4,null,2], p = 1, q = 2', output: '1' }
+      ];
+      problem.testCases = standardLCACases.map(c => c.input);
+      problem.expectedOutputs = standardLCACases.map(c => c.output);
+    }
+  }
+
+  // Ensure first example gets an image if problem has images
+  if (problem.images && problem.images.length > 0 && problem.examples && problem.examples.length > 0) {
+    if (!problem.examples[0].image) {
+      problem.examples[0].image = problem.images[0];
+    }
+  }
+
   // Ensure problem statement examples and sample test cases are 100% synchronized
   if ((!problem.examples || problem.examples.length === 0) && problem.testCases && problem.testCases.length > 0) {
     const sampleLimit = Math.min(3, problem.testCases.length);
@@ -525,12 +561,84 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
 
     const contentHtml = q.content || q.description || '';
 
-    // Extract clean markdown-formatted description
-    const cleanDesc = contentHtml
+    const normalizeImgUrl = (rawSrc: string): string => {
+      const src = (rawSrc || '').trim();
+      if (src.startsWith('/')) {
+        return `https://assets.leetcode.com${src}`;
+      } else if (!src.startsWith('http')) {
+        return `https://assets.leetcode.com/uploads/${src.replace(/^\//, '')}`;
+      }
+      return src;
+    };
+
+    // 1. Collect all diagrams in the HTML
+    const allImages: string[] = [];
+    const allImgMatches = Array.from(contentHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) as RegExpMatchArray[];
+    for (const im of allImgMatches) {
+      const u = normalizeImgUrl(im[1]);
+      if (u && !allImages.includes(u)) {
+        allImages.push(u);
+      }
+    }
+
+    // 2. Extract per-example blocks with associated diagrams
+    const examples: ProblemTemplate['examples'] = [];
+    const exPattern = /(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong>)([\s\S]*?)(?=(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<p><strong[^>]*>Constraints:|<p>&nbsp;<\/p>\s*<p><strong>Constraints:|$))/gi;
+    
+    const exMatches = Array.from(contentHtml.matchAll(exPattern)) as RegExpMatchArray[];
+    for (const m of exMatches) {
+      const body = m[3] || '';
+      const imgM = body.match(/<img[^>]+src=["']([^"']+)["']/i);
+      const imgUrl = imgM ? normalizeImgUrl(imgM[1]) : undefined;
+
+      const preM = body.match(/<pre>([\s\S]*?)<\/pre>/i);
+      const preText = preM ? preM[1] : body;
+      const text = preText.replace(/<[^>]+>/g, '').trim();
+
+      const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+      const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+      const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+      if (inM && outM) {
+        examples.push({
+          input: inM[1].trim(),
+          output: outM[1].trim(),
+          explanation: expM ? expM[1].trim() : undefined,
+          image: imgUrl
+        });
+      }
+    }
+
+    // Fallback if exPattern didn't find matches
+    if (examples.length === 0) {
+      const preMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
+      for (const m of preMatches) {
+        const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+        const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
+        const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
+        const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
+        if (inM && outM) {
+          examples.push({
+            input: inM[1].trim(),
+            output: outM[1].trim(),
+            explanation: expM ? expM[1].trim() : undefined
+          });
+        }
+      }
+    }
+
+    if (examples.length > 0 && !examples[0].image && allImages.length > 0) {
+      examples[0].image = allImages[0];
+    }
+
+    // 3. Extract clean markdown-formatted description (Intro before Example 1)
+    const descParts = contentHtml.split(/(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong>|<pre>)/i);
+    const descRaw = descParts.length > 1 ? descParts[0] : contentHtml;
+
+    const cleanDesc = descRaw
+      .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (_match: string, src: string) => `\n\n![Problem Diagram](${normalizeImgUrl(src)})\n\n`)
       .replace(/<p><strong class="example">[\s\S]*?<\/p>/gi, '')
       .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
       .replace(/<p><strong>Constraints:<\/strong><\/p>[\s\S]*?<\/ul>/gi, '')
-      .replace(/<img[^>]*>/gi, '')
       .replace(/<\/p>/gi, '\n\n')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<li>/gi, '• ')
@@ -556,22 +664,6 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       else if (s.langSlug === 'rust') starters.rust = s.code;
     });
 
-    const examples: ProblemTemplate['examples'] = [];
-    const exMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-    for (const m of exMatches) {
-      const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
-      const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-      const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-      const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-      if (inM && outM) {
-        examples.push({
-          input: inM[1].trim(),
-          output: outM[1].trim(),
-          explanation: expM ? expM[1].trim() : undefined
-        });
-      }
-    }
-
     const constraints: string[] = [];
     const cListMatch = contentHtml.match(/<p><strong>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i) || contentHtml.match(/Constraints:[\s\S]*?<ul>([\s\S]*?)<\/ul>/i);
     if (cListMatch && cListMatch[1]) {
@@ -591,6 +683,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
       difficulty: q.difficulty || 'Medium',
       description: cleanDesc || q.title,
+      images: allImages,
       examples,
       constraints,
       testCases: tcs.length > 0 ? tcs : ['nums = [1, 2, 3]'],
