@@ -24,7 +24,8 @@ import {
   CreditCard,
   Layers,
   User,
-  CheckCircle2
+  CheckCircle2,
+  Building2
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
@@ -32,8 +33,8 @@ import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
 
 interface NavbarProps {
-  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings') => void;
+  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings';
+  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings') => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;
@@ -168,6 +169,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: Code2,
       color: 'text-purple-400',
       activeColor: 'bg-purple-600 text-white'
+    },
+    {
+      id: 'dsa_problems' as const,
+      label: 'DSA Problems',
+      subtitle: 'Company & Timeframe Filtered (3.4k+ Qs)',
+      icon: Building2,
+      color: 'text-cyan-400',
+      activeColor: 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white'
     },
     {
       id: 'lld' as const,

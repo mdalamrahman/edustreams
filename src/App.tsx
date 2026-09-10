@@ -30,6 +30,7 @@ import { AuthModal } from './components/AuthModal';
 import { AskAIChatModal } from './components/AskAIChatModal';
 import { LoadingScreen } from './components/LoadingScreen';
 import { SDESheetExplorer, findMatchingDsaVideo } from './components/SDESheetExplorer';
+import { CompanyDSAProblems } from './components/CompanyDSAProblems';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
@@ -63,16 +64,17 @@ const sanitizeCaption = (cap?: string) => {
     .trim();
 };
 
-const getInitialTab = (): 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings' => {
+const getInitialTab = (): 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings' => {
   if (typeof window === 'undefined') return 'dashboard';
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   const pathname = window.location.pathname || '';
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
-  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(qTab)) {
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(qTab)) {
     return qTab as any;
   }
+  if (hash.startsWith('#/dsa-problems') || hash.startsWith('#/company') || pathname.startsWith('/dsa-problems') || pathname.startsWith('/company')) return 'dsa_problems';
   if (hash.startsWith('#/problem/') || hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet') || pathname.startsWith('/dsa-sheets') || pathname.startsWith('/sde-sheet')) return 'sde_sheet';
   if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) return 'lld';
   if (hash.startsWith('#/hld') || pathname.startsWith('/hld') || hash.startsWith('#/system-design') || pathname.startsWith('/system-design')) return 'hld';
@@ -119,7 +121,7 @@ const getInitialVideo = (): Video => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>(getInitialTab);
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>(getInitialChannelViewMode);
   const [selectedChannelId, setSelectedChannelId] = useState<string>(getInitialChannel);
@@ -170,11 +172,11 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
     if (tab !== 'lesson') {
       window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
     }
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'interview' ? 'interview' : tab === 'profile' ? 'profile' : tab}`;
+    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'dsa_problems' ? 'dsa-problems' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'interview' ? 'interview' : tab === 'profile' ? 'profile' : tab}`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -218,7 +220,7 @@ export function App() {
         }
       }
 
-      if (queryTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile'].includes(queryTab)) {
+      if (queryTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(queryTab)) {
         setActiveTab(queryTab as any);
         return;
       }
@@ -284,6 +286,8 @@ export function App() {
           const found = list.find((v) => v.id === vidId || v.title === vidId || String(v.telegram_message_id) === vidId);
           if (found) setSelectedVideo(found);
           setActiveTab('lesson');
+        } else if (hash.startsWith('#/dsa-problems') || hash.startsWith('#/company') || pathname.startsWith('/dsa-problems') || pathname.startsWith('/company')) {
+          setActiveTab('dsa_problems');
         } else if (hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet') || pathname.startsWith('/dsa-sheets') || pathname.startsWith('/sde-sheet')) {
           setActiveTab('sde_sheet');
         } else if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) {
@@ -1493,6 +1497,13 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
             onOpenCodingFullscreen={handleOpenCodingFullscreen}
             userEmail={user?.email}
             dsaVideos={dynamicVideos.length > 0 ? dynamicVideos.filter(v => v.channel_id === 'ch-dsa-01') : MOCK_VIDEOS.filter(v => v.channel_id === 'ch-dsa-01')}
+          />
+        )}
+
+        {/* VIEW 2.6: COMPANY-WISE & TIMEFRAME-WISE DSA PROBLEMS (3,400+ PROBLEMS, 659 COMPANIES) */}
+        {activeTab === 'dsa_problems' && (
+          <CompanyDSAProblems
+            onOpenCodingWorkspace={handleOpenCodingFullscreen}
           />
         )}
 

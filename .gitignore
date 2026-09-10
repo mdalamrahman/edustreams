@@ -8,3 +8,4 @@ __pycache__/
 *.db
 scratch/
 *.xlsx
+backend/company_problems_raw/

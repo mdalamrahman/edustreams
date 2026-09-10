@@ -442,6 +442,32 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn font-sans">
 
+      {/* COMPANY-WISE QUESTIONS CALLOUT BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 border border-cyan-500/30 shadow-lg">
+        <div className="flex items-center space-x-3">
+          <div className="p-2.5 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs sm:text-sm font-bold text-slate-100">Targeting Specific Tech Companies?</span>
+              <span className="px-2 py-0.2 rounded-full bg-cyan-950 border border-cyan-700/60 text-[10px] font-mono font-bold text-cyan-300">3,400+ Curated Problems</span>
+            </div>
+            <p className="text-xs text-slate-400">Filter by Google, BrowserStack, Amazon, Meta, Microsoft across 30 Days, 6 Months, and All Time with single submission tracking.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            window.location.hash = '#/dsa-problems';
+          }}
+          className="flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs transition-all shadow-md shadow-cyan-600/20 cursor-pointer flex-shrink-0"
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Explore Company DSA Problems</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* TOP 5-WAY SHEET SWITCHER TABS */}
       <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 w-full">

@@ -2063,7 +2063,132 @@ Generate exact starter code templates and optimal solutions in JSON:
         "slug": clean_slug,
         "source": "geeksforgeeks"
     }
-    return result
+# ---------------------------------------------------------
+# COMPANY-WISE & TIMEFRAME-WISE DSA PROBLEMS API
+# ---------------------------------------------------------
+_COMPANY_PROBLEMS_CACHE = None
+
+def get_company_problems_dataset() -> dict:
+    global _COMPANY_PROBLEMS_CACHE
+    if _COMPANY_PROBLEMS_CACHE is not None:
+        return _COMPANY_PROBLEMS_CACHE
+    data_file = os.path.join(os.path.dirname(__file__), "company_problems.json")
+    if os.path.exists(data_file):
+        try:
+            with open(data_file, "r", encoding="utf-8") as f:
+                _COMPANY_PROBLEMS_CACHE = json.load(f)
+                return _COMPANY_PROBLEMS_CACHE
+        except Exception as e:
+            print(f"[CompanyProblems] Cache load error: {e}")
+    return {"total_problems": 0, "total_companies": 0, "companies_summary": [], "problems": {}, "companies": {}}
+
+
+@app.get("/api/company-problems/stats")
+async def get_company_problems_stats():
+    data = get_company_problems_dataset()
+    return {
+        "total_problems": data.get("total_problems", 0),
+        "total_companies": data.get("total_companies", 0),
+        "total_occurrences": data.get("total_occurrences", 0)
+    }
+
+
+@app.get("/api/company-problems/companies")
+async def get_company_problems_companies():
+    data = get_company_problems_dataset()
+    return {
+        "total_companies": data.get("total_companies", 0),
+        "companies": data.get("companies_summary", [])
+    }
+
+
+@app.get("/api/company-problems/all")
+async def get_company_problems_all():
+    data_file = os.path.join(os.path.dirname(__file__), "company_problems.json")
+    if os.path.exists(data_file):
+        return FileResponse(data_file, media_type="application/json", headers={"Cache-Control": "public, max-age=3600"})
+    data = get_company_problems_dataset()
+    return JSONResponse(content=data)
+
+
+@app.get("/api/company-problems/problems")
+async def query_company_problems(
+    company: str = "google",
+    timeframe: str = "all",
+    difficulty: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50
+):
+    data = get_company_problems_dataset()
+    companies = data.get("companies", {})
+    problems_map = data.get("problems", {})
+
+    company_slug = company.lower().strip()
+    c_data = companies.get(company_slug)
+    if not c_data:
+        # Fuzzy match company
+        for k, v in companies.items():
+            if company_slug in k or k in company_slug:
+                c_data = v
+                company_slug = k
+                break
+
+    if not c_data:
+        return {
+            "total": 0,
+            "page": page,
+            "limit": limit,
+            "company": company,
+            "timeframe": timeframe,
+            "problems": []
+        }
+
+    tf_dict = c_data.get("timeframes", {})
+    tf_key = timeframe if timeframe in tf_dict else ("all" if "all" in tf_dict else (list(tf_dict.keys())[0] if tf_dict else "all"))
+    pairs = tf_dict.get(tf_key, [])
+
+    matched = []
+    norm_search = search.lower().strip() if search else ""
+    norm_diff = difficulty.capitalize() if difficulty and difficulty.lower() != "all" else None
+
+    for pid, freq in pairs:
+        p_obj = problems_map.get(str(pid))
+        if not p_obj:
+            continue
+        if norm_diff and p_obj.get("difficulty") != norm_diff:
+            continue
+        if norm_search:
+            title = p_obj.get("title", "").lower()
+            slug = p_obj.get("slug", "").lower()
+            if norm_search not in title and norm_search not in slug and norm_search != str(pid):
+                continue
+
+        matched.append({
+            "id": pid,
+            "title": p_obj.get("title", ""),
+            "slug": p_obj.get("slug", ""),
+            "url": p_obj.get("url", ""),
+            "difficulty": p_obj.get("difficulty", "Medium"),
+            "acceptance": p_obj.get("acceptance", 50.0),
+            "frequency": freq
+        })
+
+    total_count = len(matched)
+    start_idx = max(0, (page - 1) * limit)
+    end_idx = start_idx + limit
+    page_items = matched[start_idx:end_idx]
+
+    return {
+        "total": total_count,
+        "page": page,
+        "limit": limit,
+        "company": company_slug,
+        "company_name": c_data.get("name", company_slug),
+        "timeframe": tf_key,
+        "available_timeframes": list(tf_dict.keys()),
+        "problems": page_items
+    }
 
 
 @app.get("/api/problem/{slug}")

@@ -194,8 +194,57 @@ export function isProblemSlugSolved(slugOrName?: string): boolean {
         return c === canonical || c.replace(/[^a-z0-9]/g, '') === compact;
       })) return true;
     }
+
+    // Check direct accepted compiler submissions in localStorage
+    const directSub = localStorage.getItem(`edustream_submissions_${canonical}`) || localStorage.getItem(`edustream_submissions_${compact}`);
+    if (directSub && (directSub.includes('"status":"SUCCESS"') || directSub.includes('"status":"Accepted"'))) {
+      return true;
+    }
   } catch {}
   return false;
+}
+
+/**
+ * Toggles a problem solved status globally across all sheets and company problems.
+ */
+export function toggleProblemSolvedGlobally(slug: string, name?: string, numericId?: number): boolean {
+  if (typeof window === 'undefined') return false;
+  const isCurrentlySolved = isProblemSlugSolved(slug) || (name ? isProblemSlugSolved(name) : false);
+  const cleanSlug = normalizeCanonicalSlug(slug || name || '');
+  const cleanCompact = cleanSlug.replace(/[^a-z0-9]/g, '');
+
+  if (isCurrentlySolved) {
+    // Unmark as solved
+    try {
+      const rawSlugs = localStorage.getItem('sdetube_solved_slugs');
+      if (rawSlugs) {
+        const slugs: string[] = JSON.parse(rawSlugs);
+        const filtered = slugs.filter(s => {
+          const c = normalizeCanonicalSlug(s);
+          return c !== cleanSlug && c.replace(/[^a-z0-9]/g, '') !== cleanCompact;
+        });
+        localStorage.setItem('sdetube_solved_slugs', JSON.stringify(filtered));
+      }
+      const rawNames = localStorage.getItem('sdetube_solved_names');
+      if (rawNames) {
+        const names: string[] = JSON.parse(rawNames);
+        const filtered = names.filter(n => {
+          const c = normalizeCanonicalSlug(n);
+          return c !== cleanSlug && c.replace(/[^a-z0-9]/g, '') !== cleanCompact;
+        });
+        localStorage.setItem('sdetube_solved_names', JSON.stringify(filtered));
+      }
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('sdetube_problem_solved', {
+      detail: { slug: cleanSlug, solved: false }
+    }));
+    return false;
+  } else {
+    // Mark as solved
+    markProblemSolved(name || slug, 5, slug);
+    return true;
+  }
 }
 
 /**
