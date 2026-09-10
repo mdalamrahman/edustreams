@@ -58,7 +58,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
 import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
@@ -289,6 +289,24 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           } catch (_) {}
         }
 
+        if (targetSlug.includes('lowest-common-ancestor')) {
+          try {
+            const cachedDrv = localStorage.getItem(`edustream_driver_${targetSlug}_${language}`);
+            if (cachedDrv && (cachedDrv.includes('serializeTree(ans)') || !cachedDrv.includes('ans->val'))) {
+              localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
+              localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
+            }
+          } catch (_) {}
+          if (enriched.driverCode?.[language]) {
+            if (enriched.driverCode[language].includes('serializeTree(ans)') || !enriched.driverCode[language].includes('ans->val')) {
+              const defaultLCA = getDefaultDriverForProblem(targetSlug, language);
+              if (defaultLCA) {
+                enriched.driverCode[language] = defaultLCA;
+              }
+            }
+          }
+        }
+
         // Prefetch & generate type-safe driver harness asynchronously
         fetchOrGenerateDriverCode(targetSlug, language, enriched.starters?.[language], enriched.testCases?.[0]).then(drv => {
           if (drv && !isCancelled) {
@@ -381,6 +399,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [isMultiOptionsModalOpen, setIsMultiOptionsModalOpen] = useState<boolean>(false);
   // AI Driver Code Inspection & Auto-Resolver Modal State
   const [isReportDriverOpen, setIsReportDriverOpen] = useState<boolean>(false);
+  const [driverUpdatedBadge, setDriverUpdatedBadge] = useState<boolean>(false);
 
   // Checks if this problem accepts multiple correct testcase solutions
   const isMultiOutputQuestion = useMemo(() => {
@@ -3109,6 +3128,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <span className="hidden sm:inline text-[11px] font-bold text-cyan-300">REPORT BOILER PLATE CODE</span>
               </button>
 
+              {driverUpdatedBadge && (
+                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-950/90 border border-emerald-500/50 shadow-sm animate-fadeIn">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Boilerplate Updated</span>
+                </span>
+              )}
+
               {/* Cloud Auto-Sync Toggle Button */}
               <div className="relative group">
                 <button
@@ -3958,10 +3984,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             } catch (_) {}
             return next;
           });
-        }}
-        onRerun={() => {
-          setIsReportDriverOpen(false);
-          handleExecute(false);
+          setDriverUpdatedBadge(true);
+          setTimeout(() => setDriverUpdatedBadge(false), 4000);
         }}
       />
 

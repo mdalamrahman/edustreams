@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Sparkles,
@@ -18,7 +18,8 @@ import {
   ChevronUp,
   Terminal,
   Cloud,
-  RotateCcw
+  RotateCcw,
+  Save
 } from 'lucide-react';
 import {
   verifyAndCorrectDriverCodeAI,
@@ -47,7 +48,6 @@ interface ReportDriverCodeModalProps {
   executionError?: string;
   userEmail?: string;
   onApplyCorrection: (correctedDriverCode: string) => void;
-  onRerun?: () => void;
 }
 
 export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
@@ -63,17 +63,17 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
   sampleExpectedOutput,
   executionError,
   userEmail,
-  onApplyCorrection,
-  onRerun
+  onApplyCorrection
 }) => {
   const [userNote, setUserNote] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSavingManual, setIsSavingManual] = useState(false);
   const [aiResult, setAiResult] = useState<DriverCorrectionResult | null>(null);
-  const [showDriverPreview, setShowDriverPreview] = useState(false);
+  const [showDriverPreview, setShowDriverPreview] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [autoRerunCountdown, setAutoRerunCountdown] = useState<number | null>(null);
-  const timerIdRef = useRef<any>(null);
+  const [editableDriver, setEditableDriver] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [resolvedStatus, setResolvedStatus] = useState<{
     autoResolved: boolean;
@@ -84,55 +84,18 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
     storedInR2: boolean;
   } | null>(null);
 
-  const handleApplyAndRerun = useCallback(() => {
-    if (timerIdRef.current) {
-      clearTimeout(timerIdRef.current);
-      timerIdRef.current = null;
-    }
-    setAutoRerunCountdown(null);
-
-    if (aiResult?.correctedDriverCode) {
-      onApplyCorrection(aiResult.correctedDriverCode);
-    }
-
-    onClose();
-    if (onRerun) {
-      setTimeout(() => onRerun(), 250);
-    }
-  }, [aiResult, onApplyCorrection, onClose, onRerun]);
-
   useEffect(() => {
     if (isOpen) {
       setAiResult(null);
       setUserNote('');
       setResolvedStatus(null);
-      setAutoRerunCountdown(null);
-      setShowDriverPreview(false);
+      setShowDriverPreview(true);
       setIsResetting(false);
-    } else {
-      if (timerIdRef.current) {
-        clearTimeout(timerIdRef.current);
-        timerIdRef.current = null;
-      }
+      setIsSavingManual(false);
+      setSuccessMessage(null);
+      setEditableDriver(currentDriverCode || '');
     }
-  }, [isOpen]);
-
-  // Auto countdown effect
-  useEffect(() => {
-    if (autoRerunCountdown === null) return;
-    if (autoRerunCountdown <= 0) {
-      handleApplyAndRerun();
-      return;
-    }
-
-    timerIdRef.current = setTimeout(() => {
-      setAutoRerunCountdown((prev) => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
-    return () => {
-      if (timerIdRef.current) clearTimeout(timerIdRef.current);
-    };
-  }, [autoRerunCountdown, handleApplyAndRerun]);
+  }, [isOpen, currentDriverCode]);
 
   const handleCopyCode = (text: string) => {
     if (!text) return;
@@ -143,10 +106,11 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
 
   /**
    * Directly resets the driver to the verified authentic default driver for this problem.
-   * Purges broken custom driver from R2 and caches, applies immediately, and reruns code.
+   * Updates R2, caches, and component state immediately without executing the code.
    */
   const handleResetToDefault = async () => {
     setIsResetting(true);
+    setSuccessMessage(null);
     try {
       const slug = problemSlug;
       const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
@@ -194,12 +158,10 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           } catch (_) {}
         }
 
-        // 5. Apply to workspace state and rerun
+        // 5. Apply to workspace state immediately WITHOUT running
+        setEditableDriver(defaultDriver);
         onApplyCorrection(defaultDriver);
-        onClose();
-        if (onRerun) {
-          setTimeout(() => onRerun(), 250);
-        }
+        setSuccessMessage('✓ Boilerplate driver reset to default and updated immediately! (Ready to use when you click Run)');
       }
     } catch (err) {
       console.error('[Reset Driver Error]:', err);
@@ -208,10 +170,60 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
     }
   };
 
+  /**
+   * Directly saves manually edited driver code to cache, state, and R2 without running.
+   */
+  const handleSaveManualDriver = async () => {
+    if (!editableDriver.trim()) return;
+    setIsSavingManual(true);
+    setSuccessMessage(null);
+    try {
+      const slug = problemSlug;
+      const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+      localStorage.setItem(`edustream_driver_${slug}_${lang}`, editableDriver);
+      localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
+
+      try {
+        const specStr = localStorage.getItem(`edustream_problem_spec_${slug}`);
+        if (specStr) {
+          const spec = JSON.parse(specStr);
+          if (!spec.driverCode) spec.driverCode = {};
+          spec.driverCode[lang] = editableDriver;
+          localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(spec));
+        }
+      } catch (_) {}
+
+      const endpoints = [
+        `/api/problem/${encodeURIComponent(slug)}/correct-driver`,
+        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/correct-driver`,
+        `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/correct-driver`
+      ];
+      for (const ep of endpoints) {
+        try {
+          await fetch(ep, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language: lang, driverCode: editableDriver }),
+            signal: AbortSignal.timeout(5000)
+          });
+          break;
+        } catch (_) {}
+      }
+
+      onApplyCorrection(editableDriver);
+      setSuccessMessage('✓ Custom driver code updated immediately! (Ready to use when you click Run)');
+    } catch (err) {
+      console.error('[Save Driver Error]:', err);
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
   const handleInspectAndCorrect = async () => {
     setIsVerifying(true);
     setResolvedStatus(null);
-    setAutoRerunCountdown(null);
+    setSuccessMessage(null);
 
     try {
       const result = await verifyAndCorrectDriverCodeAI({
@@ -305,8 +317,9 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           }
         } catch (_) {}
 
-        // 4. Apply to workspace state immediately
+        // 4. Apply to workspace state immediately without running
         onApplyCorrection(result.correctedDriverCode);
+        setEditableDriver(result.correctedDriverCode);
 
         setResolvedStatus({
           autoResolved: true,
@@ -317,8 +330,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
           storedInR2
         });
 
-        // 5. Trigger 2-second countdown to auto-rerun code
-        setAutoRerunCountdown(2);
+        setSuccessMessage('✓ Boilerplate driver auto-corrected and updated immediately in R2 & cache! (No auto-run triggered)');
       }
     } catch (err) {
       console.error('[Inspect Boilerplate Code Error]:', err);
@@ -361,7 +373,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               onClick={handleResetToDefault}
               disabled={isResetting}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
-              title="Reset to default correct driver code and re-execute"
+              title="Reset to default correct driver code without running"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
               <span>Reset to Default</span>
@@ -378,6 +390,22 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-4 overflow-y-auto font-sans flex-1">
+
+          {/* Success Banner */}
+          {successMessage && (
+            <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/50 flex items-center justify-between text-xs text-emerald-200 animate-fadeIn">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span className="font-semibold">{successMessage}</span>
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="text-emerald-400 hover:text-white text-xs font-mono px-2 py-0.5 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           
           {/* Execution Error Banner (if error occurred during compile/run) */}
           {executionError && (
@@ -392,7 +420,7 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
             </div>
           )}
 
-          {/* Current Boilerplate / Driver Code Collapsible Preview */}
+          {/* Current Boilerplate / Driver Code Collapsible Preview & Editor */}
           <div className="rounded-2xl bg-slate-950/80 border border-slate-800 overflow-hidden">
             <button
               onClick={() => setShowDriverPreview(!showDriverPreview)}
@@ -400,31 +428,49 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
             >
               <div className="flex items-center space-x-2">
                 <Code2 className="w-4 h-4 text-cyan-400" />
-                <span>Current Boilerplate Harness ({language.toUpperCase()})</span>
+                <span>Boilerplate Driver Code ({language.toUpperCase()})</span>
                 <span className="text-[10px] font-mono text-slate-500">
-                  {currentDriverCode ? `${currentDriverCode.split('\n').length} lines` : 'Default Boilerplate'}
+                  {editableDriver ? `${editableDriver.split('\n').length} lines` : 'Default Boilerplate'}
                 </span>
               </div>
               <div className="flex items-center space-x-1 text-slate-400">
-                <span>{showDriverPreview ? 'Hide' : 'Inspect Boilerplate'}</span>
+                <span>{showDriverPreview ? 'Hide' : 'Inspect & Edit Boilerplate'}</span>
                 {showDriverPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </div>
             </button>
 
             {showDriverPreview && (
-              <div className="p-3 border-t border-slate-800/80 bg-black/50">
-                <div className="flex justify-end pb-1">
-                  <button
-                    onClick={() => handleCopyCode(currentDriverCode || '')}
-                    className="flex items-center space-x-1 text-[10px] font-mono text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-900 border border-slate-800 cursor-pointer"
-                  >
-                    {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
+              <div className="p-3.5 border-t border-slate-800/80 bg-black/50 space-y-2.5">
+                <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
+                  <span className="text-[11px] text-slate-400">
+                    Directly inspect or edit the hidden driver harness below. Click <strong>Update Driver Code</strong> to save without running.
+                  </span>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleCopyCode(editableDriver)}
+                      className="flex items-center space-x-1 text-[10px] font-mono text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer"
+                    >
+                      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copied ? 'Copied' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={handleSaveManualDriver}
+                      disabled={isSavingManual || !editableDriver.trim()}
+                      className="flex items-center space-x-1 text-[11px] font-bold text-cyan-200 hover:text-white px-3 py-1 rounded-lg bg-cyan-950 border border-cyan-600 hover:bg-cyan-900 cursor-pointer disabled:opacity-50 transition-all"
+                    >
+                      {isSavingManual ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>{isSavingManual ? 'Saving...' : 'Update Driver Code'}</span>
+                    </button>
+                  </div>
                 </div>
-                <pre className="text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto whitespace-pre-wrap select-text p-2 rounded-xl bg-slate-950 border border-slate-900">
-                  {currentDriverCode || 'No boilerplate code loaded.'}
-                </pre>
+                <textarea
+                  value={editableDriver}
+                  onChange={(e) => setEditableDriver(e.target.value)}
+                  rows={9}
+                  className="w-full text-[11px] font-mono text-cyan-200/90 p-3 rounded-xl bg-slate-950 border border-slate-800 focus:outline-none focus:border-cyan-500 resize-y leading-relaxed"
+                  placeholder="Driver harness code..."
+                  spellCheck={false}
+                />
               </div>
             )}
           </div>
@@ -562,15 +608,16 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
               </button>
 
               <button
-                onClick={handleApplyAndRerun}
+                onClick={() => {
+                  if (aiResult?.correctedDriverCode) {
+                    onApplyCorrection(aiResult.correctedDriverCode);
+                  }
+                  onClose();
+                }}
                 className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                <span>
-                  Apply Corrected Boilerplate
-                  {autoRerunCountdown !== null && autoRerunCountdown > 0 ? ` (${autoRerunCountdown}s)` : ''}
-                </span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Apply & Close</span>
               </button>
             </div>
           )}
