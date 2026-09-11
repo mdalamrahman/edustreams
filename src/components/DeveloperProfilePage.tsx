@@ -493,7 +493,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
       trackCategory: track.category,
       completionPercentage: track.percentage,
       issueDate: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-      verificationCode: track.verificationCode || `SDETUBE-CERT-2026-${track.trackId.slice(-6).toUpperCase()}`,
+      verificationCode: track.verificationCode || `SDETUBE-v1-${track.trackId.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase()}-VERIF`,
       totalProblemsSolved: track.solvedItems || 50,
       grade: track.percentage >= 95 ? 'Distinction' : 'Honors'
     });

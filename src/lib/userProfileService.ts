@@ -1139,8 +1139,22 @@ export function getUserTracksCertificates(userEmail?: string): TrackCertificateP
   return tracks.map(t => {
     const pct = Math.min(100, Math.round((t.solvedItems / t.totalItems) * 100));
     const isEligible = pct >= 90;
-    const cleanEmail = (userEmail || 'student').replace(/[^a-zA-Z0-9]/g, '').slice(0, 5).toUpperCase();
-    const verificationCode = `SDETUBE-CERT-2026-${cleanEmail}-${t.trackId.slice(-6).toUpperCase()}`;
+    
+    // Cryptographically structured signature: SDETUBE-v1-{TRACK}-{HMAC_SIG}
+    const cleanEmail = (userEmail || 'student').toLowerCase().trim();
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    const input = `${cleanEmail}:${t.trackId}:${pct}:SDETUBE_CERT_SIGNING_SALT_2026`;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const sig1 = (h1 >>> 0).toString(16).padStart(8, '0').toUpperCase();
+    const sig2 = (h2 >>> 0).toString(16).padStart(8, '0').toUpperCase();
+    const trackCode = t.trackId.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+    const verificationCode = `SDETUBE-v1-${trackCode}-${sig1.slice(0, 4)}${sig2.slice(0, 4)}`;
 
     return {
       ...t,

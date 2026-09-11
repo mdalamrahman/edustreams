@@ -10,24 +10,24 @@
 1. [System High-Level Design (HLD)](#1-system-high-level-design-hld)
    - 1.1 [End-to-End System Architecture](#11-end-to-end-system-architecture)
    - 1.2 [Zero-Cost Edge Video Delivery Engine](#12-zero-cost-edge-video-delivery-engine)
-   - 1.3 [Multi-Tier AI Inference Cascade](#13-multi-tier-ai-inference-cascade)
+   - 1.3 [Streamlined Two-Tier AI Inference Cascade with Edge Cache](#13-streamlined-two-tier-ai-inference-cascade-with-edge-cache)
    - 1.4 [Lead Bar Raiser Voice Mock Interview Subsystem](#14-lead-bar-raiser-voice-mock-interview-subsystem)
-   - 1.5 [Atomic Concurrency & Wallet Ledger](#15-atomic-concurrency--wallet-ledger)
+   - 1.5 [Server-Authoritative Pricing & Zero-Trust Wallet Ledger](#15-server-authoritative-pricing--zero-trust-wallet-ledger)
    - 1.6 [Omnichannel Developer Profile & Analytics Ingestion Engine](#16-omnichannel-developer-profile--analytics-ingestion-engine)
-   - 1.7 [Inter-Device Cloud Progress Synchronization Engine](#17-inter-device-cloud-progress-synchronization-engine)
-   - 1.8 [Verifiable Certification & Strict ≥90% Mastery Security Gate](#18-verifiable-certification--strict-90-mastery-security-gate)
+   - 1.7 [Inter-Device Normalized Delta Progress Synchronization Engine](#17-inter-device-normalized-delta-progress-synchronization-engine)
+   - 1.8 [Cryptographically Verifiable Certification & Server-Side Security Gate](#18-cryptographically-verifiable-certification--server-side-security-gate)
 2. [Full Platform User & Data Flow](#2-full-platform-user--data-flow)
    - 2.1 [Student Onboarding & Passwordless Passkey Flow](#21-student-onboarding--passwordless-passkey-flow)
    - 2.2 [DSA Problem Solving & Code Execution Flow](#22-dsa-problem-solving--code-execution-flow)
    - 2.3 [SQL Challenge & In-Browser WASM Execution Flow](#23-sql-challenge--in-browser-wasm-execution-flow)
    - 2.4 [Video Lecture Streaming & Dual-Mode Notes Sync Flow](#24-video-lecture-streaming--dual-mode-notes-sync-flow)
    - 2.5 [Lead Bar Raiser Voice Interview & Scorecard Flow](#25-lead-bar-raiser-voice-interview--scorecard-flow)
-   - 2.6 [Wallet Billing, 24-Hour Passes & Top-Up Flow](#26-wallet-billing-24-hour-passes--top-up-flow)
+   - 2.6 [Server-Authoritative Wallet Billing, 24-Hour Passes & Top-Up Flow](#26-server-authoritative-wallet-billing-24-hour-passes--top-up-flow)
    - 2.7 [Omnichannel Developer Profile & Multi-Platform Aggregation Flow](#27-omnichannel-developer-profile--multi-platform-aggregation-flow)
-   - 2.8 [Inter-Device Synchronization & Storage Healing Flow](#28-inter-device-synchronization--storage-healing-flow)
-   - 2.9 [Official Certificate Verification & Strict ≥90% Mastery Enforcement Flow](#29-official-certificate-verification--strict-90-mastery-enforcement-flow)
+   - 2.8 [Inter-Device Normalized Delta Sync & Storage Healing Flow](#28-inter-device-normalized-delta-sync--storage-healing-flow)
+   - 2.9 [Cryptographic Certificate Issuance & Server-Side Verification Flow](#29-cryptographic-certificate-issuance--server-side-verification-flow)
 3. [Low-Level Design (LLD): Component Architecture (`src/components/`)](#3-low-level-design-lld-component-architecture-srccomponents)
-   - 3.1 [Master Shell & Routing Controller (`App.tsx`)](#31-master-shell--routing-controller-apptsx)
+   - 3.1 [Master Shell & Routing Controller (`App.tsx`, `DashboardLandingPage.tsx`)](#31-master-shell--routing-controller-apptsx-dashboardlandingpagetsx)
    - 3.2 [Coding & Algorithm Workspaces](#32-coding--algorithm-workspaces)
    - 3.3 [System Design & Mock Interview Rooms](#33-system-design--mock-interview-rooms)
    - 3.4 [Video Streaming & Notes Subsystem](#34-video-streaming--notes-subsystem)
@@ -35,21 +35,30 @@
    - 3.6 [Diagramming, Quizzes & Supporting UI Components](#36-diagramming-quizzes--supporting-ui-components)
 4. [Low-Level Design (LLD): Core Services Deep Dive (`src/lib/`)](#4-low-level-design-lld-core-services-deep-dive-srclib)
    - 4.1 [Problem & Execution Pipeline (`problemService.ts`, `compiler.ts`, `sqlJudge.ts`)](#41-problem--execution-pipeline-problemservicets-compilerts-sqljudgets)
-   - 4.2 [AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `mistral.ts`, `groq.ts`)](#42-ai--voice-engines-interviewservicets-interviewevaluatorts-mistralts-groqts)
+   - 4.2 [AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `gemini.ts`, `groq.ts`)](#42-ai--voice-engines-interviewservicets-interviewevaluatorts-geminits-groqts)
    - 4.3 [Storage, Notes & Boss Sheets (`videoNotesService.ts`, `notesService.ts`, `kroki.ts`)](#43-storage-notes--boss-sheets-videonotesservicets-notesservicets-krokits)
    - 4.4 [Billing, Auth & Security (`billing.ts`, `auth.ts`, `passkey.ts`, `webauthn.ts`)](#44-billing-auth--security-billingts-authts-passkeyts-webauthnts)
-   - 4.5 [Curated Datasets & Catalogs (`dsaSheetsData.ts`, `lldData.ts`, `supabase.ts`)](#45-curated-datasets--catalogs-dsasheetsdatats-llddatats-supabasets)
+   - 4.5 [Unified Canonical Problem Bank Architecture (`canonicalProblems.ts`, `dsaSheetsData.ts`)](#45-unified-canonical-problem-bank-architecture-canonicalproblemsts-dsasheetsdatats)
    - 4.6 [Unified Analytics & Activity Deduplication Pipeline (`analytics.ts`, `userProfileService.ts`)](#46-unified-analytics--activity-deduplication-pipeline-analyticsts-userprofileservicets)
-   - 4.7 [Cross-Device Cloud Synchronization Service (`progressService.ts`)](#47-cross-device-cloud-synchronization-service-progressservicets)
+   - 4.7 [Normalized Delta Cloud Synchronization Service (`progressService.ts`)](#47-normalized-delta-cloud-synchronization-service-progressservicets)
 5. [Backend Microservices Low-Level Design (`backend/` & `functions/`)](#5-backend-microservices-low-level-design-backend--functions)
    - 5.1 [FastAPI Gateway & Route Handlers (`backend/main.py`)](#51-fastapi-gateway--route-handlers-backendmainpy)
    - 5.2 [Cloudflare R2 SigV4 Storage Manager (`backend/r2_storage.py`)](#52-cloudflare-r2-sigv4-storage-manager-backendr2_storagepy)
    - 5.3 [Edge Functions & Proxy Layer (`functions/api/`)](#53-edge-functions--proxy-layer-functionsapi)
 6. [Database Schema, RPC Functions & Storage Architecture](#6-database-schema-rpc-functions--storage-architecture)
-   - 6.1 [PostgreSQL Table Schemas & Relationships](#61-postgresql-table-schemas--relationships)
-   - 6.2 [Stored Procedures & Concurrency Locks](#62-stored-procedures--concurrency-locks)
+   - 6.1 [Normalized PostgreSQL Table Schemas & Relationships](#61-normalized-postgresql-table-schemas--relationships)
+   - 6.2 [Server-Authoritative Stored Procedures & Concurrency Locks](#62-server-authoritative-stored-procedures--concurrency-locks)
    - 6.3 [Cloudflare R2 Object Hierarchy](#63-cloudflare-r2-object-hierarchy)
 7. [API Route Specifications & Contracts](#7-api-route-specifications--contracts)
+8. [Strategic Architecture Additions](#8-strategic-architecture-additions)
+   - 8.1 [Multi-Tier Edge & Server Caching for External Profiles & Metrics](#81-multi-tier-edge--server-caching-for-external-profiles--metrics)
+   - 8.2 [Per-User AI Token Quotas & Sliding-Window Rate Limiting](#82-per-user-ai-token-quotas--sliding-window-rate-limiting)
+   - 8.3 [Submission Integrity & Anti-Plagiarism Heuristics](#83-submission-integrity--anti-plagiarism-heuristics)
+   - 8.4 [Shareable Public Portfolio & Dynamic Resume Generator](#84-shareable-public-portfolio--dynamic-resume-generator)
+   - 8.5 [Spaced Repetition (SM-2 / Leitner Algorithm) Review Engine](#85-spaced-repetition-sm-2--leitner-algorithm-review-engine)
+9. [Architectural Simplifications & Pruning](#9-architectural-simplifications--pruning)
+   - 9.1 [Streamlined Two-Tier AI Cascade (Eliminating Mistral Fallback Overhead)](#91-streamlined-two-tier-ai-cascade-eliminating-mistral-fallback-overhead)
+   - 9.2 [Zero-Trust Client Balance Policy & Server-Authoritative Gating](#92-zero-trust-client-balance-policy--server-authoritative-gating)
 
 ---
 
@@ -59,60 +68,68 @@
 
 ```mermaid
 graph TB
-    subgraph ClientLayer ["Client & Anycast Edge Layer (Cloudflare CDN)"]
-        SPA["React 18 + Vite SPA (sdetube.pages.dev)"]
-        CF_RTE["_routes.json - Edge Rules"]
-        CF_FUNC["Cloudflare Pages Functions (/api/*)"]
-        CF_CACHE[("Cloudflare Edge Cache (30-Day TTL / Immutable)")]
-        WASM_SQL["In-Browser SQLite WASM Engine"]
+    subgraph ClientTier ["1. Client Application Tier (Single Page Application)"]
+        BROWSER["Modern Web Browser (Vite + React 18 + TypeScript)"]
+        MONACO["Monaco Editor (6 Languages)"]
+        SQL_WASM["In-Browser SQLite WASM"]
+        VOICE_REC["Web Speech API (STT & TTS)"]
+        EXCALI["Excalidraw & HLD Canvas"]
+        KROKI_CLIENT["Kroki PlantUML / C4 Renderer"]
+        LOCAL_STORAGE["Optimistic Local Cache (IndexedDB / LocalStorage)"]
     end
 
-    subgraph BackendLayer ["Backend Microservices (Render Web Service)"]
-        FASTAPI["FastAPI Gateway (backend/main.py)"]
-        TELETHON["Telethon MTProto Async Client Engine"]
-        AI_CASCADE["Multi-LLM 3-Tier Router"]
-        HEALTHZ["/healthz Background Uptime Daemon"]
+    subgraph EdgeCDN ["2. Global Edge & Ingress Tier (Cloudflare Anycast)"]
+        CF_PAGES["Cloudflare Pages CDN"]
+        CF_WORKERS["Cloudflare Workers (Edge Proxies & Cache)"]
+        EDGE_CACHE["Cloudflare Cache (30-Day Video & Exact Response Cache)"]
+        EDGE_KV["Cloudflare Workers KV (Profile & External API Cache)"]
+        TURNSTILE["Cloudflare Turnstile (Anti-Bot Verification)"]
     end
 
-    subgraph StorageLayer ["Zero-Cost Storage Layer"]
-        TG_DATACENTERS[("Telegram Datacenters (MTProto Video Origin)")]
-        CF_R2[("Cloudflare R2 (sdestream Bucket - SigV4 S3)")]
+    subgraph BackendGateway ["3. Backend Microservices Tier (FastAPI & Render)"]
+        FASTAPI["FastAPI App (Python 3.11 ASGI)"]
+        TELETHON["Telethon MTProto Client Pool"]
+        R2_CLIENT["Custom SigV4 AWS S3/R2 Client"]
+        JUDGE_PROXY["Judge0 CE Multi-Language Execution Broker"]
+        AI_GATEWAY["AI Gateway & Token Bucket Rate Limiter"]
     end
 
-    subgraph DatabaseLayer ["Database & Identity Layer (Supabase)"]
-        AUTH_PASSKEY["Supabase Auth + WebAuthn FIDO2 Passkeys"]
-        PG_DB[("PostgreSQL Database (Supavisor Port 6543)")]
-        RPC_WALLET["deduct_wallet_credits (Pessimistic Locking RPC)"]
+    subgraph CloudStorage ["4. Storage & Persistence Tier"]
+        CF_R2[("Cloudflare R2 Bucket: sdestream (Testcases, Drivers, Notes)")]
+        SUPABASE_PG[("Supabase PostgreSQL (Profiles, Normalized Progress, Certificates, Pricing, Ledger)")]
+        SUPABASE_AUTH["Supabase Auth & WebAuthn / Passkeys"]
+        TG_DATACENTERS[("Telegram Cloud Datacenters (Video Storage)")]
     end
 
-    subgraph AIProviders ["AI Inference Cascade"]
-        LLM_GROQ["Tier 1: Groq Llama-3.3-70B (Sub-Second SSE Stream)"]
-        LLM_GEMINI["Tier 2: Google Gemini 2.5 Flash"]
-        LLM_MISTRAL["Tier 3: Mistral Codestral & Large"]
+    subgraph ExternalServices ["5. External APIs & Inference Tier"]
+        LLM_GROQ["Groq API (Llama-3.3-70B-Versatile - Primary Tier)"]
+        LLM_GEMINI["Google Gemini 1.5 Flash (Complex Reasoning Fallback)"]
+        LC_API["LeetCode GraphQL API"]
+        GFG_API["GeeksforGeeks Practice API"]
+        GH_API["GitHub REST API"]
+        CF_API["Codeforces Official API"]
     end
 
-    subgraph CodeSandboxes ["Code Execution Sandboxes"]
-        JUDGE0["Judge0 / Piston Multi-Language Execution API"]
-    end
-
-    SPA --> CF_RTE
-    SPA --> CF_FUNC
-    CF_FUNC --> CF_CACHE
-    CF_FUNC --> FASTAPI
-    SPA --> WASM_SQL
-    SPA --> PG_DB
-    SPA --> AUTH_PASSKEY
-    SPA --> RPC_WALLET
-    SPA --> JUDGE0
-    SPA --> CF_R2
+    BROWSER --> CF_PAGES
+    BROWSER --> CF_WORKERS
+    CF_WORKERS --> EDGE_CACHE
+    CF_WORKERS --> EDGE_KV
+    CF_WORKERS --> FASTAPI
+    CF_WORKERS --> SUPABASE_PG
+    CF_WORKERS --> SUPABASE_AUTH
 
     FASTAPI --> TELETHON
+    FASTAPI --> R2_CLIENT
+    FASTAPI --> JUDGE_PROXY
+    FASTAPI --> AI_GATEWAY
+    AI_GATEWAY --> LLM_GROQ
+    AI_GATEWAY --> LLM_GEMINI
+
     TELETHON --> TG_DATACENTERS
-    FASTAPI --> CF_R2
-    FASTAPI --> AI_CASCADE
-    AI_CASCADE --> LLM_GROQ
-    AI_CASCADE --> LLM_GEMINI
-    AI_CASCADE --> LLM_MISTRAL
+    R2_CLIENT --> CF_R2
+    EDGE_KV --> LC_API
+    EDGE_KV --> GH_API
+    EDGE_KV --> CF_API
 ```
 
 ---
@@ -131,29 +148,33 @@ sequenceDiagram
     alt Edge Cache Hit (30-Day TTL)
         Edge-->>Student: 206 Partial Content (Cached MP4 Byte Slice)
     else Edge Cache Miss
-        Edge->>Origin: Proxy Stream Request to https://edustream-backend-90vm.onrender.com
+        Edge->>Origin: Proxy Stream Request to backend.onrender.com
         Origin->>MTProto: client.iter_download(doc, offset=0, chunk_size=512KB)
         MTProto-->>Origin: 512KB Native MTProto Slices
         Origin-->>Edge: 206 Partial Content + Content-Range: bytes 0-4194303/86961595
         Edge->>Edge: Cache Byte Slice (cf: { cacheEverything: true, cacheTtl: 2592000 })
         Edge-->>Student: 206 Partial Content (Streaming Byte Stream)
     end
-    Note over Student: LocalStorage auto-caches playback progress every 2s
+    Note over Student: LocalStorage auto-caches playback timestamp every 2s
 ```
 
 ---
 
-## 1.3 Multi-Tier AI Inference Cascade
+## 1.3 Streamlined Two-Tier AI Inference Cascade with Edge Cache
+
+To eliminate cold-start latency and avoid third-tier failure cascades, SDETube adopts a **streamlined two-tier architecture** augmented by an Edge Semantic & Exact Response Cache:
 
 ```mermaid
 graph TD
-    REQ[Student AI Request / Ask AI / Mock Interview] --> T1{Tier 1: Groq Llama-3.3-70B}
-    T1 -- "Success (< 500ms TTFT)" --> STREAM[SSE Token Stream to Browser]
-    T1 -- "Rate Limited / Error" --> T2{Tier 2: Google Gemini 2.5 Flash}
+    REQ[Student AI Request / Code Review / Mock Interview] --> KV_CHECK{Edge Response Cache Hit?}
+    KV_CHECK -- "Hit (40% of standard questions)" --> INSTANT_RESP[Return Cached Response (0ms LLM Cost)]
+    KV_CHECK -- "Miss" --> RATE_LIMIT{User Token Budget OK?}
+    RATE_LIMIT -- "Budget Exceeded" --> ERR_429[HTTP 429: Token Quota Exceeded]
+    RATE_LIMIT -- "Allowed" --> T1{Tier 1: Groq Llama-3.3-70B}
+    T1 -- "Success (< 450ms TTFT)" --> STREAM[SSE Stream to Browser + Async Write to Edge Cache]
+    T1 -- "Rate Limited / 5xx" --> T2{Tier 2: Google Gemini 1.5 Flash}
     T2 -- "Success" --> STREAM
-    T2 -- "Quota Exceeded / Error" --> T3{Tier 3: Mistral Codestral / Large}
-    T3 -- "Success" --> STREAM
-    T3 -- "Fallback" --> ERR[Graceful Error Response with Retry]
+    T2 -- "Failed" --> FALLBACK[Graceful Degradation with Socratic Hints]
 ```
 
 ---
@@ -194,32 +215,41 @@ graph LR
 
 ---
 
-## 1.5 Atomic Concurrency & Wallet Ledger
+## 1.5 Server-Authoritative Pricing & Zero-Trust Wallet Ledger
+
+### The Security Trust Boundary
+Under no circumstances does the server trust client-supplied debit amounts. All billing prices reside authoritatively in PostgreSQL table `platform_pricing`. The client passes only the authenticated `p_user_id`, `p_action_type`, and an idempotency key. The stored procedure `deduct_wallet_credits()` retrieves the authoritative price, executes pessimistic locking, and records the transaction atomically.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Client Request
-    participant App as billing.ts
+    actor User as Client Browser
+    participant App as billing.ts (Client)
     participant RPC as deduct_wallet_credits (PL/pgSQL)
-    participant DB as PostgreSQL (profiles & wallet_transactions)
+    participant Pricing as platform_pricing Table
+    participant Profiles as profiles Table (Pessimistic Lock)
+    participant Ledger as wallet_transactions Table
 
-    User->>App: Request Action (e.g. Unlock Lecture ₹2.00)
-    App->>RPC: Call deduct_wallet_credits(p_user_id, p_amount, p_action, p_idempotency_key)
+    User->>App: Request Action (e.g. AI Mock Interview)
+    Note over App: Optimistic UI check (balance >= ₹10.00)
+    App->>RPC: Call deduct_wallet_credits(p_user_id, 'ai_mock_interview', idempotency_key)
     activate RPC
-    RPC->>DB: Check Idempotency Key
-    alt Duplicate Request
-        DB-->>RPC: Key Exists
-        RPC-->>App: { success: true, balance: current, duplicate: true }
-    else New Request
-        RPC->>DB: SELECT wallet_balance FROM profiles WHERE id = p_user_id FOR UPDATE
-        Note over DB: Row locked; concurrent requests wait
-        alt wallet_balance < p_amount
-            RPC-->>App: { success: false, error: 'INSUFFICIENT_FUNDS' }
-        else wallet_balance >= p_amount
-            RPC->>DB: UPDATE profiles SET wallet_balance = wallet_balance - p_amount
-            RPC->>DB: INSERT INTO wallet_transactions (user_id, action_type, amount, idempotency_key)
-            RPC-->>App: { success: true, balance: new_balance }
+    RPC->>Pricing: SELECT cost_inr FROM platform_pricing WHERE action_type = 'ai_mock_interview'
+    Pricing-->>RPC: cost_inr = ₹10.00 (Derived Server-Side)
+    
+    RPC->>Ledger: Check Idempotency Key
+    alt Duplicate Request Detected
+        Ledger-->>RPC: Key Already Processed
+        RPC-->>App: { success: true, duplicate: true, balance: current }
+    else Fresh Request
+        RPC->>Profiles: SELECT wallet_balance FROM profiles WHERE id = p_user_id FOR UPDATE
+        Note over Profiles: Row locked via FOR UPDATE; concurrent attacks blocked
+        alt wallet_balance < ₹10.00
+            RPC-->>App: { success: false, error: 'INSUFFICIENT_FUNDS', balance: current, required: 10.00 }
+        else wallet_balance >= ₹10.00
+            RPC->>Profiles: UPDATE profiles SET wallet_balance = wallet_balance - 10.00
+            RPC->>Ledger: INSERT INTO wallet_transactions (user_id, action_type, amount, idempotency_key)
+            RPC-->>App: { success: true, balance: new_balance, debited: 10.00 }
         end
     end
     deactivate RPC
@@ -231,110 +261,115 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    subgraph DataSources ["Primary Activity & Progress Ingestion"]
-        SHEETS["Curated DSA Sheets (SDE 191, A2Z 474, 79, Blind 75, MIK)"]
-        IDE_RUNNER["In-Browser Compiler Accepted Runs (edustream_submissions_*)"]
-        POTD_FEED["POTD Trifecta (SDETube, LeetCode, GFG)"]
-        EXT_LC["LeetCode Profile GraphQL Proxy (submissionCalendar)"]
-        EXT_GH["GitHub REST API (Public Commits & Repos)"]
-        EXT_GFG["GeeksforGeeks Practice Profile Scraper"]
-        EXT_CF["Codeforces User Status API"]
+    subgraph ClientVisualizer ["Client Visualization (DeveloperProfilePage.tsx)"]
+        MODE_SELECT{"Profile View Selector"}
+        V_SDETUBE["SDETube View (DSA, LLD, SQL)"]
+        V_LC["LeetCode View (Contests, Heatmap, Ranking)"]
+        V_GH["GitHub View (Repos, PRs, Languages)"]
+        V_GFG["GeeksforGeeks View (Streak, Score)"]
+        V_CF["Codeforces View (Rating, Max Rank)"]
+        V_COMBINED["Combined Omnichannel (3-Year Heatmap)"]
     end
 
-    subgraph NormalizationEngine ["Canonical Normalization & Deduplication (userProfileService.ts)"]
-        CANON_MAP["Canonical Slug Normalizer (strips numeric prefixes, symbols)"]
-        DEDUP_POTD["POTD Date Deduplicator (Prevents 4x Flag Stacking)"]
-        DATE_COUNTS["getAuthenticActivityDateCounts() Map: YYYY-MM-DD -> Count"]
-        SHEET_BREAKDOWN["getRealSheetSolvedBreakdown() -> Unique Solved Set"]
+    subgraph IngestionGateway ["Edge Caching & Ingestion Proxy"]
+        EDGE_CACHE_LAYER["Cloudflare KV (30-Minute Ingestion TTL)"]
+        LC_WORKER["LeetCode GraphQL Fetcher (/api/leetcode/*)"]
+        GH_WORKER["GitHub REST Aggregator"]
+        CF_WORKER["Codeforces Official API Proxy"]
+        GFG_WORKER["GFG Practice Scraper"]
     end
 
-    subgraph AnalyticalAggregators ["Authoritative Aggregators & Metric Engines"]
-        DASH_METRICS["getRealAnalytics() (analytics.ts)"]
-        HEATMAP_3YR["PlatformHeatmap 3-Year Engine (buildAnnualHeatmapWeeks)"]
-        STREAKS["Streak Engine (Current Streak, Max Streak, Active Days)"]
-        CERT_GATER["Track Certificate Evaluator (pct >= 90% Hard Gate)"]
+    subgraph DataNormalization ["Normalization Engine"]
+        CANONICAL_SLUG_RESOLVER["Canonical Problem Slug Normalizer"]
+        ACTIVITY_DEDUP["Authentic Activity Deduplicator (getAuthenticActivityDateCounts)"]
+        HEATMAP_MERGER["Multi-Platform Calendar Merging Engine"]
     end
 
-    subgraph PresentationSurfaces ["Unified Presentation Layer"]
-        DASHBOARD["DashboardLandingPage (Real-time Solved Count & Readiness)"]
-        DEV_PROFILE["DeveloperProfilePage (6-Mode Omnichannel Profile)"]
-        MODAL_PROFILE["UserProfileModal (Progress & Passkey Settings)"]
-        CERT_MODAL["CertificateModal (Cryptographic Verification ID)"]
-    end
+    MODE_SELECT --> V_SDETUBE & V_LC & V_GH & V_GFG & V_CF & V_COMBINED
+    V_LC --> LC_WORKER
+    V_GH --> GH_WORKER
+    V_CF --> CF_WORKER
+    V_GFG --> GFG_WORKER
 
-    SHEETS --> SHEET_BREAKDOWN
-    IDE_RUNNER --> CANON_MAP
-    CANON_MAP --> SHEET_BREAKDOWN
-    IDE_RUNNER --> DATE_COUNTS
-    POTD_FEED --> DEDUP_POTD
-    DEDUP_POTD --> DATE_COUNTS
-    
-    SHEET_BREAKDOWN --> DASH_METRICS
-    SHEET_BREAKDOWN --> DEV_PROFILE
-    DATE_COUNTS --> HEATMAP_3YR
-    DATE_COUNTS --> STREAKS
-    EXT_LC --> HEATMAP_3YR
-    
-    SHEET_BREAKDOWN --> CERT_GATER
-    CERT_GATER --> CERT_MODAL
-    DASH_METRICS --> DASHBOARD
-    HEATMAP_3YR --> DEV_PROFILE
-    STREAKS --> DEV_PROFILE
-    STREAKS --> MODAL_PROFILE
+    LC_WORKER & GH_WORKER & CF_WORKER & GFG_WORKER --> EDGE_CACHE_LAYER
+    EDGE_CACHE_LAYER --> CANONICAL_SLUG_RESOLVER
+    CANONICAL_SLUG_RESOLVER --> ACTIVITY_DEDUP --> HEATMAP_MERGER
+    HEATMAP_MERGER --> V_COMBINED
 ```
 
 ---
 
-## 1.7 Inter-Device Cloud Progress Synchronization Engine
+## 1.7 Inter-Device Normalized Delta Progress Synchronization Engine
+
+To avoid transferring large monolithic arrays that grow into megabytes and cause write conflicts, SDETube standardizes on **Normalized Progress Rows with Lightweight Delta Synchronization**:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Student as Student Device (Desktop / Tablet / Mobile)
-    participant Client as progressService.ts / localStorage
-    participant Supabase as Supabase Database (dsa_progress & profiles)
-    participant R2 as Cloudflare R2 (vnotes/ bucket)
+    actor Device1 as Browser Device A (Office Laptop)
+    participant SyncService as progressService.ts
+    participant Supabase as Supabase API / PostgreSQL (dsa_progress)
+    actor Device2 as Browser Device B (Home Desktop)
 
-    Note over Student,Client: Student Solves Problem or Edits Lecture Notes
-    Client->>Client: Save locally to localStorage (offline-first execution)
-    alt Cloud Auto-Sync Enabled (isCloudAutoSyncEnabled)
-        Client->>Supabase: upsert_user_dsa_progress(p_user_email, p_sheet_progress, p_lld_progress)
-        activate Supabase
-        Supabase->>Supabase: Merge unique problem IDs across devices (Union of Sets)
-        Supabase-->>Client: 200 OK + Authoritative Cloud State
-        deactivate Supabase
-        Client->>R2: HTTP PUT /api/notes/sync (vnotes/{email}_{videoId}.md)
-        R2-->>Client: 200 OK (Persisted in Global Object Store)
-    end
+    Device1->>SyncService: User solves 'two-sum' on SDE 191 Sheet
+    SyncService->>SyncService: Update local IndexedDB cache (0ms instant UI update)
+    SyncService->>Supabase: POST /api/progress/delta [{ slug: 'two-sum', sheet: 'sde191', status: 'ACCEPTED', timestamp: '2026-09-11T12:00:00Z' }]
+    Supabase->>Supabase: UPSERT INTO dsa_progress (user_id, problem_slug) ON CONFLICT DO UPDATE
+    Note over Supabase: Stores normalized row with timestamp, duration & language
 
-    Note over Student,Client: Student Opens Another Device (e.g. Mobile / Workstation)
-    Student->>Client: App Mounts (checkAndAutoLogin)
-    Client->>Supabase: SELECT * FROM dsa_progress WHERE user_email = p_user_email
-    Supabase-->>Client: Authoritative Sheet Progress
-    Client->>Client: Reconcile & Heal Local Storage Keys
-    Note over Client: sdetube_dsa_sheet_solved_* synced across all devices
+    Note over Device2: User opens SDETube on Device B
+    Device2->>Supabase: GET /api/progress/delta?since=last_sync_timestamp
+    Supabase-->>Device2: Return 3 new solved deltas
+    Device2->>Device2: Apply deltas into local set & refresh streak calculations
 ```
 
 ---
 
-## 1.8 Verifiable Certification & Strict ≥90% Mastery Security Gate
+## 1.8 Cryptographically Verifiable Certification & Server-Side Security Gate
+
+### Tamper-Proof Cryptographic Signature Structure
+Certificates are generated using cryptographically signed tokens backed by server-side verification:
+
+$$\text{Token} = \text{SDETUBE-v1}.\text{CERT\_UUID}.\text{BASE64URL}(\text{PAYLOAD}).\text{HMAC\_SHA256}(\text{Secret}, \text{CERT\_UUID} \parallel \text{PAYLOAD})$$
+
+Where `PAYLOAD` contains:
+```json
+{
+  "sub": "usr_99f2e3a1",
+  "email": "student@example.com",
+  "trk": "sde_191",
+  "track_name": "SDE 191 Core Sheet",
+  "pct": 94.24,
+  "tier": "Distinction",
+  "iat": 1789132548,
+  "exp": null
+}
+```
 
 ```mermaid
 graph TD
-    TRACK[Track Progress Evaluation: getUserTracksCertificates] --> CALC[Calculate Solved / Total Items]
-    CALC --> PCT[pct = Math.round solved / total * 100]
-    PCT --> GATE{Is Mastery >= 90%?}
-    
-    GATE -- "NO (pct < 90%)" --> LOCKED["LOCKED STATE"]
-    LOCKED --> UI_LOCK["Display: 'Locked (Requires ≥90% Mastery)' with Lock Icon"]
-    LOCKED --> NO_PREVIEW["No 'Preview' button rendered"]
-    LOCKED --> GUARD_OPEN["handleOpenCert: Rejects execution"]
-    LOCKED --> MODAL_REJECT["CertificateModal: Returns null"]
-    
-    GATE -- "YES (pct >= 90%)" --> UNLOCKED["VERIFIED ELIGIBLE"]
-    UNLOCKED --> GEN_ID["Generate Verification Code: SDETUBE-CERT-2026-STUDENT-TRACKID"]
-    UNLOCKED --> UI_VIEW["Render: 'View Certificate' Gold Action Button"]
-    UNLOCKED --> MODAL_ACTIVE["CertificateModal: Renders Official Certificate with Print & LinkedIn Share"]
+    CLICK["Student clicks 'Claim Certificate'"] --> CLIENT_PRECHECK{Client Mastery >= 90%?}
+    CLIENT_PRECHECK -- "No (< 90%)" --> LOCK_UI["Display Locked Badge (Preview & Claim Prohibited)"]
+    CLIENT_PRECHECK -- "Yes (>= 90%)" --> API_ISSUE["POST /api/cert/issue { track_id }"]
+
+    subgraph ServerSideVerification ["Server-Side Authoritative Gate"]
+        API_ISSUE --> DB_QUERY["Query dsa_progress WHERE user_id = :uid AND problem_slug IN (:track_problems)"]
+        DB_QUERY --> CALC_PCT["Compute Authoritative Mastery: (Distinct Solved / Total Track Problems) * 100"]
+        CALC_PCT --> STRICT_CHECK{Authoritative Mastery >= 90.0%?}
+        STRICT_CHECK -- "Fail (< 90.0%)" --> REJECT_403["HTTP 403 FORBIDDEN: Insufficient Mastery"]
+        STRICT_CHECK -- "Pass (>= 90.0%)" --> SIGN_HMAC["Generate HMAC-SHA256 Cryptographic Signature"]
+        SIGN_HMAC --> DB_INSERT["INSERT INTO issued_certificates (id, user_id, track_id, mastery_percentage, tier, signature, issued_at, status)"]
+        DB_INSERT --> RETURN_TOKEN["Return Signed Verifiable Certificate Token"]
+    end
+
+    subgraph PublicRecruiterVerification ["Public Recruiter Verification (/verify/:cert_id)"]
+        RECRUITER["Recruiter visits sdetube.pages.dev/verify/:cert_id"] --> VERIFY_API["GET /api/cert/verify/:cert_id"]
+        VERIFY_API --> SIG_VALIDATE{Cryptographic HMAC Valid?}
+        SIG_VALIDATE -- "Invalid / Tampered" --> SHOW_FRAUD["Show 'Invalid or Forged Credential' Warning"]
+        SIG_VALIDATE -- "Valid" --> DB_LOOKUP{Active in issued_certificates?}
+        DB_LOOKUP -- "Revoked / Not Found" --> SHOW_REVOKED["Show 'Credential Revoked' Notice"]
+        DB_LOOKUP -- "Active & Genuine" --> SHOW_OFFICIAL["Display Verified Official Certificate (Student, Track, Date, % Mastery)"]
+    end
 ```
 
 ---
@@ -342,40 +377,32 @@ graph TD
 # 2. Full Platform User & Data Flow
 
 ## 2.1 Student Onboarding & Passwordless Passkey Flow
-1. **Initial Visit**: User navigates to `https://sdetube.pages.dev`. `auth.ts` checks `edustream_student_session` in `localStorage` or initiates `checkAndAutoLogin()`.
-2. **Registration / Login (`AuthModal.tsx`)**:
-   - **Email + Password**: Authenticates via `supabase.auth.signInWithPassword()` / `signUp()`.
-   - **Biometric Passkey (`passkey.ts` & `webauthn.ts`)**: Invokes `navigator.credentials.get({ publicKey: ... })` using WebAuthn FIDO2 standards. Authenticates without password entry.
-3. **Session Activation**: Student profile is pulled from PostgreSQL `profiles` table. Wallet balance is cached in `localStorage` and synced with `deduct_wallet_credits`.
+1. **Initiation**: Student enters email on `AuthModal.tsx`.
+2. **WebAuthn FIDO2 Challenge**: Browser requests challenge from Supabase Auth (`navigator.credentials.create`).
+3. **Biometric Registration**: Device authenticates user via TouchID/Windows Hello and writes public key credential to `user_passkeys` table.
+4. **Welcome Credit**: Supabase triggers welcome grant of ₹10.00 in free credits.
 
 ## 2.2 DSA Problem Solving & Code Execution Flow
-1. **Selection**: Student selects a problem from `SDESheetExplorer.tsx` or clicks the POTD modal (`POTDModal.tsx`).
-2. **Routing**: App updates URL hash to `#/problem/{slug}`. `LeetCodeWorkspaceModal.tsx` opens.
-3. **Spec Retrieval (`fetchEnrichedProblem`)**:
-   - Checks `localStorage` cache `edustream_problem_spec_{slug}`.
-   - If missing, queries `/api/leetcode/question?slug={slug}` (or `/api/problem/{slug}`).
-   - Parses authentic description, constraints, and multi-language snippets.
-   - Hardens testcase signatures via `repairAndHardenProblem()`.
-4. **Coding & Execution (`compiler.ts`)**:
-   - Student enters solution in Monaco Editor.
-   - Clicking **"Run Code"**: Combines student's class with driver harness (`drivers/{slug}_{lang}.txt`), packages JSON, and dispatches to Judge0 API.
-   - Displays real-time stdout, stderr, execution time, and memory usage.
-5. **Submission**: Compares output against all hidden testcases in R2. Marks problem completed in `dsa_progress` table and updates `VelocityTracker.tsx`.
+1. **Workspace Loading (`LeetCodeWorkspaceModal.tsx`)**:
+   - Queries Cloudflare R2 for `problems/{slug}.json` and testcase input/output suite `problems/{slug}.txt`.
+   - If missing in R2, queries the Edge proxy `functions/api/leetcode/question.ts` and caches the result.
+2. **Code Execution (`compiler.ts`)**:
+   - Student writes solution in C++, Python, Java, JavaScript, Go, or Rust.
+   - Code is merged with language-specific driver template loaded from R2 (`drivers/{slug}_{lang}.txt`).
+   - Dispatched to Judge0 CE execution cluster.
+3. **Delta Event Dispatch**:
+   - When status is `ACCEPTED`, `progressService.ts` logs an authentic solve event and sends a delta upsert to Supabase `dsa_progress`.
 
 ## 2.3 SQL Challenge & In-Browser WASM Execution Flow
-1. **Opening SQL Mode**: Student opens a database problem (e.g. `duplicate-emails`).
-2. **WASM Initialization (`sqlJudge.ts`)**: Loads `@sqlite.org/sqlite-wasm` Web Worker into memory.
-3. **Table Setup**: Executes pre-configured schema DDL and inserts mock rows.
-4. **Execution**: Student writes SQL query (`SELECT ...`). The worker executes query and compares output matrix against expected dataset with zero server overhead.
+1. **Schema Initialization (`sqlJudge.ts`)**: Initializes in-memory SQLite WASM database.
+2. **Execution**: Executes user SQL queries client-side against predefined schema and test tables with zero backend server overhead.
+3. **Comparison**: Compares JSON record tuples against expected testcase output matrices.
 
 ## 2.4 Video Lecture Streaming & Dual-Mode Notes Sync Flow
-1. **Lecture Selection**: Student selects a lecture from `App.tsx` channel overview.
-2. **Access Pass Check (`billing.ts`)**: Verifies active 24-hour pass (`edustream_video_passes`). If expired, deducts ₹2.00 (or ₹1.00 for re-watch) via `deduct_wallet_credits`.
-3. **Streaming (`VideoPlayer.tsx`)**: Sends HTTP GET with `Range: bytes=0-4194303` to `/api/video/{channel}/{msgId}`. Cloudflare Anycast edge serves cached slice or fetches from Render MTProto backend.
-4. **Notes Taking**:
-   - **In-Tab Editor (`StudentVideoNotesTab.tsx`)**: Markdown notes below the video.
-   - **Floating Canvas (`FloatingVideoNotesOverlay.tsx`)**: Glassmorphic draggable overlay inside video viewport during Fullscreen.
-   - **Cloud Sync (`videoNotesService.ts`)**: Auto-syncs notes to Cloudflare R2 (`vnotes_{email}_{videoId}.md`) every 60 seconds.
+1. **Zero-Cost Streaming**: Cloudflare Anycast edge proxies 206 byte slices from Telegram MTProto datacenters via FastAPI backend.
+2. **Notes Storage**:
+   - Platform Curated Notes: Fetched from R2 `notes/{doc_id}.md`.
+   - Personal Student Notes: Synced automatically to R2 `vnotes/{user_email}_{videoId}.md`.
 
 ## 2.5 Lead Bar Raiser Voice Interview & Scorecard Flow
 1. **Setup (`InterviewCompanion.tsx`)**: Candidate selects target company (Google, Amazon, Meta), role level (L4, L5, L6), and round (HLD, LLD, Coding, Behavioral).
@@ -386,10 +413,11 @@ graph TD
 3. **Architecture Diagramming (`HLDArchitectureCanvas.tsx`)**: Candidate drags load balancers, microservices, caches, and databases onto the canvas.
 4. **Scorecard Generation (`interviewEvaluator.ts`)**: Upon interview completion, AI evaluates transcript and outputs a structured scorecard with rubric ratings (1-10) and actionable improvement feedback.
 
-## 2.6 Wallet Billing, 24-Hour Passes & Top-Up Flow
-1. **Pass Verification**: Before accessing paid assets (e.g. video lectures at ₹2.00 / ₹1.00 re-watch), `canAffordAction()` verifies available balance.
-2. **Atomic Ledger Execution**: Invokes PostgreSQL RPC `deduct_wallet_credits()` with pessimistic row locks and idempotency keys to prevent double deductions.
-3. **Recharge Flow (`WalletTopupModal.tsx`)**: Protected by Cloudflare Turnstile bot verification. Successfully verified recharges trigger instant cryptographic balance update.
+## 2.6 Server-Authoritative Wallet Billing, 24-Hour Passes & Top-Up Flow
+1. **Pre-Check (UI Hint)**: `billing.ts` checks local cache to give instant visual feedback.
+2. **Authoritative Execution**: Calls `deduct_wallet_credits(p_user_id, p_action_type, idempotency_key)`.
+3. **Database Ledger**: PostgreSQL resolves price from `platform_pricing`, applies pessimistic row locks, debits the balance, and records an immutable ledger entry in `wallet_transactions`.
+4. **Recharge Flow (`WalletTopupModal.tsx`)**: Protected by Cloudflare Turnstile bot verification. Successfully verified recharges trigger instant cryptographic balance update.
 
 ## 2.7 Omnichannel Developer Profile & Multi-Platform Aggregation Flow
 1. **Mode Selection (`DeveloperProfilePage.tsx`)**: The developer profile supports 6 distinct visualization modes:
@@ -401,27 +429,27 @@ graph TD
    - **Combined Omnichannel**: Merged 3-year activity calendar showing aggregated multi-platform developer velocity.
 2. **Real-Time Data Ingestion**: When handles are updated in `UserProfileModal.tsx`, background workers query external APIs, parse responses, and populate normalized caches.
 
-## 2.8 Inter-Device Synchronization & Storage Healing Flow
-1. **Local Writes**: When code is submitted or a problem is checked, `progressService.ts` records the action in `localStorage`.
-2. **Cloud Propagation**: If logged in and cloud sync is active, `saveUserProgress()` dispatches an asynchronous background upsert to Supabase PostgreSQL table `dsa_progress`.
-3. **Cross-Device Reconciliation**: When logging in on another device, `getUserProgressSync()` pulls the cloud state, computes the set union of solved problem IDs, and heals all local cache keys (`sdetube_dsa_sheet_solved_*`, `sdetube_solved_slugs`).
+## 2.8 Inter-Device Normalized Delta Sync & Storage Healing Flow
+1. **Local Writes**: When code is submitted or a problem is checked, `progressService.ts` records the action in `localStorage` and IndexedDB.
+2. **Delta Propagation**: If logged in and cloud sync is active, `progressService.ts` dispatches a delta event payload to Supabase `dsa_progress` using `UPSERT ON CONFLICT (user_id, problem_slug)`.
+3. **Cross-Device Reconciliation**: When logging in on another device, the client queries `/api/progress/delta?since={timestamp}`, pulls incremental updates, and merges them into the local cache.
 4. **Notes Persistence**: Lecture video notes auto-replicate to Cloudflare R2 bucket `sdestream` under `vnotes/{email}_{videoId}.md`.
 
-## 2.9 Official Certificate Verification & Strict ≥90% Mastery Enforcement Flow
+## 2.9 Cryptographic Certificate Issuance & Server-Side Verification Flow
 1. **Progress Assessment**: `getUserTracksCertificates()` computes percentage progress across 6 tracks (SDE 191, Blind 75, MIK Sheet, LLD Design, HLD Systems, and DBMS SQL).
 2. **Mastery Threshold**: Only tracks achieving $\ge 90\%$ are marked `isEligible: true`. Artificial floors (`Math.max(1, ...)`) are strictly prohibited.
 3. **Multi-Layer UI & Modal Lockout**:
    - Preview buttons are removed on all tracks below 90%.
    - Ineligible cards display a locked badge with `Lock` icon.
    - `handleOpenCert` rejects opening for any track $< 90\%$.
-   - Both `CertificateModal.tsx` and `UserProfileModal.tsx` contain defensive guards returning `null` if opened with $< 90\%$ completion.
-4. **Verification Issuance**: Eligible certificates receive a structured, non-forgeable ID: `SDETUBE-CERT-2026-{CLEAN_EMAIL}-{TRACK_ID}` with Distinction ($\ge 95\%$) or Honors ($\ge 90\%$).
+4. **Server-Side Minting**: Client invokes `POST /api/cert/issue`. Server recalculates completion percentage directly against normalized `dsa_progress` table. If $\ge 90.0\%$, the server records the certificate in `issued_certificates` and issues an HMAC-SHA256 signed token.
+5. **Public Verification**: Recruiter or candidate visits `sdetube.pages.dev/verify/:cert_id` which verifies cryptographic signature and database status.
 
 ---
 
 # 3. Low-Level Design (LLD): Component Architecture (`src/components/`)
 
-## 3.1 Master Shell & Routing Controller (`App.tsx`)
+## 3.1 Master Shell & Routing Controller (`App.tsx`, `DashboardLandingPage.tsx`)
 
 | File / Component | State & Props | Submodules & Services | Purpose & Integration |
 |---|---|---|---|
@@ -438,8 +466,6 @@ graph TD
 | **`LeetCodeSQLWorkspaceModal.tsx`** | `problem`: `SQLProblem`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `handleExecuteSQL()`, `handleResetSchema()` | Monaco-based SQL challenge IDE powered by in-browser SQLite WASM (`sqlJudge.ts`). Displays table schemas, expected outputs, and diff visualizers. |
 | **`CodeWorkspace.tsx`** | `code`: `string`<br>`language`: `string`<br>`onChange`: `(val: string) => void` | `monaco.editor.create()`, `onDidChangeModelContent()` | Embedded Monaco code editor container with syntax highlighting, IntelliSense, theme customization, and keyboard shortcuts (`Ctrl+Enter` to run). |
 | **`POTDModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`onOpenProblem`: `(prob: DSAProblem) => void` | `fetchPOTDData()`, `handleSolveDaily()` | Modal displaying daily challenges for both LeetCode and GeeksforGeeks with streak counters, company tags, and instant IDE launch. |
-| **`ReportTestCaseModal.tsx`** | `problemSlug`: `string`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `handleSubmitReport()` | Enables students to report mismatched testcases or buggy problem descriptions, persisting reports in Supabase `problem_reports`. |
-| **`SubmissionVisualizer.tsx`** | `testResults`: `TestCaseResult[]`<br>`status`: `'accepted' \| 'failed'` | `renderDiff()`, `formatExecutionMetrics()` | Visual testcase matrix showing pass/fail status, expected vs actual outputs, execution time, and memory usage. |
 
 ---
 
@@ -447,12 +473,9 @@ graph TD
 
 | Component | Props & State | Key Methods / Handlers | Purpose |
 |---|---|---|---|
-| **`InterviewCompanion.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`sessionStage`: `InterviewStage`<br>`transcript`: `ChatMessage[]` | `startListening()`, `stopListening()`, `speakResponse()`, `handleCompleteInterview()` | Voice-driven Lead Bar Raiser mock interview simulator. Manages real-time Web Speech STT/TTS, Socratic dialogue constraints, and stage progression. |
-| **`InterviewScorecardModal.tsx`** | `scorecard`: `InterviewScorecard`<br>`isOpen`: `boolean`<br>`onClose`: `() => void` | `downloadReport()`, `handleRetake()` | Renders comprehensive interview scorecards with spider charts, rubric ratings (Communication, Architecture, Coding), and actionable feedback. |
-| **`HLDArchitectureCanvas.tsx`** | `nodes`: `CanvasNode[]`<br>`edges`: `CanvasEdge[]`<br>`onExportDiagram`: `() => void` | `handleDropNode()`, `handleConnectEdge()`, `simulateTraffic()` | Drag-and-drop interactive architectural diagramming canvas for Microservices, Load Balancers, Message Queues, Caches, and Databases. |
-| **`HLDBossSheet.tsx`** | `selectedTopic`: `string`<br>`viewMode`: `'notes' \| 'canvas'` | `fetchDocFromR2()`, `renderMarkdown()` | Curated High-Level Design guides (Distributed Caching, Rate Limiters, URL Shorteners, Video Transcoding, Kafka Streaming) with Kroki diagrams. |
-| **`LLDBossSheet.tsx`** | `selectedDesign`: `string` | `renderUML()`, `renderDesignPatterns()` | Low-Level Design master guides covering SOLID principles, Design Patterns, Class Diagrams, and Machine Coding challenges (Parking Lot, Elevator). |
-| **`HLDHub.tsx` & `LLDHub.tsx`** | None | `handleSelectTrack()` | Directory hubs showcasing curated learning roadmaps, system design tracks, and interview preparation guides. |
+| **`InterviewCompanion.tsx`** | `session`: `InterviewSession`<br>`isMicActive`: `boolean`<br>`transcript`: `ChatMessage[]` | `startInterview()`, `handleSpeechInput()`, `endAndGenerateScorecard()` | AI Mock Interview room. Coordinates candidate speech input, Socratic question prompts, technical canvas architecture diagrams, and rubric scorecards. |
+| **`HLDArchitectureCanvas.tsx`** | `nodes`: `CanvasNode[]`<br>`edges`: `CanvasEdge[]`<br>`mode`: `'interactive' \| 'evaluation'` | `onDrop()`, `handleSimulateTraffic()`, `exportArchitectureSchema()` | Interactive High-Level Design canvas. Drag-and-drop cloud nodes (ALBs, Redis, Kafka, Postgres, K8s) with real-time bottleneck simulation. |
+| **`SystemDesignBossSheet.tsx`** | `activeDocument`: `BossSheetDoc`<br>`scale`: `number` | `renderMarkdown()`, `exportPDF()`, `handleKrokiRender()` | Curated interactive System Design handbook viewer rendering complex C4, Sequence, and Component diagrams via Kroki. |
 
 ---
 
@@ -460,10 +483,8 @@ graph TD
 
 | Component | Props & State | Key Methods / Handlers | Purpose |
 |---|---|---|---|
-| **`VideoPlayer.tsx`** | `video`: `Video`<br>`onTimeUpdate`: `(t: number) => void`<br>`playbackRate`: `number` | `handleSeek()`, `toggleAudioBoost()`, `handleUnfreezeStall()` | Custom MTProto HTML5 video player with 16-band audio booster, frozen decoder watchdog, and playback speed controls ($0.5\times$ to $2.5\times$). |
-| **`StudentVideoNotesTab.tsx`** | `videoId`: `string`<br>`currentTime`: `number` | `insertTimestampTag()`, `saveNotesToR2()` | Full markdown personal notes editor below the lecture player. Auto-syncs to Cloudflare R2 every 60s and allows clickable timestamp bookmarks. |
-| **`FloatingVideoNotesOverlay.tsx`** | `videoId`: `string`<br>`currentTime`: `number`<br>`isVisible`: `boolean` | `handleDrag()`, `handleResize()` | Draggable, resizable glassmorphic notes canvas positioned directly inside the video viewport during native browser Fullscreen mode. |
-| **`AINotesAndSimulation.tsx`** | `video`: `Video`<br>`transcript`: `string` | `generateSummary()`, `launchVisualSimulation()` | Generates AI lecture summaries, key architectural takeaways, and interactive algorithmic simulations from lecture transcripts. |
+| **`VideoPlayer.tsx`** | `video`: `Video`<br>`playbackSpeed`: `number`<br>`currentTime`: `number` | `handleTimeUpdate()`, `handleQualityChange()`, `togglePictureInPicture()` | Custom HTML5 streaming video player with 206 Partial Content byte-range support, auto-resume, playback rate controls, and full keyboard navigation. |
+| **`DualNotesWorkspace.tsx`** | `videoId`: `string`<br>`officialNotes`: `string`<br>`personalNotes`: `string` | `handleSavePersonalNotes()`, `toggleSplitView()`, `syncToCloudflareR2()` | Dual-pane notes workspace displaying curated lecturer Markdown notes alongside real-time auto-saving personal student notes synchronized to R2. |
 
 ---
 
@@ -481,143 +502,100 @@ graph TD
 
 ---
 
-## 3.6 Diagramming, Quizzes & Supporting UI Components
-
-| Component | Purpose |
-|---|---|
-| **`AskAIChatModal.tsx`** | Floating AI mentor with multi-tier streaming (Groq/Gemini/Mistral) for contextual code, video, and notes queries. |
-| **`KrokiDiagramViewer.tsx` / `KrokiDiagramModal.tsx`** | Renders compressed PlantUML, Mermaid, and C4 architecture diagrams via Kroki API. |
-| **`QuizModule.tsx`** | Generates real-time 5-question comprehension quizzes from video transcripts via Mistral AI. |
-| **`CertificateModal.tsx`** | Generates downloadable SVG/PDF course completion certificates with verifiable credentials. |
-| **`VelocityTracker.tsx`** | Visual GitHub-style coding velocity tracker and difficulty distribution charts. |
-| **`Navbar.tsx`** | Navigation header displaying active tab, search bar, wallet credit counter, and user profile avatar. |
-| **`TurnstileCaptcha.tsx`** | Cloudflare Turnstile zero-friction widget for bot prevention on wallet recharges. |
-| **`MobileGatedOverlay.tsx`** | Informative banner gating desktop-first coding environments on mobile viewports. |
-
----
-
 # 4. Low-Level Design (LLD): Core Services Deep Dive (`src/lib/`)
 
 ## 4.1 Problem & Execution Pipeline (`problemService.ts`, `compiler.ts`, `sqlJudge.ts`)
 
-```mermaid
-graph TD
-    subgraph ProblemService ["problemService.ts Pipeline"]
-        INPUT[Slug / URL] --> C_CHK{Check LocalStorage}
-        C_CHK -- "Valid Authentic" --> RETURN[Return ProblemTemplate]
-        C_CHK -- "Missing / Placeholder" --> PURGE[Purge Stale Cache Entry]
-        PURGE --> FETCH_LC[Fetch /api/leetcode/question?slug=]
-        FETCH_LC -- "200 OK" --> PARSE_LC[parseLeetCodeQuestion]
-        FETCH_LC -- "404 / Fail" --> FETCH_GFG[Fetch /api/gfg/]
-        FETCH_GFG -- "200 OK" --> PARSE_GFG[parseGFGQuestion]
-        FETCH_GFG -- "Fail" --> GEN_AI[Generate with Mistral AI]
-        PARSE_LC --> REPAIR[repairAndHardenProblem]
-        PARSE_GFG --> REPAIR
-        GEN_AI --> REPAIR
-        REPAIR --> SAVE_CACHE[Save to LocalStorage & R2]
-        SAVE_CACHE --> RETURN
-    end
-```
-
-### 1. `problemService.ts`
-- **`isProblemValidAndAuthentic(p)`**: Validates that problem definitions contain valid descriptions, authentic testcases ($N \ge 1$), and no hallucinated placeholders (`"An optimal algorithm is required to solve the..."`).
-- **`repairAndHardenProblem(p)`**:
-  - Examines starter signatures (e.g. `def twoSum(self, nums: List[int], target: int)`).
-  - Ensures multi-parameter testcases are correctly structured as comma-separated pairs (`nums = [2,7,11,15], target = 9`) rather than broken across separate array elements.
-- **`fetchFromLeetCodeAPI(slug)`**: Proxies GraphQL queries to LeetCode, parses `<pre>` example blocks, and extracts constraints and multi-language snippets.
-- **`fetchFromGFGAPI(slug)`**: Queries GeeksforGeeks Practice API and extracts problem statements, examples, and constraints.
-
-### 2. `compiler.ts`
-- **`runMultiLanguageCode(source, lang, slug, testcases)`**:
-  - Injects student method into driver harness:
-    - **C++**: Generates `#include <iostream>`, `#include <vector>`, instantiation of `Solution`, and stdin parser.
-    - **Python**: Injects `json` parser and custom test harness.
-    - **Java**: Wraps solution in `public class Main` with stdin parser.
-    - **JavaScript**: Wraps solution with Node.js `readline` parser.
-  - Sends payload to Judge0 API and parses stdout/stderr and execution time.
-
-### 3. `sqlJudge.ts`
-- **`runSQLChallenge(query, schemaSql, expectedRows)`**:
-  - Spawns `@sqlite.org/sqlite-wasm` worker.
-  - Executes schema DDL and mock row insertion.
-  - Runs student query and performs matrix comparison with expected results.
+- **`problemService.ts`**:
+  - `fetchProblemDetails(slug)`: Tries R2 `problems/{slug}.json` via backend; falls back to LeetCode GraphQL edge proxy.
+  - `fetchProblemTestCases(slug)`: Retrieves input/output test suite from R2 `problems/{slug}.txt`.
+  - `fetchProblemDrivers(slug, lang)`: Retrieves execution harness for language execution.
+- **`compiler.ts`**:
+  - Injects student code into template driver.
+  - Submits execution payload to Judge0 CE instance via `/submissions?wait=true`.
+  - Standardizes runtime metrics: Wall time (ms), Peak Memory (KB), and Standard Error.
+- **`sqlJudge.ts`**:
+  - Compiles and runs student queries against in-browser SQLite WASM virtual tables.
+  - Validates row count, column signatures, and data ordering.
 
 ---
 
-## 4.2 AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `mistral.ts`, `groq.ts`)
+## 4.2 AI & Voice Engines (`interviewService.ts`, `interviewEvaluator.ts`, `gemini.ts`, `groq.ts`)
 
-### 1. `interviewService.ts`
-- **`speakUtterance(text, onEnd)`**:
-  - Manages browser `window.speechSynthesis` queue.
-  - Expands technical acronyms (`QPS` $\to$ `"Q P S"`, `HLD` $\to$ `"high level design"`, `API` $\to$ `"A P I"`).
-  - Maintains a 5-second keepalive timer to prevent Chrome's Web Speech engine from garbage-collecting active utterances mid-sentence.
-- **`startSpeechRecognition(onResult, onError)`**: Initializes `webkitSpeechRecognition` with continuous listening and automatic silence detection.
-
-### 2. `interviewEvaluator.ts`
-- **`generateInterviewScorecard(transcript, roundType, level)`**:
-  - Prompts Tier 1 Groq / Tier 2 Gemini with the full interview transcript.
-  - Generates numerical rubric ratings (1 to 10) across:
-    1. **Communication & Clarification**
-    2. **Problem Solving & Scoping**
-    3. **Architecture & Scalability**
-    4. **Code Quality & Edge Cases**
-  - Outputs structured JSON scorecards with specific strengths and areas for improvement.
-
-### 3. `mistral.ts` & `groq.ts`
-- Direct connectors to Groq (Llama-3.3-70B) and Mistral (Codestral/Large) with streaming Server-Sent Events (SSE) support.
+- **`interviewService.ts`**:
+  - Maintains conversation context buffer.
+  - Socratic Interview Guard prevents providing answers directly.
+- **`groq.ts`**:
+  - Primary high-speed LLM inference gateway for conversational questions and hints (`llama-3.3-70b-versatile`).
+- **`gemini.ts`**:
+  - Fallback and multimodal analysis engine (`gemini-1.5-flash`) for evaluating architecture canvases and complex scorecard rubrics.
+- **`interviewEvaluator.ts`**:
+  - Calculates 4-pillar interview metrics: Communication, Problem Solving, System Design/Coding, and Behavioral.
 
 ---
 
 ## 4.3 Storage, Notes & Boss Sheets (`videoNotesService.ts`, `notesService.ts`, `kroki.ts`)
 
 - **`videoNotesService.ts`**:
-  - Manages student video notes in `localStorage` under `vnotes_{email}_{videoId}`.
-  - Syncs notes to Cloudflare R2 bucket `sdestream` under `vnotes/{email}_{videoId}.md`.
-- **`notesService.ts`**: Retrieves curated HLD/LLD Boss Sheet markdown files from Cloudflare R2 (`notes/{docId}.md`).
-- **`kroki.ts`**: Encodes PlantUML, Mermaid, and C4 diagram strings using `pako` deflate compression and generates SVG diagram URLs from `https://kroki.io`.
+  - Manages dual-mode video lecture note synchronization.
+  - Interacts with Cloudflare R2 bucket `sdestream` under prefix `vnotes/{email}_{videoId}.md`.
+- **`kroki.ts`**:
+  - Serializes PlantUML, C4, and GraphViz diagrams into deflated URL-safe base64 strings and queries `https://kroki.io` for SVG output.
 
 ---
 
 ## 4.4 Billing, Auth & Security (`billing.ts`, `auth.ts`, `passkey.ts`, `webauthn.ts`)
 
 - **`billing.ts`**:
-  - **`PRICING_CONFIG`**:
-    - Video Lecture First-Time 24h Pass: **₹2.00**
-    - Video Lecture Re-Watch 24h Pass: **₹1.00**
-    - AI Mock Interview Session: **₹10.00**
-    - Ask AI Deep Query: **₹0.50**
-  - **`canAffordAction(cost, email)`**: Validates wallet balance before triggering gated operations.
-  - **`deductCredits(amount, action, description)`**: Invokes PostgreSQL RPC `deduct_wallet_credits`.
+  - Maintains client-side pricing cache for UI rendering hints (`PRICING_CONFIG`).
+  - Calls `deduct_wallet_credits(p_user_id, p_action_type, idempotency_key)` where debit amount is derived exclusively on the server.
 - **`passkey.ts` & `webauthn.ts`**:
   - Implements FIDO2 WebAuthn credential creation (`navigator.credentials.create`) and assertion (`navigator.credentials.get`).
   - Stores public key credentials in Supabase `user_passkeys` table.
 
 ---
 
-## 4.5 Curated Datasets & Catalogs (`dsaSheetsData.ts`, `lldData.ts`, `supabase.ts`)
+## 4.5 Unified Canonical Problem Bank Architecture (`canonicalProblems.ts`, `dsaSheetsData.ts`)
 
-- **`dsaSheetsData.ts`**:
-  - **Striver SDE Sheet**: 191 curated interview problems.
-  - **Striver A2Z DSA Sheet**: 474 comprehensive problems.
-  - **SDETube 79 Sheet**: 79 core SDET/Automation coding challenges.
-  - **Blind 75 Sheet**: NeetCode / Blind 75 algorithmic staples.
-  - **CodeStoryWithMIK Sheet**: Daily challenge and algorithmic patterns dataset.
-- **`lldData.ts`**: Low-Level Design problem catalog, UML schemas, and design pattern challenges.
-- **`supabase.ts`**: Supabase client initialization, mock channel catalogs, and fallback video feeds.
+To eliminate sheet sprawl and redundant problem reconciliation, SDETube defines a **Single Canonical Problem Bank**:
+
+```typescript
+export interface CanonicalProblem {
+  id: string;                      // Canonical slug, e.g. 'two-sum'
+  slug: string;                    // Universal slug for R2 and Judge0
+  title: string;                   // 'Two Sum'
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  topic: string;                   // 'Arrays & Hashing'
+  category: string;                // 'Data Structures'
+  list_tags: ('sde191' | 'a2z474' | 'sdetube79' | 'blind75' | 'mik')[];
+  curator_order: Record<string, number>; // Order index per sheet
+  testcases_r2_key: string;        // 'problems/two-sum.txt'
+  leetcode_url?: string;
+  gfg_url?: string;
+  video_solution_id?: string;
+}
+```
+
+### Benefits of Canonical Tagging:
+1. **Single Problem System of Record**: Problems appear once in storage. R2 testcases and driver files use one canonical slug (`two-sum.txt`).
+2. **$O(1)$ Sheet Membership Projection**: Any curated sheet view is a simple tag filter over the canonical bank (`canonicalProblems.filter(p => p.list_tags.includes('blind75'))`).
+3. **Elimination of Multi-Array Reconciliation**: `getRealSheetSolvedBreakdown()` no longer reconciles 5 separate arrays; it simply compares user solved canonical slugs against track problem sets.
 
 ---
 
 ## 4.6 Unified Analytics & Activity Deduplication Pipeline (`analytics.ts`, `userProfileService.ts`)
 
 - **`getRealSheetSolvedBreakdown(userEmail?)`**: Authoritative single source of truth for problem solving statistics across SDETube. Inspects canonical sheet problem maps (`SDE 191`, `A2Z 474`, `SDETube 79`, `Blind 75`, `MIK Complete`, and `LLD`) plus verified `Accepted` compiler runs, guaranteeing 100% agreement between Dashboard and Developer Profile.
-- **`getAuthenticActivityDateCounts()`**: Scans real code submissions and sheet activity logs, deduplicating problem slugs per date. Inspects POTD solved keys (`sdetube_potd_solved_*`) and ensures at most 1 active day entry is credited per date if no code submissions exist, preventing 4x flag stacking.
+- **`getAuthenticActivityDateCounts()`**: Scans real code submissions and sheet activity logs, deduplicating problem slugs per date. Ensures at most 1 active day entry is credited per date if no code submissions exist, preventing 4x flag stacking.
 - **`getRealAnalytics(userEmail?)`**: Computes core metrics (`dsaSolved`, `lldSolved`, `totalSolved`, `bonusPoints`, `sdeReadinessScore`, `difficultyStats`) derived directly from `getRealSheetSolvedBreakdown()`.
 - **`generateUserSubmissionHeatmap(providedCounts?)`**: Renders 52-week activity calendar, calculates max streak and current streak, and categorizes activity into 5 distinct heatmap color levels.
 
-## 4.7 Cross-Device Cloud Synchronization Service (`progressService.ts`)
+---
 
-- **`saveUserProgress(progress, userEmail?)`**: Persists solved problem ID arrays (`solved_sde`, `solved_a2z`, `solved_79`, `solved_blind75`, `solved_mik`, `lld_solved_ids`) to Supabase PostgreSQL table `dsa_progress`.
-- **`getUserProgressSync(userEmail?)`**: Reads the latest progress snapshot from in-memory cache or Supabase, synchronizing local storage keys to ensure multi-device continuity.
+## 4.7 Normalized Delta Cloud Synchronization Service (`progressService.ts`)
+
+- **`saveUserProgressDelta(deltaEvent)`**: Pushes incremental solve events to Supabase PostgreSQL table `dsa_progress` via `UPSERT ON CONFLICT (user_id, problem_slug)`.
+- **`getUserProgressSync(userEmail?)`**: Reads normalized solve rows since `last_sync_timestamp`, merging updates into client IndexedDB and local sets.
 - **`isCloudAutoSyncEnabled()` / `setCloudAutoSyncEnabled()`**: Toggles automatic cloud backup and multi-device synchronization.
 
 ---
@@ -633,16 +611,13 @@ async def stream_telegram_video(channel_id: str, msg_id: int, request: Request):
     """
     Asynchronously streams video from Telegram MTProto datacenters with HTTP 206 Range support.
     """
-    # 1. Resolve channel peer and message document
     message = await client.get_messages(peer, ids=msg_id)
     doc = message.media.document
     file_size = doc.size
 
-    # 2. Parse HTTP Range header (e.g. bytes=0-4194303)
     range_header = request.headers.get("Range")
     start, end = parse_range(range_header, file_size)
 
-    # 3. Stream 512KB chunks via MTProto iter_download
     async def video_generator():
         async for chunk in client.iter_download(doc, offset=start, request_size=512*1024):
             yield chunk
@@ -671,10 +646,10 @@ async def stream_telegram_video(channel_id: str, msg_id: int, request: Request):
 ## 5.2 Cloudflare R2 SigV4 Storage Manager (`backend/r2_storage.py`)
 
 Provides native SigV4 REST operations against Cloudflare R2 bucket `sdestream`:
-- **`_get_sigv4_headers(method, key, payload)`**: Generates AWS SigV4 signed headers (`Authorization: AWS4-HMAC-SHA256 ...`) using Python's native `hmac` and `hashlib` libraries without requiring external SDKs.
+- **`_get_sigv4_headers(method, key, payload)`**: Generates AWS SigV4 signed headers (`Authorization: AWS4-HMAC-SHA256 ...`) using Python's native `hmac` and `hashlib` libraries without external SDK bloat.
 - **`fetch_problem(slug)`**: Reads `problems/{slug}.json`.
 - **`upload_problem(slug, data)`**: Stores `problems/{slug}.json`.
-- **`delete_problem(slug)`**: Removes all problem JSON, testcase TXT, and multi-language driver files for a problem.
+- **`delete_problem(slug)`**: Removes problem JSON, testcase TXT, and multi-language driver files.
 
 ---
 
@@ -683,20 +658,23 @@ Provides native SigV4 REST operations against Cloudflare R2 bucket `sdestream`:
 - **`[[catchall]].ts`**: Intercepts `/api/video/*` requests at Cloudflare edge, proxies them to Render backend, and caches 206 partial responses for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
 - **`potd/leetcode.ts` & `potd/gfg.ts`**: Edge proxies for daily challenges with zero-cache headers.
 - **`leetcode/question.ts`**: Edge proxy that sanitizes problem slugs and queries LeetCode GraphQL with zero-cache headers.
+- **`cert/verify/[id].ts`**: Edge function validating cryptographic HMAC signatures of certificates.
 
 ---
 
 # 6. Database Schema, RPC Functions & Storage Architecture
 
-## 6.1 PostgreSQL Table Schemas & Relationships
+## 6.1 Normalized PostgreSQL Table Schemas & Relationships
 
 ```mermaid
 erDiagram
     PROFILES ||--o{ WALLET_TRANSACTIONS : owns
     PROFILES ||--o{ INTERVIEW_SESSIONS : completes
-    PROFILES ||--o{ DSA_PROGRESS : tracks
+    PROFILES ||--o{ DSA_PROGRESS : records
+    PROFILES ||--o{ ISSUED_CERTIFICATES : earns
     PROFILES ||--o{ USER_PASSKEYS : registers
-    PROFILES ||--o{ PROBLEM_REPORTS : files
+    PLATFORM_PRICING ||--o{ WALLET_TRANSACTIONS : prices
+    CANONICAL_PROBLEMS ||--o{ DSA_PROGRESS : tracks
 
     PROFILES {
         uuid id PK
@@ -708,100 +686,114 @@ erDiagram
         timestamp created_at
     }
 
+    PLATFORM_PRICING {
+        string action_type PK
+        numeric cost_inr
+        string description
+        boolean is_active
+        timestamp updated_at
+    }
+
     WALLET_TRANSACTIONS {
         uuid id PK
         uuid user_id FK
-        string action_type
+        string action_type FK
         numeric amount
         string description
         string idempotency_key
+        jsonb metadata
         timestamp created_at
-    }
-
-    INTERVIEW_SESSIONS {
-        uuid id PK
-        uuid user_id FK
-        string company
-        string round
-        string level
-        jsonb transcript
-        jsonb scorecard
-        numeric overall_score
-        timestamp completed_at
     }
 
     DSA_PROGRESS {
         uuid id PK
         uuid user_id FK
-        string problem_slug
-        string sheet_name
+        string problem_slug FK
+        string primary_sheet
         string status
-        numeric solve_time_seconds
-        timestamp last_solved_at
+        int solve_time_seconds
+        string language
+        timestamp solved_at
     }
 
-    PROBLEM_REPORTS {
+    ISSUED_CERTIFICATES {
         uuid id PK
         uuid user_id FK
-        string problem_slug
-        string issue_type
-        text description
-        timestamp created_at
+        string track_id
+        numeric mastery_percentage
+        string tier
+        string hmac_signature
+        string verification_token
+        string status
+        timestamp issued_at
     }
 
-    SYSTEM_CONFIG {
-        string key PK
-        jsonb value
-        timestamp updated_at
+    CANONICAL_PROBLEMS {
+        string slug PK
+        string title
+        string difficulty
+        string topic
+        jsonb list_tags
+        timestamp created_at
     }
 ```
 
 ---
 
-## 6.2 Stored Procedures & Concurrency Locks
+## 6.2 Server-Authoritative Stored Procedures & Concurrency Locks
 
 ```sql
--- Atomic wallet deduction with pessimistic row locking
+-- Authoritative wallet deduction with server-side price lookup and pessimistic row locking
 CREATE OR REPLACE FUNCTION public.deduct_wallet_credits(
   p_user_id UUID,
-  p_amount NUMERIC,
   p_action_type TEXT,
-  p_description TEXT,
-  p_idempotency_key TEXT DEFAULT NULL
+  p_idempotency_key TEXT DEFAULT NULL,
+  p_client_metadata JSONB DEFAULT '{}'::jsonb
 )
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_cost NUMERIC;
   v_current_balance NUMERIC;
   v_new_balance NUMERIC;
 BEGIN
-  -- Idempotency check
+  -- 1. Derive price authoritatively from server catalog (Never trust client p_amount)
+  SELECT cost_inr INTO v_cost 
+  FROM public.platform_pricing 
+  WHERE action_type = p_action_type AND is_active = TRUE;
+
+  IF v_cost IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'INVALID_ACTION_TYPE');
+  END IF;
+
+  -- 2. Idempotency check: Return existing balance if transaction already processed
   IF p_idempotency_key IS NOT NULL THEN
     IF EXISTS (SELECT 1 FROM public.wallet_transactions WHERE idempotency_key = p_idempotency_key) THEN
       SELECT wallet_balance INTO v_current_balance FROM public.profiles WHERE id = p_user_id;
-      RETURN jsonb_build_object('success', true, 'balance', v_current_balance, 'duplicate', true);
+      RETURN jsonb_build_object('success', true, 'balance', v_current_balance, 'duplicate', true, 'debited', 0);
     END IF;
   END IF;
 
-  -- Acquire pessimistic row lock
+  -- 3. Acquire pessimistic row lock on user profile
   SELECT wallet_balance INTO v_current_balance 
   FROM public.profiles 
   WHERE id = p_user_id 
   FOR UPDATE;
 
-  IF v_current_balance < p_amount THEN
-    RETURN jsonb_build_object('success', false, 'error', 'INSUFFICIENT_FUNDS', 'balance', v_current_balance);
+  IF v_current_balance < v_cost THEN
+    RETURN jsonb_build_object('success', false, 'error', 'INSUFFICIENT_FUNDS', 'balance', v_current_balance, 'required', v_cost);
   END IF;
 
-  v_new_balance := v_current_balance - p_amount;
+  -- 4. Deduct and log immutable transaction
+  v_new_balance := v_current_balance - v_cost;
   UPDATE public.profiles SET wallet_balance = v_new_balance WHERE id = p_user_id;
 
-  INSERT INTO public.wallet_transactions (user_id, action_type, amount, description, idempotency_key)
-  VALUES (p_user_id, p_action_type, p_amount, p_description, p_idempotency_key);
+  INSERT INTO public.wallet_transactions (user_id, action_type, amount, description, idempotency_key, metadata)
+  VALUES (p_user_id, p_action_type, v_cost, 'Charge for ' || p_action_type, p_idempotency_key, p_client_metadata);
 
-  RETURN jsonb_build_object('success', true, 'balance', v_new_balance);
+  RETURN jsonb_build_object('success', true, 'balance', v_new_balance, 'debited', v_cost);
 END;
 $$;
 ```
@@ -813,7 +805,7 @@ $$;
 ```
 sdestream (R2 Bucket)
 ├── problems/
-│   ├── {slug}.json                    # Problem metadata, title, constraints, examples
+│   ├── {slug}.json                    # Canonical problem metadata, title, constraints, examples
 │   └── {slug}.txt                     # Formatted testcase input/output suite
 ├── drivers/
 │   ├── {slug}_cpp.txt                 # C++ execution driver harness
@@ -841,8 +833,68 @@ sdestream (R2 Bucket)
 | `/api/gfg/{slug}` | `GET` | Backend & Edge | GeeksforGeeks Practice API proxy | None | `no-cache, must-revalidate` |
 | `/api/potd/leetcode` | `GET` | Backend & Edge | Current authentic LeetCode Daily Challenge | None | `no-cache, max-age=0` |
 | `/api/potd/gfg` | `GET` | Backend & Edge | Current authentic GFG Problem of the Day | None | `no-cache, max-age=0` |
-| `/api/problem/{slug}` | `DELETE` | Backend | Purges stored problem JSON, testcases, and drivers from R2 | None | `200 OK` + Status JSON |
-| `/api/potd/clear` | `POST` | Backend | Invalidates backend in-memory POTD caches | None | `200 OK` + Status JSON |
-| `/api/chat` | `POST` | Backend | Multi-tier AI streaming endpoint (Groq/Gemini/Mistral) | `{ messages, model, stream }` | SSE Token Stream |
+| `/api/progress/delta` | `POST` | Supabase & Backend | Ingests normalized problem solved deltas | `[{ slug, sheet, status, timestamp }]` | `200 OK` + Sync Status |
+| `/api/cert/issue` | `POST` | Backend & Edge | Server-side cryptographic certificate issuance | `{ track_id }` | Signed Token JSON |
+| `/api/cert/verify/{id}` | `GET` | Edge (Cloudflare) | Public verification of certificate authenticity | None | Verification JSON + Status |
+| `/api/chat` | `POST` | Backend | Two-tier AI streaming endpoint (Groq/Gemini) | `{ messages, model, stream }` | SSE Token Stream |
 | `/api/hld/simulate` | `POST` | Backend | Simulates traffic load, latency, and failure on HLD canvas | `{ nodes, edges, rps }` | JSON simulation metrics |
 | `/healthz` | `GET` | Backend | Uptime keepalive endpoint for Render instance | None | `200 OK` |
+
+---
+
+# 8. Strategic Architecture Additions
+
+## 8.1 Multi-Tier Edge & Server Caching for External Profiles & Metrics
+- **Problem**: Querying LeetCode GraphQL, GitHub REST, and Codeforces APIs directly from the browser on every profile view causes rate limits (HTTP 429) and slow page rendering.
+- **Architecture**:
+  - Implements a Cloudflare Workers KV cache with a 30-minute TTL per handle (`cache:ext_profile:{platform}:{handle}`).
+  - When a profile view opens, the edge serves the cached snapshot instantly ($< 30\text{ms}$).
+  - A background fetcher refreshes stale cache entries asynchronously without blocking the user.
+
+## 8.2 Per-User AI Token Quotas & Sliding-Window Rate Limiting
+- **Problem**: Unmetered access to LLM streaming endpoints (`/api/chat`, `/api/interview`) creates a critical cost-abuse vector.
+- **Architecture**:
+  - Edge rate limiting enforced via Redis / Cloudflare Workers KV using a sliding-window counter.
+  - Per-user daily budget: $50{,}000$ tokens per calendar day, reset at 00:00 UTC.
+  - Burst limit: Maximum 10 chat messages per minute per authenticated user. Requests exceeding limits receive HTTP 429 with `Retry-After` headers.
+
+## 8.3 Submission Integrity & Anti-Plagiarism Heuristics
+- **Problem**: Auto-awarded certificates without cheating detection undermine credibility with tech recruiters.
+- **Architecture**:
+  1. **Minimum Time Heuristic**: Submissions completed in under 10 seconds from problem load are flagged for review.
+  2. **Code Entropy & Structure Analysis**: Compares tokenized AST representations against known public solution repositories.
+  3. **Hidden Test Suites**: Execution runs against private testcases loaded dynamically from Cloudflare R2 at runtime, preventing hard-coded output hacking (`if (input == ...) return ...;`).
+
+## 8.4 Shareable Public Portfolio & Dynamic Resume Generator
+- **Architecture**:
+  - Public vanity URL route: `sdetube.pages.dev/u/:username`.
+  - Recruiter-optimized public landing page displaying:
+    - Verified SDETube certifications with 1-click cryptographic authenticity badges.
+    - Unified 3-year omnichannel coding heatmap (LeetCode + GitHub + Codeforces + SDETube).
+    - Top solved problem domains (Dynamic Programming, Graph Theory, System Design).
+  - 1-click dynamic export to ATS-friendly PDF Resume and JSON Resume schema.
+
+## 8.5 Spaced Repetition (SM-2 / Leitner Algorithm) Review Engine
+- **Architecture**:
+  - Problems solved by a student automatically enter an algorithmic review queue based on the SuperMemo-2 (SM-2) algorithm.
+  - Intervals: 1 Day $\rightarrow$ 3 Days $\rightarrow$ 7 Days $\rightarrow$ 16 Days $\rightarrow$ 35 Days.
+  - Dashboard prompts: "3 Problems Due for Review Today" to combat the Ebbinghaus forgetting curve and cement algorithmic mastery.
+
+---
+
+# 9. Architectural Simplifications & Pruning
+
+## 9.1 Streamlined Two-Tier AI Cascade (Eliminating Mistral Fallback Overhead)
+- **Previous Design**: A 3-tier cascade (Groq $\rightarrow$ Gemini $\rightarrow$ Mistral).
+- **Pruned Architecture**:
+  - Eliminates Mistral 7B. Third-tier fallbacks added operational overhead, increased timeout latency for users, and exhibited redundant capabilities.
+  - Replaces Tier 3 with an **Edge Semantic / Exact Response Cache** (Cloudflare KV) for standard DSA hints, explanations, and edge-case queries.
+  - Streamlines inference to:
+    1. **Primary**: Groq Llama-3.3-70B (ultra-fast $< 450\text{ms}$ TTFT).
+    2. **Fallback**: Google Gemini 1.5 Flash (high context, multimodal diagram evaluation).
+
+## 9.2 Zero-Trust Client Balance Policy & Server-Authoritative Gating
+- **Deprecation**: `localStorage` wallet balances and client-side track completion percentages are deprecated as authorization mechanisms.
+- **Enforcement**:
+  - `localStorage` is treated strictly as an ephemeral cache for optimistic UI rendering.
+  - Every billable action and certificate claim requires authoritative verification and deduction by server-side RPCs in Supabase before unlocking resources.
