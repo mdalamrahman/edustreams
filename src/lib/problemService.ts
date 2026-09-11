@@ -770,7 +770,6 @@ export async function fetchFromGFGAPI(slugOrUrl: string): Promise<ProblemTemplat
   if (!slug || slug === 'algorithm-problem') return null;
 
   const endpoints = [
-    `https://practiceapi.geeksforgeeks.org/api/v1/problems/${encodeURIComponent(slug)}/`,
     `/api/gfg/${encodeURIComponent(slug)}`,
     `${TELEGRAM_BACKEND_URL}/api/gfg/${encodeURIComponent(slug)}`
   ];

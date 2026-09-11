@@ -241,11 +241,9 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     } catch {}
   }
 
-  // 1. Try local Edge & Backend Proxies with cache-busting
+  // 1. Try local Edge & Backend Proxies with cache-busting (proxied to avoid browser CORS blocks)
   const t = Date.now();
   const endpoints = [
-    `https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/?t=${t}`,
-    `https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/?t=${t}`,
     `/api/potd/gfg?t=${t}`,
     `/api/gfg/potd?t=${t}`,
     `/api/gfg-potd?t=${t}`,
