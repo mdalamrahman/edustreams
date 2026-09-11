@@ -12,10 +12,10 @@
    - 1.2 [Zero-Cost Edge Video Delivery Engine](#12-zero-cost-edge-video-delivery-engine)
    - 1.3 [Streamlined Two-Tier AI Inference Cascade with Edge Cache](#13-streamlined-two-tier-ai-inference-cascade-with-edge-cache)
    - 1.4 [Lead Bar Raiser Voice Mock Interview Subsystem](#14-lead-bar-raiser-voice-mock-interview-subsystem)
-   - 1.5 [Server-Authoritative Pricing & Zero-Trust Wallet Ledger](#15-server-authoritative-pricing--zero-trust-wallet-ledger)
+   - 1.5 [Server-Authoritative Pricing, RLS Guards & Zero-Trust Ledger](#15-server-authoritative-pricing-rls-guards--zero-trust-ledger)
    - 1.6 [Omnichannel Developer Profile & Analytics Ingestion Engine](#16-omnichannel-developer-profile--analytics-ingestion-engine)
-   - 1.7 [Inter-Device Normalized Delta Progress Synchronization Engine](#17-inter-device-normalized-delta-progress-synchronization-engine)
-   - 1.8 [Cryptographically Verifiable Certification & Server-Side Security Gate](#18-cryptographically-verifiable-certification--server-side-security-gate)
+   - 1.7 [Inter-Device Normalized Delta Sync Engine with Monotonic Cursor](#17-inter-device-normalized-delta-sync-engine-with-monotonic-cursor)
+   - 1.8 [Cryptographically Verifiable Certification & Timing-Safe Verification Gate](#18-cryptographically-verifiable-certification--timing-safe-verification-gate)
 2. [Full Platform User & Data Flow](#2-full-platform-user--data-flow)
    - 2.1 [Student Onboarding & Passwordless Passkey Flow](#21-student-onboarding--passwordless-passkey-flow)
    - 2.2 [DSA Problem Solving & Code Execution Flow](#22-dsa-problem-solving--code-execution-flow)
@@ -24,8 +24,8 @@
    - 2.5 [Lead Bar Raiser Voice Interview & Scorecard Flow](#25-lead-bar-raiser-voice-interview--scorecard-flow)
    - 2.6 [Server-Authoritative Wallet Billing, 24-Hour Passes & Top-Up Flow](#26-server-authoritative-wallet-billing-24-hour-passes--top-up-flow)
    - 2.7 [Omnichannel Developer Profile & Multi-Platform Aggregation Flow](#27-omnichannel-developer-profile--multi-platform-aggregation-flow)
-   - 2.8 [Inter-Device Normalized Delta Sync & Storage Healing Flow](#28-inter-device-normalized-delta-sync--storage-healing-flow)
-   - 2.9 [Cryptographic Certificate Issuance & Server-Side Verification Flow](#29-cryptographic-certificate-issuance--server-side-verification-flow)
+   - 2.8 [Inter-Device Cursor-Based Delta Sync & Storage Healing Flow](#28-inter-device-cursor-based-delta-sync--storage-healing-flow)
+   - 2.9 [Cryptographic Certificate Issuance & Timing-Safe Verification Flow](#29-cryptographic-certificate-issuance--timing-safe-verification-flow)
 3. [Low-Level Design (LLD): Component Architecture (`src/components/`)](#3-low-level-design-lld-component-architecture-srccomponents)
    - 3.1 [Master Shell & Routing Controller (`App.tsx`, `DashboardLandingPage.tsx`)](#31-master-shell--routing-controller-apptsx-dashboardlandingpagetsx)
    - 3.2 [Coding & Algorithm Workspaces](#32-coding--algorithm-workspaces)
@@ -47,14 +47,14 @@
    - 5.3 [Edge Functions & Proxy Layer (`functions/api/`)](#53-edge-functions--proxy-layer-functionsapi)
 6. [Database Schema, RPC Functions & Storage Architecture](#6-database-schema-rpc-functions--storage-architecture)
    - 6.1 [Normalized PostgreSQL Table Schemas & Relationships](#61-normalized-postgresql-table-schemas--relationships)
-   - 6.2 [Server-Authoritative Stored Procedures & Concurrency Locks](#62-server-authoritative-stored-procedures--concurrency-locks)
+   - 6.2 [Server-Authoritative Stored Procedures & Row-Level Security (RLS)](#62-server-authoritative-stored-procedures--row-level-security-rls)
    - 6.3 [Cloudflare R2 Object Hierarchy](#63-cloudflare-r2-object-hierarchy)
 7. [API Route Specifications & Contracts](#7-api-route-specifications--contracts)
 8. [Strategic Architecture Additions](#8-strategic-architecture-additions)
    - 8.1 [Multi-Tier Edge & Server Caching for External Profiles & Metrics](#81-multi-tier-edge--server-caching-for-external-profiles--metrics)
    - 8.2 [Per-User AI Token Quotas & Sliding-Window Rate Limiting](#82-per-user-ai-token-quotas--sliding-window-rate-limiting)
-   - 8.3 [Submission Integrity & Anti-Plagiarism Heuristics](#83-submission-integrity--anti-plagiarism-heuristics)
-   - 8.4 [Shareable Public Portfolio & Dynamic Resume Generator](#84-shareable-public-portfolio--dynamic-resume-generator)
+   - 8.3 [Submission Integrity, Anti-Plagiarism & Review-Aware Heuristics](#83-submission-integrity-anti-plagiarism--review-aware-heuristics)
+   - 8.4 [Shareable Public Portfolio & Dynamic Resume Generator (Opt-In & Privacy-Guarded)](#84-shareable-public-portfolio--dynamic-resume-generator-opt-in--privacy-guarded)
    - 8.5 [Spaced Repetition (SM-2 / Leitner Algorithm) Review Engine](#85-spaced-repetition-sm-2--leitner-algorithm-review-engine)
 9. [Architectural Simplifications & Pruning](#9-architectural-simplifications--pruning)
    - 9.1 [Streamlined Two-Tier AI Cascade (Eliminating Mistral Fallback Overhead)](#91-streamlined-two-tier-ai-cascade-eliminating-mistral-fallback-overhead)
@@ -96,7 +96,7 @@ graph TB
 
     subgraph CloudStorage ["4. Storage & Persistence Tier"]
         CF_R2[("Cloudflare R2 Bucket: sdestream (Testcases, Drivers, Notes)")]
-        SUPABASE_PG[("Supabase PostgreSQL (Profiles, Normalized Progress, Certificates, Pricing, Ledger)")]
+        SUPABASE_PG[("Supabase PostgreSQL (Profiles, Normalized Progress, Spaced Repetition, Certificates, Pricing, Ledger)")]
         SUPABASE_AUTH["Supabase Auth & WebAuthn / Passkeys"]
         TG_DATACENTERS[("Telegram Cloud Datacenters (Video Storage)")]
     end
@@ -215,44 +215,54 @@ graph LR
 
 ---
 
-## 1.5 Server-Authoritative Pricing & Zero-Trust Wallet Ledger
+## 1.5 Server-Authoritative Pricing, RLS Guards & Zero-Trust Ledger
 
-### The Security Trust Boundary
-Under no circumstances does the server trust client-supplied debit amounts. All billing prices reside authoritatively in PostgreSQL table `platform_pricing`. The client passes only the authenticated `p_user_id`, `p_action_type`, and an idempotency key. The stored procedure `deduct_wallet_credits()` retrieves the authoritative price, executes pessimistic locking, and records the transaction atomically.
+### The Security Trust Boundary & Anti-Bypass Protections
+Under no circumstances does the server trust client-supplied debit amounts. All billing prices reside authoritatively in PostgreSQL table `platform_pricing`. The client passes only the authenticated `p_user_id`, `p_action_type`, and an idempotency key.
+
+**Crucial Defense-in-Depth Layer: Supabase Row-Level Security (RLS)**  
+While the stored procedure `deduct_wallet_credits` runs with `SECURITY DEFINER` privileges, direct REST API mutations (`PATCH /rest/v1/profiles`) are strictly blocked via RLS policies and a `BEFORE UPDATE` trigger on `profiles.wallet_balance`. This ensures an attacker cannot bypass the RPC and credit themselves arbitrary funds.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Client Browser
     participant App as billing.ts (Client)
-    participant RPC as deduct_wallet_credits (PL/pgSQL)
+    participant PostgREST as Supabase PostgREST Layer
+    participant RPC as deduct_wallet_credits (SECURITY DEFINER)
     participant Pricing as platform_pricing Table
     participant Profiles as profiles Table (Pessimistic Lock)
     participant Ledger as wallet_transactions Table
 
-    User->>App: Request Action (e.g. AI Mock Interview)
-    Note over App: Optimistic UI check (balance >= ₹10.00)
-    App->>RPC: Call deduct_wallet_credits(p_user_id, 'ai_mock_interview', idempotency_key)
-    activate RPC
-    RPC->>Pricing: SELECT cost_inr FROM platform_pricing WHERE action_type = 'ai_mock_interview'
-    Pricing-->>RPC: cost_inr = ₹10.00 (Derived Server-Side)
-    
-    RPC->>Ledger: Check Idempotency Key
-    alt Duplicate Request Detected
-        Ledger-->>RPC: Key Already Processed
-        RPC-->>App: { success: true, duplicate: true, balance: current }
-    else Fresh Request
-        RPC->>Profiles: SELECT wallet_balance FROM profiles WHERE id = p_user_id FOR UPDATE
-        Note over Profiles: Row locked via FOR UPDATE; concurrent attacks blocked
-        alt wallet_balance < ₹10.00
-            RPC-->>App: { success: false, error: 'INSUFFICIENT_FUNDS', balance: current, required: 10.00 }
-        else wallet_balance >= ₹10.00
-            RPC->>Profiles: UPDATE profiles SET wallet_balance = wallet_balance - 10.00
-            RPC->>Ledger: INSERT INTO wallet_transactions (user_id, action_type, amount, idempotency_key)
-            RPC-->>App: { success: true, balance: new_balance, debited: 10.00 }
+    alt Direct REST Mutation Attack (PATCH /rest/v1/profiles { wallet_balance: 999999 })
+        User->>PostgREST: Direct PATCH wallet_balance
+        PostgREST->>Profiles: RLS & Trigger Evaluation
+        Profiles-->>User: HTTP 403 / 400 'Direct balance mutations forbidden'
+    else Legitimate Server-Authoritative Flow
+        User->>App: Request Action (e.g. AI Mock Interview)
+        Note over App: Optimistic UI check (balance >= ₹10.00)
+        App->>RPC: Call deduct_wallet_credits(p_user_id, 'ai_mock_interview', idempotency_key)
+        activate RPC
+        RPC->>Pricing: SELECT cost_inr FROM platform_pricing WHERE action_type = 'ai_mock_interview'
+        Pricing-->>RPC: cost_inr = ₹10.00 (Derived Server-Side)
+        
+        RPC->>Ledger: Check Idempotency Key
+        alt Duplicate Request Detected
+            Ledger-->>RPC: Key Already Processed
+            RPC-->>App: { success: true, duplicate: true, balance: current }
+        else Fresh Request
+            RPC->>Profiles: SELECT wallet_balance FROM profiles WHERE id = p_user_id FOR UPDATE
+            Note over Profiles: Row locked via FOR UPDATE; concurrent attacks blocked
+            alt wallet_balance < ₹10.00
+                RPC-->>App: { success: false, error: 'INSUFFICIENT_FUNDS', balance: current, required: 10.00 }
+            else wallet_balance >= ₹10.00
+                RPC->>Profiles: UPDATE profiles SET wallet_balance = wallet_balance - 10.00
+                RPC->>Ledger: INSERT INTO wallet_transactions (user_id, action_type, amount, idempotency_key)
+                RPC-->>App: { success: true, balance: new_balance, debited: 10.00 }
+            end
         end
+        deactivate RPC
     end
-    deactivate RPC
 ```
 
 ---
@@ -299,9 +309,9 @@ graph TD
 
 ---
 
-## 1.7 Inter-Device Normalized Delta Progress Synchronization Engine
+## 1.7 Inter-Device Normalized Delta Sync Engine with Monotonic Cursor
 
-To avoid transferring large monolithic arrays that grow into megabytes and cause write conflicts, SDETube standardizes on **Normalized Progress Rows with Lightweight Delta Synchronization**:
+To eliminate client clock-drift vulnerabilities (where a fast or slow device clock skips solved rows), SDETube standardizes on **Normalized Delta Synchronization backed by a Server-Assigned Monotonic `sync_cursor`**:
 
 ```mermaid
 sequenceDiagram
@@ -313,19 +323,21 @@ sequenceDiagram
 
     Device1->>SyncService: User solves 'two-sum' on SDE 191 Sheet
     SyncService->>SyncService: Update local IndexedDB cache (0ms instant UI update)
-    SyncService->>Supabase: POST /api/progress/delta [{ slug: 'two-sum', sheet: 'sde191', status: 'ACCEPTED', timestamp: '2026-09-11T12:00:00Z' }]
+    SyncService->>Supabase: POST /api/progress/delta [{ slug: 'two-sum', sheet: 'sde191', status: 'ACCEPTED' }]
     Supabase->>Supabase: UPSERT INTO dsa_progress (user_id, problem_slug) ON CONFLICT DO UPDATE
-    Note over Supabase: Stores normalized row with timestamp, duration & language
+    Note over Supabase: Assigns monotonic sync_cursor (e.g. sequence 109482)
+    Supabase-->>Device1: { success: true, next_cursor: 109482 }
 
     Note over Device2: User opens SDETube on Device B
-    Device2->>Supabase: GET /api/progress/delta?since=last_sync_timestamp
-    Supabase-->>Device2: Return 3 new solved deltas
-    Device2->>Device2: Apply deltas into local set & refresh streak calculations
+    Device2->>Supabase: GET /api/progress/delta?cursor=109481
+    Note over Supabase: Server queries WHERE sync_cursor > 109481 (Immune to client clock skew)
+    Supabase-->>Device2: Return 1 new solved delta + next_cursor: 109482
+    Device2->>Device2: Apply deltas into local set & update cursor to 109482
 ```
 
 ---
 
-## 1.8 Cryptographically Verifiable Certification & Server-Side Security Gate
+## 1.8 Cryptographically Verifiable Certification & Timing-Safe Verification Gate
 
 ### Tamper-Proof Cryptographic Signature Structure
 Certificates are generated using cryptographically signed tokens backed by server-side verification:
@@ -364,7 +376,7 @@ graph TD
 
     subgraph PublicRecruiterVerification ["Public Recruiter Verification (/verify/:cert_id)"]
         RECRUITER["Recruiter visits sdetube.pages.dev/verify/:cert_id"] --> VERIFY_API["GET /api/cert/verify/:cert_id"]
-        VERIFY_API --> SIG_VALIDATE{Cryptographic HMAC Valid?}
+        VERIFY_API --> SIG_VALIDATE{Constant-Time HMAC Match? (crypto.timingSafeEqual)}
         SIG_VALIDATE -- "Invalid / Tampered" --> SHOW_FRAUD["Show 'Invalid or Forged Credential' Warning"]
         SIG_VALIDATE -- "Valid" --> DB_LOOKUP{Active in issued_certificates?}
         DB_LOOKUP -- "Revoked / Not Found" --> SHOW_REVOKED["Show 'Credential Revoked' Notice"]
@@ -416,7 +428,7 @@ graph TD
 ## 2.6 Server-Authoritative Wallet Billing, 24-Hour Passes & Top-Up Flow
 1. **Pre-Check (UI Hint)**: `billing.ts` checks local cache to give instant visual feedback.
 2. **Authoritative Execution**: Calls `deduct_wallet_credits(p_user_id, p_action_type, idempotency_key)`.
-3. **Database Ledger**: PostgreSQL resolves price from `platform_pricing`, applies pessimistic row locks, debits the balance, and records an immutable ledger entry in `wallet_transactions`.
+3. **Database Ledger & RLS**: PostgreSQL resolves price from `platform_pricing`, applies pessimistic row locks, debits the balance, and records an immutable ledger entry in `wallet_transactions`. Direct mutations via REST are rejected by RLS.
 4. **Recharge Flow (`WalletTopupModal.tsx`)**: Protected by Cloudflare Turnstile bot verification. Successfully verified recharges trigger instant cryptographic balance update.
 
 ## 2.7 Omnichannel Developer Profile & Multi-Platform Aggregation Flow
@@ -429,13 +441,13 @@ graph TD
    - **Combined Omnichannel**: Merged 3-year activity calendar showing aggregated multi-platform developer velocity.
 2. **Real-Time Data Ingestion**: When handles are updated in `UserProfileModal.tsx`, background workers query external APIs, parse responses, and populate normalized caches.
 
-## 2.8 Inter-Device Normalized Delta Sync & Storage Healing Flow
+## 2.8 Inter-Device Cursor-Based Delta Sync & Storage Healing Flow
 1. **Local Writes**: When code is submitted or a problem is checked, `progressService.ts` records the action in `localStorage` and IndexedDB.
-2. **Delta Propagation**: If logged in and cloud sync is active, `progressService.ts` dispatches a delta event payload to Supabase `dsa_progress` using `UPSERT ON CONFLICT (user_id, problem_slug)`.
-3. **Cross-Device Reconciliation**: When logging in on another device, the client queries `/api/progress/delta?since={timestamp}`, pulls incremental updates, and merges them into the local cache.
+2. **Delta Propagation**: If logged in and cloud sync is active, `progressService.ts` dispatches a delta event payload to Supabase `dsa_progress` using `UPSERT ON CONFLICT (user_id, problem_slug)`. The server assigns a monotonic `sync_cursor`.
+3. **Cross-Device Reconciliation**: When logging in on another device, the client queries `/api/progress/delta?cursor={last_cursor}`, pulling incremental updates without relying on client clock timestamps.
 4. **Notes Persistence**: Lecture video notes auto-replicate to Cloudflare R2 bucket `sdestream` under `vnotes/{email}_{videoId}.md`.
 
-## 2.9 Cryptographic Certificate Issuance & Server-Side Verification Flow
+## 2.9 Cryptographic Certificate Issuance & Timing-Safe Verification Flow
 1. **Progress Assessment**: `getUserTracksCertificates()` computes percentage progress across 6 tracks (SDE 191, Blind 75, MIK Sheet, LLD Design, HLD Systems, and DBMS SQL).
 2. **Mastery Threshold**: Only tracks achieving $\ge 90\%$ are marked `isEligible: true`. Artificial floors (`Math.max(1, ...)`) are strictly prohibited.
 3. **Multi-Layer UI & Modal Lockout**:
@@ -443,7 +455,7 @@ graph TD
    - Ineligible cards display a locked badge with `Lock` icon.
    - `handleOpenCert` rejects opening for any track $< 90\%$.
 4. **Server-Side Minting**: Client invokes `POST /api/cert/issue`. Server recalculates completion percentage directly against normalized `dsa_progress` table. If $\ge 90.0\%$, the server records the certificate in `issued_certificates` and issues an HMAC-SHA256 signed token.
-5. **Public Verification**: Recruiter or candidate visits `sdetube.pages.dev/verify/:cert_id` which verifies cryptographic signature and database status.
+5. **Timing-Safe Verification**: Recruiter or candidate visits `sdetube.pages.dev/verify/:cert_id`. The edge function validates the cryptographic signature using constant-time comparison (`crypto.timingSafeEqual`) and verifies active status in Supabase.
 
 ---
 
@@ -495,7 +507,7 @@ graph TD
 | **`AuthModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handlePasswordAuth()`, `handlePasskeyAuth()`, `handleOTP()` | Modal handling Supabase Auth and WebAuthn FIDO2 biometric passkey registration and login. |
 | **`UserProfileModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`certificates`: `TrackCertificateProgress[]` | `handleRegisterPasskey()`, `handleUpdateProfile()`, `setSelectedCert()` | Manages user passkeys, wallet transaction history, display name, linked profiles (LeetCode, GitHub, GFG, Codeforces), and verified certificates with strict ≥90% mastery gating. |
 | **`DeveloperProfilePage.tsx`** | `user`: `Student \| null`<br>`profileMode`: `6 Modes`<br>`selectedYear`: `number`<br>`selectedCertificate`: `CertificateData \| null` | `getRealSheetSolvedBreakdown()`, `generateUserSubmissionHeatmap()`, `handleOpenCert()`, `getUserTracksCertificates()` | 6-Mode Omnichannel developer portfolio featuring 3-year interactive activity heatmaps, multi-platform stats (LeetCode GraphQL, GitHub, GFG, Codeforces), real submission logs, and official certificates guarded by strict ≥90% mastery requirements. |
-| **`CertificateModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`certificate`: `CertificateData \| null` | `handlePrint()`, `handleShareLinkedIn()` | Official verifiable certificate viewer modal with cryptographically structured verification IDs (`SDETUBE-CERT-2026-*`). Strictly guarded against rendering for tracks under 90% mastery. |
+| **`CertificateModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`certificate`: `CertificateData \| null` | `handlePrint()`, `handleShareLinkedIn()` | Official verifiable certificate viewer modal with cryptographically structured verification IDs (`SDETUBE-v1-*`). Strictly guarded against rendering for tracks under 90% mastery. |
 | **`WalletTopupModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handleTopup()`, `verifyTurnstile()` | Secure credit recharge modal protected by Cloudflare Turnstile bot verification. |
 | **`InsufficientCreditsModal.tsx`** | `cost`: `number`<br>`action`: `string`<br>`isOpen`: `boolean` | `handleOneClickRecharge()` | Credit gating modal that triggers when a student attempts an action exceeding their balance. |
 | **`AdminDashboardModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `loadMetrics()`, `editR2Problem()`, `grantCredits()` | Restricted operator portal for monitoring platform telemetry, AI token consumption, and editing Cloudflare R2 test suites. |
@@ -594,8 +606,8 @@ export interface CanonicalProblem {
 
 ## 4.7 Normalized Delta Cloud Synchronization Service (`progressService.ts`)
 
-- **`saveUserProgressDelta(deltaEvent)`**: Pushes incremental solve events to Supabase PostgreSQL table `dsa_progress` via `UPSERT ON CONFLICT (user_id, problem_slug)`.
-- **`getUserProgressSync(userEmail?)`**: Reads normalized solve rows since `last_sync_timestamp`, merging updates into client IndexedDB and local sets.
+- **`saveUserProgressDelta(deltaEvent)`**: Pushes incremental solve events to Supabase PostgreSQL table `dsa_progress` via `UPSERT ON CONFLICT (user_id, problem_slug)`. Server assigns a monotonic `sync_cursor`.
+- **`getUserProgressSync(userEmail?, cursor?)`**: Reads normalized solve rows where `sync_cursor > cursor`, merging updates into client IndexedDB and local sets without relying on client clock timestamps.
 - **`isCloudAutoSyncEnabled()` / `setCloudAutoSyncEnabled()`**: Toggles automatic cloud backup and multi-device synchronization.
 
 ---
@@ -658,7 +670,7 @@ Provides native SigV4 REST operations against Cloudflare R2 bucket `sdestream`:
 - **`[[catchall]].ts`**: Intercepts `/api/video/*` requests at Cloudflare edge, proxies them to Render backend, and caches 206 partial responses for 30 days (`Cache-Control: public, max-age=2592000, s-maxage=2592000, immutable`).
 - **`potd/leetcode.ts` & `potd/gfg.ts`**: Edge proxies for daily challenges with zero-cache headers.
 - **`leetcode/question.ts`**: Edge proxy that sanitizes problem slugs and queries LeetCode GraphQL with zero-cache headers.
-- **`cert/verify/[id].ts`**: Edge function validating cryptographic HMAC signatures of certificates.
+- **`cert/verify/[id].ts`**: Edge function validating cryptographic HMAC signatures of certificates using **constant-time byte comparison** (`crypto.timingSafeEqual` / bitwise XOR loop) to eliminate timing side-channel attacks.
 
 ---
 
@@ -673,15 +685,19 @@ erDiagram
     PROFILES ||--o{ DSA_PROGRESS : records
     PROFILES ||--o{ ISSUED_CERTIFICATES : earns
     PROFILES ||--o{ USER_PASSKEYS : registers
+    PROFILES ||--o{ SPACED_REPETITION_QUEUE : reviews
     PLATFORM_PRICING ||--o{ WALLET_TRANSACTIONS : prices
     CANONICAL_PROBLEMS ||--o{ DSA_PROGRESS : tracks
+    CANONICAL_PROBLEMS ||--o{ SPACED_REPETITION_QUEUE : targets
 
     PROFILES {
         uuid id PK
         string email
+        string username UK
         string display_name
         numeric wallet_balance
         boolean is_admin
+        boolean is_public_portfolio_enabled
         jsonb preferences
         timestamp created_at
     }
@@ -713,7 +729,19 @@ erDiagram
         string status
         int solve_time_seconds
         string language
+        bigint sync_cursor
         timestamp solved_at
+    }
+
+    SPACED_REPETITION_QUEUE {
+        uuid id PK
+        uuid user_id FK
+        string problem_slug FK
+        numeric ease_factor
+        int interval_days
+        int repetitions
+        timestamp last_reviewed_at
+        timestamp next_review_at
     }
 
     ISSUED_CERTIFICATES {
@@ -740,10 +768,10 @@ erDiagram
 
 ---
 
-## 6.2 Server-Authoritative Stored Procedures & Concurrency Locks
+## 6.2 Server-Authoritative Stored Procedures & Row-Level Security (RLS)
 
+### 1. Authoritative Wallet Deduction RPC
 ```sql
--- Authoritative wallet deduction with server-side price lookup and pessimistic row locking
 CREATE OR REPLACE FUNCTION public.deduct_wallet_credits(
   p_user_id UUID,
   p_action_type TEXT,
@@ -798,6 +826,56 @@ END;
 $$;
 ```
 
+### 2. Row-Level Security (RLS) & Direct PostgREST Mutation Guard
+To prevent malicious clients from bypassing `deduct_wallet_credits` via direct REST API calls (`PATCH /rest/v1/profiles`), the database enforces strict Row-Level Security:
+
+```sql
+-- 1. Enable RLS on all ledger and sensitive tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.platform_pricing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.issued_certificates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dsa_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spaced_repetition_queue ENABLE ROW LEVEL SECURITY;
+
+-- 2. profiles table: Users can read own profile
+CREATE POLICY profiles_select_policy ON public.profiles 
+  FOR SELECT USING (auth.uid() = id);
+
+-- Column-restricted guard trigger: Prevent REST updates to wallet_balance or admin status
+CREATE OR REPLACE FUNCTION public.guard_profile_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.wallet_balance IS DISTINCT FROM OLD.wallet_balance THEN
+    RAISE EXCEPTION 'Direct mutations to wallet_balance are forbidden. Use deduct_wallet_credits RPC.';
+  END IF;
+  IF NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
+    RAISE EXCEPTION 'Privilege escalation forbidden.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_guard_profile_columns
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.guard_profile_columns();
+
+-- 3. platform_pricing: Public read, writes restricted to service_role (Admin only)
+CREATE POLICY pricing_read_policy ON public.platform_pricing 
+  FOR SELECT USING (true);
+CREATE POLICY pricing_write_policy ON public.platform_pricing 
+  FOR ALL USING (auth.jwt()->>'role' = 'service_role');
+
+-- 4. wallet_transactions & issued_certificates: Read own rows, NO direct client INSERT/UPDATE
+CREATE POLICY wallet_tx_select_policy ON public.wallet_transactions 
+  FOR SELECT USING (auth.uid() = user_id);
+-- (No client INSERT/UPDATE policy; writes execute solely via SECURITY DEFINER functions)
+
+CREATE POLICY cert_select_policy ON public.issued_certificates 
+  FOR SELECT USING (true);
+-- (No client INSERT/UPDATE policy; writes execute solely via server issuance API)
+```
+
 ---
 
 ## 6.3 Cloudflare R2 Object Hierarchy
@@ -833,9 +911,10 @@ sdestream (R2 Bucket)
 | `/api/gfg/{slug}` | `GET` | Backend & Edge | GeeksforGeeks Practice API proxy | None | `no-cache, must-revalidate` |
 | `/api/potd/leetcode` | `GET` | Backend & Edge | Current authentic LeetCode Daily Challenge | None | `no-cache, max-age=0` |
 | `/api/potd/gfg` | `GET` | Backend & Edge | Current authentic GFG Problem of the Day | None | `no-cache, max-age=0` |
-| `/api/progress/delta` | `POST` | Supabase & Backend | Ingests normalized problem solved deltas | `[{ slug, sheet, status, timestamp }]` | `200 OK` + Sync Status |
+| `/api/progress/delta` | `GET` & `POST` | Supabase & Backend | Monotonic cursor-based progress delta sync | `GET ?cursor={cursor}` / `POST { deltas }` | `{ deltas: [...], next_cursor: 109482 }` |
 | `/api/cert/issue` | `POST` | Backend & Edge | Server-side cryptographic certificate issuance | `{ track_id }` | Signed Token JSON |
-| `/api/cert/verify/{id}` | `GET` | Edge (Cloudflare) | Public verification of certificate authenticity | None | Verification JSON + Status |
+| `/api/cert/verify/{id}` | `GET` | Edge (Cloudflare) | Public timing-safe verification of certificate | None | Constant-time validated JSON |
+| `/u/{username}` | `GET` | Edge & Client | Public developer portfolio (Opt-in, email masked) | None | Sanitized Profile View |
 | `/api/chat` | `POST` | Backend | Two-tier AI streaming endpoint (Groq/Gemini) | `{ messages, model, stream }` | SSE Token Stream |
 | `/api/hld/simulate` | `POST` | Backend | Simulates traffic load, latency, and failure on HLD canvas | `{ nodes, edges, rps }` | JSON simulation metrics |
 | `/healthz` | `GET` | Backend | Uptime keepalive endpoint for Render instance | None | `200 OK` |
@@ -858,16 +937,19 @@ sdestream (R2 Bucket)
   - Per-user daily budget: $50{,}000$ tokens per calendar day, reset at 00:00 UTC.
   - Burst limit: Maximum 10 chat messages per minute per authenticated user. Requests exceeding limits receive HTTP 429 with `Retry-After` headers.
 
-## 8.3 Submission Integrity & Anti-Plagiarism Heuristics
-- **Problem**: Auto-awarded certificates without cheating detection undermine credibility with tech recruiters.
+## 8.3 Submission Integrity, Anti-Plagiarism & Review-Aware Heuristics
+- **Problem**: Auto-awarded certificates without cheating detection undermine credibility with tech recruiters, while overly aggressive timing thresholds falsely penalize valid spaced-repetition reviews.
 - **Architecture**:
-  1. **Minimum Time Heuristic**: Submissions completed in under 10 seconds from problem load are flagged for review.
-  2. **Code Entropy & Structure Analysis**: Compares tokenized AST representations against known public solution repositories.
-  3. **Hidden Test Suites**: Execution runs against private testcases loaded dynamically from Cloudflare R2 at runtime, preventing hard-coded output hacking (`if (input == ...) return ...;`).
+  1. **First-Attempt Scoped Minimum Time Heuristic**: Submissions completed in under 10 seconds from problem load are flagged for review **only on first-time solves** (`WHERE NOT EXISTS (SELECT 1 FROM dsa_progress WHERE user_id = :uid AND problem_slug = :slug AND status = 'ACCEPTED')`).
+  2. **Spaced-Repetition Review Exemption**: Rapid re-solves triggered via the SM-2 Spaced-Repetition Review Queue (§8.5) are explicitly exempted from this 10-second threshold.
+  3. **Code Entropy & Structure Analysis**: Compares tokenized AST representations against known public solution repositories.
+  4. **Hidden Test Suites**: Execution runs against private testcases loaded dynamically from Cloudflare R2 at runtime, preventing hard-coded output hacking (`if (input == ...) return ...;`).
 
-## 8.4 Shareable Public Portfolio & Dynamic Resume Generator
+## 8.4 Shareable Public Portfolio & Dynamic Resume Generator (Opt-In & Privacy-Guarded)
 - **Architecture**:
-  - Public vanity URL route: `sdetube.pages.dev/u/:username`.
+  - Public vanity URL route: `sdetube.pages.dev/u/:username` backed by unique, indexed `profiles.username`.
+  - **Strict Privacy & Opt-In Guard**: Public visibility is strictly opt-in (`profiles.is_public_portfolio_enabled = TRUE`).
+  - **Zero Email Leakage**: The public portfolio **never** renders student email addresses; only sanitized `display_name`, `username`, and public metrics are displayed.
   - Recruiter-optimized public landing page displaying:
     - Verified SDETube certifications with 1-click cryptographic authenticity badges.
     - Unified 3-year omnichannel coding heatmap (LeetCode + GitHub + Codeforces + SDETube).
@@ -876,7 +958,8 @@ sdestream (R2 Bucket)
 
 ## 8.5 Spaced Repetition (SM-2 / Leitner Algorithm) Review Engine
 - **Architecture**:
-  - Problems solved by a student automatically enter an algorithmic review queue based on the SuperMemo-2 (SM-2) algorithm.
+  - Backed by PostgreSQL table `spaced_repetition_queue (user_id, problem_slug, ease_factor, interval_days, next_review_at)`.
+  - Solved problems automatically enter an algorithmic review queue based on the SuperMemo-2 (SM-2) algorithm.
   - Intervals: 1 Day $\rightarrow$ 3 Days $\rightarrow$ 7 Days $\rightarrow$ 16 Days $\rightarrow$ 35 Days.
   - Dashboard prompts: "3 Problems Due for Review Today" to combat the Ebbinghaus forgetting curve and cement algorithmic mastery.
 
