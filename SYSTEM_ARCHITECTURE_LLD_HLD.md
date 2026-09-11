@@ -13,6 +13,9 @@
    - 1.3 [Multi-Tier AI Inference Cascade](#13-multi-tier-ai-inference-cascade)
    - 1.4 [Lead Bar Raiser Voice Mock Interview Subsystem](#14-lead-bar-raiser-voice-mock-interview-subsystem)
    - 1.5 [Atomic Concurrency & Wallet Ledger](#15-atomic-concurrency--wallet-ledger)
+   - 1.6 [Omnichannel Developer Profile & Analytics Ingestion Engine](#16-omnichannel-developer-profile--analytics-ingestion-engine)
+   - 1.7 [Inter-Device Cloud Progress Synchronization Engine](#17-inter-device-cloud-progress-synchronization-engine)
+   - 1.8 [Verifiable Certification & Strict ≥90% Mastery Security Gate](#18-verifiable-certification--strict-90-mastery-security-gate)
 2. [Full Platform User & Data Flow](#2-full-platform-user--data-flow)
    - 2.1 [Student Onboarding & Passwordless Passkey Flow](#21-student-onboarding--passwordless-passkey-flow)
    - 2.2 [DSA Problem Solving & Code Execution Flow](#22-dsa-problem-solving--code-execution-flow)
@@ -20,12 +23,15 @@
    - 2.4 [Video Lecture Streaming & Dual-Mode Notes Sync Flow](#24-video-lecture-streaming--dual-mode-notes-sync-flow)
    - 2.5 [Lead Bar Raiser Voice Interview & Scorecard Flow](#25-lead-bar-raiser-voice-interview--scorecard-flow)
    - 2.6 [Wallet Billing, 24-Hour Passes & Top-Up Flow](#26-wallet-billing-24-hour-passes--top-up-flow)
+   - 2.7 [Omnichannel Developer Profile & Multi-Platform Aggregation Flow](#27-omnichannel-developer-profile--multi-platform-aggregation-flow)
+   - 2.8 [Inter-Device Synchronization & Storage Healing Flow](#28-inter-device-synchronization--storage-healing-flow)
+   - 2.9 [Official Certificate Verification & Strict ≥90% Mastery Enforcement Flow](#29-official-certificate-verification--strict-90-mastery-enforcement-flow)
 3. [Low-Level Design (LLD): Component Architecture (`src/components/`)](#3-low-level-design-lld-component-architecture-srccomponents)
    - 3.1 [Master Shell & Routing Controller (`App.tsx`)](#31-master-shell--routing-controller-apptsx)
    - 3.2 [Coding & Algorithm Workspaces](#32-coding--algorithm-workspaces)
    - 3.3 [System Design & Mock Interview Rooms](#33-system-design--mock-interview-rooms)
    - 3.4 [Video Streaming & Notes Subsystem](#34-video-streaming--notes-subsystem)
-   - 3.5 [Identity, Wallet & Admin Portals](#35-identity-wallet--admin-portals)
+   - 3.5 [Identity, Wallet, Profiles & Certificates](#35-identity-wallet-profiles--certificates)
    - 3.6 [Diagramming, Quizzes & Supporting UI Components](#36-diagramming-quizzes--supporting-ui-components)
 4. [Low-Level Design (LLD): Core Services Deep Dive (`src/lib/`)](#4-low-level-design-lld-core-services-deep-dive-srclib)
    - 4.1 [Problem & Execution Pipeline (`problemService.ts`, `compiler.ts`, `sqlJudge.ts`)](#41-problem--execution-pipeline-problemservicets-compilerts-sqljudgets)
@@ -33,6 +39,8 @@
    - 4.3 [Storage, Notes & Boss Sheets (`videoNotesService.ts`, `notesService.ts`, `kroki.ts`)](#43-storage-notes--boss-sheets-videonotesservicets-notesservicets-krokits)
    - 4.4 [Billing, Auth & Security (`billing.ts`, `auth.ts`, `passkey.ts`, `webauthn.ts`)](#44-billing-auth--security-billingts-authts-passkeyts-webauthnts)
    - 4.5 [Curated Datasets & Catalogs (`dsaSheetsData.ts`, `lldData.ts`, `supabase.ts`)](#45-curated-datasets--catalogs-dsasheetsdatats-llddatats-supabasets)
+   - 4.6 [Unified Analytics & Activity Deduplication Pipeline (`analytics.ts`, `userProfileService.ts`)](#46-unified-analytics--activity-deduplication-pipeline-analyticsts-userprofileservicets)
+   - 4.7 [Cross-Device Cloud Synchronization Service (`progressService.ts`)](#47-cross-device-cloud-synchronization-service-progressservicets)
 5. [Backend Microservices Low-Level Design (`backend/` & `functions/`)](#5-backend-microservices-low-level-design-backend--functions)
    - 5.1 [FastAPI Gateway & Route Handlers (`backend/main.py`)](#51-fastapi-gateway--route-handlers-backendmainpy)
    - 5.2 [Cloudflare R2 SigV4 Storage Manager (`backend/r2_storage.py`)](#52-cloudflare-r2-sigv4-storage-manager-backendr2_storagepy)
@@ -219,6 +227,118 @@ sequenceDiagram
 
 ---
 
+## 1.6 Omnichannel Developer Profile & Analytics Ingestion Engine
+
+```mermaid
+graph TD
+    subgraph DataSources ["Primary Activity & Progress Ingestion"]
+        SHEETS["Curated DSA Sheets (SDE 191, A2Z 474, 79, Blind 75, MIK)"]
+        IDE_RUNNER["In-Browser Compiler Accepted Runs (edustream_submissions_*)"]
+        POTD_FEED["POTD Trifecta (SDETube, LeetCode, GFG)"]
+        EXT_LC["LeetCode Profile GraphQL Proxy (submissionCalendar)"]
+        EXT_GH["GitHub REST API (Public Commits & Repos)"]
+        EXT_GFG["GeeksforGeeks Practice Profile Scraper"]
+        EXT_CF["Codeforces User Status API"]
+    end
+
+    subgraph NormalizationEngine ["Canonical Normalization & Deduplication (userProfileService.ts)"]
+        CANON_MAP["Canonical Slug Normalizer (strips numeric prefixes, symbols)"]
+        DEDUP_POTD["POTD Date Deduplicator (Prevents 4x Flag Stacking)"]
+        DATE_COUNTS["getAuthenticActivityDateCounts() Map: YYYY-MM-DD -> Count"]
+        SHEET_BREAKDOWN["getRealSheetSolvedBreakdown() -> Unique Solved Set"]
+    end
+
+    subgraph AnalyticalAggregators ["Authoritative Aggregators & Metric Engines"]
+        DASH_METRICS["getRealAnalytics() (analytics.ts)"]
+        HEATMAP_3YR["PlatformHeatmap 3-Year Engine (buildAnnualHeatmapWeeks)"]
+        STREAKS["Streak Engine (Current Streak, Max Streak, Active Days)"]
+        CERT_GATER["Track Certificate Evaluator (pct >= 90% Hard Gate)"]
+    end
+
+    subgraph PresentationSurfaces ["Unified Presentation Layer"]
+        DASHBOARD["DashboardLandingPage (Real-time Solved Count & Readiness)"]
+        DEV_PROFILE["DeveloperProfilePage (6-Mode Omnichannel Profile)"]
+        MODAL_PROFILE["UserProfileModal (Progress & Passkey Settings)"]
+        CERT_MODAL["CertificateModal (Cryptographic Verification ID)"]
+    end
+
+    SHEETS --> SHEET_BREAKDOWN
+    IDE_RUNNER --> CANON_MAP
+    CANON_MAP --> SHEET_BREAKDOWN
+    IDE_RUNNER --> DATE_COUNTS
+    POTD_FEED --> DEDUP_POTD
+    DEDUP_POTD --> DATE_COUNTS
+    
+    SHEET_BREAKDOWN --> DASH_METRICS
+    SHEET_BREAKDOWN --> DEV_PROFILE
+    DATE_COUNTS --> HEATMAP_3YR
+    DATE_COUNTS --> STREAKS
+    EXT_LC --> HEATMAP_3YR
+    
+    SHEET_BREAKDOWN --> CERT_GATER
+    CERT_GATER --> CERT_MODAL
+    DASH_METRICS --> DASHBOARD
+    HEATMAP_3YR --> DEV_PROFILE
+    STREAKS --> DEV_PROFILE
+    STREAKS --> MODAL_PROFILE
+```
+
+---
+
+## 1.7 Inter-Device Cloud Progress Synchronization Engine
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Student Device (Desktop / Tablet / Mobile)
+    participant Client as progressService.ts / localStorage
+    participant Supabase as Supabase Database (dsa_progress & profiles)
+    participant R2 as Cloudflare R2 (vnotes/ bucket)
+
+    Note over Student,Client: Student Solves Problem or Edits Lecture Notes
+    Client->>Client: Save locally to localStorage (offline-first execution)
+    alt Cloud Auto-Sync Enabled (isCloudAutoSyncEnabled)
+        Client->>Supabase: upsert_user_dsa_progress(p_user_email, p_sheet_progress, p_lld_progress)
+        activate Supabase
+        Supabase->>Supabase: Merge unique problem IDs across devices (Union of Sets)
+        Supabase-->>Client: 200 OK + Authoritative Cloud State
+        deactivate Supabase
+        Client->>R2: HTTP PUT /api/notes/sync (vnotes/{email}_{videoId}.md)
+        R2-->>Client: 200 OK (Persisted in Global Object Store)
+    end
+
+    Note over Student,Client: Student Opens Another Device (e.g. Mobile / Workstation)
+    Student->>Client: App Mounts (checkAndAutoLogin)
+    Client->>Supabase: SELECT * FROM dsa_progress WHERE user_email = p_user_email
+    Supabase-->>Client: Authoritative Sheet Progress
+    Client->>Client: Reconcile & Heal Local Storage Keys
+    Note over Client: sdetube_dsa_sheet_solved_* synced across all devices
+```
+
+---
+
+## 1.8 Verifiable Certification & Strict ≥90% Mastery Security Gate
+
+```mermaid
+graph TD
+    TRACK[Track Progress Evaluation: getUserTracksCertificates] --> CALC[Calculate Solved / Total Items]
+    CALC --> PCT[pct = Math.round solved / total * 100]
+    PCT --> GATE{Is Mastery >= 90%?}
+    
+    GATE -- "NO (pct < 90%)" --> LOCKED["LOCKED STATE"]
+    LOCKED --> UI_LOCK["Display: 'Locked (Requires ≥90% Mastery)' with Lock Icon"]
+    LOCKED --> NO_PREVIEW["No 'Preview' button rendered"]
+    LOCKED --> GUARD_OPEN["handleOpenCert: Rejects execution"]
+    LOCKED --> MODAL_REJECT["CertificateModal: Returns null"]
+    
+    GATE -- "YES (pct >= 90%)" --> UNLOCKED["VERIFIED ELIGIBLE"]
+    UNLOCKED --> GEN_ID["Generate Verification Code: SDETUBE-CERT-2026-STUDENT-TRACKID"]
+    UNLOCKED --> UI_VIEW["Render: 'View Certificate' Gold Action Button"]
+    UNLOCKED --> MODAL_ACTIVE["CertificateModal: Renders Official Certificate with Print & LinkedIn Share"]
+```
+
+---
+
 # 2. Full Platform User & Data Flow
 
 ## 2.1 Student Onboarding & Passwordless Passkey Flow
@@ -266,6 +386,37 @@ sequenceDiagram
 3. **Architecture Diagramming (`HLDArchitectureCanvas.tsx`)**: Candidate drags load balancers, microservices, caches, and databases onto the canvas.
 4. **Scorecard Generation (`interviewEvaluator.ts`)**: Upon interview completion, AI evaluates transcript and outputs a structured scorecard with rubric ratings (1-10) and actionable improvement feedback.
 
+## 2.6 Wallet Billing, 24-Hour Passes & Top-Up Flow
+1. **Pass Verification**: Before accessing paid assets (e.g. video lectures at ₹2.00 / ₹1.00 re-watch), `canAffordAction()` verifies available balance.
+2. **Atomic Ledger Execution**: Invokes PostgreSQL RPC `deduct_wallet_credits()` with pessimistic row locks and idempotency keys to prevent double deductions.
+3. **Recharge Flow (`WalletTopupModal.tsx`)**: Protected by Cloudflare Turnstile bot verification. Successfully verified recharges trigger instant cryptographic balance update.
+
+## 2.7 Omnichannel Developer Profile & Multi-Platform Aggregation Flow
+1. **Mode Selection (`DeveloperProfilePage.tsx`)**: The developer profile supports 6 distinct visualization modes:
+   - **SDETube**: Local & cloud-synced DSA, LLD, and SQL progress.
+   - **LeetCode**: GraphQL proxy fetching solved counts, ranking, contest rating, and 365-day submission calendar.
+   - **GitHub**: Public repositories, contribution graphs, stars, and language distribution.
+   - **GeeksforGeeks**: Practice scores, coding streak, and institute rankings.
+   - **Codeforces**: Current rating, max rank (e.g., Candidate Master), and recent contest performance.
+   - **Combined Omnichannel**: Merged 3-year activity calendar showing aggregated multi-platform developer velocity.
+2. **Real-Time Data Ingestion**: When handles are updated in `UserProfileModal.tsx`, background workers query external APIs, parse responses, and populate normalized caches.
+
+## 2.8 Inter-Device Synchronization & Storage Healing Flow
+1. **Local Writes**: When code is submitted or a problem is checked, `progressService.ts` records the action in `localStorage`.
+2. **Cloud Propagation**: If logged in and cloud sync is active, `saveUserProgress()` dispatches an asynchronous background upsert to Supabase PostgreSQL table `dsa_progress`.
+3. **Cross-Device Reconciliation**: When logging in on another device, `getUserProgressSync()` pulls the cloud state, computes the set union of solved problem IDs, and heals all local cache keys (`sdetube_dsa_sheet_solved_*`, `sdetube_solved_slugs`).
+4. **Notes Persistence**: Lecture video notes auto-replicate to Cloudflare R2 bucket `sdestream` under `vnotes/{email}_{videoId}.md`.
+
+## 2.9 Official Certificate Verification & Strict ≥90% Mastery Enforcement Flow
+1. **Progress Assessment**: `getUserTracksCertificates()` computes percentage progress across 6 tracks (SDE 191, Blind 75, MIK Sheet, LLD Design, HLD Systems, and DBMS SQL).
+2. **Mastery Threshold**: Only tracks achieving $\ge 90\%$ are marked `isEligible: true`. Artificial floors (`Math.max(1, ...)`) are strictly prohibited.
+3. **Multi-Layer UI & Modal Lockout**:
+   - Preview buttons are removed on all tracks below 90%.
+   - Ineligible cards display a locked badge with `Lock` icon.
+   - `handleOpenCert` rejects opening for any track $< 90\%$.
+   - Both `CertificateModal.tsx` and `UserProfileModal.tsx` contain defensive guards returning `null` if opened with $< 90\%$ completion.
+4. **Verification Issuance**: Eligible certificates receive a structured, non-forgeable ID: `SDETUBE-CERT-2026-{CLEAN_EMAIL}-{TRACK_ID}` with Distinction ($\ge 95\%$) or Honors ($\ge 90\%$).
+
 ---
 
 # 3. Low-Level Design (LLD): Component Architecture (`src/components/`)
@@ -275,6 +426,7 @@ sequenceDiagram
 | File / Component | State & Props | Submodules & Services | Purpose & Integration |
 |---|---|---|---|
 | **`App.tsx`** | `activeTab`: `'dashboard' \| 'channels' \| 'lesson' \| 'sde_sheet' \| 'lld' \| 'hld' \| 'interview' \| 'profile' \| 'admin'`<br>`selectedVideo`: `Video`<br>`selectedChannelId`: `string`<br>`sdeFullscreenProblem`: `SDEProblem \| null` | `Navbar.tsx`<br>`VideoPlayer.tsx`<br>`SDESheetExplorer.tsx`<br>`POTDModal.tsx`<br>`AskAIChatModal.tsx` | Master routing hub. Listens to `window.location.hash` and `window.history.pushState`. Handles pause/resume video global custom events. |
+| **`DashboardLandingPage.tsx`** | `user`: `User \| null`<br>`metrics`: `RealAnalyticsMetrics`<br>`solveEventCount`: `number` | `getRealAnalytics(user?.email)`<br>`resetUnverifiedPotdToday()`<br>`isPotdSolvedToday()` | Primary student mission control. Displays authoritative solved counts (synchronized with profile), SDE readiness score, velocity metrics, POTD trifecta, and curated problem recommendations. |
 
 ---
 
@@ -315,13 +467,14 @@ sequenceDiagram
 
 ---
 
-## 3.5 Identity, Wallet & Admin Portals
+## 3.5 Identity, Wallet, Profiles & Certificates
 
 | Component | Props & State | Key Methods / Handlers | Purpose |
 |---|---|---|---|
 | **`AuthModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handlePasswordAuth()`, `handlePasskeyAuth()`, `handleOTP()` | Modal handling Supabase Auth and WebAuthn FIDO2 biometric passkey registration and login. |
-| **`UserProfileModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handleRegisterPasskey()`, `handleUpdateProfile()` | Manages user passkeys, wallet transaction history, display name, and notification preferences. |
-| **`DeveloperProfilePage.tsx`** | `user`: `Student` | `calculateStreak()`, `generateCert()` | Portfolio dashboard featuring coding velocity heatmaps, problem completion stats, badges, and verified completion certificates. |
+| **`UserProfileModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`certificates`: `TrackCertificateProgress[]` | `handleRegisterPasskey()`, `handleUpdateProfile()`, `setSelectedCert()` | Manages user passkeys, wallet transaction history, display name, linked profiles (LeetCode, GitHub, GFG, Codeforces), and verified certificates with strict ≥90% mastery gating. |
+| **`DeveloperProfilePage.tsx`** | `user`: `Student \| null`<br>`profileMode`: `6 Modes`<br>`selectedYear`: `number`<br>`selectedCertificate`: `CertificateData \| null` | `getRealSheetSolvedBreakdown()`, `generateUserSubmissionHeatmap()`, `handleOpenCert()`, `getUserTracksCertificates()` | 6-Mode Omnichannel developer portfolio featuring 3-year interactive activity heatmaps, multi-platform stats (LeetCode GraphQL, GitHub, GFG, Codeforces), real submission logs, and official certificates guarded by strict ≥90% mastery requirements. |
+| **`CertificateModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void`<br>`certificate`: `CertificateData \| null` | `handlePrint()`, `handleShareLinkedIn()` | Official verifiable certificate viewer modal with cryptographically structured verification IDs (`SDETUBE-CERT-2026-*`). Strictly guarded against rendering for tracks under 90% mastery. |
 | **`WalletTopupModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `handleTopup()`, `verifyTurnstile()` | Secure credit recharge modal protected by Cloudflare Turnstile bot verification. |
 | **`InsufficientCreditsModal.tsx`** | `cost`: `number`<br>`action`: `string`<br>`isOpen`: `boolean` | `handleOneClickRecharge()` | Credit gating modal that triggers when a student attempts an action exceeding their balance. |
 | **`AdminDashboardModal.tsx`** | `isOpen`: `boolean`<br>`onClose`: `() => void` | `loadMetrics()`, `editR2Problem()`, `grantCredits()` | Restricted operator portal for monitoring platform telemetry, AI token consumption, and editing Cloudflare R2 test suites. |
@@ -451,6 +604,21 @@ graph TD
   - **CodeStoryWithMIK Sheet**: Daily challenge and algorithmic patterns dataset.
 - **`lldData.ts`**: Low-Level Design problem catalog, UML schemas, and design pattern challenges.
 - **`supabase.ts`**: Supabase client initialization, mock channel catalogs, and fallback video feeds.
+
+---
+
+## 4.6 Unified Analytics & Activity Deduplication Pipeline (`analytics.ts`, `userProfileService.ts`)
+
+- **`getRealSheetSolvedBreakdown(userEmail?)`**: Authoritative single source of truth for problem solving statistics across SDETube. Inspects canonical sheet problem maps (`SDE 191`, `A2Z 474`, `SDETube 79`, `Blind 75`, `MIK Complete`, and `LLD`) plus verified `Accepted` compiler runs, guaranteeing 100% agreement between Dashboard and Developer Profile.
+- **`getAuthenticActivityDateCounts()`**: Scans real code submissions and sheet activity logs, deduplicating problem slugs per date. Inspects POTD solved keys (`sdetube_potd_solved_*`) and ensures at most 1 active day entry is credited per date if no code submissions exist, preventing 4x flag stacking.
+- **`getRealAnalytics(userEmail?)`**: Computes core metrics (`dsaSolved`, `lldSolved`, `totalSolved`, `bonusPoints`, `sdeReadinessScore`, `difficultyStats`) derived directly from `getRealSheetSolvedBreakdown()`.
+- **`generateUserSubmissionHeatmap(providedCounts?)`**: Renders 52-week activity calendar, calculates max streak and current streak, and categorizes activity into 5 distinct heatmap color levels.
+
+## 4.7 Cross-Device Cloud Synchronization Service (`progressService.ts`)
+
+- **`saveUserProgress(progress, userEmail?)`**: Persists solved problem ID arrays (`solved_sde`, `solved_a2z`, `solved_79`, `solved_blind75`, `solved_mik`, `lld_solved_ids`) to Supabase PostgreSQL table `dsa_progress`.
+- **`getUserProgressSync(userEmail?)`**: Reads the latest progress snapshot from in-memory cache or Supabase, synchronizing local storage keys to ensure multi-device continuity.
+- **`isCloudAutoSyncEnabled()` / `setCloudAutoSyncEnabled()`**: Toggles automatic cloud backup and multi-device synchronization.
 
 ---
 
