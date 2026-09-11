@@ -55,15 +55,16 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   onOpenAskAI
 }) => {
   // Query 100% real computed student analytics (reactive on problem solve)
-  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics());
+  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics(user?.email));
   const [solveEventCount, setSolveEventCount] = useState<number>(0);
 
   useEffect(() => {
     resetUnverifiedPotdToday();
     const handleUpdate = () => {
-      setMetrics(getRealAnalytics());
+      setMetrics(getRealAnalytics(user?.email));
       setSolveEventCount(c => c + 1);
     };
+    handleUpdate();
     window.addEventListener('sdetube_problem_solved', handleUpdate);
     window.addEventListener('sdetube_potd_solved', handleUpdate);
     window.addEventListener('storage', handleUpdate);
@@ -72,7 +73,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       window.removeEventListener('sdetube_potd_solved', handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, []);
+  }, [user?.email]);
 
   const {
     dsaSolved,

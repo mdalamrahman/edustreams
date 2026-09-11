@@ -26,7 +26,8 @@ import {
   ShieldCheck,
   GraduationCap,
   Cloud,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import {
   LeetCodeFullProfileData,
@@ -884,7 +885,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-400 font-mono">{cert.solvedItems} / {cert.totalItems} completed</span>
-                        {cert.isEligible ? (
+                        {cert.isEligible && cert.percentage >= 90 ? (
                           <button
                             onClick={() => setSelectedCert(cert)}
                             className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-all cursor-pointer shadow-md"
@@ -892,7 +893,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             View Certificate
                           </button>
                         ) : (
-                          <span className="text-slate-500 font-mono">Need 90%</span>
+                          <span className="text-slate-500 font-mono flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-slate-500" /> Locked (&ge;90%)
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1962,7 +1965,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       </div>
 
       {/* Verified Certificate Viewer Modal */}
-      {selectedCert && (
+      {selectedCert && selectedCert.isEligible && selectedCert.percentage >= 90 && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-lg animate-fadeIn">
           <div className="relative w-full max-w-2xl bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <button

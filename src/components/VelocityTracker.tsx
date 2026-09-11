@@ -58,11 +58,11 @@ export type AnalyticsViewMode = 'sdetube' | 'overall';
 
 export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
   const [viewMode, setViewMode] = useState<AnalyticsViewMode>('sdetube');
-  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics());
-
   // Current user email & linked profile configurations
   const student = useMemo(() => getCurrentStudent(), []);
   const userEmail = student?.email || 'student@edustream.io';
+
+  const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics(userEmail));
 
   const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(userEmail));
   const [isConfigExpanded, setIsConfigExpanded] = useState<boolean>(false);
@@ -84,7 +84,7 @@ export const VelocityTracker: React.FC<VelocityTrackerProps> = () => {
 
   // Refresh Real SDETube metrics on platform events
   useEffect(() => {
-    const handleUpdate = () => setMetrics(getRealAnalytics());
+    const handleUpdate = () => setMetrics(getRealAnalytics(userEmail));
     window.addEventListener('sdetube_problem_solved', handleUpdate);
     window.addEventListener('sdetube_potd_solved', handleUpdate);
     window.addEventListener('storage', handleUpdate);

@@ -36,7 +36,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 }) => {
   const certRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen || !certificate) return null;
+  if (!isOpen || !certificate || certificate.completionPercentage < 90) return null;
 
   const handlePrint = () => {
     window.print();

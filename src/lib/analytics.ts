@@ -3,6 +3,7 @@ import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
+import { getRealSheetSolvedBreakdown } from './userProfileService';
 
 // Dedicated per-sheet maps for accurate O(1) problem ID lookup (prevents cross-sheet ID collisions)
 const sdeProblemMap = new Map<number, any>();
@@ -548,128 +549,13 @@ export function getAllPlatformUniqueProblems(): any[] {
 /**
  * Computes strictly 100% REAL user analytics data across DSA + LLD + Bonus (CN & DBMS).
  */
-export function getRealAnalytics(): RealAnalyticsMetrics {
-  // 1. DSA Solved across all sheets and unique slugs
-  const allUniqueProblems = getAllPlatformUniqueProblems();
-  const dsaTotal = Math.max(allUniqueProblems.length, 1);
+export function getRealAnalytics(userEmail?: string): RealAnalyticsMetrics {
+  // Authoritative single source of truth across SDETube: sheet & compiler breakdown
+  const sheetBreakdown = getRealSheetSolvedBreakdown(userEmail);
+  const totalSolved = sheetBreakdown.totalSolved;
+  const uniqueSolvedSlugs = new Set<string>(sheetBreakdown.solvedSlugs);
 
-  // Set of strictly UNIQUE canonical problem slugs solved by user (deduplicates across sheets and compiler)
-  const uniqueSolvedSlugs = new Set<string>();
-
-  const addProblem = (prob?: any) => {
-    if (!prob) return;
-    const raw = getLeetCodeSlug(prob) || prob.slug || prob.name;
-    const slug = normalizeCanonicalSlug(raw);
-    if (slug && slug.length > 2 && slug !== 'problem' && slug !== 'undefined' && slug !== 'null') {
-      uniqueSolvedSlugs.add(slug);
-    }
-  };
-
-  const addRawSlug = (raw?: string) => {
-    if (!raw) return;
-    const slug = normalizeCanonicalSlug(raw);
-    if (slug && slug.length > 2 && slug !== 'problem' && slug !== 'undefined' && slug !== 'null') {
-      uniqueSolvedSlugs.add(slug);
-    }
-  };
-
-  // 1. Sheet progress: resolve IDs strictly against each sheet's OWN problem definitions (prevents cross-sheet ID collisions)
-  try {
-    const syncProg = getUserProgressSync();
-    if (syncProg) {
-      (syncProg.solved_sde || []).forEach(id => addProblem(sdeProblemMap.get(id)));
-      (syncProg.solved_a2z || []).forEach(id => addProblem(a2zProblemMap.get(id)));
-      (syncProg.solved_79 || []).forEach(id => addProblem(sde79ProblemMap.get(id)));
-      (syncProg.solved_blind75 || []).forEach(id => addProblem(blind75ProblemMap.get(id)));
-      (syncProg.solved_mik || []).forEach(id => addProblem(mikProblemMap.get(id)));
-
-      // Synchronize and heal local storage keys with authoritative Supabase progress
-      if (typeof localStorage !== 'undefined') {
-        try {
-          localStorage.setItem('sdetube_dsa_sheet_solved_sde', JSON.stringify(syncProg.solved_sde || []));
-          localStorage.setItem('sdetube_sde_sheet_solved_ids', JSON.stringify(syncProg.solved_sde || []));
-          localStorage.setItem('sdetube_dsa_sheet_solved_a2z', JSON.stringify(syncProg.solved_a2z || []));
-          localStorage.setItem('sdetube_dsa_sheet_solved_79', JSON.stringify(syncProg.solved_79 || []));
-          localStorage.setItem('sdetube_dsa_sheet_solved_blind75', JSON.stringify(syncProg.solved_blind75 || []));
-          localStorage.setItem('sdetube_dsa_sheet_solved_mik', JSON.stringify(syncProg.solved_mik || []));
-          localStorage.setItem(STORAGE_LLD_SOLVED_KEY, JSON.stringify(syncProg.lld_solved_ids || []));
-          localStorage.setItem('sdetube_lld_solved_problems', JSON.stringify(syncProg.lld_solved_ids || []));
-        } catch {}
-      }
-    } else {
-      // Offline fallback: only if no Supabase progress exists, read from local storage keys
-      const resolveStorageKey = (key: string, map: Map<number, any>) => {
-        try {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const arr = JSON.parse(raw);
-            if (Array.isArray(arr)) {
-              arr.forEach(id => typeof id === 'number' && addProblem(map.get(id)));
-            }
-          }
-        } catch {}
-      };
-      resolveStorageKey('sdetube_dsa_sheet_solved_sde', sdeProblemMap);
-      resolveStorageKey('sdetube_sde_sheet_solved_ids', sdeProblemMap);
-      resolveStorageKey('sdetube_dsa_sheet_solved_a2z', a2zProblemMap);
-      resolveStorageKey('sdetube_dsa_sheet_solved_79', sde79ProblemMap);
-      resolveStorageKey('sdetube_dsa_sheet_solved_blind75', blind75ProblemMap);
-      resolveStorageKey('sdetube_dsa_sheet_solved_mik', mikProblemMap);
-    }
-  } catch {}
-
-  // 2. POTD Check: Include today's verified POTDs if solved
-  const todayStr = new Date().toISOString().slice(0, 10);
-  if (isPotdSolvedToday('sdetube')) {
-    try {
-      const sdePotd = getUniversalSdePotd();
-      if (sdePotd) addProblem(sdePotd);
-    } catch {}
-  }
-  if (isPotdSolvedToday('leetcode')) {
-    try {
-      const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode') || localStorage.getItem(`sdetube_leetcode_potd_${todayStr}`);
-      if (lcRaw) {
-        const lc = JSON.parse(lcRaw);
-        if (lc.titleSlug || lc.title) {
-          addRawSlug(lc.titleSlug || lc.title);
-        }
-      }
-    } catch {}
-  }
-  if (isPotdSolvedToday('gfg')) {
-    try {
-      const gfgRaw = localStorage.getItem('edustream_potd_cache_gfg') || localStorage.getItem(`sdetube_gfg_potd_${todayStr}`);
-      if (gfgRaw) {
-        const gfg = JSON.parse(gfgRaw);
-        addRawSlug(gfg.titleSlug || gfg.title);
-      }
-    } catch {}
-  }
-
-  // 3. Compiler / IDE accepted submissions: count each unique problem once
-  // STRICT RULE: Do NOT count test runs or submission attempts; only count unique problems with Accepted/SUCCESS status
-  try {
-    if (typeof localStorage !== 'undefined') {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
-          const raw = localStorage.getItem(key);
-          if (raw && (raw.includes('"status":"SUCCESS"') || raw.includes('"status":"Accepted"'))) {
-            try {
-              const subs = JSON.parse(raw);
-              if (Array.isArray(subs) && subs.some(s => s && (s.status === 'SUCCESS' || s.status === 'Accepted'))) {
-                const slugPart = key.replace(/^edustream_(sql_)?submissions_/, '');
-                addRawSlug(slugPart);
-              }
-            } catch {}
-          }
-        }
-      }
-    }
-  } catch {}
-
-  // 4. Heal and prune contaminated local storage slug caches with authoritative uniqueSolvedSlugs
+  // Heal and prune local storage slug caches with authoritative uniqueSolvedSlugs
   try {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('sdetube_solved_slugs', JSON.stringify(Array.from(uniqueSolvedSlugs)));
@@ -677,60 +563,13 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
     }
   } catch {}
 
-  // Strictly count UNIQUE problems solved (never number of submissions)
-  const dsaSolved = uniqueSolvedSlugs.size;
-  let easyTotal = 0, easySolved = 0;
-  let medTotal = 0, medSolved = 0;
-  let hardTotal = 0, hardSolved = 0;
-
-  const catMap = new Map<string, { total: number; solved: number }>();
-  const matchedSlugs = new Set<string>();
-
-  for (const prob of allUniqueProblems) {
-    const pSlug = normalizeCanonicalSlug(prob.cleanSlug || prob.slug || getLeetCodeSlug(prob));
-    const pNameSlug = normalizeCanonicalSlug(prob.name || prob.title);
-
-    const isSolved = (pSlug && uniqueSolvedSlugs.has(pSlug)) || (pNameSlug && uniqueSolvedSlugs.has(pNameSlug));
-    if (isSolved) {
-      if (pSlug) matchedSlugs.add(pSlug);
-      if (pNameSlug) matchedSlugs.add(pNameSlug);
-
-      const diff = (prob.difficulty || 'Medium').toLowerCase();
-      if (diff === 'easy') easySolved++;
-      else if (diff === 'hard') hardSolved++;
-      else medSolved++;
-    }
-
-    const diff = (prob.difficulty || 'Medium').toLowerCase();
-    if (diff === 'easy') {
-      easyTotal++;
-    } else if (diff === 'hard') {
-      hardTotal++;
-    } else {
-      medTotal++;
-    }
-
-    const cat = prob.category || 'Algorithms';
-    const cEntry = catMap.get(cat) || { total: 0, solved: 0 };
-    cEntry.total++;
-    if (isSolved) cEntry.solved++;
-    catMap.set(cat, cEntry);
-  }
-
-  // Account for any off-sheet unique solved problems (e.g. daily POTD, custom compiler challenges)
-  for (const s of uniqueSolvedSlugs) {
-    if (!matchedSlugs.has(s)) {
-      medSolved++;
-    }
-  }
-
-  const effectiveDsaTotal = Math.max(allUniqueProblems.length, dsaSolved);
-  const dsaPct = effectiveDsaTotal > 0 ? Math.round((dsaSolved / effectiveDsaTotal) * 100) : 0;
+  const allUniqueProblems = getAllPlatformUniqueProblems();
+  const dsaTotal = Math.max(allUniqueProblems.length, 1);
 
   // 2. LLD Solved
   let lldSolvedIds: (string | number)[] = [];
   try {
-    const syncProg = getUserProgressSync();
+    const syncProg = getUserProgressSync(userEmail);
     if (syncProg && Array.isArray(syncProg.lld_solved_ids)) {
       lldSolvedIds = syncProg.lld_solved_ids;
     } else {
@@ -744,9 +583,29 @@ export function getRealAnalytics(): RealAnalyticsMetrics {
   const lldTotal = LLD_PROBLEMS.length;
   const lldPct = lldTotal > 0 ? Math.round((lldSolved / lldTotal) * 100) : 0;
 
-  const totalSolved = uniqueSolvedSlugs.size;
-  const dsaSolvedCanonical = Math.max(0, totalSolved - lldSolved);
+  const dsaSolved = Math.max(0, totalSolved - lldSolved);
   const totalAvailableProblems = dsaTotal + lldTotal;
+  const dsaPct = dsaTotal > 0 ? Math.round((dsaSolved / dsaTotal) * 100) : 0;
+
+  const easySolved = sheetBreakdown.easySolved;
+  const medSolved = sheetBreakdown.medSolved;
+  const hardSolved = sheetBreakdown.hardSolved;
+  const easyTotal = sheetBreakdown.easyTotal;
+  const medTotal = sheetBreakdown.medTotal;
+  const hardTotal = sheetBreakdown.hardTotal;
+
+  const catMap = new Map<string, { total: number; solved: number }>();
+  for (const prob of allUniqueProblems) {
+    const pSlug = normalizeCanonicalSlug(prob.cleanSlug || prob.slug || getLeetCodeSlug(prob));
+    const pNameSlug = normalizeCanonicalSlug(prob.name || prob.title);
+    const isSolved = (pSlug && uniqueSolvedSlugs.has(pSlug)) || (pNameSlug && uniqueSolvedSlugs.has(pNameSlug));
+
+    const cat = prob.category || 'Algorithms';
+    const cEntry = catMap.get(cat) || { total: 0, solved: 0 };
+    cEntry.total++;
+    if (isSolved) cEntry.solved++;
+    catMap.set(cat, cEntry);
+  }
 
   // 3. Bonus Points (DBMS & CN)
   let dbmsQueriesExecuted = 0;

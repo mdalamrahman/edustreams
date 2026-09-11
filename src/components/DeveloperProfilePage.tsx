@@ -485,6 +485,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const handleOpenCert = (track: TrackCertificateProgress) => {
+    if (!track.isEligible || track.percentage < 90) return;
     setSelectedCertificate({
       id: track.trackId,
       studentName: user?.user_metadata?.name || formName || 'Mudit',
@@ -1009,14 +1010,15 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                             <ArrowRight className="w-3 h-3" />
                           </button>
                         )}
-                        {track.isEligible ? (
+                        {track.isEligible && track.percentage >= 90 ? (
                           <button onClick={() => handleOpenCert(track)} className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-md">
                             <Award className="w-3.5 h-3.5" /><span>View Certificate</span>
                           </button>
                         ) : (
-                          <button onClick={() => handleOpenCert(track)} className="px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-300 text-xs font-bold cursor-pointer flex items-center gap-1">
-                            <span>Preview</span><Eye className="w-3 h-3" />
-                          </button>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800/80 select-none">
+                            <Lock className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Locked (&ge;90% Required)</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1602,17 +1604,23 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   <Award className="w-5 h-5 text-amber-400" /><span>SDETube Certificates</span>
                   <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-700/60 text-amber-300 text-[10px] font-mono font-bold">90% REQUIREMENT</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {tracks.filter(t => t.isEligible).slice(0, 4).map((track) => (
-                    <div key={track.trackId} className="p-4 rounded-2xl border bg-slate-950/90 border-amber-500/50 shadow-lg flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-100 truncate">{track.title}</p>
-                        <p className="text-[10px] font-mono text-amber-300">{track.percentage}% complete</p>
+                {tracks.filter(t => t.isEligible && t.percentage >= 90).length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {tracks.filter(t => t.isEligible && t.percentage >= 90).slice(0, 4).map((track) => (
+                      <div key={track.trackId} className="p-4 rounded-2xl border bg-slate-950/90 border-amber-500/50 shadow-lg flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-100 truncate">{track.title}</p>
+                          <p className="text-[10px] font-mono text-amber-300">{track.percentage}% complete</p>
+                        </div>
+                        <button onClick={() => handleOpenCert(track)} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex-shrink-0 cursor-pointer">Certificate</button>
                       </div>
-                      <button onClick={() => handleOpenCert(track)} className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-xs font-black flex-shrink-0 cursor-pointer">Certificate</button>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-center">
+                    <p className="text-xs text-slate-400">No certificates unlocked yet. Complete &ge;90% of any track curriculum to unlock official verified certificates.</p>
+                  </div>
+                )}
               </div>
             </>) : (
               <div className="p-10 rounded-3xl bg-slate-900 border border-slate-800 text-center">

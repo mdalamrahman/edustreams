@@ -620,6 +620,106 @@ export function buildAnnualHeatmapWeeks(
 }
 
 /**
+ * Calculates authentic, deduplicated activity and submission counts per date.
+ * Strictly prevents multi-key POTD flag inflation and prevents double-counting
+ * between compiler submissions (edustream_submissions_*) and practice activity logs.
+ */
+export function getAuthenticActivityDateCounts(): Record<string, number> {
+  const dateCounts: Record<string, number> = {};
+  const daySubmittedSlugs = new Map<string, Set<string>>();
+
+  try {
+    if (typeof localStorage === 'undefined') return dateCounts;
+
+    // 1. Scan genuine compiler & SQL submissions
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              const cleanSlug = key.replace(/^edustream_(sql_)?submissions_/, '').toLowerCase().replace(/^\d+[\s\.\-_]+/, '').replace(/[^a-z0-9]+/g, '-');
+              list.forEach((sub: any) => {
+                const ymd = parseDateToYMD(sub.timestamp || sub.id?.split('_')[0]);
+                if (ymd) {
+                  dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
+                  if (!daySubmittedSlugs.has(ymd)) daySubmittedSlugs.set(ymd, new Set());
+                  daySubmittedSlugs.get(ymd)!.add(cleanSlug);
+                }
+              });
+            }
+          } catch {}
+        }
+      }
+    }
+
+    // 2. Scan sheet practice activity logs — only add problems not already submitted via compiler on that date
+    const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
+    if (rawLogs) {
+      try {
+        const logs = JSON.parse(rawLogs);
+        if (Array.isArray(logs)) {
+          logs.forEach((l: any) => {
+            const ymd = parseDateToYMD(l.date);
+            if (ymd) {
+              const knownForDay = daySubmittedSlugs.get(ymd);
+              if (Array.isArray(l.problems) && l.problems.length > 0) {
+                let uncounted = 0;
+                l.problems.forEach((p: string) => {
+                  const cleanP = String(p).toLowerCase().replace(/^\d+[\s\.\-_]+/, '').replace(/[^a-z0-9]+/g, '-');
+                  if (!knownForDay || !knownForDay.has(cleanP)) {
+                    uncounted++;
+                    if (!daySubmittedSlugs.has(ymd)) daySubmittedSlugs.set(ymd, new Set());
+                    daySubmittedSlugs.get(ymd)!.add(cleanP);
+                  }
+                });
+                if (uncounted > 0) {
+                  dateCounts[ymd] = (dateCounts[ymd] || 0) + uncounted;
+                }
+              } else if (!dateCounts[ymd] && l.count) {
+                dateCounts[ymd] = (dateCounts[ymd] || 0) + l.count;
+              }
+            }
+          });
+        }
+      } catch {}
+    }
+
+    // 3. Deduplicate POTD active dates: any POTD solved guarantees that date is credited as an active day.
+    // However, if the date ALREADY has submissions/activity recorded, do NOT add multiple duplicate counts.
+    const potdDates = new Set<string>();
+    for (let k = 0; k < localStorage.length; k++) {
+      const key = localStorage.key(k);
+      if (!key) continue;
+      if (
+        key.startsWith('sdetube_potd_solved_') ||
+        key.startsWith('sdetube_potd_sdetube_solved_') ||
+        key.startsWith('sdetube_potd_leetcode_solved_') ||
+        key.startsWith('sdetube_potd_gfg_solved_')
+      ) {
+        if (localStorage.getItem(key) === 'true') {
+          const datePart = key.slice(-10);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+            potdDates.add(datePart);
+          }
+        }
+      }
+    }
+
+    for (const d of potdDates) {
+      if (!dateCounts[d] || dateCounts[d] === 0) {
+        dateCounts[d] = 1;
+      }
+    }
+  } catch {}
+
+  return dateCounts;
+}
+
+/**
  * Generates past 364 days (52 weeks) submission heatmap with multi-year 3-year support
  */
 export function generateUserSubmissionHeatmap(providedCounts?: Record<string, number>): {
@@ -631,63 +731,9 @@ export function generateUserSubmissionHeatmap(providedCounts?: Record<string, nu
   dateCounts: Record<string, number>;
   byYear: Record<number, YearHeatmapResult>;
 } {
-  const dateCounts: Record<string, number> = providedCounts ? { ...providedCounts } : {};
-
-  if (!providedCounts) {
-    try {
-      // 1. Scan all edustream_submissions_*
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_'))) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              list.forEach((sub: any) => {
-                const ymd = parseDateToYMD(sub.timestamp || sub.id?.split('_')[0]);
-                if (ymd) {
-                  dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
-                }
-              });
-            }
-          }
-        }
-      }
-
-      // 2. Read activity logs
-      const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
-      if (rawLogs) {
-        const logs = JSON.parse(rawLogs);
-        if (Array.isArray(logs)) {
-          logs.forEach((l: any) => {
-            const ymd = parseDateToYMD(l.date);
-            if (ymd) {
-              dateCounts[ymd] = (dateCounts[ymd] || 0) + (l.count || 1);
-            }
-          });
-        }
-      }
-
-      // 3. POTD solved dates: any platform flag counts as activity on that date
-      for (let k = 0; k < localStorage.length; k++) {
-        const key = localStorage.key(k);
-        if (!key) continue;
-        if (
-          key.startsWith('sdetube_potd_solved_') ||
-          key.startsWith('sdetube_potd_sdetube_solved_') ||
-          key.startsWith('sdetube_potd_leetcode_solved_') ||
-          key.startsWith('sdetube_potd_gfg_solved_')
-        ) {
-          if (localStorage.getItem(key) === 'true') {
-            const datePart = key.slice(-10);
-            if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-              dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
-            }
-          }
-        }
-      }
-    } catch {}
-  }
+  const dateCounts: Record<string, number> = providedCounts 
+    ? { ...providedCounts } 
+    : getAuthenticActivityDateCounts();
 
   const today = new Date();
   const days: DayActivity[] = [];
@@ -809,66 +855,9 @@ export function getUserBadges(userEmail?: string): SDETubeBadge[] {
   const breakdown = getRealSheetSolvedBreakdown(userEmail);
   const totalSolved = breakdown.totalSolved;
 
-  // Build a date-count map that merges:
-  // 1. Internal code-runner submission dates (sdetube_submissions_*)
-  // 2. POTD solved dates (sdetube_potd_solved_YYYY-MM-DD) for ALL platforms
-  // 3. Practice activity logs
-  // 4. Linked LeetCode submissionCalendar
-  // This ensures POTD streaks properly feed into streak badge progress.
-  const dateCounts: Record<string, number> = {};
+  // Build a date-count map using authentic deduplicated activity
+  const dateCounts: Record<string, number> = getAuthenticActivityDateCounts();
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-
-      // Internal submission keys
-      if (key.startsWith('edustream_submissions_') || key.startsWith('edustream_sql_submissions_')) {
-        try {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              list.forEach((sub: any) => {
-                const tsRaw = sub.timestamp || (sub.id ? parseInt(sub.id.split('_')[0], 10) : 0);
-                if (!tsRaw) return;
-                const ms = typeof tsRaw === 'number' && tsRaw < 1e11 ? tsRaw * 1000 : tsRaw;
-                const ymd = new Date(Number(ms)).toISOString().slice(0, 10);
-                if (ymd && ymd.length === 10) dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
-              });
-            }
-          }
-        } catch {}
-      }
-
-      // POTD solved keys — any of the four platform flags count as activity on that date
-      if (
-        key.startsWith('sdetube_potd_solved_') ||
-        key.startsWith('sdetube_potd_sdetube_solved_') ||
-        key.startsWith('sdetube_potd_leetcode_solved_') ||
-        key.startsWith('sdetube_potd_gfg_solved_')
-      ) {
-        if (localStorage.getItem(key) === 'true') {
-          // Extract YYYY-MM-DD from the end of the key
-          const datePart = key.slice(-10);
-          if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-            dateCounts[datePart] = (dateCounts[datePart] || 0) + 1;
-          }
-        }
-      }
-    }
-
-    // Practice activity logs
-    const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
-    if (rawLogs) {
-      const logs = JSON.parse(rawLogs);
-      if (Array.isArray(logs)) {
-        logs.forEach((l: any) => {
-          if (l?.date && typeof l.date === 'string') {
-            dateCounts[l.date] = (dateCounts[l.date] || 0) + (l.count || 1);
-          }
-        });
-      }
-    }
 
     // Merge linked LeetCode profile submissionCalendar into dateCounts
     const rawLinked = localStorage.getItem('edustream_linked_profiles');
@@ -1135,7 +1124,7 @@ export function getUserTracksCertificates(userEmail?: string): TrackCertificateP
       category: 'Cloud Engineering',
       description: 'Scalable system topology design, microservices, caching, and rate limiting.',
       totalItems: 8,
-      solvedItems: Math.min(8, Math.max(1, Math.floor(lldSolved / 2)))
+      solvedItems: Math.min(8, Math.floor(lldSolved / 2))
     },
     {
       trackId: 'track-dbms-sql',
@@ -1143,7 +1132,7 @@ export function getUserTracksCertificates(userEmail?: string): TrackCertificateP
       category: 'Data Engineering',
       description: 'ACID transactions, indexing, B+ Trees, query optimization, and live SQL execution.',
       totalItems: 12,
-      solvedItems: Math.min(12, Math.max(1, Math.floor(sdeSolved / 4)))
+      solvedItems: Math.min(12, Math.floor(sdeSolved / 4))
     }
   ];
 
@@ -1321,7 +1310,7 @@ export function getRealSheetSolvedBreakdown(userEmail?: string): SheetSolvedBrea
  */
 export function getRealSDETubeStats(): SDETubeRealStats {
   const allSubmissions: UserSubmissionRecord[] = [];
-  const dateCounts: Record<string, number> = {};
+  const dateCounts: Record<string, number> = getAuthenticActivityDateCounts();
 
   let totalSubmissions = 0;
   let totalAccepted = 0;
@@ -1350,10 +1339,6 @@ export function getRealSDETubeStats(): SDETubeRealStats {
                     if (isSql) sqlSolved++;
                   }
 
-                  // Extract date
-                  const ymd = parseDateToYMD(sub.timestamp || sub.id?.split('_')[0]) || new Date().toISOString().slice(0, 10);
-                  dateCounts[ymd] = (dateCounts[ymd] || 0) + 1;
-
                   // Format title and difficulty from canonical sheet dataset if known
                   const knownProb = canonicalProblemMap.get(slug);
                   const title = sub.problemTitle || knownProb?.name || slug.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -1374,24 +1359,6 @@ export function getRealSDETubeStats(): SDETubeRealStats {
               }
             } catch {}
           }
-        }
-      }
-    }
-  } catch {}
-
-  // 2. Scan activity logs
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const rawLogs = localStorage.getItem('sdetube_practice_activity_logs');
-      if (rawLogs) {
-        const logs = JSON.parse(rawLogs);
-        if (Array.isArray(logs)) {
-          logs.forEach((l: any) => {
-            const ymd = parseDateToYMD(l.date);
-            if (ymd) {
-              dateCounts[ymd] = (dateCounts[ymd] || 0) + (l.count || 1);
-            }
-          });
         }
       }
     }
