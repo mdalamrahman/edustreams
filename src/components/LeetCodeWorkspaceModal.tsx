@@ -291,6 +291,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
         // Check if user already has saved code in browser cache for this problem & language
         try {
+          // Purge corrupted driver cache containing empty character constant '''
+          const drvKey = `edustream_driver_${targetSlug}_${language}`;
+          const cachedDrv = localStorage.getItem(drvKey);
+          if (cachedDrv && (cachedDrv.includes("'''") || cachedDrv.includes("t.front() == '''"))) {
+            localStorage.removeItem(drvKey);
+          }
+
           const cached = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
           if (cached !== null && cached.trim().length > 0) {
             // Sanity check: purge contaminated argumentsLength code from BST problems
@@ -774,7 +781,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         problemTemplate.description,
         langToGen,
         problemTemplate.starters[langToGen],
-        problemSlug
+        problemSlug,
+        {
+          approaches: problemTemplate.approaches,
+          starterCode: problemTemplate.starters[langToGen],
+          constraints: problemTemplate.constraints,
+          examples: problemTemplate.examples,
+          hints: problemTemplate.hints,
+          testCases: problemTemplate.testCases,
+          expectedOutputs: problemTemplate.expectedOutputs
+        }
       );
       if (sol) {
         setAiGeneratedSolutions(prev => {
@@ -2765,7 +2781,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   {hasWorkedSolution && (
                     <div className="grid grid-cols-3 gap-2.5">
                       <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approach</div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Approach</div>
+                          {aiSol?.validationPassed && (
+                            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-700/50 flex items-center gap-0.5">
+                              <Check className="w-2.5 h-2.5 text-emerald-400" /> Verified
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs font-bold text-indigo-400 mt-0.5 truncate">
                           {aiSol?.approachName || 'Optimal Reference'}
                         </div>

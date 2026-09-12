@@ -1,8 +1,9 @@
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
+import { executeCode, compareOutputs, SupportedLanguage } from './compiler';
 
-export const MISTRAL_API_KEY = import.meta.env.VITE_MISTRAL_API_KEY || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
-export const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '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';
+export const MISTRAL_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_API_KEY) || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
+export const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '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';
 
 export interface CodeTAReview {
   time_complexity: string;
@@ -54,68 +55,17 @@ export async function executeAIChatCascade(
     maxTokens?: number;
     responseFormatJson?: boolean;
     timeoutMs?: number;
+    preferMistral?: boolean;
   }
 ): Promise<string | null> {
   const temp = options?.temperature ?? 0.3;
-  const timeoutMs = options?.timeoutMs ?? 12000;
+  const timeoutMs = options?.timeoutMs ?? 15000;
+  const preferMistral = options?.preferMistral !== false; // Mistral AI is always primary
 
-  // 1. PRIMARY: Groq Ultra-Fast API (GPT OSS 120B / 20B)
-  const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'groq/compound-mini'];
-  
-  // For Groq JSON mode, API strictly mandates that 'json' must appear in messages
-  const groqMessages = options?.responseFormatJson && !messages.some(m => /json/i.test(m.content))
-    ? [...messages, { role: 'system', content: 'Respond with a valid JSON object matching the requested schema.' }]
-    : messages;
-
-  let groqRateLimitedCount = 0;
-  for (const model of groqModels) {
-    if (groqRateLimitedCount >= 3) {
-      console.warn('[Groq AI Cascade] Multiple models rate limited (429). Fast failover to Mistral / secondary cascade.');
-      break;
-    }
-    try {
-      const bodyPayload: any = {
-        model,
-        messages: groqMessages,
-        temperature: temp,
-      };
-      if (options?.maxTokens) bodyPayload.max_tokens = options.maxTokens;
-      if (options?.responseFormatJson) {
-        bodyPayload.response_format = { type: 'json_object' };
-      }
-
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify(bodyPayload),
-        signal: AbortSignal.timeout(timeoutMs)
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const rawContent = data.choices?.[0]?.message?.content;
-        if (rawContent && typeof rawContent === 'string' && rawContent.trim().length > 0) {
-          const cleanContent = rawContent.replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
-          return cleanContent || rawContent.trim();
-        }
-      } else if (res.status === 429) {
-        groqRateLimitedCount++;
-        console.warn(`[Groq Model '${model}'] Rate limited (429).`);
-      } else {
-        console.warn(`[Groq Model '${model}'] Status ${res.status}: ${res.statusText}`);
-      }
-    } catch (e) {
-      console.warn(`[Groq Model '${model}' notice]:`, e);
-    }
-  }
-
-  // 2. SECONDARY: Mistral AI (mistral-small, open-mistral-nemo, mistral-large)
-  if (MISTRAL_API_KEY) {
-    const mistralModels = ['mistral-small-latest', 'open-mistral-nemo', 'mistral-large-latest'];
-    // For Mistral JSON mode, API strictly mandates that 'json' must appear in messages
+  // 1. Mistral AI (Codestral, Mistral Code, Ministral 8B, Mistral Medium)
+  const tryMistral = async (): Promise<string | null> => {
+    if (!MISTRAL_API_KEY) return null;
+    const mistralModels = ['codestral-latest', 'mistral-code-latest', 'ministral-8b-latest', 'mistral-medium-latest', 'mistral-small-latest'];
     const mistralMessages = options?.responseFormatJson && !messages.some(m => /json/i.test(m.content))
       ? [...messages, { role: 'system', content: 'Respond with a valid JSON object matching the requested schema.' }]
       : messages;
@@ -148,7 +98,6 @@ export async function executeAIChatCascade(
             return content.trim();
           }
         } else if (res.status === 400 && options?.responseFormatJson) {
-          // Fallback retry without strict response_format parameter if schema validation rejected it
           const retryRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -174,6 +123,64 @@ export async function executeAIChatCascade(
         console.warn(`[Mistral Model '${model}' notice]:`, e);
       }
     }
+    return null;
+  };
+
+  // 2. Groq AI Fallback
+  const tryGroq = async (): Promise<string | null> => {
+    if (!GROQ_API_KEY) return null;
+    const groqModels = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'groq/compound-mini'];
+    const groqMessages = options?.responseFormatJson && !messages.some(m => /json/i.test(m.content))
+      ? [...messages, { role: 'system', content: 'Respond with a valid JSON object matching the requested schema.' }]
+      : messages;
+
+    for (const model of groqModels) {
+      try {
+        const bodyPayload: any = {
+          model,
+          messages: groqMessages,
+          temperature: temp,
+        };
+        if (options?.maxTokens) bodyPayload.max_tokens = options.maxTokens;
+        if (options?.responseFormatJson) {
+          bodyPayload.response_format = { type: 'json_object' };
+        }
+
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`
+          },
+          body: JSON.stringify(bodyPayload),
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const rawContent = data.choices?.[0]?.message?.content;
+          if (rawContent && typeof rawContent === 'string' && rawContent.trim().length > 0) {
+            const cleanContent = rawContent.replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
+            return cleanContent || rawContent.trim();
+          }
+        }
+      } catch (e) {
+        console.warn(`[Groq Model '${model}' notice]:`, e);
+      }
+    }
+    return null;
+  };
+
+  if (preferMistral) {
+    const mistralRes = await tryMistral();
+    if (mistralRes) return mistralRes;
+    const groqRes = await tryGroq();
+    if (groqRes) return groqRes;
+  } else {
+    const groqRes = await tryGroq();
+    if (groqRes) return groqRes;
+    const mistralRes = await tryMistral();
+    if (mistralRes) return mistralRes;
   }
 
   // 3. TERTIARY: Backend AI Cascade Proxy
@@ -716,6 +723,8 @@ export interface SolutionGenerationContext {
   hints?: string[];
   targetApproachId?: string;
   existingSolutions?: Record<string, string>;
+  testCases?: string[];
+  expectedOutputs?: string[];
 }
 
 export async function validateAndStoreSolution(
@@ -817,13 +826,13 @@ Output ONLY valid JSON matching this exact structure:
 
   const rawJson = await executeAIChatCascade([
     { role: 'user', content: prompt }
-  ], { temperature: 0.1, responseFormatJson: true });
+  ], { temperature: 0.1, responseFormatJson: true, preferMistral: true });
 
   if (rawJson) {
     const parsed = parseJsonSafe(rawJson);
     if (parsed && parsed.code) {
       return {
-        code: parsed.code,
+        code: parsed.code.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim(),
         explanation: parsed.explanation || 'Optimal algorithmic solution.',
         timeComplexity: parsed.timeComplexity || targetApproach?.time || 'O(N)',
         spaceComplexity: parsed.spaceComplexity || targetApproach?.space || 'O(1)',
@@ -843,7 +852,136 @@ export async function requestAIOptimalSolution(
   slug?: string,
   context?: SolutionGenerationContext
 ): Promise<OptimalSolutionResponse> {
-  const candidate = await _generateSolutionOnce(title, description, language, starterCode, context, 1);
+  const normLang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+  // 1. Primary: Generate initial solution via Mistral Codestral
+  let candidate = await _generateSolutionOnce(title, description, language, starterCode, context, 1);
+
+  // 2. Automated Testcase Verification & Self-Correction Loop
+  const tcs = context?.testCases || [];
+  const eos = context?.expectedOutputs || [];
+
+  let isVerified = false;
+  let passedCount = 0;
+  let failedCaseIdx: number | null = null;
+  let failedInput: string | null = null;
+  let failedOutput: string | null = null;
+  let failedExpected: string | null = null;
+  let lastStderr: string | null = null;
+
+  if (candidate?.code && tcs.length > 0) {
+    const casesToVerify = Math.min(3, tcs.length);
+    let currentCode = candidate.code;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let allPassed = true;
+      passedCount = 0;
+      failedCaseIdx = null;
+      failedInput = null;
+      failedOutput = null;
+      failedExpected = null;
+      lastStderr = null;
+
+      for (let i = 0; i < casesToVerify; i++) {
+        const tcInput = tcs[i];
+        let tcExpected = eos[i] || '';
+        if (tcExpected.includes(' or ')) {
+          tcExpected = tcExpected.split(' or ')[0].trim();
+        }
+
+        try {
+          const execResult = await executeCode(currentCode, normLang, tcInput, title);
+          const passed = execResult.status === 'SUCCESS' && compareOutputs(execResult.stdout, tcExpected);
+
+          if (passed) {
+            passedCount++;
+          } else {
+            allPassed = false;
+            failedCaseIdx = i;
+            failedInput = tcInput;
+            failedOutput = execResult.stdout || '';
+            failedExpected = tcExpected;
+            lastStderr = execResult.stderr || '';
+            break;
+          }
+        } catch (execErr: any) {
+          allPassed = false;
+          failedCaseIdx = i;
+          failedInput = tcInput;
+          failedExpected = tcExpected;
+          lastStderr = String(execErr?.message || execErr);
+          break;
+        }
+      }
+
+      if (allPassed) {
+        isVerified = true;
+        candidate.code = currentCode;
+        break;
+      }
+
+      // Self-healing: feed failed input, compiler diagnostics, and expected output back to Mistral Codestral
+      if (attempt < 3 && failedInput !== null) {
+        const correctionPrompt = `You are a Principal Software Engineer and Competitive Programming Master.
+The previously generated ${language} solution failed automated test case verification.
+
+Problem: ${title}
+Failed Test Case Input:
+${failedInput}
+
+Expected Output:
+${failedExpected}
+
+Actual Output:
+${failedOutput || '(empty / none)'}
+
+${lastStderr ? `Compiler / Runtime Diagnostics / Stderr:\n${lastStderr}\n` : ''}
+
+Failed Solution Code:
+\`\`\`${language}
+${currentCode}
+\`\`\`
+
+Starter Signature Reference (MUST match exact class name, method name, and return types):
+\`\`\`${language}
+${starterCode || ''}
+\`\`\`
+
+Fix the code so that it compiles cleanly and passes the test case.
+Output ONLY valid JSON:
+{
+  "code": "<Complete corrected ${language} solution code>",
+  "explanation": "<Brief explanation of the bug fix>"
+}`;
+
+        try {
+          const rawCorrectedJson = await executeAIChatCascade([
+            { role: 'user', content: correctionPrompt }
+          ], { temperature: 0.1, responseFormatJson: true, preferMistral: true });
+
+          if (rawCorrectedJson) {
+            const parseJson = (raw: string): any => {
+              try { return JSON.parse(raw); } catch {
+                const m = raw.match(/\{[\s\S]*\}/);
+                if (m) { try { return JSON.parse(m[0]); } catch {} }
+              }
+              return null;
+            };
+            const parsed = parseJson(rawCorrectedJson);
+            if (parsed && parsed.code) {
+              currentCode = parsed.code.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+              candidate.code = currentCode;
+              if (parsed.explanation) {
+                candidate.explanation = parsed.explanation;
+              }
+            }
+          }
+        } catch (corrErr) {
+          console.warn('[Mistral Solution Self-Correction Notice]:', corrErr);
+        }
+      }
+    }
+  }
 
   const sol: OptimalSolutionResponse = candidate ?? {
     code: starterCode || `// Solution for ${title}`,
@@ -853,7 +991,15 @@ export async function requestAIOptimalSolution(
     approachName: 'Standard Optimal Approach'
   };
 
-  if (slug && candidate?.code) {
+  sol.validationPassed = isVerified;
+  sol.passedCount = passedCount;
+  sol.totalCount = Math.min(3, tcs.length) || 1;
+  sol.failedCaseIdx = isVerified ? null : failedCaseIdx;
+  sol.failedInput = isVerified ? null : failedInput;
+  sol.failedOutput = isVerified ? null : failedOutput;
+  sol.failedExpected = isVerified ? null : failedExpected;
+
+  if (slug && sol.code) {
     validateAndStoreSolution(slug, language, sol).catch(() => {});
   }
 

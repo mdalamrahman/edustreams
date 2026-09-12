@@ -555,8 +555,9 @@ export function isDriverHarnessValid(
     return false;
   }
 
-  // 2. Fatal error / broken driver keywords
+  // 2. Fatal error / broken driver keywords & syntax errors
   if (
+    drv.includes("'''") ||
     drv.includes('httpsleetcodecom') ||
     drv.includes('Error: Missing') ||
     drv.includes('error: missing') ||
@@ -750,6 +751,9 @@ export function wrapLeetCodeExecutableCode(
       }
 
       if (language === 'cpp' || (language as any) === 'c++') {
+        if (replaced.includes("'''")) {
+          replaced = replaced.split("'''").join("39");
+        }
         // Guarantee authentic LeetCode binary tree serialization with 'null' and trimmed trailing nulls
         if (replaced.includes('treeToString(')) {
           const canonicalTreeToString = `string treeToString(TreeNode* root) {

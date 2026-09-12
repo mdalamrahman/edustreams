@@ -220,6 +220,16 @@ export function formatProblemAsTxt(problem: ProblemTemplate): string {
  */
 export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLanguage, string> {
   const slug = toSlug(titleOrSlug);
+  const matchedPredefined = (typeof PREDEFINED_SPECIAL_PROBLEMS !== 'undefined') ? (
+    PREDEFINED_SPECIAL_PROBLEMS[slug] ||
+    PREDEFINED_SPECIAL_PROBLEMS[slug + '-'] ||
+    PREDEFINED_SPECIAL_PROBLEMS[slug.replace(/-+$/, '')] ||
+    (slug.includes('single-responsibility') ? PREDEFINED_SPECIAL_PROBLEMS['2-1-single-responsibility-principle-srp-solid-principles-'] : undefined)
+  ) : undefined;
+  if (matchedPredefined && matchedPredefined.starters) {
+    return matchedPredefined.starters;
+  }
+
   const words = slug.split('-').filter(w => w && !['https', 'http', 'leetcode', 'com', 'problems', 'description', 'algorithm', 'problem'].includes(w));
   const camelCase = words.length > 0
     ? words[0].toLowerCase() + words.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('')
@@ -506,7 +516,7 @@ Output:
       'initialize(100, 50, 200), parkVehicle("Car"), parkVehicle("Car"), removeVehicle("Car"), parkVehicle("Car"), getAvailableSpots("Car")'
     ],
     expectedOutputs: [
-      '10, true, true, true, true, 10 or 10, true, true, true, true, 11',
+      '10, true, true, true, true, 10',
       '1, true, false, 0',
       '2, false, true, 1',
       '0, false, 0',
@@ -515,7 +525,7 @@ Output:
       '10, true, true, false, 10',
       '5, 5, 10, 15',
       '2, true, true, true, 1',
-      '100, true, true, true, true, 99 or 100, true, true, true, true, 98'
+      '100, true, true, true, true, 98'
     ],
     hints: [
       'Single Responsibility Principle states each class should have exactly one reason to change.',
