@@ -296,6 +296,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             // Sanity check: purge contaminated argumentsLength code from BST problems
             if ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) {
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+            } else if (targetSlug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) {
+              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
+              setCode(cleanStarter);
+              if (enriched.testCases && enriched.testCases.length > 0) {
+                setActiveTestCaseIdx(0);
+                setTestInput(enriched.testCases[0]);
+              }
+              return;
             } else {
               setCode(cached);
               if (enriched.testCases && enriched.testCases.length > 0) {
@@ -407,7 +416,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     try {
       const slug = currentProblemSlug;
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${initialLanguage}`);
-      if (cached !== null && cached.trim().length > 0) return cached;
+      if (cached !== null && cached.trim().length > 0) {
+        if (slug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) {
+          localStorage.removeItem(`edustream_user_code_${slug}_${initialLanguage}`);
+        } else if ((slug.includes('floor') || slug.includes('closest-binary')) && cached.includes('argumentsLength')) {
+          localStorage.removeItem(`edustream_user_code_${slug}_${initialLanguage}`);
+        } else {
+          return cached;
+        }
+      }
     } catch {}
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
   });

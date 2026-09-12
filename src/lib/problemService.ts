@@ -2360,7 +2360,7 @@ static inline string trim(const string& s) {
 
 static inline string stripQuotes(const string& s) {
     string t = trim(s);
-    if (t.size() >= 2 && ((t.front() == '"' && t.back() == '"') || (t.front() == '\'' && t.back() == '\''))) {
+    if (t.size() >= 2 && ((t.front() == '"' && t.back() == '"') || (t.front() == 39 && t.back() == 39))) {
         return t.substr(1, t.size() - 2);
     }
     return t;
@@ -2382,7 +2382,7 @@ static vector<string> splitCalls(const string& input) {
                 inQuotes = false;
             }
         } else {
-            if (c == '"' || c == '\'') {
+            if (c == '"' || c == 39) {
                 inQuotes = true;
                 qChar = c;
                 cur += c;
@@ -2427,7 +2427,7 @@ static vector<string> splitArgs(const string& argsStr) {
                 inQuotes = false;
             }
         } else {
-            if (c == '"' || c == '\'') {
+            if (c == '"' || c == 39) {
                 inQuotes = true;
                 qChar = c;
                 cur += c;
@@ -2691,7 +2691,7 @@ public class Main {
                     inQuotes = false;
                 }
             } else {
-                if (c == '"' || c == '\'') {
+                if (c == '"' || c == 39) {
                     inQuotes = true;
                     qChar = c;
                     cur.append(c);
@@ -2736,7 +2736,7 @@ public class Main {
                     inQuotes = false;
                 }
             } else {
-                if (c == '"' || c == '\'') {
+                if (c == '"' || c == 39) {
                     inQuotes = true;
                     qChar = c;
                     cur.append(c);
