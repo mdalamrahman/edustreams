@@ -2835,7 +2835,7 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
       "Bloomberg",
       "Snapchat"
     ],
-    "slug": "closest-binary-search-tree-value"
+    "slug": "floor-in-bst"
   },
   {
     "id": 139,

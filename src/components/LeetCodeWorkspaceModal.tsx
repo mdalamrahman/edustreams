@@ -198,6 +198,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   }, [problemTitle, codingProblem]);
 
   const currentProblemSlug = useMemo(() => {
+    const rawName = (codingProblem?.name || codingProblem?.title || cleanTitle || '').toLowerCase();
+    if (rawName.includes('floor in bst') || rawName.includes('floor in a binary search tree')) {
+      return 'floor-in-bst';
+    }
     if (codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()) {
       return toSlug(codingProblem.slug);
     }
@@ -237,7 +241,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
-    const rawTarget = (codingProblem?.slug && typeof codingProblem.slug === 'string')
+    const rawTarget = (codingProblem?.name && (codingProblem.name.toLowerCase().includes('floor in bst') || codingProblem.name.toLowerCase().includes('floor in a binary search tree')))
+      ? 'floor-in-bst'
+      : (codingProblem?.slug && typeof codingProblem.slug === 'string')
       ? codingProblem.slug
       : (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && !codingProblem.leetcode.includes('problem-list') && !codingProblem.leetcode.includes('search='))
       ? codingProblem.leetcode
@@ -258,9 +264,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           if (overrideStr) {
             const overrideObj = JSON.parse(overrideStr);
             if (overrideObj && Array.isArray(overrideObj.testCases) && overrideObj.testCases.length > 0) {
-              enriched.testCases = overrideObj.testCases;
-              if (Array.isArray(overrideObj.expectedOutputs)) {
-                enriched.expectedOutputs = overrideObj.expectedOutputs;
+              if (targetSlug.includes('floor') || targetSlug.includes('closest-binary')) {
+                if (overrideObj.testCases.some((tc: string) => String(tc).includes('args ='))) {
+                  localStorage.removeItem(`edustream_testcase_override_${targetSlug}`);
+                } else {
+                  enriched.testCases = overrideObj.testCases;
+                  if (Array.isArray(overrideObj.expectedOutputs)) {
+                    enriched.expectedOutputs = overrideObj.expectedOutputs;
+                  }
+                }
+              } else {
+                enriched.testCases = overrideObj.testCases;
+                if (Array.isArray(overrideObj.expectedOutputs)) {
+                  enriched.expectedOutputs = overrideObj.expectedOutputs;
+                }
               }
             }
           }
@@ -276,12 +293,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         try {
           const cached = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
           if (cached !== null && cached.trim().length > 0) {
-            setCode(cached);
-            if (enriched.testCases && enriched.testCases.length > 0) {
-              setActiveTestCaseIdx(0);
-              setTestInput(enriched.testCases[0]);
+            // Sanity check: purge contaminated argumentsLength code from BST problems
+            if ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) {
+              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+            } else {
+              setCode(cached);
+              if (enriched.testCases && enriched.testCases.length > 0) {
+                setActiveTestCaseIdx(0);
+                setTestInput(enriched.testCases[0]);
+              }
+              return;
             }
-            return;
           }
         } catch {}
 

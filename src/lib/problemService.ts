@@ -1412,7 +1412,12 @@ export async function fetchEnrichedProblem(
   if (slug === 'closest-binary-search-tree-value' || normSlug === 'closestbinarysearchtreevalue' || slug === '270') {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['closest-binary-search-tree-value']);
   }
-  if (slug === 'floor-in-bst' || normSlug === 'floorinbst') {
+  if (
+    slug === 'floor-in-bst' ||
+    normSlug === 'floorinbst' ||
+    slug === 'floor-in-a-binary-search-tree' ||
+    normSlug === 'floorinabinarysearchtree'
+  ) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['floor-in-bst']);
   }
   if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
@@ -1727,6 +1732,345 @@ if __name__ == '__main__':
     main()`;
     }
   }
+
+  const isFloor = slug.includes('floor-in-bst') || slug.includes('floorinbst') || slug.includes('floor-in-a-binary-search-tree') || slug.includes('floorinabinarysearchtree');
+  if (isFloor) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+// === DATA STRUCTURES ===
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [10, 5, 15, 2, 6], x = 7)RAW";
+    
+    // Parse root array
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+
+    // Parse x
+    int xVal = 0;
+    size_t xPos = raw_input.find("x =");
+    if (xPos == string::npos) xPos = raw_input.find("x=");
+    if (xPos != string::npos) {
+        size_t comma = raw_input.find(',', xPos);
+        string xStr = raw_input.substr(xPos + (raw_input[xPos+1] == '=' ? 2 : 3), (comma != string::npos ? comma - (xPos + 3) : string::npos));
+        xVal = stoi(trim(xStr));
+    }
+
+    Solution sol;
+    int ans = sol.floor(root, xVal);
+    cout << ans << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [10, 5, 15, 2, 6], x = 7"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                tree_vals.append(int(it))
+    root = build_tree(tree_vals)
+
+    x_match = re.search(r'x\\s*=\\s*(-?\\d+)', raw_input)
+    x_val = int(x_match.group(1)) if x_match else 0
+
+    sol = Solution()
+    ans = sol.floor(root, x_val)
+    print(ans)
+
+if __name__ == '__main__':
+    main()`;
+    } else if (lang === 'javascript') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function TreeNode(val, left, right) {
+    this.val = (val===undefined ? 0 : val);
+    this.left = (left===undefined ? null : left);
+    this.right = (right===undefined ? null : right);
+}
+
+function buildTree(vals) {
+    if (!vals || vals.length === 0 || vals[0] === 'null' || vals[0] === null) return null;
+    const root = new TreeNode(parseInt(vals[0], 10));
+    const q = [root];
+    let idx = 1;
+    while (q.length > 0 && idx < vals.length) {
+        const curr = q.shift();
+        if (idx < vals.length && vals[idx] !== 'null' && vals[idx] !== null && vals[idx] !== '') {
+            curr.left = new TreeNode(parseInt(vals[idx], 10));
+            q.push(curr.left);
+        }
+        idx++;
+        if (idx < vals.length && vals[idx] !== 'null' && vals[idx] !== null && vals[idx] !== '') {
+            curr.right = new TreeNode(parseInt(vals[idx], 10));
+            q.push(curr.right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+const rawInput = \`root = [10, 5, 15, 2, 6], x = 7\`;
+const arrMatch = rawInput.match(/\\[(.*?)\\]/);
+let vals = [];
+if (arrMatch && arrMatch[1]) {
+    vals = arrMatch[1].split(',').map(s => s.trim());
+}
+const root = buildTree(vals);
+const xMatch = rawInput.match(/x\\s*=\\s*(-?\\d+)/);
+const x = xMatch ? parseInt(xMatch[1], 10) : 0;
+
+const ans = floor(root, x);
+console.log(ans);`;
+    }
+  }
+
+  const isClosestBST = slug.includes('closest-binary-search-tree-value') || slug.includes('closestbinarysearchtreevalue') || slug === '270';
+  if (isClosestBST) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+
+using namespace std;
+
+// === DATA STRUCTURES ===
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [4, 2, 5, 1, 3], target = 3.714286)RAW";
+    
+    // Parse root array
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+
+    // Parse target
+    double targetVal = 0.0;
+    size_t tPos = raw_input.find("target =");
+    if (tPos == string::npos) tPos = raw_input.find("target=");
+    if (tPos != string::npos) {
+        size_t comma = raw_input.find(',', tPos);
+        string tStr = raw_input.substr(tPos + (raw_input[tPos+6] == '=' ? 7 : 8), (comma != string::npos ? comma - (tPos + 8) : string::npos));
+        targetVal = stod(trim(tStr));
+    }
+
+    Solution sol;
+    int ans = sol.closestValue(root, targetVal);
+    cout << ans << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [4, 2, 5, 1, 3], target = 3.714286"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                tree_vals.append(int(it))
+    root = build_tree(tree_vals)
+
+    t_match = re.search(r'target\\s*=\\s*(-?\\d+(?:\\.\\d+)?)', raw_input)
+    target_val = float(t_match.group(1)) if t_match else 0.0
+
+    sol = Solution()
+    ans = sol.closestValue(root, target_val)
+    print(ans)
+
+if __name__ == '__main__':
+    main()`;
+    }
+  }
+
   return null;
 }
 
@@ -1743,6 +2087,15 @@ export async function fetchOrGenerateDriverCode(
   const slug = toSlug(slugOrTitle);
   const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
   const localKey = `edustream_driver_${slug}_${lang}`;
+
+  // 0. Check built-in authentic default driver first (guarantees zero hallucinations and authentic tree parsing)
+  const builtInDriver = getDefaultDriverForProblem(slug, lang);
+  if (builtInDriver && isDriverHarnessValid(builtInDriver, lang, starterCode)) {
+    try {
+      localStorage.setItem(localKey, builtInDriver);
+    } catch (_) {}
+    return builtInDriver;
+  }
 
   // 1. Check local browser storage cache
   try {
@@ -1777,21 +2130,7 @@ export async function fetchOrGenerateDriverCode(
     } catch (_) {}
   }
 
-  // 3. Check for built-in authentic default driver (e.g. for LCA where return type is TreeNode* but output is integer)
-  const builtInDriver = getDefaultDriverForProblem(slug, lang);
-  if (builtInDriver && isDriverHarnessValid(builtInDriver, lang, starterCode)) {
-    try {
-      localStorage.setItem(localKey, builtInDriver);
-      fetch(`/api/problem/${encodeURIComponent(slug)}/correct-driver`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: lang, driverCode: builtInDriver })
-      }).catch(() => {});
-    } catch (_) {}
-    return builtInDriver;
-  }
-
-  // 4. If R2 does not have it, dynamically generate with Mistral AI directly on the client
+  // 3. If R2 does not have it, dynamically generate with Mistral AI directly on the client
   if (starterCode) {
     try {
       const aiDriver = await requestAIDriverGeneration(slugOrTitle, lang, starterCode, sampleTestInput || '', slug);

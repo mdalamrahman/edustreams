@@ -926,7 +926,9 @@ export function App() {
       return;
     }
 
-    const targetSlug = problem.slug || problem.id;
+    const targetSlug = (problem.name && (problem.name.toLowerCase().includes('floor in bst') || problem.name.toLowerCase().includes('floor in a binary search tree')))
+      ? 'floor-in-bst'
+      : (problem.slug || problem.id);
 
     // Detect if problem is an SQL/Database question and open SQL compiler arena
     if (isSqlProblem(problem)) {
