@@ -1,78 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://sdetube.pages.dev/</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
     <changefreq>daily</changefreq>
-    <priority>1.00</priority>
+    <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/dsa-sheets</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/dsa-sheets</loc>
     <changefreq>daily</changefreq>
-    <priority>0.95</priority>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/dsa-problems</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/dsa-problems</loc>
     <changefreq>daily</changefreq>
-    <priority>0.90</priority>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/lld</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/lld</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.90</priority>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/hld</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/hld</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.90</priority>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/system-design</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/system-design</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/interview</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/interview</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/channels</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/channels</loc>
     <changefreq>daily</changefreq>
-    <priority>0.80</priority>
+    <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/analytics</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/analytics</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.70</priority>
+    <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/contact</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/contact</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.60</priority>
+    <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/privacy</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/privacy</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
+    <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://sdetube.pages.dev/#/terms</loc>
-    <lastmod>2026-09-12T15:24:44+00:00</lastmod>
+    <loc>https://sdetube.pages.dev/terms</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
+    <priority>0.5</priority>
   </url>
 </urlset>
