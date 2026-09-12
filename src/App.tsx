@@ -33,6 +33,7 @@ import { SDESheetExplorer, findMatchingDsaVideo } from './components/SDESheetExp
 import { CompanyDSAProblems } from './components/CompanyDSAProblems';
 import { LeetCodeWorkspaceModal } from './components/LeetCodeWorkspaceModal';
 import { LeetCodeSQLWorkspaceModal } from './components/LeetCodeSQLWorkspaceModal';
+import { isSqlProblem } from './lib/sqlJudge';
 import { AINotesAndSimulation } from './components/AINotesAndSimulation';
 import { SystemDesignHub } from './components/SystemDesignHub';
 import { LLDHub } from './components/LLDHub';
@@ -135,9 +136,10 @@ export function App() {
   const [isAskAIOpen, setIsAskAIOpen] = useState<boolean>(false);
   const [askAIMode, setAskAIMode] = useState<'video' | 'notes' | 'quiz' | 'code' | undefined>(undefined);
   const [askAITimestamp, setAskAITimestamp] = useState<number | undefined>(undefined);
-  const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | null>(null);
+  const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | DSAProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
+  const [activeSqlProblem, setActiveSqlProblem] = useState<{ title: string; problem?: SDEProblem | DSAProblem } | null>(null);
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
@@ -258,16 +260,20 @@ export function App() {
         }
 
         if (found) {
-          setSdeFullscreenProblem(found);
-          const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
-          const pName = found.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
-          const pWords = pName.split(/\s+/).filter(w => w.length > 2);
-          const matched = list.find((v) => {
-            const vTitle = v.title.toLowerCase();
-            return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName);
-          }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
-          setSdeFullscreenVideo(matched || null);
-          setActiveTab('sde_sheet');
+          if (isSqlProblem(found) || isSqlProblem(pIdStr)) {
+            setActiveSqlProblem({ title: found.name, problem: found });
+          } else {
+            setSdeFullscreenProblem(found);
+            const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
+            const pName = found.name.toLowerCase().replace(/[^\w\s]/gi, ' ').trim();
+            const pWords = pName.split(/\s+/).filter(w => w.length > 2);
+            const matched = list.find((v) => {
+              const vTitle = v.title.toLowerCase();
+              return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName);
+            }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
+            setSdeFullscreenVideo(matched || null);
+            setActiveTab('sde_sheet');
+          }
         }
       } else {
         setSdeFullscreenProblem(null);
@@ -315,9 +321,18 @@ export function App() {
     window.addEventListener('hashchange', handleHashSync);
     handleHashSync();
 
+    const onOpenSql = (e: any) => {
+      const prob = e.detail?.problem;
+      if (prob) {
+        setActiveSqlProblem({ title: prob.name, problem: prob });
+      }
+    };
+    window.addEventListener('sdetube_open_sql_arena', onOpenSql);
+
     return () => {
       window.removeEventListener('popstate', handleHashSync);
       window.removeEventListener('hashchange', handleHashSync);
+      window.removeEventListener('sdetube_open_sql_arena', onOpenSql);
     };
   }, [dynamicVideos]);
 
@@ -326,7 +341,7 @@ export function App() {
     if (typeof window === 'undefined') return;
 
     // Pause any background video if coding modal or fullscreen problem is open
-    if (sdeFullscreenProblem || isSqlModalOpen || isPotdModalOpen) {
+    if (sdeFullscreenProblem || isSqlModalOpen || activeSqlProblem || isPotdModalOpen) {
       const videos = document.querySelectorAll('video');
       videos.forEach(v => {
         try { v.pause(); } catch {}
@@ -335,6 +350,15 @@ export function App() {
 
     if (sdeFullscreenProblem) {
       const problemSlug = sdeFullscreenProblem.slug || sdeFullscreenProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const targetHash = `#/problem/${problemSlug}`;
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+      return;
+    }
+
+    if (activeSqlProblem) {
+      const problemSlug = activeSqlProblem.problem?.slug || activeSqlProblem.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const targetHash = `#/problem/${problemSlug}`;
       if (window.location.hash !== targetHash) {
         window.history.replaceState(null, '', targetHash);
@@ -902,12 +926,23 @@ export function App() {
       return;
     }
 
+    const targetSlug = problem.slug || problem.id;
+
+    // Detect if problem is an SQL/Database question and open SQL compiler arena
+    if (isSqlProblem(problem)) {
+      setActiveSqlProblem({ title: problem.name, problem });
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      if (window.location.hash !== `#/problem/${targetSlug}`) {
+        window.history.pushState(null, '', `#/problem/${targetSlug}`);
+      }
+      return;
+    }
+
     const allVideos = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
     // Strictly match ONLY against the DSA channel ('ch-dsa-01')
     const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
     const matched = findMatchingDsaVideo(problem.name, dsaVideos);
 
-    const targetSlug = problem.slug || problem.id;
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -1589,13 +1624,24 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         />
       )}
 
-      {/* Fullscreen In-Browser WebAssembly SQL Arena for DBMS Lectures */}
-      {isSqlModalOpen && selectedVideo && (
+      {/* Fullscreen In-Browser WebAssembly SQL Arena for DBMS Lectures & Database Problems */}
+      {(isSqlModalOpen || activeSqlProblem) && (
         <LeetCodeSQLWorkspaceModal
-          problemTitle={selectedVideo.title}
-          transcript={videoArtifacts?.transcript || selectedVideo.telegram_caption}
+          problemTitle={activeSqlProblem?.title || selectedVideo?.title || 'DBMS SQL Challenge'}
+          transcript={videoArtifacts?.transcript || selectedVideo?.telegram_caption}
           notes={videoArtifacts?.notes}
-          onClose={() => setIsSqlModalOpen(false)}
+          codingProblem={activeSqlProblem?.problem}
+          onClose={() => {
+            setIsSqlModalOpen(false);
+            setActiveSqlProblem(null);
+            if (window.location.hash.startsWith('#/problem/')) {
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                window.location.hash = '#/sde-sheet';
+              }
+            }
+          }}
           onCodeExecuted={handleQuestionSolved}
         />
       )}

@@ -11,6 +11,7 @@ import {
   Minimize2, 
   Code, 
   BookOpen, 
+  Database,
   Lightbulb, 
   RotateCcw, 
   Copy, 
@@ -272,8 +273,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         } catch {}
 
+        // Auto-select language if problem is JavaScript or Database specific
+        let activeLang = language;
+        if (
+          enriched.category?.toLowerCase() === 'javascript' ||
+          targetSlug.includes('arguments-length') ||
+          (enriched.starters?.javascript && (!enriched.starters?.cpp || enriched.starters.cpp.includes('returnLengthOfArgumentsPassed')))
+        ) {
+          activeLang = 'javascript';
+          setLanguage('javascript');
+        } else if (
+          enriched.category?.toLowerCase() === 'database' ||
+          targetSlug.includes('sql') ||
+          (enriched.starters?.sql && !enriched.starters?.cpp)
+        ) {
+          activeLang = 'sql';
+          setLanguage('sql');
+        }
+
         if (!initialCode || initialCode.trim().length < 10) {
-          setCode(enriched.starters[language] || enriched.starters.cpp || '');
+          setCode(enriched.starters[activeLang] || enriched.starters[language] || enriched.starters.cpp || '');
         }
         if (enriched.testCases && enriched.testCases.length > 0) {
           setActiveTestCaseIdx(0);
@@ -3103,6 +3122,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <option value="python" className="bg-[#1e1e1e] text-slate-200">Python 3</option>
                   <option value="java" className="bg-[#1e1e1e] text-slate-200">Java</option>
                   <option value="javascript" className="bg-[#1e1e1e] text-slate-200">JavaScript</option>
+                  <option value="sql" className="bg-[#1e1e1e] text-slate-200">SQL (Database)</option>
                   <option value="go" className="bg-[#1e1e1e] text-slate-200">Go</option>
                   <option value="rust" className="bg-[#1e1e1e] text-slate-200">Rust</option>
                 </select>
@@ -3209,6 +3229,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* If SQL is selected or Database question, prompt to launch in-browser interactive SQL Arena */}
+          {(language === 'sql' || problemTemplate.category?.toLowerCase() === 'database') && (
+            <div className="bg-emerald-950/80 border-b border-emerald-500/40 px-4 py-2 flex items-center justify-between text-xs text-emerald-200 flex-wrap gap-2">
+              <span className="flex items-center gap-2 font-mono">
+                <Database className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>This is a <strong>Database / SQL</strong> challenge with interactive relational tables.</span>
+              </span>
+              <button
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('sdetube_open_sql_arena', { detail: { problem: codingProblem || { name: cleanTitle, slug: currentProblemSlug } } }));
+                  onClose();
+                }}
+                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer transition-all shadow text-xs flex items-center gap-1.5"
+              >
+                <span>Launch Interactive SQL Arena</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
           
           {/* Monaco Editor Container */}
           <div className="flex-1 min-h-[160px] relative overflow-hidden">

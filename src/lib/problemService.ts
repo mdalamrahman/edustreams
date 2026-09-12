@@ -236,6 +236,79 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
   };
 }
 
+export const PREDEFINED_SPECIAL_PROBLEMS: Record<string, ProblemTemplate> = {
+  'return-length-of-arguments-passed': {
+    name: 'Return Length of Arguments Passed',
+    category: 'JavaScript',
+    difficulty: 'Easy',
+    description: `Write a function \`argumentsLength\` that returns the count of arguments passed to it.
+
+### Example 1
+\`\`\`
+Input: args = [5]
+Output: 1
+Explanation:
+argumentsLength(5); // 1
+
+One value was passed to the function so it should return 1.
+\`\`\`
+
+### Example 2
+\`\`\`
+Input: args = [{}, null, "3"]
+Output: 3
+Explanation:
+argumentsLength({}, null, "3"); // 3
+
+Three values were passed to the function so it should return 3.
+\`\`\`
+
+### Constraints
+- \`args\` is a valid JSON array
+- \`0 <= args.length <= 100\``,
+    examples: [
+      { input: 'args = [5]', output: '1', explanation: 'argumentsLength(5); // 1' },
+      { input: 'args = [{}, null, "3"]', output: '3', explanation: 'argumentsLength({}, null, "3"); // 3' }
+    ],
+    constraints: [
+      'args is a valid JSON array',
+      '0 <= args.length <= 100'
+    ],
+    testCases: [
+      'args = [5]',
+      'args = [{}, null, "3"]',
+      'args = []',
+      'args = [1, 2, 3]',
+      'args = ["a", "b", "c", "d"]',
+      'args = [true, false, true]',
+      'args = [{"a": 1}, {"b": 2}]',
+      'args = [null, 0, "test"]',
+      'args = [[1, 2], [3, 4], [5, 6]]',
+      'args = [0, -1, 100, 200, 300]'
+    ],
+    expectedOutputs: ['1', '3', '0', '3', '4', '3', '2', '3', '3', '5'],
+    hints: ['You can access the arguments passed to a function using the rest parameter syntax (...args) or the arguments object.'],
+    starters: {
+      javascript: `/**\n * @param {...(null|boolean|number|string|Array|Object)} args\n * @return {number}\n */\nvar argumentsLength = function(...args) {\n    return args.length;\n};`,
+      python: `class Solution:\n    def argumentsLength(self, *args) -> int:\n        return len(args)`,
+      cpp: `class Solution {\npublic:\n    int argumentsLength(vector<int>& args) {\n        return args.size();\n    }\n};`,
+      java: `class Solution {\n    public int argumentsLength(Object... args) {\n        return args.length;\n    }\n}`,
+      go: `func argumentsLength(args ...interface{}) int {\n    return len(args)\n}`,
+      rust: `impl Solution {\n    pub fn arguments_length(args: Vec<i32>) -> i32 {\n        args.len() as i32\n    }\n}`,
+      sql: `-- Write your SQL query here`
+    },
+    solutions: {
+      javascript: `var argumentsLength = function(...args) {\n    return args.length;\n};`,
+      python: `class Solution:\n    def argumentsLength(self, *args) -> int:\n        return len(args)`,
+      cpp: `class Solution {\npublic:\n    int argumentsLength(vector<int>& args) {\n        return args.size();\n    }\n};`,
+      java: `class Solution {\n    public int argumentsLength(Object... args) {\n        return args.length;\n    }\n}`,
+      go: `func argumentsLength(args ...interface{}) int {\n    return len(args)\n}`,
+      rust: `impl Solution {\n    pub fn arguments_length(args: Vec<i32>) -> i32 {\n        args.len() as i32\n    }\n}`,
+      sql: `-- Write your SQL query here`
+    }
+  }
+};
+
 /**
  * Extracts parameter names from starter code or examples
  */
@@ -665,6 +738,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       else if (s.langSlug === 'javascript') starters.javascript = s.code;
       else if (s.langSlug === 'golang') starters.go = s.code;
       else if (s.langSlug === 'rust') starters.rust = s.code;
+      else if (['mysql', 'mssql', 'postgresql', 'oraclesql', 'sql'].includes(s.langSlug)) starters.sql = s.code;
     });
 
     const constraints: string[] = [];
@@ -683,7 +757,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
 
     const template: ProblemTemplate = {
       name: q.title,
-      category: q.topicTags?.[0]?.name || q.categoryTitle || 'Algorithms',
+      category: q.categoryTitle || q.topicTags?.[0]?.name || 'Algorithms',
       difficulty: q.difficulty || 'Medium',
       description: cleanDesc || q.title,
       images: allImages,
@@ -1171,6 +1245,12 @@ export async function fetchEnrichedProblem(
     }
     return prob;
   };
+
+  // 0. Check predefined special problems (e.g. 2703 Return Length of Arguments Passed)
+  const normSlug = slug.replace(/[^a-z0-9]/g, '');
+  if (PREDEFINED_SPECIAL_PROBLEMS[slug] || normSlug === 'returnlengthofargumentspassed' || normSlug.includes('argumentslength') || slug === '2703') {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['return-length-of-arguments-passed']);
+  }
 
   // 1. Check local spec cache
   try {

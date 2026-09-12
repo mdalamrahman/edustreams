@@ -577,39 +577,255 @@ INSERT INTO Orders VALUES (10, 1), (20, 2);
         ]
       }
     ]
+  },
+
+  'employeesearningmore': {
+    id: 'sql-181',
+    title: 'Employees Earning More Than Their Managers',
+    category: 'DBMS & SQL',
+    difficulty: 'Easy',
+    description: `Write a SQL query to find the employees who earn more than their managers.
+
+### Schema
+**Employee** table:
+| Column Name | Type |
+| :--- | :--- |
+| id | int |
+| name | varchar |
+| salary | int |
+| managerId | int |
+
+### Example
+**Input:**
+Employee table:
+| id | name | salary | managerId |
+| :--- | :--- | :--- | :--- |
+| 1 | Joe | 70000 | 3 |
+| 2 | Henry | 80000 | 4 |
+| 3 | Sam | 60000 | null |
+| 4 | Max | 90000 | null |
+
+**Output:**
+| Employee |
+| :--- |
+| Joe |`,
+    tables: [
+      {
+        tableName: 'Employee',
+        schema: [
+          { column: 'id', type: 'INT' },
+          { column: 'name', type: 'VARCHAR' },
+          { column: 'salary', type: 'INT' },
+          { column: 'managerId', type: 'INT' }
+        ],
+        rows: [
+          [1, 'Joe', 70000, 3],
+          [2, 'Henry', 80000, 4],
+          [3, 'Sam', 60000, null],
+          [4, 'Max', 90000, null]
+        ]
+      }
+    ],
+    setupSql: `
+CREATE TABLE Employee (id INT, name STRING, salary INT, managerId INT);
+INSERT INTO Employee VALUES (1, 'Joe', 70000, 3), (2, 'Henry', 80000, 4), (3, 'Sam', 60000, null), (4, 'Max', 90000, null);
+`,
+    starterSql: `-- Write your SQL query statement below (Self-JOIN)
+SELECT 
+    e1.name AS Employee
+FROM Employee e1
+JOIN Employee e2 ON e1.managerId = e2.id
+WHERE e1.salary > e2.salary;
+`,
+    solutionSql: `
+SELECT e1.name AS Employee
+FROM Employee e1
+JOIN Employee e2 ON e1.managerId = e2.id
+WHERE e1.salary > e2.salary;
+`,
+    testCases: [
+      {
+        name: 'Case 1: Joe earns more than Sam',
+        setupSql: `
+CREATE TABLE Employee (id INT, name STRING, salary INT, managerId INT);
+INSERT INTO Employee VALUES (1, 'Joe', 70000, 3), (2, 'Henry', 80000, 4), (3, 'Sam', 60000, null), (4, 'Max', 90000, null);
+`,
+        tables: [
+          {
+            tableName: 'Employee',
+            schema: [{ column: 'id', type: 'INT' }, { column: 'name', type: 'VARCHAR' }, { column: 'salary', type: 'INT' }, { column: 'managerId', type: 'INT' }],
+            rows: [[1, 'Joe', 70000, 3], [2, 'Henry', 80000, 4], [3, 'Sam', 60000, null], [4, 'Max', 90000, null]]
+          }
+        ]
+      }
+    ]
+  },
+
+  'bigcountries': {
+    id: 'sql-595',
+    title: 'Big Countries',
+    category: 'DBMS & SQL',
+    difficulty: 'Easy',
+    description: `A country is big if:
+- it has an area of at least three million (i.e., 3000000 km²), or
+- it has a population of at least twenty-five million (i.e., 25000000).
+
+Write a SQL query to report the name, population, and area of the big countries.
+
+### Schema
+**World** table:
+| Column Name | Type |
+| :--- | :--- |
+| name | varchar |
+| continent | varchar |
+| area | int |
+| population | int |
+| gdp | bigint |`,
+    tables: [
+      {
+        tableName: 'World',
+        schema: [
+          { column: 'name', type: 'VARCHAR' },
+          { column: 'continent', type: 'VARCHAR' },
+          { column: 'area', type: 'INT' },
+          { column: 'population', type: 'INT' },
+          { column: 'gdp', type: 'BIGINT' }
+        ],
+        rows: [
+          ['Afghanistan', 'Asia', 652230, 25500100, 20343000000],
+          ['Albania', 'Europe', 28748, 2831741, 12960000000],
+          ['Algeria', 'Africa', 2381741, 37100000, 188681000000],
+          ['Andorra', 'Europe', 468, 78115, 3712000000]
+        ]
+      }
+    ],
+    setupSql: `
+CREATE TABLE World (name STRING, continent STRING, area INT, population INT, gdp BIGINT);
+INSERT INTO World VALUES ('Afghanistan', 'Asia', 652230, 25500100, 20343000000), ('Albania', 'Europe', 28748, 2831741, 12960000000), ('Algeria', 'Africa', 2381741, 37100000, 188681000000), ('Andorra', 'Europe', 468, 78115, 3712000000);
+`,
+    starterSql: `-- Write your SQL query statement below
+SELECT 
+    name, 
+    population, 
+    area
+FROM World
+WHERE area >= 3000000 OR population >= 25000000;
+`,
+    solutionSql: `
+SELECT name, population, area
+FROM World
+WHERE area >= 3000000 OR population >= 25000000;
+`,
+    testCases: [
+      {
+        name: 'Case 1: Standard Countries Selection',
+        setupSql: `
+CREATE TABLE World (name STRING, continent STRING, area INT, population INT, gdp BIGINT);
+INSERT INTO World VALUES ('Afghanistan', 'Asia', 652230, 25500100, 20343000000), ('Albania', 'Europe', 28748, 2831741, 12960000000), ('Algeria', 'Africa', 2381741, 37100000, 188681000000), ('Andorra', 'Europe', 468, 78115, 3712000000);
+`,
+        tables: [
+          {
+            tableName: 'World',
+            schema: [{ column: 'name', type: 'VARCHAR' }, { column: 'continent', type: 'VARCHAR' }, { column: 'area', type: 'INT' }, { column: 'population', type: 'INT' }, { column: 'gdp', type: 'BIGINT' }],
+            rows: [
+              ['Afghanistan', 'Asia', 652230, 25500100, 20343000000],
+              ['Albania', 'Europe', 28748, 2831741, 12960000000],
+              ['Algeria', 'Africa', 2381741, 37100000, 188681000000],
+              ['Andorra', 'Europe', 468, 78115, 3712000000]
+            ]
+          }
+        ]
+      }
+    ]
   }
 };
 
 /**
- * Generates an SQL problem grounded directly in the lecture transcript and notes.
+ * Accurately determines if a given problem is an SQL/Database challenge.
+ */
+export function isSqlProblem(problemOrSlugOrTitle?: any): boolean {
+  if (!problemOrSlugOrTitle) return false;
+  let str = '';
+  if (typeof problemOrSlugOrTitle === 'string') {
+    str = problemOrSlugOrTitle.toLowerCase();
+  } else {
+    const p = problemOrSlugOrTitle;
+    str = `${p.category || ''} ${p.name || p.title || ''} ${p.slug || p.titleSlug || ''} ${p.sheetType || ''} ${p.categoryTitle || ''}`.toLowerCase();
+    if (Array.isArray(p.topicTags)) {
+      str += ' ' + p.topicTags.map((t: any) => t?.name || t?.slug || '').join(' ').toLowerCase();
+    }
+  }
+
+  // 1. Explicit Category or sheet
+  if (str.includes('sql') || str.includes('dbms') || str.includes('database')) {
+    return true;
+  }
+
+  // 2. Canonical LeetCode SQL problem slugs
+  const knownSqlSlugs = [
+    'combine-two-tables',
+    'second-highest-salary',
+    'nth-highest-salary',
+    'rank-scores',
+    'consecutive-numbers',
+    'employees-earning-more-than-their-managers',
+    'duplicate-emails',
+    'customers-who-never-order',
+    'department-highest-salary',
+    'department-top-three-salaries',
+    'delete-duplicate-emails',
+    'rising-temperature',
+    'trips-and-users',
+    'game-play-analysis',
+    'big-countries',
+    'classes-more-than-5-students',
+    'customer-placing-the-largest-number-of-orders',
+    'swap-salary',
+    'not-boring-movies'
+  ];
+
+  const norm = str.replace(/[^a-z0-9]/g, '');
+  return knownSqlSlugs.some(s => str.includes(s) || norm.includes(s.replace(/[^a-z0-9]/g, '')));
+}
+
+/**
+ * Generates an SQL problem grounded directly in problem details or lecture transcript and notes.
  */
 export function generateSQLProblem(
   title: string,
   transcript: string = '',
-  notes: string = ''
+  notes: string = '',
+  codingProblem?: any
 ): SQLProblem {
-  const cleanTitle = (title || 'DBMS Query Studio')
+  const cleanTitle = (codingProblem?.name || title || 'DBMS Query Studio')
     .replace(/\.(mp4|mkv|webm)$/i, '')
     .replace(/_/g, ' ');
 
+  const slug = (codingProblem?.slug || codingProblem?.titleSlug || cleanTitle).toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const lowerTitle = cleanTitle.toLowerCase();
   const lowerTranscript = (transcript || '').toLowerCase();
   const lowerNotes = (notes || '').toLowerCase();
-  const combined = `${lowerTitle} ${lowerTranscript} ${lowerNotes}`;
+  const combined = `${slug} ${lowerTitle} ${lowerTranscript} ${lowerNotes}`;
 
   if (combined.includes('duplicate') || combined.includes('having count') || combined.includes('emails')) {
     return PREDEFINED_SQL_PROBLEMS['duplicateemails'];
   }
-  if (combined.includes('second highest') || combined.includes('2nd highest') || combined.includes('nth highest')) {
+  if (combined.includes('second-highest') || combined.includes('second highest') || combined.includes('2nd highest') || combined.includes('nth highest')) {
     return PREDEFINED_SQL_PROBLEMS['secondhighestsalary'];
   }
-  if (combined.includes('join') || combined.includes('inner join') || combined.includes('left join') || combined.includes('combine two tables')) {
+  if (combined.includes('combine-two-tables') || combined.includes('combine two tables') || combined.includes('left join')) {
     return PREDEFINED_SQL_PROBLEMS['combinetwotables'];
   }
-  if (combined.includes('highest salary') || combined.includes('department') || (combined.includes('group by') && combined.includes('max'))) {
+  if (combined.includes('department') && (combined.includes('highest') || combined.includes('salary'))) {
     return PREDEFINED_SQL_PROBLEMS['departmenthighestsalary'];
   }
-  if (combined.includes('not in') || combined.includes('customers') || combined.includes('never order') || combined.includes('subquery') || combined.includes('subqueries')) {
+  if (combined.includes('employees-earning-more') || combined.includes('earning more') || (combined.includes('manager') && combined.includes('salary'))) {
+    return PREDEFINED_SQL_PROBLEMS['employeesearningmore'];
+  }
+  if (combined.includes('big-countries') || combined.includes('big countries')) {
+    return PREDEFINED_SQL_PROBLEMS['bigcountries'];
+  }
+  if (combined.includes('not in') || combined.includes('customers') || combined.includes('never order') || combined.includes('subquery')) {
     return PREDEFINED_SQL_PROBLEMS['customerswhoneverorder'];
   }
 

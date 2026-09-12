@@ -1639,7 +1639,17 @@ try {
     });
 
     let res;
-    if (typeof Solution === 'function') {
+    if (parsedArgs.length === 1 && Array.isArray(parsedArgs[0]) && (
+        '${detectedFnName}' === 'argumentsLength' ||
+        userCode.includes('argumentsLength') ||
+        userCode.includes('...args')
+    )) {
+        if (typeof ${detectedFnName || 'argumentsLength'} === 'function') {
+            res = ${detectedFnName || 'argumentsLength'}(...parsedArgs[0]);
+        } else if (typeof argumentsLength === 'function') {
+            res = argumentsLength(...parsedArgs[0]);
+        }
+    } else if (typeof Solution === 'function') {
         const sol = new Solution();
         const methodNames = Object.getOwnPropertyNames(Solution.prototype).filter(m => m !== 'constructor');
         if (methodNames.length > 0) res = sol[methodNames[0]](...parsedArgs);

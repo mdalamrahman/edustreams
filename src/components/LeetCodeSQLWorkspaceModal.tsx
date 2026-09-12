@@ -50,6 +50,7 @@ interface LeetCodeSQLWorkspaceModalProps {
   problemTitle: string;
   transcript?: string;
   notes?: string;
+  codingProblem?: any;
   onClose: () => void;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
@@ -58,18 +59,19 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   problemTitle,
   transcript = '',
   notes = '',
+  codingProblem,
   onClose,
   onCodeExecuted
 }) => {
   const cleanTitle = useMemo(() => {
-    return (problemTitle || 'DBMS SQL Challenge')
+    return (codingProblem?.name || problemTitle || 'DBMS SQL Challenge')
       .replace(/\.(mp4|mkv|webm)$/i, '')
       .replace(/_/g, ' ');
-  }, [problemTitle]);
+  }, [problemTitle, codingProblem]);
 
   const sqlProblem: SQLProblem = useMemo(() => {
-    return generateSQLProblem(cleanTitle, transcript, notes);
-  }, [cleanTitle, transcript, notes]);
+    return generateSQLProblem(cleanTitle, transcript, notes, codingProblem);
+  }, [cleanTitle, transcript, notes, codingProblem]);
 
   const [code, setCode] = useState<string>(() => {
     try {
