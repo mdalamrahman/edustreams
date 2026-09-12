@@ -373,6 +373,78 @@ Output: 1
       rust: `impl Solution {\n    pub fn closest_value(root: Option<Rc<RefCell<TreeNode>>>, target: f64) -> i32 {\n        let mut closest = 0;\n        let mut curr = root;\n        let mut has_val = false;\n        while let Some(node_rc) = curr {\n            let node = node_rc.borrow();\n            if !has_val {\n                closest = node.val;\n                has_val = true;\n            } else {\n                let diff = ((node.val as f64) - target).abs();\n                let closest_diff = ((closest as f64) - target).abs();\n                if diff < closest_diff || (diff == closest_diff && node.val < closest) {\n                    closest = node.val;\n                }\n            }\n            if target < (node.val as f64) {\n                curr = node.left.clone();\n            } else {\n                curr = node.right.clone();\n            }\n        }\n        closest\n    }\n}`,
       sql: `-- Not applicable`
     }
+  },
+  'floor-in-bst': {
+    name: 'Floor in BST',
+    category: 'BST',
+    difficulty: 'Medium',
+    description: `Given a Binary Search Tree and a number **x**, find the **Floor of x in the BST**.
+
+The **floor of x** is defined as the greatest value in the BST that is smaller than or equal to **x**. If no such value exists, return **-1**.
+
+### Example 1:
+\`\`\`
+Input: root = [10, 5, 15, 2, 6], x = 7
+Output: 6
+Explanation: In the given BST, the elements are [2, 5, 6, 10, 15]. The greatest element <= 7 is 6.
+\`\`\`
+
+### Example 2:
+\`\`\`
+Input: root = [2, 1, 3], x = 0
+Output: -1
+Explanation: There is no node with value <= 0 in the BST.
+\`\`\`
+
+### Constraints:
+- The number of nodes in the tree is in the range \`[1, 10^5]\`.
+- \`1 <= Node.val <= 10^9\`
+- \`0 <= x <= 10^9\``,
+    examples: [
+      { input: 'root = [10, 5, 15, 2, 6], x = 7', output: '6', explanation: 'The greatest node value <= 7 is 6.' },
+      { input: 'root = [2, 1, 3], x = 0', output: '-1', explanation: 'No element is <= 0, so return -1.' }
+    ],
+    constraints: [
+      'The number of nodes in the tree is in the range [1, 10^5].',
+      '1 <= Node.val <= 10^9',
+      '0 <= x <= 10^9'
+    ],
+    testCases: [
+      'root = [10, 5, 15, 2, 6], x = 7',
+      'root = [2, 1, 3], x = 0',
+      'root = [8, 4, 12, 2, 6, 10, 14], x = 11',
+      'root = [8, 4, 12, 2, 6, 10, 14], x = 8',
+      'root = [5, 2, 8, 1, 4, 6, 9], x = 3',
+      'root = [5, 2, 8, 1, 4, 6, 9], x = 10',
+      'root = [5, 2, 8, 1, 4, 6, 9], x = 1',
+      'root = [5, 2, 8, 1, 4, 6, 9], x = 5',
+      'root = [1], x = 1',
+      'root = [1], x = 0'
+    ],
+    expectedOutputs: ['6', '-1', '10', '8', '2', '9', '1', '5', '1', '-1'],
+    hints: [
+      'Perform standard BST traversal: if root->val == x, then root->val is the exact floor.',
+      'If root->val < x, then root->val could be the floor, so store it and search in the right subtree for a closer value.',
+      'If root->val > x, the floor must lie in the left subtree.'
+    ],
+    starters: {
+      cpp: `/**\n * Definition for a binary tree node.\n * struct TreeNode {\n *     int val;\n *     TreeNode *left;\n *     TreeNode *right;\n *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}\n * };\n */\nclass Solution {\npublic:\n    int floor(TreeNode* root, int x) {\n        \n    }\n};`,
+      python: `# Definition for a binary tree node.\n# class TreeNode:\n#     def __init__(self, val=0, left=None, right=None):\n#         self.val = val\n#         self.left = left\n#         self.right = right\nclass Solution:\n    def floor(self, root: Optional[TreeNode], x: int) -> int:\n        pass`,
+      java: `/**\n * Definition for a binary tree node.\n * public class TreeNode {\n *     int val;\n *     TreeNode left, right;\n *     TreeNode(int val) { this.val = val; }\n * }\n */\nclass Solution {\n    public int floor(TreeNode root, int x) {\n        \n    }\n}`,
+      javascript: `/**\n * Definition for a binary tree node.\n * function TreeNode(val, left, right) {\n *     this.val = (val===undefined ? 0 : val)\n *     this.left = (left===undefined ? null : left)\n *     this.right = (right===undefined ? null : right)\n * }\n */\n/**\n * @param {TreeNode} root\n * @param {number} x\n * @return {number}\n */\nvar floor = function(root, x) {\n    \n};`,
+      go: `func floor(root *TreeNode, x int) int {\n    \n}`,
+      rust: `impl Solution {\n    pub fn floor(root: Option<Rc<RefCell<TreeNode>>>, x: i32) -> i32 {\n        -1\n    }\n}`,
+      sql: `-- Not applicable for tree problems`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    int floor(TreeNode* root, int x) {\n        int ans = -1;\n        while (root) {\n            if (root->val == x) {\n                return root->val;\n            }\n            if (root->val < x) {\n                ans = root->val;\n                root = root->right;\n            } else {\n                root = root->left;\n            }\n        }\n        return ans;\n    }\n};`,
+      python: `class Solution:\n    def floor(self, root: Optional[TreeNode], x: int) -> int:\n        ans = -1\n        curr = root\n        while curr:\n            if curr.val == x:\n                return curr.val\n            if curr.val < x:\n                ans = curr.val\n                curr = curr.right\n            else:\n                curr = curr.left\n        return ans`,
+      java: `class Solution {\n    public int floor(TreeNode root, int x) {\n        int ans = -1;\n        TreeNode curr = root;\n        while (curr != null) {\n            if (curr.val == x) return curr.val;\n            if (curr.val < x) {\n                ans = curr.val;\n                curr = curr.right;\n            } else {\n                curr = curr.left;\n            }\n        }\n        return ans;\n    }\n}`,
+      javascript: `var floor = function(root, x) {\n    let ans = -1;\n    let curr = root;\n    while (curr) {\n        if (curr.val === x) return curr.val;\n        if (curr.val < x) {\n            ans = curr.val;\n            curr = curr.right;\n        } else {\n            curr = curr.left;\n        }\n    }\n    return ans;\n};`,
+      go: `func floor(root *TreeNode, x int) int {\n    ans := -1\n    curr := root\n    for curr != nil {\n        if curr.Val == x {\n            return curr.Val\n        }\n        if curr.Val < x {\n            ans = curr.Val\n            curr = curr.Right\n        } else {\n            curr = curr.Left\n        }\n    }\n    return ans\n}`,
+      rust: `impl Solution {\n    pub fn floor(root: Option<Rc<RefCell<TreeNode>>>, x: i32) -> i32 {\n        let mut ans = -1;\n        let mut curr = root;\n        while let Some(node_rc) = curr {\n            let node = node_rc.borrow();\n            if node.val == x {\n                return node.val;\n            }\n            if node.val < x {\n                ans = node.val;\n                curr = node.right.clone();\n            } else {\n                curr = node.left.clone();\n            }\n        }\n        ans\n    }\n}`,
+      sql: `-- Not applicable`
+    }
   }
 };
 
@@ -1321,13 +1393,19 @@ export async function fetchEnrichedProblem(
     return prob;
   };
 
-  // 0. Check predefined special problems (e.g. 2703 Return Length of Arguments Passed, 270 Closest BST Value)
+  // 0. Check predefined special problems (Exact Match Only)
   const normSlug = slug.replace(/[^a-z0-9]/g, '');
-  if (PREDEFINED_SPECIAL_PROBLEMS[slug] || normSlug === 'returnlengthofargumentspassed' || normSlug.includes('argumentslength') || slug === '2703') {
+  if (slug === 'return-length-of-arguments-passed' || normSlug === 'returnlengthofargumentspassed' || slug === '2703') {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['return-length-of-arguments-passed']);
   }
-  if (PREDEFINED_SPECIAL_PROBLEMS[slug] || normSlug === 'closestbinarysearchtreevalue' || normSlug.includes('closestbinarysearch') || slug === '270') {
+  if (slug === 'closest-binary-search-tree-value' || normSlug === 'closestbinarysearchtreevalue' || slug === '270') {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['closest-binary-search-tree-value']);
+  }
+  if (slug === 'floor-in-bst' || normSlug === 'floorinbst') {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['floor-in-bst']);
+  }
+  if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
 
   // 1. Check local spec cache
@@ -1335,14 +1413,19 @@ export async function fetchEnrichedProblem(
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       let parsed = JSON.parse(cached) as ProblemTemplate;
-      parsed = repairAndHardenProblem(parsed);
-      if (isProblemValidAndAuthentic(parsed)) {
-        if (parsed.testCases && parsed.testCases.length >= 10) {
-          return applyOverride(parsed);
-        }
-        return applyOverride(await ensureAtLeast10Cases(parsed));
-      } else {
+      // Sanity check: purge contaminated cache if name doesn't match slug
+      if (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) {
         localStorage.removeItem(cacheKey);
+      } else {
+        parsed = repairAndHardenProblem(parsed);
+        if (isProblemValidAndAuthentic(parsed)) {
+          if (parsed.testCases && parsed.testCases.length >= 10) {
+            return applyOverride(parsed);
+          }
+          return applyOverride(await ensureAtLeast10Cases(parsed));
+        } else {
+          localStorage.removeItem(cacheKey);
+        }
       }
     }
   } catch (_) {}

@@ -63,6 +63,7 @@ import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForPro
 import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
+import { detectProblemType } from '../lib/problemClassifier';
 import { CodeExecutionResult, QuizQuestion, Video } from '../lib/types';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
@@ -180,7 +181,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   onClose,
   onCodeExecuted
 }) => {
-  const [language, setLanguage] = useState<SupportedLanguage>(initialLanguage);
+  const [language, setLanguage] = useState<SupportedLanguage>(() => {
+    if (initialLanguage && initialLanguage !== 'cpp') return initialLanguage;
+    try {
+      const pref = localStorage.getItem('sdetube_preferred_language') as SupportedLanguage;
+      if (pref && ['cpp', 'python', 'java', 'javascript', 'go', 'rust'].includes(pref)) {
+        return pref;
+      }
+    } catch {}
+    return initialLanguage || 'cpp';
+  });
   
   // Clean title & problem template
   const cleanTitle = useMemo(() => {
@@ -275,27 +285,42 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         } catch {}
 
-        // Auto-select language if problem is JavaScript or Database specific
-        let activeLang = language;
-        if (
-          enriched.category?.toLowerCase() === 'javascript' ||
-          targetSlug.includes('arguments-length') ||
-          (enriched.starters?.javascript && (!enriched.starters?.cpp || enriched.starters.cpp.includes('returnLengthOfArgumentsPassed')))
-        ) {
-          activeLang = 'javascript';
-          setLanguage('javascript');
-        } else if (
-          enriched.category?.toLowerCase() === 'database' ||
-          targetSlug.includes('sql') ||
-          (enriched.starters?.sql && !enriched.starters?.cpp)
-        ) {
-          activeLang = 'sql';
-          setLanguage('sql');
-        }
+        // Classify problem type (dsa vs sql vs javascript) via authentic LeetCode metadata + AI cascade
+        detectProblemType({
+          name: enriched.name,
+          title: enriched.name,
+          slug: targetSlug,
+          category: enriched.category,
+          categoryTitle: enriched.category,
+          codeSnippets: (enriched as any).codeSnippets,
+          starters: enriched.starters,
+          description: enriched.description
+        }).then((domainType) => {
+          if (isCancelled) return;
+          if (domainType === 'sql') {
+            setLanguage('sql');
+            setCode(enriched.starters?.sql || '-- Write your SQL query here');
+          } else if (domainType === 'javascript') {
+            const hasExistingSavedCode = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
+            if (!hasExistingSavedCode && (!initialCode || initialCode.trim().length < 10)) {
+              setLanguage('javascript');
+              setCode(enriched.starters?.javascript || '');
+            }
+          } else {
+            // DSA problem: Always preserve user's preferred language (e.g. cpp, python, java)
+            // NEVER force JavaScript on DSA problems!
+            let curLang = language;
+            if (curLang === 'sql') {
+              const pref = (localStorage.getItem('sdetube_preferred_language') as SupportedLanguage) || 'cpp';
+              curLang = pref;
+              setLanguage(pref);
+            }
+            if (!initialCode || initialCode.trim().length < 10) {
+              setCode(enriched.starters?.[curLang] || enriched.starters?.cpp || '');
+            }
+          }
+        });
 
-        if (!initialCode || initialCode.trim().length < 10) {
-          setCode(enriched.starters[activeLang] || enriched.starters[language] || enriched.starters.cpp || '');
-        }
         if (enriched.testCases && enriched.testCases.length > 0) {
           setActiveTestCaseIdx(0);
           setTestInput(enriched.testCases[0]);
@@ -1010,6 +1035,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // Update starter code or load from cache when language changes
   const handleLanguageChange = (newLang: SupportedLanguage) => {
     setLanguage(newLang);
+    if (newLang !== 'sql') {
+      try {
+        localStorage.setItem('sdetube_preferred_language', newLang);
+      } catch {}
+    }
     const slug = currentProblemSlug;
     try {
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${newLang}`);
