@@ -1,6 +1,7 @@
 import { SupportedLanguage, isDriverHarnessValid } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
+import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
 
 export interface ProblemApproach {
   id: string;
@@ -1077,6 +1078,16 @@ export async function generateProblemWithMistral(
   const cleanTitle = getCleanTitle(slugOrTitle);
   const slug = toSlug(slugOrTitle);
 
+  // 1. Check if authentic LeetCode problem specification can be fetched from GitHub (AkashSingh3031 or doocs/leetcode)
+  try {
+    const ghProb = await fetchFromGitHubLeetCode(slugOrTitle);
+    if (ghProb && isProblemValidAndAuthentic(ghProb)) {
+      return ghProb;
+    }
+  } catch (err) {
+    console.warn(`[GitHub fetch inside generateProblemWithMistral notice]:`, err);
+  }
+
   const prompt = `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
 Generate complete, authentic coding problem details in JSON for: "${cleanTitle}".
 Context Category: "${category}", Difficulty: "${difficulty}".
@@ -1413,8 +1424,11 @@ export async function fetchEnrichedProblem(
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       let parsed = JSON.parse(cached) as ProblemTemplate;
-      // Sanity check: purge contaminated cache if name doesn't match slug
-      if (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) {
+      // Sanity check: purge contaminated cache if name doesn't match slug or if description is low-quality fallback stub
+      if (
+        (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) ||
+        (parsed?.description && parsed.description.includes('An optimal algorithm is required to solve the'))
+      ) {
         localStorage.removeItem(cacheKey);
       } else {
         parsed = repairAndHardenProblem(parsed);
@@ -1471,6 +1485,26 @@ export async function fetchEnrichedProblem(
     }
   } catch (err) {
     console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
+  }
+
+  // 3.5. Fetch from GitHub LeetCode Premium Repositories (AkashSingh3031 / doocs)
+  try {
+    const ghData = await fetchFromGitHubLeetCode(slugOrTitle);
+    if (ghData && isProblemValidAndAuthentic(ghData)) {
+      const finalGh = await ensureAtLeast10Cases(ghData);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(finalGh));
+        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh));
+        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalGh)
+        }).catch(() => {});
+      } catch (_) {}
+      return applyOverride(finalGh);
+    }
+  } catch (err) {
+    console.warn(`[GitHub Premium problem fetch notice for '${slug}']:`, err);
   }
 
   // 4. Fetch from GeeksforGeeks API (/api/gfg/{slug} or practice API)
