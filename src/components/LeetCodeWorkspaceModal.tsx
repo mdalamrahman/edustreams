@@ -257,6 +257,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         } catch {}
 
         enriched = guaranteeAtLeast10TestCases(enriched);
+        enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
+        enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
 
@@ -1129,10 +1131,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Strict Output Validation Logic (Handles order-independent nested subsets, bools, ints, whitespace)
   const currentExpectedOutput = useMemo(() => {
-    if (submissionResult && !submissionResult.isSuccess && submissionResult.failedInput === testInput && submissionResult.failedExpected) {
-      return submissionResult.failedExpected;
+    let raw: any = '';
+    if (submissionResult && !submissionResult.isSuccess && submissionResult.failedInput === testInput && submissionResult.failedExpected !== undefined && submissionResult.failedExpected !== null) {
+      raw = submissionResult.failedExpected;
+    } else {
+      raw = problemTemplate.expectedOutputs?.[activeTestCaseIdx] ?? problemTemplate.expectedOutputs?.[0] ?? '';
     }
-    return problemTemplate.expectedOutputs?.[activeTestCaseIdx] || problemTemplate.expectedOutputs?.[0] || '';
+    return raw !== null && raw !== undefined ? String(raw) : '';
   }, [problemTemplate, activeTestCaseIdx, submissionResult, testInput]);
 
   const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput, caseInput?: string): boolean => {
@@ -1159,8 +1164,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       }
     }
 
-    if (!expectedOutput || !expectedOutput.trim()) return stdout.trim().length > 0;
-    return compareOutputs(stdout, expectedOutput);
+    const expStr = String(expectedOutput ?? '');
+    if (!expStr || !expStr.trim()) return stdout.trim().length > 0;
+    return compareOutputs(stdout, expStr);
   };
 
   // Run Code (First 3 Run Cases) vs Submit (All Hidden Cases)
@@ -3450,10 +3456,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold flex-wrap gap-1">
                         <span>Input (Case {activeTestCaseIdx + 1}):</span>
-                        {currentExpectedOutput && (
+                        {currentExpectedOutput ? (
                           <div className="flex items-center gap-1.5 text-slate-400 font-normal font-mono normal-case flex-wrap">
                             <span>Expected:</span>
-                            {currentExpectedOutput.includes(' or ') || currentExpectedOutput.includes('||') ? (
+                            {typeof currentExpectedOutput === 'string' && (currentExpectedOutput.includes(' or ') || currentExpectedOutput.includes('||')) ? (
                               <div className="flex items-center gap-1 flex-wrap">
                                 {currentExpectedOutput.split(/ or |\|\|/).map((opt, oIdx) => (
                                   <span key={oIdx} className="px-1.5 py-0.5 rounded bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-bold text-[10px]">
@@ -3462,10 +3468,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 ))}
                               </div>
                             ) : (
-                              <code className="text-indigo-300 font-bold">{currentExpectedOutput}</code>
+                              <code className="text-indigo-300 font-bold">{String(currentExpectedOutput)}</code>
                             )}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                       <textarea
                         value={testInput}

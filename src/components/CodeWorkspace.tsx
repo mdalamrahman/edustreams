@@ -267,7 +267,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     if (activeQ?.test_cases && activeQ.test_cases.length > 0 && result.stdout) {
       const stdoutTrimmed = result.stdout.trim();
       const tcResults = activeQ.test_cases.map((tc) => {
-        const expectedTrimmed = tc.expected_output.trim();
+        const expectedTrimmed = String(tc.expected_output ?? '').trim();
         const passed = stdoutTrimmed.includes(expectedTrimmed) || stdoutTrimmed === expectedTrimmed;
         return { input: tc.input, expected: tc.expected_output, actual: stdoutTrimmed, passed };
       });

@@ -306,6 +306,73 @@ Three values were passed to the function so it should return 3.
       rust: `impl Solution {\n    pub fn arguments_length(args: Vec<i32>) -> i32 {\n        args.len() as i32\n    }\n}`,
       sql: `-- Write your SQL query here`
     }
+  },
+  'closest-binary-search-tree-value': {
+    name: 'Closest Binary Search Tree Value',
+    category: 'Trees',
+    difficulty: 'Easy',
+    description: `Given the \`root\` of a binary search tree and a \`target\` value, return *the value in the BST that is closest to the* \`target\`. If there are multiple answers, return the smallest.
+
+### Example 1:
+\`\`\`
+Input: root = [4, 2, 5, 1, 3], target = 3.714286
+Output: 4
+\`\`\`
+
+### Example 2:
+\`\`\`
+Input: root = [1], target = 4.428571
+Output: 1
+\`\`\`
+
+### Constraints:
+- The number of nodes in the tree is in the range \`[1, 10^4]\`.
+- \`0 <= Node.val <= 10^9\`
+- \`-10^9 <= target <= 10^9\``,
+    examples: [
+      { input: 'root = [4, 2, 5, 1, 3], target = 3.714286', output: '4', explanation: 'Node 4 is closest to 3.714286.' },
+      { input: 'root = [1], target = 4.428571', output: '1', explanation: 'The single node 1 is closest.' }
+    ],
+    constraints: [
+      'The number of nodes in the tree is in the range [1, 10^4].',
+      '0 <= Node.val <= 10^9',
+      '-10^9 <= target <= 10^9'
+    ],
+    testCases: [
+      'root = [4, 2, 5, 1, 3], target = 3.714286',
+      'root = [1], target = 4.428571',
+      'root = [2, 1, 3], target = 0.2',
+      'root = [4, 2, 5, 1, 3], target = 5.8',
+      'root = [8, 4, 12, 2, 6, 10, 14], target = 9.1',
+      'root = [8, 4, 12, 2, 6, 10, 14], target = 5.5',
+      'root = [1, null, 2], target = 3.5',
+      'root = [3, 2, 4, 1], target = 4.14',
+      'root = [5, 3, 6, 2, 4, null, null, 1], target = 4.5',
+      'root = [10], target = 10.0'
+    ],
+    expectedOutputs: ['4', '1', '1', '5', '10', '6', '2', '4', '4', '10'],
+    hints: [
+      'Traverse the BST while keeping track of the closest node value seen so far.',
+      'Since it is a BST, you can decide whether to go left or right based on comparing the target with the current node value.'
+    ],
+    starters: {
+      cpp: `/**\n * Definition for a binary tree node.\n * struct TreeNode {\n *     int val;\n *     TreeNode *left;\n *     TreeNode *right;\n *     TreeNode() : val(0), left(nullptr), right(nullptr) {}\n *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}\n *     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}\n * };\n */\nclass Solution {\npublic:\n    int closestValue(TreeNode* root, double target) {\n        \n    }\n};`,
+      python: `# Definition for a binary tree node.\n# class TreeNode:\n#     def __init__(self, val=0, left=None, right=None):\n#         self.val = val\n#         self.left = left\n#         self.right = right\nclass Solution:\n    def closestValue(self, root: Optional[TreeNode], target: float) -> int:\n        pass`,
+      java: `/**\n * Definition for a binary tree node.\n * public class TreeNode {\n *     int val;\n *     TreeNode left;\n *     TreeNode right;\n *     TreeNode() {}\n *     TreeNode(int val) { this.val = val; }\n *     TreeNode(int val, TreeNode left, TreeNode right) {\n *         this.val = val;\n *         this.left = left;\n *         this.right = right;\n *     }\n * }\n */\nclass Solution {\n    public int closestValue(TreeNode root, double target) {\n        \n    }\n}`,
+      javascript: `/**\n * Definition for a binary tree node.\n * function TreeNode(val, left, right) {\n *     this.val = (val===undefined ? 0 : val)\n *     this.left = (left===undefined ? null : left)\n *     this.right = (right===undefined ? null : right)\n * }\n */\n/**\n * @param {TreeNode} root\n * @param {number} target\n * @return {number}\n */\nvar closestValue = function(root, target) {\n    \n};`,
+      go: `/**\n * Definition for a binary tree node.\n * type TreeNode struct {\n *     Val int\n *     Left *TreeNode\n *     Right *TreeNode\n * }\n */\nfunc closestValue(root *TreeNode, target float64) int {\n    \n}`,
+      rust: `// Definition for a binary tree node.\n// #[derive(Debug, PartialEq, Eq)]\n// pub struct TreeNode {\n//   pub val: i32,\n//   pub left: Option<Rc<RefCell<TreeNode>>>,\n//   pub right: Option<Rc<RefCell<TreeNode>>>,\n// }\nimpl Solution {\n    pub fn closest_value(root: Option<Rc<RefCell<TreeNode>>>, target: f64) -> i32 {\n        0\n    }\n}`,
+      sql: `-- Not applicable for tree problems`
+    },
+    solutions: {
+      cpp: `class Solution {\npublic:\n    int closestValue(TreeNode* root, double target) {\n        int closest = root->val;\n        while (root) {\n            if (std::abs(root->val - target) < std::abs(closest - target) || \n               (std::abs(root->val - target) == std::abs(closest - target) && root->val < closest)) {\n                closest = root->val;\n            }\n            root = target < root->val ? root->left : root->right;\n        }\n        return closest;\n    }\n};`,
+      python: `class Solution:\n    def closestValue(self, root: Optional[TreeNode], target: float) -> int:\n        closest = root.val\n        curr = root\n        while curr:\n            diff = abs(curr.val - target)\n            closest_diff = abs(closest - target)\n            if diff < closest_diff or (diff == closest_diff and curr.val < closest):\n                closest = curr.val\n            curr = curr.left if target < curr.val else curr.right\n        return closest`,
+      java: `class Solution {\n    public int closestValue(TreeNode root, double target) {\n        int closest = root.val;\n        TreeNode curr = root;\n        while (curr != null) {\n            double diff = Math.abs(curr.val - target);\n            double closestDiff = Math.abs(closest - target);\n            if (diff < closestDiff || (diff == closestDiff && curr.val < closest)) {\n                closest = curr.val;\n            }\n            curr = target < curr.val ? curr.left : curr.right;\n        }\n        return closest;\n    }\n}`,
+      javascript: `var closestValue = function(root, target) {\n    let closest = root.val;\n    let curr = root;\n    while (curr) {\n        const diff = Math.abs(curr.val - target);\n        const closestDiff = Math.abs(closest - target);\n        if (diff < closestDiff || (diff === closestDiff && curr.val < closest)) {\n            closest = curr.val;\n        }\n        curr = target < curr.val ? curr.left : curr.right;\n    }\n    return closest;\n};`,
+      go: `func closestValue(root *TreeNode, target float64) int {\n    closest := root.Val\n    curr := root\n    for curr != nil {\n        diff := math.Abs(float64(curr.Val) - target)\n        closestDiff := math.Abs(float64(closest) - target)\n        if diff < closestDiff || (diff == closestDiff && curr.Val < closest) {\n            closest = curr.Val\n        }\n        if target < float64(curr.Val) {\n            curr = curr.Left\n        } else {\n            curr = curr.Right\n        }\n    }\n    return closest\n}`,
+      rust: `impl Solution {\n    pub fn closest_value(root: Option<Rc<RefCell<TreeNode>>>, target: f64) -> i32 {\n        let mut closest = 0;\n        let mut curr = root;\n        let mut has_val = false;\n        while let Some(node_rc) = curr {\n            let node = node_rc.borrow();\n            if !has_val {\n                closest = node.val;\n                has_val = true;\n            } else {\n                let diff = ((node.val as f64) - target).abs();\n                let closest_diff = ((closest as f64) - target).abs();\n                if diff < closest_diff || (diff == closest_diff && node.val < closest) {\n                    closest = node.val;\n                }\n            }\n            if target < (node.val as f64) {\n                curr = node.left.clone();\n            } else {\n                curr = node.right.clone();\n            }\n        }\n        closest\n    }\n}`,
+      sql: `-- Not applicable`
+    }
   }
 };
 
@@ -351,11 +418,19 @@ export function extractParamNames(starters: Record<SupportedLanguage, string> | 
 export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplate {
   if (!problem) return problem;
 
-  // Guarantee array properties are always defined
-  problem.examples = Array.isArray(problem.examples) ? problem.examples : [];
+  // Guarantee array properties are always defined with safe string elements
+  problem.examples = (Array.isArray(problem.examples) ? problem.examples : []).map(ex => ({
+    ...ex,
+    input: ex.input !== null && ex.input !== undefined ? String(ex.input) : '',
+    output: ex.output !== null && ex.output !== undefined ? String(ex.output) : ''
+  }));
   problem.constraints = Array.isArray(problem.constraints) ? problem.constraints : [];
-  problem.testCases = Array.isArray(problem.testCases) ? problem.testCases : [];
-  problem.expectedOutputs = Array.isArray(problem.expectedOutputs) ? problem.expectedOutputs : [];
+  problem.testCases = (Array.isArray(problem.testCases) ? problem.testCases : []).map(tc =>
+    tc !== null && tc !== undefined ? String(tc) : ''
+  );
+  problem.expectedOutputs = (Array.isArray(problem.expectedOutputs) ? problem.expectedOutputs : []).map(eo =>
+    eo !== null && eo !== undefined ? String(eo) : ''
+  );
   problem.hints = Array.isArray(problem.hints) ? problem.hints : [];
   problem.approaches = Array.isArray(problem.approaches) ? problem.approaches : [];
   if (!problem.starters || Object.keys(problem.starters).length === 0) {
@@ -1097,8 +1172,8 @@ Return ONLY valid JSON matching this exact structure:
 export function guaranteeAtLeast10TestCases(prob: ProblemTemplate): ProblemTemplate {
   if (!prob) return prob;
   prob = repairAndHardenProblem(prob);
-  prob.testCases = Array.isArray(prob.testCases) ? prob.testCases : [];
-  prob.expectedOutputs = Array.isArray(prob.expectedOutputs) ? prob.expectedOutputs : [];
+  prob.testCases = (Array.isArray(prob.testCases) ? prob.testCases : []).map(tc => tc !== null && tc !== undefined ? String(tc) : '');
+  prob.expectedOutputs = (Array.isArray(prob.expectedOutputs) ? prob.expectedOutputs : []).map(eo => eo !== null && eo !== undefined ? String(eo) : '');
   prob.examples = Array.isArray(prob.examples) ? prob.examples : [];
 
   if (prob.testCases.length >= 10 && prob.expectedOutputs.length >= 10) {
@@ -1246,10 +1321,13 @@ export async function fetchEnrichedProblem(
     return prob;
   };
 
-  // 0. Check predefined special problems (e.g. 2703 Return Length of Arguments Passed)
+  // 0. Check predefined special problems (e.g. 2703 Return Length of Arguments Passed, 270 Closest BST Value)
   const normSlug = slug.replace(/[^a-z0-9]/g, '');
   if (PREDEFINED_SPECIAL_PROBLEMS[slug] || normSlug === 'returnlengthofargumentspassed' || normSlug.includes('argumentslength') || slug === '2703') {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['return-length-of-arguments-passed']);
+  }
+  if (PREDEFINED_SPECIAL_PROBLEMS[slug] || normSlug === 'closestbinarysearchtreevalue' || normSlug.includes('closestbinarysearch') || slug === '270') {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['closest-binary-search-tree-value']);
   }
 
   // 1. Check local spec cache

@@ -151,7 +151,7 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
       // If an issue was detected, automatically auto-resolve on backend & credit ₹1 to user
       if (result.isIncorrect) {
         let finalInput = (result.correctedInput || currentInput || '').trim();
-        const finalExpected = (result.correctedExpectedOutput || currentExpectedOutput || '').trim();
+        const finalExpected = String(result.correctedExpectedOutput || currentExpectedOutput || '').trim();
 
         // Deterministic fallback: If input lacks '=', auto-prefix parameter name
         if (!finalInput.includes('=')) {
