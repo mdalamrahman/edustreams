@@ -446,6 +446,585 @@ Explanation: There is no node with value <= 0 in the BST.
       rust: `impl Solution {\n    pub fn floor(root: Option<Rc<RefCell<TreeNode>>>, x: i32) -> i32 {\n        let mut ans = -1;\n        let mut curr = root;\n        while let Some(node_rc) = curr {\n            let node = node_rc.borrow();\n            if node.val == x {\n                return node.val;\n            }\n            if node.val < x {\n                ans = node.val;\n                curr = node.right.clone();\n            } else {\n                curr = node.left.clone();\n            }\n        }\n        ans\n    }\n}`,
       sql: `-- Not applicable`
     }
+  },
+  '2-1-single-responsibility-principle-srp-solid-principles-': {
+    name: 'Single Responsibility Principle (SRP) - Parking Lot System',
+    category: 'Low Level Design',
+    difficulty: 'Medium',
+    description: `Design an object-oriented Parking Lot system adhering strictly to the **Single Responsibility Principle (SRP)** from SOLID design principles.
+
+In this system:
+1. Spot management, inventory allocation, and vehicle entry/exit policies are separated into dedicated responsibilities.
+2. The system supports three vehicle types: **"Car"**, **"Truck"**, and **"Motorcycle"**.
+
+Implement the \`Solution\` class (or interface facade):
+- \`int initialize(int carSpots, int truckSpots, int motorcycleSpots)\`: Initializes the parking lot capacity for each vehicle type and returns the initialized Car capacity.
+- \`bool parkVehicle(string vehicleType)\`: Attempts to park a vehicle of type \`vehicleType\`. If a spot is available, decrements the available spot count and returns \`true\`. If no spot is available, returns \`false\`.
+- \`bool removeVehicle(string vehicleType)\`: Attempts to remove a parked vehicle of type \`vehicleType\`. If at least one vehicle of that type is currently parked, increments the available spot count and returns \`true\`. If no vehicles of that type are parked (or spots are already at max capacity), returns \`false\`.
+- \`int getAvailableSpots(string vehicleType)\`: Returns the number of currently available parking spots for the given \`vehicleType\`.
+
+### Example 1:
+\`\`\`
+Input:
+initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car")
+
+Output:
+10, true, true, true, true, 10
+\`\`\`
+
+### Constraints:
+- \`0 <= carSpots, truckSpots, motorcycleSpots <= 1000\`
+- \`vehicleType\` is one of \`"Car"\`, \`"Truck"\`, or \`"Motorcycle"\`.
+- At most \`1000\` calls will be made to \`parkVehicle\`, \`removeVehicle\`, and \`getAvailableSpots\`.`,
+    examples: [
+      {
+        input: 'initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car")',
+        output: '10, true, true, true, true, 10',
+        explanation: 'Initialize lot with 10 Car spots. Park Car (rem: 9), Truck (rem: 4), Motorcycle (rem: 19). Remove Car (rem: 10). Available Car spots is 10.'
+      },
+      {
+        input: 'initialize(1, 1, 1), parkVehicle("Car"), parkVehicle("Car"), getAvailableSpots("Car")',
+        output: '1, true, false, 0',
+        explanation: 'Only 1 Car spot. Second park fails. Available Car spots is 0.'
+      }
+    ],
+    constraints: [
+      '0 <= carSpots, truckSpots, motorcycleSpots <= 1000',
+      'vehicleType is one of "Car", "Truck", or "Motorcycle".',
+      'At most 1000 calls across all operations.'
+    ],
+    testCases: [
+      'initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car")',
+      'initialize(1, 1, 1), parkVehicle("Car"), parkVehicle("Car"), getAvailableSpots("Car")',
+      'initialize(2, 2, 2), removeVehicle("Truck"), parkVehicle("Truck"), getAvailableSpots("Truck")',
+      'initialize(0, 0, 0), parkVehicle("Motorcycle"), getAvailableSpots("Motorcycle")',
+      'initialize(5, 5, 5), parkVehicle("Car"), parkVehicle("Car"), parkVehicle("Car"), removeVehicle("Car"), getAvailableSpots("Car")',
+      'initialize(3, 2, 4), parkVehicle("Truck"), parkVehicle("Truck"), parkVehicle("Truck"), getAvailableSpots("Truck")',
+      'initialize(10, 10, 10), parkVehicle("Motorcycle"), removeVehicle("Motorcycle"), removeVehicle("Motorcycle"), getAvailableSpots("Motorcycle")',
+      'initialize(5, 10, 15), getAvailableSpots("Car"), getAvailableSpots("Truck"), getAvailableSpots("Motorcycle")',
+      'initialize(2, 1, 3), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), getAvailableSpots("Car")',
+      'initialize(100, 50, 200), parkVehicle("Car"), parkVehicle("Car"), removeVehicle("Car"), parkVehicle("Car"), getAvailableSpots("Car")'
+    ],
+    expectedOutputs: [
+      '10, true, true, true, true, 10 or 10, true, true, true, true, 11',
+      '1, true, false, 0',
+      '2, false, true, 1',
+      '0, false, 0',
+      '5, true, true, true, true, 3',
+      '3, true, true, false, 0',
+      '10, true, true, false, 10',
+      '5, 5, 10, 15',
+      '2, true, true, true, 1',
+      '100, true, true, true, true, 99 or 100, true, true, true, true, 98'
+    ],
+    hints: [
+      'Single Responsibility Principle states each class should have exactly one reason to change.',
+      'Separate the parking spot inventory management from the request routing facade.',
+      'Track current allocated spots against maximum capacity for each vehicle type.'
+    ],
+    starters: {
+      cpp: `class Solution {
+public:
+    int initialize(int carSpots, int truckSpots, int motorcycleSpots) {
+        // Initialize parking spots for Car, Truck, and Motorcycle
+        return carSpots;
+    }
+    
+    bool parkVehicle(string vehicleType) {
+        // Return true if spot allocated successfully, false if full
+        return false;
+    }
+    
+    bool removeVehicle(string vehicleType) {
+        // Return true if vehicle successfully removed, false otherwise
+        return false;
+    }
+    
+    int getAvailableSpots(string vehicleType) {
+        // Return available spots for given vehicleType ("Car", "Truck", "Motorcycle")
+        return 0;
+    }
+};`,
+      python: `class Solution:
+    def __init__(self):
+        pass
+
+    def initialize(self, carSpots: int, truckSpots: int, motorcycleSpots: int) -> int:
+        return carSpots
+
+    def parkVehicle(self, vehicleType: str) -> bool:
+        return False
+
+    def removeVehicle(self, vehicleType: str) -> bool:
+        return False
+
+    def getAvailableSpots(self, vehicleType: str) -> int:
+        return 0`,
+      java: `class Solution {
+    public int initialize(int carSpots, int truckSpots, int motorcycleSpots) {
+        return carSpots;
+    }
+
+    public boolean parkVehicle(String vehicleType) {
+        return false;
+    }
+
+    public boolean removeVehicle(String vehicleType) {
+        return false;
+    }
+
+    public int getAvailableSpots(String vehicleType) {
+        return 0;
+    }
+}`,
+      javascript: `var Solution = function() {
+    
+};
+
+/** 
+ * @param {number} carSpots 
+ * @param {number} truckSpots 
+ * @param {number} motorcycleSpots
+ * @return {number}
+ */
+Solution.prototype.initialize = function(carSpots, truckSpots, motorcycleSpots) {
+    return carSpots;
+};
+
+/** 
+ * @param {string} vehicleType
+ * @return {boolean}
+ */
+Solution.prototype.parkVehicle = function(vehicleType) {
+    return false;
+};
+
+/** 
+ * @param {string} vehicleType
+ * @return {boolean}
+ */
+Solution.prototype.removeVehicle = function(vehicleType) {
+    return false;
+};
+
+/** 
+ * @param {string} vehicleType
+ * @return {number}
+ */
+Solution.prototype.getAvailableSpots = function(vehicleType) {
+    return 0;
+};`,
+      go: `type Solution struct {
+
+}
+
+func Constructor() Solution {
+    return Solution{}
+}
+
+func (this *Solution) Initialize(carSpots int, truckSpots int, motorcycleSpots int) int {
+    return carSpots
+}
+
+func (this *Solution) ParkVehicle(vehicleType string) bool {
+    return false
+}
+
+func (this *Solution) RemoveVehicle(vehicleType string) bool {
+    return false
+}
+
+func (this *Solution) GetAvailableSpots(vehicleType string) int {
+    return 0
+}`,
+      rust: `struct Solution {
+
+}
+
+impl Solution {
+    fn new() -> Self {
+        Solution {}
+    }
+    
+    fn initialize(&mut self, car_spots: i32, truck_spots: i32, motorcycle_spots: i32) -> i32 {
+        car_spots
+    }
+    
+    fn park_vehicle(&mut self, vehicle_type: String) -> bool {
+        false
+    }
+    
+    fn remove_vehicle(&mut self, vehicle_type: String) -> bool {
+        false
+    }
+    
+    fn get_available_spots(&self, vehicle_type: String) -> i32 {
+        0
+    }
+}`,
+      sql: `-- Not applicable for LLD problems`
+    },
+    solutions: {
+      cpp: `// Refactored with Single Responsibility Principle (SRP)
+class SpotInventory {
+private:
+    int available = 0;
+    int capacity = 0;
+public:
+    void init(int cap) {
+        capacity = cap;
+        available = cap;
+    }
+    bool park() {
+        if (available > 0) {
+            available--;
+            return true;
+        }
+        return false;
+    }
+    bool remove() {
+        if (available < capacity) {
+            available++;
+            return true;
+        }
+        return false;
+    }
+    int getAvailable() const {
+        return available;
+    }
+};
+
+class Solution {
+private:
+    SpotInventory cars;
+    SpotInventory trucks;
+    SpotInventory motorcycles;
+public:
+    int initialize(int carSpots, int truckSpots, int motorcycleSpots) {
+        cars.init(carSpots);
+        trucks.init(truckSpots);
+        motorcycles.init(motorcycleSpots);
+        return carSpots;
+    }
+    
+    bool parkVehicle(string vehicleType) {
+        if (vehicleType == "Car") return cars.park();
+        if (vehicleType == "Truck") return trucks.park();
+        if (vehicleType == "Motorcycle") return motorcycles.park();
+        return false;
+    }
+    
+    bool removeVehicle(string vehicleType) {
+        if (vehicleType == "Car") return cars.remove();
+        if (vehicleType == "Truck") return trucks.remove();
+        if (vehicleType == "Motorcycle") return motorcycles.remove();
+        return false;
+    }
+    
+    int getAvailableSpots(string vehicleType) {
+        if (vehicleType == "Car") return cars.getAvailable();
+        if (vehicleType == "Truck") return trucks.getAvailable();
+        if (vehicleType == "Motorcycle") return motorcycles.getAvailable();
+        return 0;
+    }
+};`,
+      python: `# Refactored with Single Responsibility Principle (SRP)
+class SpotInventory:
+    def __init__(self):
+        self.capacity = 0
+        self.available = 0
+
+    def init(self, cap: int):
+        self.capacity = cap
+        self.available = cap
+
+    def park(self) -> bool:
+        if self.available > 0:
+            self.available -= 1
+            return True
+        return False
+
+    def remove(self) -> bool:
+        if self.available < self.capacity:
+            self.available += 1
+            return True
+        return False
+
+    def get_available(self) -> int:
+        return self.available
+
+class Solution:
+    def __init__(self):
+        self.cars = SpotInventory()
+        self.trucks = SpotInventory()
+        self.motorcycles = SpotInventory()
+
+    def initialize(self, carSpots: int, truckSpots: int, motorcycleSpots: int) -> int:
+        self.cars.init(carSpots)
+        self.trucks.init(truckSpots)
+        self.motorcycles.init(motorcycleSpots)
+        return carSpots
+
+    def parkVehicle(self, vehicleType: str) -> bool:
+        if vehicleType == "Car": return self.cars.park()
+        if vehicleType == "Truck": return self.trucks.park()
+        if vehicleType == "Motorcycle": return self.motorcycles.park()
+        return False
+
+    def removeVehicle(self, vehicleType: str) -> bool:
+        if vehicleType == "Car": return self.cars.remove()
+        if vehicleType == "Truck": return self.trucks.remove()
+        if vehicleType == "Motorcycle": return self.motorcycles.remove()
+        return False
+
+    def getAvailableSpots(self, vehicleType: str) -> int:
+        if vehicleType == "Car": return self.cars.get_available()
+        if vehicleType == "Truck": return self.trucks.get_available()
+        if vehicleType == "Motorcycle": return self.motorcycles.get_available()
+        return 0`,
+      java: `class SpotInventory {
+    private int capacity;
+    private int available;
+
+    public void init(int cap) {
+        this.capacity = cap;
+        this.available = cap;
+    }
+
+    public boolean park() {
+        if (available > 0) {
+            available--;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean remove() {
+        if (available < capacity) {
+            available++;
+            return true;
+        }
+        return false;
+    }
+
+    public int getAvailable() {
+        return available;
+    }
+}
+
+class Solution {
+    private SpotInventory cars = new SpotInventory();
+    private SpotInventory trucks = new SpotInventory();
+    private SpotInventory motorcycles = new SpotInventory();
+
+    public int initialize(int carSpots, int truckSpots, int motorcycleSpots) {
+        cars.init(carSpots);
+        trucks.init(truckSpots);
+        motorcycles.init(motorcycleSpots);
+        return carSpots;
+    }
+
+    public boolean parkVehicle(String vehicleType) {
+        if ("Car".equals(vehicleType)) return cars.park();
+        if ("Truck".equals(vehicleType)) return trucks.park();
+        if ("Motorcycle".equals(vehicleType)) return motorcycles.park();
+        return false;
+    }
+
+    public boolean removeVehicle(String vehicleType) {
+        if ("Car".equals(vehicleType)) return cars.remove();
+        if ("Truck".equals(vehicleType)) return trucks.remove();
+        if ("Motorcycle".equals(vehicleType)) return motorcycles.remove();
+        return false;
+    }
+
+    public int getAvailableSpots(String vehicleType) {
+        if ("Car".equals(vehicleType)) return cars.getAvailable();
+        if ("Truck".equals(vehicleType)) return trucks.getAvailable();
+        if ("Motorcycle".equals(vehicleType)) return motorcycles.getAvailable();
+        return 0;
+    }
+}`,
+      javascript: `function SpotInventory() {
+    this.capacity = 0;
+    this.available = 0;
+}
+SpotInventory.prototype.init = function(cap) {
+    this.capacity = cap;
+    this.available = cap;
+};
+SpotInventory.prototype.park = function() {
+    if (this.available > 0) {
+        this.available--;
+        return true;
+    }
+    return false;
+};
+SpotInventory.prototype.remove = function() {
+    if (this.available < this.capacity) {
+        this.available++;
+        return true;
+    }
+    return false;
+};
+SpotInventory.prototype.getAvailable = function() {
+    return this.available;
+};
+
+var Solution = function() {
+    this.cars = new SpotInventory();
+    this.trucks = new SpotInventory();
+    this.motorcycles = new SpotInventory();
+};
+
+Solution.prototype.initialize = function(carSpots, truckSpots, motorcycleSpots) {
+    this.cars.init(carSpots);
+    this.trucks.init(truckSpots);
+    this.motorcycles.init(motorcycleSpots);
+    return carSpots;
+};
+
+Solution.prototype.parkVehicle = function(vehicleType) {
+    if (vehicleType === 'Car') return this.cars.park();
+    if (vehicleType === 'Truck') return this.trucks.park();
+    if (vehicleType === 'Motorcycle') return this.motorcycles.park();
+    return false;
+};
+
+Solution.prototype.removeVehicle = function(vehicleType) {
+    if (vehicleType === 'Car') return this.cars.remove();
+    if (vehicleType === 'Truck') return this.trucks.remove();
+    if (vehicleType === 'Motorcycle') return this.motorcycles.remove();
+    return false;
+};
+
+Solution.prototype.getAvailableSpots = function(vehicleType) {
+    if (vehicleType === 'Car') return this.cars.getAvailable();
+    if (vehicleType === 'Truck') return this.trucks.getAvailable();
+    if (vehicleType === 'Motorcycle') return this.motorcycles.getAvailable();
+    return 0;
+};`,
+      go: `type Solution struct {
+    carCap, carAvail int
+    truckCap, truckAvail int
+    bikeCap, bikeAvail int
+}
+
+func Constructor() Solution {
+    return Solution{}
+}
+
+func (this *Solution) Initialize(carSpots int, truckSpots int, motorcycleSpots int) int {
+    this.carCap, this.carAvail = carSpots, carSpots
+    this.truckCap, this.truckAvail = truckSpots, truckSpots
+    this.bikeCap, this.bikeAvail = motorcycleSpots, motorcycleSpots
+    return carSpots
+}
+
+func (this *Solution) ParkVehicle(vehicleType string) bool {
+    if vehicleType == "Car" && this.carAvail > 0 {
+        this.carAvail--
+        return true
+    }
+    if vehicleType == "Truck" && this.truckAvail > 0 {
+        this.truckAvail--
+        return true
+    }
+    if vehicleType == "Motorcycle" && this.bikeAvail > 0 {
+        this.bikeAvail--
+        return true
+    }
+    return false
+}
+
+func (this *Solution) RemoveVehicle(vehicleType string) bool {
+    if vehicleType == "Car" && this.carAvail < this.carCap {
+        this.carAvail++
+        return true
+    }
+    if vehicleType == "Truck" && this.truckAvail < this.truckCap {
+        this.truckAvail++
+        return true
+    }
+    if vehicleType == "Motorcycle" && this.bikeAvail < this.bikeCap {
+        this.bikeAvail++
+        return true
+    }
+    return false
+}
+
+func (this *Solution) GetAvailableSpots(vehicleType string) int {
+    if vehicleType == "Car" { return this.carAvail }
+    if vehicleType == "Truck" { return this.truckAvail }
+    if vehicleType == "Motorcycle" { return this.bikeAvail }
+    return 0
+}
+`,
+      rust: `struct Solution {
+    car_cap: i32,
+    car_avail: i32,
+    truck_cap: i32,
+    truck_avail: i32,
+    bike_cap: i32,
+    bike_avail: i32,
+}
+
+impl Solution {
+    fn new() -> Self {
+        Solution { car_cap: 0, car_avail: 0, truck_cap: 0, truck_avail: 0, bike_cap: 0, bike_avail: 0 }
+    }
+    
+    fn initialize(&mut self, car_spots: i32, truck_spots: i32, motorcycle_spots: i32) -> i32 {
+        self.car_cap = car_spots;
+        self.car_avail = car_spots;
+        self.truck_cap = truck_spots;
+        self.truck_avail = truck_spots;
+        self.bike_cap = motorcycle_spots;
+        self.bike_avail = motorcycle_spots;
+        car_spots
+    }
+    
+    fn park_vehicle(&mut self, vehicle_type: String) -> bool {
+        if vehicle_type == "Car" && self.car_avail > 0 {
+            self.car_avail -= 1;
+            return true;
+        }
+        if vehicle_type == "Truck" && self.truck_avail > 0 {
+            self.truck_avail -= 1;
+            return true;
+        }
+        if vehicle_type == "Motorcycle" && self.bike_avail > 0 {
+            self.bike_avail -= 1;
+            return true;
+        }
+        false
+    }
+    
+    fn remove_vehicle(&mut self, vehicle_type: String) -> bool {
+        if vehicle_type == "Car" && self.car_avail < self.car_cap {
+            self.car_avail += 1;
+            return true;
+        }
+        if vehicle_type == "Truck" && self.truck_avail < self.truck_cap {
+            self.truck_avail += 1;
+            return true;
+        }
+        if vehicle_type == "Motorcycle" && self.bike_avail < self.bike_cap {
+            self.bike_avail += 1;
+            return true;
+        }
+        false
+    }
+    
+    fn get_available_spots(&self, vehicle_type: String) -> i32 {
+        if vehicle_type == "Car" { return self.car_avail; }
+        if vehicle_type == "Truck" { return self.truck_avail; }
+        if vehicle_type == "Motorcycle" { return self.bike_avail; }
+        0
+    }
+}`,
+      sql: `-- Not applicable`
+    }
   }
 };
 
@@ -517,12 +1096,21 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   const numParams = paramNames.length;
   const tcs = problem.testCases || [];
 
+  const isLLDOrDesign = (problem.category || '').toLowerCase().includes('lld') ||
+    (problem.category || '').toLowerCase().includes('design') ||
+    (problem.name || '').toLowerCase().includes('principle') ||
+    (problem.name || '').toLowerCase().includes('design') ||
+    (problem.name || '').toLowerCase().includes('srp') ||
+    (problem.name || '').toLowerCase().includes('solid');
+
+  const isMethodCallSyntax = tcs.some(tc => /[a-zA-Z0-9_]+\s*\(/.test(String(tc)));
+
   // 1. Single parameter questions (e.g. grid = [...], nums = [...], s = "...")
-  if (numParams === 1 && paramNames[0] && tcs.length > 0) {
+  if (!isLLDOrDesign && !isMethodCallSyntax && numParams === 1 && paramNames[0] && tcs.length > 0) {
     const pName = paramNames[0];
     problem.testCases = tcs.map(tc => {
       const str = String(tc).trim();
-      if (!str.includes('=')) {
+      if (!str.includes('=') && !/[a-zA-Z0-9_]+\s*\(/.test(str) && !str.startsWith('[')) {
         return `${pName} = ${str}`;
       }
       return str;
@@ -530,7 +1118,7 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   }
 
   // 2. Multi-parameter questions: Ensure parameters are never split across separate array items
-  else if (numParams >= 2 && tcs.length > 0) {
+  else if (!isLLDOrDesign && !isMethodCallSyntax && numParams >= 2 && tcs.length > 0) {
     // Check if testcases are split across lines
     const isBroken = tcs.some(tc => {
       const str = String(tc).trim();
@@ -1420,6 +2008,15 @@ export async function fetchEnrichedProblem(
   ) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['floor-in-bst']);
   }
+  if (
+    slug === '2-1-single-responsibility-principle-srp-solid-principles-' ||
+    slug === '2-1-single-responsibility-principle-srp-solid-principles' ||
+    slug.includes('single-responsibility-principle') ||
+    normSlug.includes('singleresponsibilityprinciple') ||
+    normSlug.includes('21singleresponsibility')
+  ) {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['2-1-single-responsibility-principle-srp-solid-principles-']);
+  }
   if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
@@ -1730,6 +2327,637 @@ def main():
 
 if __name__ == '__main__':
     main()`;
+    }
+  }
+
+  const isSingleResponsibility =
+    slug === '2-1-single-responsibility-principle-srp-solid-principles-' ||
+    slug === '2-1-single-responsibility-principle-srp-solid-principles' ||
+    slug.includes('single-responsibility-principle') ||
+    slug.includes('singleresponsibilityprinciple') ||
+    slug.includes('21singleresponsibility');
+
+  if (isSingleResponsibility) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+
+using namespace std;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static inline string stripQuotes(const string& s) {
+    string t = trim(s);
+    if (t.size() >= 2 && ((t.front() == '"' && t.back() == '"') || (t.front() == '\'' && t.back() == '\''))) {
+        return t.substr(1, t.size() - 2);
+    }
+    return t;
+}
+
+static vector<string> splitCalls(const string& input) {
+    vector<string> calls;
+    string cur = "";
+    int parenDepth = 0;
+    int bracketDepth = 0;
+    bool inQuotes = false;
+    char qChar = 0;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        char c = input[i];
+        if (inQuotes) {
+            cur += c;
+            if (c == qChar && (i == 0 || input[i - 1] != '\\\\')) {
+                inQuotes = false;
+            }
+        } else {
+            if (c == '"' || c == '\'') {
+                inQuotes = true;
+                qChar = c;
+                cur += c;
+            } else if (c == '(') {
+                parenDepth++;
+                cur += c;
+            } else if (c == ')') {
+                parenDepth--;
+                cur += c;
+            } else if (c == '[') {
+                bracketDepth++;
+                cur += c;
+            } else if (c == ']') {
+                bracketDepth--;
+                cur += c;
+            } else if (c == ',' && parenDepth == 0 && bracketDepth == 0) {
+                string trimmed = trim(cur);
+                if (!trimmed.empty()) calls.push_back(trimmed);
+                cur = "";
+            } else {
+                cur += c;
+            }
+        }
+    }
+    string trimmed = trim(cur);
+    if (!trimmed.empty()) calls.push_back(trimmed);
+    return calls;
+}
+
+static vector<string> splitArgs(const string& argsStr) {
+    vector<string> args;
+    string cur = "";
+    bool inQuotes = false;
+    char qChar = 0;
+    int depth = 0;
+
+    for (size_t i = 0; i < argsStr.size(); ++i) {
+        char c = argsStr[i];
+        if (inQuotes) {
+            cur += c;
+            if (c == qChar && (i == 0 || argsStr[i - 1] != '\\\\')) {
+                inQuotes = false;
+            }
+        } else {
+            if (c == '"' || c == '\'') {
+                inQuotes = true;
+                qChar = c;
+                cur += c;
+            } else if (c == '(' || c == '[' || c == '{') {
+                depth++;
+                cur += c;
+            } else if (c == ')' || c == ']' || c == '}') {
+                depth--;
+                cur += c;
+            } else if (c == ',' && depth == 0) {
+                args.push_back(trim(cur));
+                cur = "";
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (!trim(cur).empty()) args.push_back(trim(cur));
+    return args;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car"))RAW";
+
+    size_t eqPos = raw_input.find('=');
+    if (eqPos != string::npos) {
+        size_t firstParen = raw_input.find('(');
+        if (firstParen != string::npos && eqPos < firstParen) {
+            string beforeEq = trim(raw_input.substr(0, eqPos));
+            if (beforeEq.find('(') == string::npos) {
+                raw_input = trim(raw_input.substr(eqPos + 1));
+            }
+        }
+    }
+
+    vector<string> calls = splitCalls(raw_input);
+    Solution sol;
+    vector<string> results;
+
+    for (const string& call : calls) {
+        size_t openP = call.find('(');
+        size_t closeP = call.rfind(')');
+        if (openP == string::npos || closeP == string::npos || closeP <= openP) {
+            continue;
+        }
+
+        string fnName = trim(call.substr(0, openP));
+        string argsStr = call.substr(openP + 1, closeP - openP - 1);
+        vector<string> args = splitArgs(argsStr);
+
+        size_t innerEq = fnName.rfind('=');
+        if (innerEq != string::npos) {
+            fnName = trim(fnName.substr(innerEq + 1));
+        }
+
+        if (fnName == "initialize" || fnName == "Solution" || fnName == "ParkingLot") {
+            int c = args.size() > 0 ? stoi(args[0]) : 0;
+            int t = args.size() > 1 ? stoi(args[1]) : 0;
+            int m = args.size() > 2 ? stoi(args[2]) : 0;
+            int res = sol.initialize(c, t, m);
+            results.push_back(to_string(res));
+        } else if (fnName == "parkVehicle") {
+            string vType = args.size() > 0 ? stripQuotes(args[0]) : "";
+            bool res = sol.parkVehicle(vType);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "removeVehicle") {
+            string vType = args.size() > 0 ? stripQuotes(args[0]) : "";
+            bool res = sol.removeVehicle(vType);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "getAvailableSpots") {
+            string vType = args.size() > 0 ? stripQuotes(args[0]) : "";
+            int res = sol.getAvailableSpots(vType);
+            results.push_back(to_string(res));
+        }
+    }
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        cout << results[i];
+        if (i + 1 < results.size()) cout << ", ";
+    }
+    cout << "\\n";
+
+    return 0;
+}
+`;
+    }
+
+    if (lang === 'python') {
+      return `import sys
+import re
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def strip_quotes(s: str) -> str:
+    s = s.strip()
+    if len(s) >= 2 and ((s[0] == '"' and s[-1] == '"') or (s[0] == "'" and s[-1] == "'")):
+        return s[1:-1]
+    return s
+
+def split_calls(s: str):
+    calls = []
+    cur = []
+    p_depth = 0
+    b_depth = 0
+    in_q = False
+    q_char = ''
+    
+    for i, c in enumerate(s):
+        if in_q:
+            cur.append(c)
+            if c == q_char and (i == 0 or s[i - 1] != '\\\\'):
+                in_q = False
+        else:
+            if c in ('"', "'"):
+                in_q = True
+                q_char = c
+                cur.append(c)
+            elif c == '(':
+                p_depth += 1
+                cur.append(c)
+            elif c == ')':
+                p_depth -= 1
+                cur.append(c)
+            elif c == '[':
+                b_depth += 1
+                cur.append(c)
+            elif c == ']':
+                b_depth -= 1
+                cur.append(c)
+            elif c == ',' and p_depth == 0 and b_depth == 0:
+                t = ''.join(cur).strip()
+                if t:
+                    calls.append(t)
+                cur = []
+            else:
+                cur.append(c)
+    t = ''.join(cur).strip()
+    if t:
+        calls.append(t)
+    return calls
+
+def split_args(s: str):
+    args = []
+    cur = []
+    depth = 0
+    in_q = False
+    q_char = ''
+    
+    for i, c in enumerate(s):
+        if in_q:
+            cur.append(c)
+            if c == q_char and (i == 0 or s[i - 1] != '\\\\'):
+                in_q = False
+        else:
+            if c in ('"', "'"):
+                in_q = True
+                q_char = c
+                cur.append(c)
+            elif c in ('(', '[', '{'):
+                depth += 1
+                cur.append(c)
+            elif c in (')', ']', '}'):
+                depth -= 1
+                cur.append(c)
+            elif c == ',' and depth == 0:
+                args.append(''.join(cur).strip())
+                cur = []
+            else:
+                cur.append(c)
+    t = ''.join(cur).strip()
+    if t:
+        args.append(t)
+    return args
+
+def main():
+    raw_input = """initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car")"""
+    raw_input = raw_input.strip()
+
+    eq_pos = raw_input.find('=')
+    open_p = raw_input.find('(')
+    if eq_pos != -1 and open_p != -1 and eq_pos < open_p:
+        before_eq = raw_input[:eq_pos].strip()
+        if '(' not in before_eq:
+            raw_input = raw_input[eq_pos + 1:].strip()
+
+    calls = split_calls(raw_input)
+    sol = Solution()
+    results = []
+
+    for call in calls:
+        op = call.find('(')
+        cp = call.rfind(')')
+        if op == -1 or cp == -1 or cp <= op:
+            continue
+        fn_name = call[:op].strip()
+        if '=' in fn_name:
+            fn_name = fn_name.split('=')[-1].strip()
+        args_str = call[op + 1:cp].strip()
+        args = split_args(args_str)
+
+        if fn_name in ("initialize", "Solution", "ParkingLot"):
+            c = int(args[0]) if len(args) > 0 else 0
+            t = int(args[1]) if len(args) > 1 else 0
+            m = int(args[2]) if len(args) > 2 else 0
+            res = sol.initialize(c, t, m)
+            results.append(str(res))
+        elif fn_name == "parkVehicle":
+            v = strip_quotes(args[0]) if len(args) > 0 else ""
+            res = sol.parkVehicle(v)
+            results.append("true" if res else "false")
+        elif fn_name == "removeVehicle":
+            v = strip_quotes(args[0]) if len(args) > 0 else ""
+            res = sol.removeVehicle(v)
+            results.append("true" if res else "false")
+        elif fn_name == "getAvailableSpots":
+            v = strip_quotes(args[0]) if len(args) > 0 else ""
+            res = sol.getAvailableSpots(v)
+            results.append(str(res))
+
+    print(", ".join(results))
+
+if __name__ == '__main__':
+    main()`;
+    }
+
+    if (lang === 'java') {
+      return `import java.util.*;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    private static String trim(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static String stripQuotes(String s) {
+        String t = trim(s);
+        if (t.length() >= 2 && ((t.startsWith("\"") && t.endsWith("\"")) || (t.startsWith("'") && t.endsWith("'")))) {
+            return t.substring(1, t.length() - 1);
+        }
+        return t;
+    }
+
+    private static List<String> splitCalls(String s) {
+        List<String> calls = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int pDepth = 0;
+        int bDepth = 0;
+        boolean inQuotes = false;
+        char qChar = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inQuotes) {
+                cur.append(c);
+                if (c == qChar && (i == 0 || s.charAt(i - 1) != '\\\\')) {
+                    inQuotes = false;
+                }
+            } else {
+                if (c == '"' || c == '\'') {
+                    inQuotes = true;
+                    qChar = c;
+                    cur.append(c);
+                } else if (c == '(') {
+                    pDepth++;
+                    cur.append(c);
+                } else if (c == ')') {
+                    pDepth--;
+                    cur.append(c);
+                } else if (c == '[') {
+                    bDepth++;
+                    cur.append(c);
+                } else if (c == ']') {
+                    bDepth--;
+                    cur.append(c);
+                } else if (c == ',' && pDepth == 0 && bDepth == 0) {
+                    String t = cur.toString().trim();
+                    if (!t.isEmpty()) calls.add(t);
+                    cur = new StringBuilder();
+                } else {
+                    cur.append(c);
+                }
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) calls.add(t);
+        return calls;
+    }
+
+    private static List<String> splitArgs(String s) {
+        List<String> args = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int depth = 0;
+        boolean inQuotes = false;
+        char qChar = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inQuotes) {
+                cur.append(c);
+                if (c == qChar && (i == 0 || s.charAt(i - 1) != '\\\\')) {
+                    inQuotes = false;
+                }
+            } else {
+                if (c == '"' || c == '\'') {
+                    inQuotes = true;
+                    qChar = c;
+                    cur.append(c);
+                } else if (c == '(' || c == '[' || c == '{') {
+                    depth++;
+                    cur.append(c);
+                } else if (c == ')' || c == ']' || c == '}') {
+                    depth--;
+                    cur.append(c);
+                } else if (c == ',' && depth == 0) {
+                    args.add(cur.toString().trim());
+                    cur = new StringBuilder();
+                } else {
+                    cur.append(c);
+                }
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) args.add(t);
+        return args;
+    }
+
+    public static void main(String[] args) {
+        String raw_input = "initialize(10, 5, 20), parkVehicle(\\"Car\\"), parkVehicle(\\"Truck\\"), parkVehicle(\\"Motorcycle\\"), removeVehicle(\\"Car\\"), getAvailableSpots(\\"Car\\")";
+        raw_input = raw_input.trim();
+
+        int eqPos = raw_input.indexOf('=');
+        int openP = raw_input.indexOf('(');
+        if (eqPos != -1 && openP != -1 && eqPos < openP) {
+            String beforeEq = raw_input.substring(0, eqPos).trim();
+            if (!beforeEq.contains("(")) {
+                raw_input = raw_input.substring(eqPos + 1).trim();
+            }
+        }
+
+        List<String> calls = splitCalls(raw_input);
+        Solution sol = new Solution();
+        List<String> results = new ArrayList<>();
+
+        for (String call : calls) {
+            int op = call.indexOf('(');
+            int cp = call.lastIndexOf(')');
+            if (op == -1 || cp == -1 || cp <= op) continue;
+
+            String fnName = call.substring(0, op).trim();
+            if (fnName.contains("=")) {
+                fnName = fnName.substring(fnName.lastIndexOf('=') + 1).trim();
+            }
+            String argsStr = call.substring(op + 1, cp).trim();
+            List<String> argList = splitArgs(argsStr);
+
+            if (fnName.equals("initialize") || fnName.equals("Solution") || fnName.equals("ParkingLot")) {
+                int c = argList.size() > 0 ? Integer.parseInt(argList.get(0)) : 0;
+                int t = argList.size() > 1 ? Integer.parseInt(argList.get(1)) : 0;
+                int m = argList.size() > 2 ? Integer.parseInt(argList.get(2)) : 0;
+                int res = sol.initialize(c, t, m);
+                results.add(String.valueOf(res));
+            } else if (fnName.equals("parkVehicle")) {
+                String v = argList.size() > 0 ? stripQuotes(argList.get(0)) : "";
+                boolean res = sol.parkVehicle(v);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("removeVehicle")) {
+                String v = argList.size() > 0 ? stripQuotes(argList.get(0)) : "";
+                boolean res = sol.removeVehicle(v);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("getAvailableSpots")) {
+                String v = argList.size() > 0 ? stripQuotes(argList.get(0)) : "";
+                int res = sol.getAvailableSpots(v);
+                results.add(String.valueOf(res));
+            }
+        }
+
+        System.out.println(String.join(", ", results));
+    }
+}`;
+    }
+
+    if (lang === 'javascript') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function stripQuotes(s) {
+    s = (s || '').trim();
+    if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
+        return s.slice(1, -1);
+    }
+    return s;
+}
+
+function splitCalls(s) {
+    const calls = [];
+    let cur = '';
+    let pDepth = 0;
+    let bDepth = 0;
+    let inQ = false;
+    let qChar = '';
+
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (inQ) {
+            cur += c;
+            if (c === qChar && (i === 0 || s[i - 1] !== '\\\\')) inQ = false;
+        } else {
+            if (c === '"' || c === "'") {
+                inQ = true;
+                qChar = c;
+                cur += c;
+            } else if (c === '(') {
+                pDepth++;
+                cur += c;
+            } else if (c === ')') {
+                pDepth--;
+                cur += c;
+            } else if (c === '[') {
+                bDepth++;
+                cur += c;
+            } else if (c === ']') {
+                bDepth--;
+                cur += c;
+            } else if (c === ',' && pDepth === 0 && bDepth === 0) {
+                if (cur.trim()) calls.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (cur.trim()) calls.push(cur.trim());
+    return calls;
+}
+
+function splitArgs(s) {
+    const args = [];
+    let cur = '';
+    let depth = 0;
+    let inQ = false;
+    let qChar = '';
+
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (inQ) {
+            cur += c;
+            if (c === qChar && (i === 0 || s[i - 1] !== '\\\\')) inQ = false;
+        } else {
+            if (c === '"' || c === "'") {
+                inQ = true;
+                qChar = c;
+                cur += c;
+            } else if (c === '(' || c === '[' || c === '{') {
+                depth++;
+                cur += c;
+            } else if (c === ')' || c === ']' || c === '}') {
+                depth--;
+                cur += c;
+            } else if (c === ',' && depth === 0) {
+                args.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (cur.trim()) args.push(cur.trim());
+    return args;
+}
+
+function main() {
+    let rawInput = \`initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car")\`;
+    rawInput = rawInput.trim();
+
+    const eqPos = rawInput.indexOf('=');
+    const openP = rawInput.indexOf('(');
+    if (eqPos !== -1 && openP !== -1 && eqPos < openP) {
+        const beforeEq = rawInput.slice(0, eqPos).trim();
+        if (!beforeEq.includes('(')) {
+            rawInput = rawInput.slice(eqPos + 1).trim();
+        }
+    }
+
+    const calls = splitCalls(rawInput);
+    const sol = new Solution();
+    const results = [];
+
+    for (const call of calls) {
+        const op = call.indexOf('(');
+        const cp = call.lastIndexOf(')');
+        if (op === -1 || cp === -1 || cp <= op) continue;
+
+        let fnName = call.slice(0, op).trim();
+        if (fnName.includes('=')) {
+            fnName = fnName.slice(fnName.lastIndexOf('=') + 1).trim();
+        }
+        const argsStr = call.slice(op + 1, cp).trim();
+        const args = splitArgs(argsStr);
+
+        if (fnName === 'initialize' || fnName === 'Solution' || fnName === 'ParkingLot') {
+            const c = args[0] !== undefined ? parseInt(args[0], 10) : 0;
+            const t = args[1] !== undefined ? parseInt(args[1], 10) : 0;
+            const m = args[2] !== undefined ? parseInt(args[2], 10) : 0;
+            const res = sol.initialize(c, t, m);
+            results.push(String(res));
+        } else if (fnName === 'parkVehicle') {
+            const v = args[0] ? stripQuotes(args[0]) : '';
+            const res = sol.parkVehicle(v);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'removeVehicle') {
+            const v = args[0] ? stripQuotes(args[0]) : '';
+            const res = sol.removeVehicle(v);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'getAvailableSpots') {
+            const v = args[0] ? stripQuotes(args[0]) : '';
+            const res = sol.getAvailableSpots(v);
+            results.push(String(res));
+        }
+    }
+
+    console.log(results.join(', '));
+}
+
+main();`;
     }
   }
 

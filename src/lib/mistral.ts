@@ -875,6 +875,11 @@ export async function requestAIDriverGeneration(
   const normLang = (language || 'cpp').toLowerCase();
   const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+  const isMultiMethod = /[a-zA-Z_][a-zA-Z0-9_]*\s*\(/.test(sampleTestInput || '') &&
+    ((sampleTestInput || '').includes(',') || (sampleTestInput || '').includes('\n')) &&
+    !sampleTestInput?.includes('=');
+  const isLLDContext = cleanSlug.includes('lld') || cleanSlug.includes('design') || cleanSlug.includes('solid') || cleanSlug.includes('principle') || cleanSlug.includes('srp');
+
   const prompt = `You are a Principal Compiler Architect and Test Harness Engineer for LeetCode.
 Generate a complete, robust, type-safe execution driver harness in ${normLang.toUpperCase()} for the problem: "${problemTitle}" (${cleanSlug}).
 
@@ -891,18 +896,20 @@ ${sampleTestInput || ''}
 1. Include all necessary standard library headers (e.g. <iostream>, <vector>, <string>, <algorithm>, <numeric>, <unordered_map>, <map>, <set>, <unordered_set>, <queue>, <stack>, <deque>, <cmath>, <climits>, <cstring>, <sstream>, <utility>, <tuple>, <functional>, <memory>, <cctype>, <stdexcept> for C++). Add 'using namespace std;' so std types like map, vector, string are directly accessible.
 2. CRITICAL STRUCT ORDER: If the problem uses TreeNode, ListNode, or Node, you MUST define struct TreeNode, struct ListNode, or class Node AT THE VERY TOP OF THE FILE, STRICTLY BEFORE '// === USER SOLUTION ==='! The user's solution cannot compile if structs are defined after '// === USER SOLUTION ==='.
 3. CRITICAL INPUT HANDLING: DO NOT read from 'cin' or use 'getline(cin'. The testcase is passed directly in main() via string raw_input = R"RAW(${sampleTestInput || ''})RAW";. Reading from cin will cause a runtime failure.
-4. Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.
+4. ${isMultiMethod || isLLDContext ? `CRITICAL FOR MULTI-METHOD / LLD / DESIGN PROBLEMS:
+   The starter code defines multiple methods or the input is a sequence of method invocations (e.g. initialize(10, 5, 20), parkVehicle("Car")... or operation arrays).
+   The driver MUST parse and execute each method call sequentially on an instance of Solution, collect the return values, and print comma-separated results (e.g. 10, true, true, true, true, 10). NEVER assume a single algorithm method.` : `Implement a complete argument parser specifically designed for the exact types in the function signature (whether 2D matrix 'vector<vector<char>>', 'vector<vector<int>>', 1D array, scalar, strings, boolean, etc.) that parses named parameters like 'matrix = [[1,3,5,7],[10,11,16,20]], target = 3' or 'grid = [["1","0"],["0","1"]]'.
    - CRITICAL: When splitting named arguments at commas, track bracket depth '[' ']' and brace depth '{' '}' so you NEVER split on commas inside nested arrays or matrices.
-   - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string directly as the value for that parameter!
+   - RESILIENCE: If a named parameter (e.g. 'grid = ') is missing in raw_input and raw_input is simply the JSON value (e.g. '[["1","0"],["0","1"]]'), DO NOT throw an error. Parse the entire raw_input string directly as the value for that parameter!`}
 5. Place ONLY the single placeholder comment line:
 // === USER SOLUTION ===
 DO NOT write any class Solution or method implementation yourself in the driver. The user's code will be inserted directly at this comment.
 6. In the main entry point (below '// === HIDDEN DRIVER ==='):
    - Read the raw input string variable: string raw_input = R"RAW(${sampleTestInput || ''})RAW"; (or equivalent in other languages).
-   - Parse each argument matching the exact parameter types and names of the method.
+   - Parse each argument matching the exact parameter types and names of the method(s).
    - Instantiate Solution sol;
-   - Call sol.<methodName>(...) with the parsed arguments.
-   - Print the return value in JSON format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]).
+   - Call the corresponding method(s) on sol with the parsed arguments.
+   - Print the return value in JSON / comma-separated format (e.g. true/false for bool, numbers, arrays [1,2], matrices [[1,2],[3,4]]).
    - CRITICAL FOR BINARY TREES (returning TreeNode* or TreeNode): You MUST serialize binary trees in exact LeetCode level-order format with "null" for missing child nodes and trailing "null"s trimmed (e.g. [0,-10,5,null,-3,null,9]). NEVER omit "null" for missing child nodes!
    - For void in-place methods (e.g. rotate, setZeroes, nextPermutation), print the mutated first argument to stdout.
 7. Handle runtime exceptions gracefully.

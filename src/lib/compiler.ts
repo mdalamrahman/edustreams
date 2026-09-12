@@ -130,6 +130,19 @@ export function compareOutputs(actual: any, expected: any): boolean {
     }
   }
 
+  // Support comma-separated output matching with or without brackets: [10, true, ...] vs 10, true, ...
+  const stripBrackets = (s: string) => s.trim().replace(/^\[\s*/, '').replace(/\s*\]$/, '').trim();
+  const strippedAct = stripBrackets(cleanAct);
+  const strippedExp = stripBrackets(cleanExp);
+  if (strippedAct === strippedExp) return true;
+
+  // Case-insensitive / whitespace-normalized comma-separated tokens
+  const actTokens = strippedAct.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  const expTokens = strippedExp.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  if (actTokens.length > 0 && actTokens.length === expTokens.length && actTokens.every((t, i) => t === expTokens[i])) {
+    return true;
+  }
+
   try {
     const parsedAct = JSON.parse(cleanAct);
     const parsedExp = JSON.parse(cleanExp);
@@ -638,7 +651,15 @@ export function wrapLeetCodeExecutableCode(
 
   // Auto-normalize input: if input lacks '=' assignment, auto-prefix with parameter name if single param
   let effectiveInput = cleanInput;
-  if (effectiveInput && !effectiveInput.includes('=')) {
+  const isMultiMethodCall = /[a-zA-Z_][a-zA-Z0-9_]*\s*\(/.test(cleanInput) ||
+    cleanInput.trim().startsWith('[') ||
+    normTitle.includes('design') ||
+    normTitle.includes('lld') ||
+    normTitle.includes('solid') ||
+    normTitle.includes('principle') ||
+    normTitle.includes('srp');
+
+  if (!isMultiMethodCall && effectiveInput && !effectiveInput.includes('=')) {
     let paramName = '';
     if (preloadedDriver) {
       const pMatch = preloadedDriver.match(/(?:get_arg_str\([^,]+,\s*"|raw_input\.find\(")([a-zA-Z_][a-zA-Z0-9_]*)\s*=/);
@@ -672,8 +693,15 @@ export function wrapLeetCodeExecutableCode(
       if (m) userMethodName = m[1] || m[2];
     }
 
-    // If user defined a method name, verify that the preloaded driver doesn't call an entirely different method
-    const isMethodMismatch = Boolean(userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`));
+    // If user defined a method name, verify that the preloaded driver doesn't call an entirely different method.
+    // For multi-method LLD / design classes, skip method mismatch check if driver supports multi-method invocation.
+    const isMultiMethodDriver = preloadedDriver.includes('splitCalls') ||
+      preloadedDriver.includes('split_calls') ||
+      preloadedDriver.includes('splitCalls(') ||
+      preloadedDriver.includes('calls') ||
+      (preloadedDriver.match(/sol\./g) || []).length > 1;
+
+    const isMethodMismatch = !isMultiMethodCall && !isMultiMethodDriver && Boolean(userMethodName && preloadedDriver.includes('sol.') && !preloadedDriver.includes(`sol.${userMethodName}(`));
 
     if (!isValid || isMethodMismatch) {
       console.warn(`[SDETube Compiler] Preloaded driver rejected (valid=${isValid}, mismatch=${isMethodMismatch}). Falling back to dynamic universal harness.`);
