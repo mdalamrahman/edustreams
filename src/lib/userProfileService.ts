@@ -1584,11 +1584,16 @@ export function isGfgProblemSolvedToday(
           if (Array.isArray(list)) {
             const solvedToday = list.some(item => {
               if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+              let isToday = false;
               if (item.id) {
                 const ts = parseInt(item.id.split('_')[0], 10);
-                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
               }
-              return true;
+              if (!isToday && item.timestamp) {
+                const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
+                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
+              }
+              return isToday;
             });
             if (solvedToday) return true;
           }
@@ -1597,14 +1602,8 @@ export function isGfgProblemSolvedToday(
     }
   }
 
-  // 2. GFG profile-based detection:
-  //    GFG API exposes current_streak which resets to 0 when a POTD day is missed.
-  //    A current_streak >= 1 confirms today's POTD was solved on GFG.
-  if (gfgData) {
-    const curStreak = Number(gfgData.current_streak ?? (gfgData as any).streak ?? 0);
-    if (curStreak >= 1) return true;
-  }
-
+  // GFG public profile does not provide timestamped problem solves or today's specific POTD status.
+  // We do not assume current_streak >= 1 means today's POTD was solved, as active streaks carry over from yesterday.
   return false;
 }
 

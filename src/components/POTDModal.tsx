@@ -143,12 +143,6 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const isGfgPotdSolved = useMemo(() => {
     if (!gfgPotd) return false;
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (
-      isProblemSlugSolved(gfgPotd.titleSlug) ||
-      isProblemSlugSolved(gfgPotd.title) ||
-      isProblemSlugSolved('9999') ||
-      isProblemSlugSolved('gfgpotd')
-    ) return true;
 
     const subVariants = [
       gfgPotd.titleSlug,
@@ -167,11 +161,16 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            let isToday = false;
             if (item.id) {
               const ts = parseInt(item.id.split('_')[0], 10);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
             }
-            return true;
+            if (!isToday && item.timestamp) {
+              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
+            }
+            return isToday;
           })) {
             return true;
           }
@@ -179,7 +178,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
       }
     }
 
-    // Remote GFG check for active streak
+    // Remote GFG check: only if verified solve was made today
     if (gfgProfile) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
       if (isRemoteSolved) {
@@ -290,6 +289,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     const current = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
     if (current) {
       localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
+      localStorage.removeItem(`sdetube_potd_gfg_manual_solved_${today}`);
       const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
       const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
       if (!sdeSolved && !lcSolved) {
@@ -297,6 +297,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
       }
     } else {
       localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+      localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
       localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
       if (gfgPotd) {
         markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);

@@ -233,17 +233,11 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     return false;
   }, [lcPotd, leetcodeProfile, today, solveEventCount]);
 
-  // Check Card C: GFG POTD solved status (Local + Remote streak/submission check)
+  // Check Card C: GFG POTD solved status (Strict today submission check)
   const isGfgPotdSolved = useMemo(() => {
     if (!gfgPotd) return false;
     // 1. Check local marks and submissions
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (
-      isProblemSlugSolved(gfgPotd.titleSlug) ||
-      isProblemSlugSolved(gfgPotd.title) ||
-      isProblemSlugSolved('9999') ||
-      isProblemSlugSolved('gfgpotd')
-    ) return true;
 
     const subVariants = [
       gfgPotd.titleSlug,
@@ -262,11 +256,16 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            let isToday = false;
             if (item.id) {
               const ts = parseInt(item.id.split('_')[0], 10);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
             }
-            return true;
+            if (!isToday && item.timestamp) {
+              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
+            }
+            return isToday;
           })) {
             return true;
           }
@@ -274,7 +273,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
       }
     }
 
-    // 2. Check remote GFG profile for active POTD streak
+    // 2. Check remote GFG profile for authenticated solve today
     if (gfgProfile) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
       if (isRemoteSolved) {
@@ -809,6 +808,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                         const current = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
                         if (current) {
                           localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
+                          localStorage.removeItem(`sdetube_potd_gfg_manual_solved_${today}`);
                           const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
                           const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
                           if (!sdeSolved && !lcSolved) {
@@ -816,6 +816,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                           }
                         } else {
                           localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+                          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
                           localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
                         }
                         window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));

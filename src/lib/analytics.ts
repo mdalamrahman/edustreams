@@ -329,11 +329,54 @@ export function resetUnverifiedPotdToday(): void {
   if (typeof window === 'undefined') return;
   const today = new Date().toISOString().slice(0, 10);
 
+  // If GFG was marked solved today, verify whether there is an actual accepted submission today
+  // or if the user explicitly clicked manual solve. If neither is true, clear the falsely cached key.
+  const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+  const gfgManual = localStorage.getItem(`sdetube_potd_gfg_manual_solved_${today}`) === 'true';
+  if (gfgSolved && !gfgManual) {
+    let hasSubmissionToday = false;
+    try {
+      const keys = ['9999', 'gfgpotd'];
+      const rawGfg = localStorage.getItem(`sdetube_gfg_potd_${today}`) || localStorage.getItem('edustream_potd_cache_gfg');
+      if (rawGfg) {
+        const parsed = JSON.parse(rawGfg);
+        if (parsed.titleSlug) keys.push(parsed.titleSlug);
+        if (parsed.title) keys.push(parsed.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+      }
+      for (const k of keys) {
+        const sub = localStorage.getItem(`edustream_submissions_${k}`);
+        if (sub) {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list) && list.some(item => {
+            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            let isToday = false;
+            if (item.id) {
+              const ts = parseInt(item.id.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
+            }
+            if (!isToday && item.timestamp) {
+              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
+            }
+            return isToday;
+          })) {
+            hasSubmissionToday = true;
+            break;
+          }
+        }
+      }
+    } catch {}
+
+    if (!hasSubmissionToday) {
+      localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
+    }
+  }
+
   // If none of the platforms were solved today, clear today's aggregate potd flag
   const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
   const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
-  const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
-  if (!sdeSolved && !lcSolved && !gfgSolved) {
+  const gfgStillSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+  if (!sdeSolved && !lcSolved && !gfgStillSolved) {
     localStorage.removeItem(`sdetube_potd_solved_${today}`);
   }
 }
