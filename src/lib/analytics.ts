@@ -441,21 +441,31 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
 
     // Dynamic match against cached LeetCode & GFG POTDs
     try {
-      const lcRaw = localStorage.getItem('edustream_potd_cache_leetcode');
+      const lcRaw = localStorage.getItem(`sdetube_leetcode_potd_${today}`) || localStorage.getItem('edustream_potd_cache_leetcode');
       if (lcRaw) {
         const lcData = JSON.parse(lcRaw);
-        const lSlug = (lcData.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const lTitle = (lcData.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (lSlug && (cleanSlug === lSlug || strId === lSlug || cleanSlug === lTitle || strId === lTitle)) {
+        const lSlug = (lcData.titleSlug || lcData.question?.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const lTitle = (lcData.title || lcData.question?.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanCompact = cleanSlug.replace(/[^a-z0-9]/g, '');
+        const strCompact = strId.replace(/[^a-z0-9]/g, '');
+        if (lSlug && (cleanCompact === lSlug || strCompact === lSlug || cleanCompact.includes(lSlug) || lSlug.includes(cleanCompact))) {
+          isLcPotd = true;
+        }
+        if (lTitle && (cleanCompact === lTitle || strCompact === lTitle || cleanCompact.includes(lTitle) || lTitle.includes(cleanCompact))) {
           isLcPotd = true;
         }
       }
-      const gfgRaw = localStorage.getItem('edustream_potd_cache_gfg');
+      const gfgRaw = localStorage.getItem(`sdetube_gfg_potd_${today}`) || localStorage.getItem('edustream_potd_cache_gfg');
       if (gfgRaw) {
         const gfgData = JSON.parse(gfgRaw);
-        const gSlug = (gfgData.problemSlug || gfgData.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/[^a-z0-9]/g, '');
-        const gTitle = (gfgData.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (gSlug && (cleanSlug === gSlug || strId === gSlug || cleanSlug === gTitle || strId === gTitle)) {
+        const gSlug = (gfgData.titleSlug || gfgData.problemSlug || gfgData.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const gTitle = (gfgData.title || gfgData.problem_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanCompact = cleanSlug.replace(/[^a-z0-9]/g, '');
+        const strCompact = strId.replace(/[^a-z0-9]/g, '');
+        if (gSlug && (cleanCompact === gSlug || strCompact === gSlug || cleanCompact.includes(gSlug) || gSlug.includes(cleanCompact))) {
+          isGfgPotd = true;
+        }
+        if (gTitle && (cleanCompact === gTitle || strCompact === gTitle || cleanCompact.includes(gTitle) || gTitle.includes(cleanCompact))) {
           isGfgPotd = true;
         }
       }

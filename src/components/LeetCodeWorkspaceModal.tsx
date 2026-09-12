@@ -406,7 +406,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const slug = currentProblemSlug.toLowerCase();
     const title = cleanTitle.toLowerCase();
     if (slug.includes('convert-sorted-array-to-binary-search-tree') || title.includes('convert sorted array to')) return true;
-    if (problemTemplate.expectedOutputs?.some(o => o && (o.includes(' or ') || o.includes('||')))) return true;
+    if (problemTemplate.expectedOutputs?.some(o => typeof o === 'string' && (o.includes(' or ') || o.includes('||')))) return true;
     try {
       const cached = localStorage.getItem(`edustream_multi_options_${currentProblemSlug}`);
       if (cached) {

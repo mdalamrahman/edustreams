@@ -444,13 +444,15 @@ export async function fetchGitHubProfile(username: string): Promise<GitHubProfil
 /**
  * Fetches public GeeksforGeeks profile data via Backend proxy
  */
-export async function fetchGFGProfile(username: string): Promise<GFGProfileData | null> {
+export async function fetchGFGProfile(username: string, forceFresh?: boolean): Promise<GFGProfileData | null> {
   const clean = username.trim();
   if (!clean) return null;
 
   try {
-    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/gfg/profile/${encodeURIComponent(clean)}`, {
-      signal: AbortSignal.timeout(8000)
+    const url = `${TELEGRAM_BACKEND_URL}/api/gfg/profile/${encodeURIComponent(clean)}${forceFresh ? `?t=${Date.now()}` : ''}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      cache: forceFresh ? 'no-cache' : 'default'
     });
     if (res.ok) {
       const data = await res.json();
@@ -1563,8 +1565,19 @@ export function isGfgProblemSolvedToday(
   // 1. Direct local marks for today
   if (typeof localStorage !== 'undefined') {
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (targetSlug) {
-      const sub = localStorage.getItem(`edustream_submissions_${targetSlug}`);
+
+    const checkVariants = [
+      targetSlug,
+      '9999',
+      'gfgpotd',
+      targetTitle ? targetTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-') : '',
+      targetTitle ? targetTitle.toLowerCase().replace(/[^a-z0-9]/g, '') : '',
+      targetSlug ? targetSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-') : '',
+      targetSlug ? targetSlug.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
+    ].filter(Boolean);
+
+    for (const key of checkVariants) {
+      const sub = localStorage.getItem(`edustream_submissions_${key}`);
       if (sub) {
         try {
           const list = JSON.parse(sub);
@@ -1575,7 +1588,7 @@ export function isGfgProblemSolvedToday(
                 const ts = parseInt(item.id.split('_')[0], 10);
                 if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
               }
-              return false;
+              return true;
             });
             if (solvedToday) return true;
           }
@@ -1587,12 +1600,9 @@ export function isGfgProblemSolvedToday(
   // 2. GFG profile-based detection:
   //    GFG API exposes current_streak which resets to 0 when a POTD day is missed.
   //    A current_streak >= 1 confirms today's POTD was solved on GFG.
-  if (gfgData && typeof gfgData.current_streak === 'number' && gfgData.current_streak >= 1) {
-    return true;
-  }
-  // Also check streak alias field
-  if (gfgData && typeof (gfgData as any).streak === 'number' && (gfgData as any).streak >= 1) {
-    return true;
+  if (gfgData) {
+    const curStreak = Number(gfgData.current_streak ?? (gfgData as any).streak ?? 0);
+    if (curStreak >= 1) return true;
   }
 
   return false;

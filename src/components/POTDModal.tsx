@@ -143,11 +143,42 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const isGfgPotdSolved = useMemo(() => {
     if (!gfgPotd) return false;
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (isProblemSlugSolved(gfgPotd.titleSlug || gfgPotd.title)) return true;
-    if (gfgPotd.titleSlug) {
-      const sub = localStorage.getItem(`edustream_submissions_${gfgPotd.titleSlug}`);
-      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    if (
+      isProblemSlugSolved(gfgPotd.titleSlug) ||
+      isProblemSlugSolved(gfgPotd.title) ||
+      isProblemSlugSolved('9999') ||
+      isProblemSlugSolved('gfgpotd')
+    ) return true;
+
+    const subVariants = [
+      gfgPotd.titleSlug,
+      '9999',
+      'gfgpotd',
+      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    ].filter(Boolean);
+
+    for (const v of subVariants) {
+      const sub = localStorage.getItem(`edustream_submissions_${v}`);
+      if (sub) {
+        try {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list) && list.some(item => {
+            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            if (item.id) {
+              const ts = parseInt(item.id.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            return true;
+          })) {
+            return true;
+          }
+        } catch {}
+      }
     }
+
     // Remote GFG check for active streak
     if (gfgProfile) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
@@ -214,6 +245,64 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
       localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
     }
     window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+    setIsSolvedEventTriggered(prev => prev + 1);
+  };
+
+  const [isVerifyingGfg, setIsVerifyingGfg] = useState(false);
+  const [gfgVerifyMessage, setGfgVerifyMessage] = useState<string | null>(null);
+
+  const verifyGfgSolved = async () => {
+    const username = linkedConfig.gfgUsername?.trim();
+    if (!username) {
+      setGfgVerifyMessage('Please link your GeeksforGeeks username in your profile to auto-verify.');
+      return;
+    }
+    setIsVerifyingGfg(true);
+    setGfgVerifyMessage(`Querying GeeksforGeeks for @${username}...`);
+    try {
+      const profile = await fetchGFGProfile(username, true);
+      if (profile) {
+        setGfgProfile(profile);
+        const solved = gfgPotd ? isGfgProblemSolvedToday(profile, gfgPotd.titleSlug, gfgPotd.title) : false;
+        if (solved) {
+          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          if (gfgPotd) {
+            markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
+          }
+          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
+          setIsSolvedEventTriggered(prev => prev + 1);
+          setGfgVerifyMessage('Verified! Solved today on GeeksforGeeks ✓');
+        } else {
+          setGfgVerifyMessage(`No accepted submission for today found yet on @${username}. If you just submitted, please wait ~30s or use "Mark as Solved" below.`);
+        }
+      } else {
+        setGfgVerifyMessage(`Could not fetch profile for @${username}. You can mark it as solved manually below.`);
+      }
+    } catch {
+      setGfgVerifyMessage('Network check failed. You can mark it as solved manually below.');
+    } finally {
+      setIsVerifyingGfg(false);
+    }
+  };
+
+  const toggleManualGfgSolved = () => {
+    const current = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+    if (current) {
+      localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
+      const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
+      const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
+      if (!sdeSolved && !lcSolved) {
+        localStorage.removeItem(`sdetube_potd_solved_${today}`);
+      }
+    } else {
+      localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+      localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+      if (gfgPotd) {
+        markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
     setIsSolvedEventTriggered(prev => prev + 1);
   };
 
@@ -723,6 +812,52 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   </h4>
                   <p className="text-xs text-slate-400 mt-1 font-mono">Official GeeksforGeeks Problem of the Day &bull; {gfgPotd.date}</p>
                 </div>
+
+                {/* Linked Account Status & Quick Controls */}
+                <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-mono">Linked GFG Account:</span>
+                    {linkedConfig.gfgUsername ? (
+                      <span className="font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
+                        @{linkedConfig.gfgUsername}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 font-mono italic">Not linked</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {linkedConfig.gfgUsername && (
+                      <button
+                        onClick={verifyGfgSolved}
+                        disabled={isVerifyingGfg}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingGfg ? 'animate-spin' : ''}`} />
+                        <span>{isVerifyingGfg ? 'Checking GFG...' : 'Verify Submission'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={toggleManualGfgSolved}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isGfgPotdSolved
+                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
+                          : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                      }`}
+                      title="Click to toggle solved status for today"
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isGfgPotdSolved ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <span>{isGfgPotdSolved ? 'Solved ✓' : 'Mark as Solved'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {gfgVerifyMessage && (
+                  <div className="text-[11px] font-mono px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+                    {gfgVerifyMessage}
+                  </div>
+                )}
 
                 {/* Dual Option: Solve on SDETube IDE vs Solve on GeeksforGeeks */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">

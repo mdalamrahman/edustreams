@@ -238,11 +238,42 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     if (!gfgPotd) return false;
     // 1. Check local marks and submissions
     if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (isProblemSlugSolved(gfgPotd.titleSlug) || isProblemSlugSolved(gfgPotd.title)) return true;
-    if (gfgPotd.titleSlug) {
-      const sub = localStorage.getItem(`edustream_submissions_${gfgPotd.titleSlug}`);
-      if (sub && (sub.includes('"status":"SUCCESS"') || sub.includes('"passedCount"'))) return true;
+    if (
+      isProblemSlugSolved(gfgPotd.titleSlug) ||
+      isProblemSlugSolved(gfgPotd.title) ||
+      isProblemSlugSolved('9999') ||
+      isProblemSlugSolved('gfgpotd')
+    ) return true;
+
+    const subVariants = [
+      gfgPotd.titleSlug,
+      '9999',
+      'gfgpotd',
+      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    ].filter(Boolean);
+
+    for (const v of subVariants) {
+      const sub = localStorage.getItem(`edustream_submissions_${v}`);
+      if (sub) {
+        try {
+          const list = JSON.parse(sub);
+          if (Array.isArray(list) && list.some(item => {
+            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            if (item.id) {
+              const ts = parseInt(item.id.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            return true;
+          })) {
+            return true;
+          }
+        } catch {}
+      }
     }
+
     // 2. Check remote GFG profile for active POTD streak
     if (gfgProfile) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
@@ -767,6 +798,34 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     <span>↗ Solve on GeeksforGeeks</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
+
+                  {/* GFG Account Status & Manual Solved Toggle */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
+                    <span className="truncate max-w-[150px]">
+                      {linkedConfig.gfgUsername ? `@${linkedConfig.gfgUsername}` : 'GFG not linked'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const current = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+                        if (current) {
+                          localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
+                          const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
+                          const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
+                          if (!sdeSolved && !lcSolved) {
+                            localStorage.removeItem(`sdetube_potd_solved_${today}`);
+                          }
+                        } else {
+                          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+                          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+                        }
+                        window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
+                        setSolveEventCount(prev => prev + 1);
+                      }}
+                      className="text-emerald-400 hover:text-emerald-300 underline cursor-pointer text-[10px] font-bold"
+                    >
+                      {isGfgPotdSolved ? 'Unmark Solved' : 'Mark as Solved ✓'}
+                    </button>
+                  </div>
                 </>
               )}
             </div>

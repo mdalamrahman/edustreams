@@ -122,7 +122,10 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
             url: data.url || `https://leetcode.com/problems/${data.titleSlug}/`,
             acRate: data.acRate
           };
-          try { localStorage.setItem(cacheKey, JSON.stringify(result)); } catch {}
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(result));
+            localStorage.setItem('edustream_potd_cache_leetcode', JSON.stringify(result));
+          } catch {}
           return result;
         }
       }
@@ -281,15 +284,18 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
             accuracy: data.accuracy || 49.82,
             totalSubmissions: data.totalSubmissions || data.total_submissions || 12890
           };
-          try { localStorage.setItem(cacheKey, JSON.stringify(dynamicResult)); } catch {}
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(dynamicResult));
+            localStorage.setItem('edustream_potd_cache_gfg', JSON.stringify(dynamicResult));
+          } catch {}
           return dynamicResult;
         }
       }
     } catch {}
   }
 
-  // Authentic Fallback for Today (2026-08-31)
-  return {
+  // Authentic Fallback for Today
+  const fallbackResult: GFGDailyQuestion = {
     id: 2157,
     date: today,
     questionId: '704156',
@@ -302,6 +308,11 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     accuracy: 49.82,
     totalSubmissions: 12890
   };
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(fallbackResult));
+    localStorage.setItem('edustream_potd_cache_gfg', JSON.stringify(fallbackResult));
+  } catch {}
+  return fallbackResult;
 }
 
 /**
