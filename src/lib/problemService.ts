@@ -2451,7 +2451,6 @@ static vector<string> splitArgs(const string& argsStr) {
 
 int main() {
     ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
 
     string raw_input = R"RAW(initialize(10, 5, 20), parkVehicle("Car"), parkVehicle("Truck"), parkVehicle("Motorcycle"), removeVehicle("Car"), getAvailableSpots("Car"))RAW";
 
@@ -2511,7 +2510,7 @@ int main() {
         cout << results[i];
         if (i + 1 < results.size()) cout << ", ";
     }
-    cout << "\\n";
+    cout << endl;
 
     return 0;
 }
@@ -3016,7 +3015,6 @@ static TreeNode* buildTree(const vector<string>& vals) {
 
 int main() {
     ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
 
     string raw_input = R"RAW(root = [10, 5, 15, 2, 6], x = 7)RAW";
     
@@ -3208,7 +3206,6 @@ static TreeNode* buildTree(const vector<string>& vals) {
 
 int main() {
     ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
 
     string raw_input = R"RAW(root = [4, 2, 5, 1, 3], target = 3.714286)RAW";
     
