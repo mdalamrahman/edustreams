@@ -9,3 +9,4 @@ __pycache__/
 scratch/
 *.xlsx
 backend/company_problems_raw/
+.wrangler
