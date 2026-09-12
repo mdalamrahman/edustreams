@@ -2723,7 +2723,11 @@ async def fetch_leetcode_problem(slug: str):
 
     # 1. In-memory problem cache
     if clean_slug in _PROBLEM_CACHE:
-        return JSONResponse(_PROBLEM_CACHE[clean_slug], headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+        cached = _PROBLEM_CACHE[clean_slug]
+        if "single-responsibility" in clean_slug and (not str(cached.get("name", "")).startswith("Single") or "solve(" in str(cached.get("solutions", {}))):
+            _PROBLEM_CACHE.pop(clean_slug, None)
+        else:
+            return JSONResponse(cached, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
 
     # 2. Cloudflare R2
     try:
@@ -2901,6 +2905,13 @@ async def get_stored_solution(slug: str, lang: str):
         problem = _PROBLEM_CACHE.get(clean_slug) or r2_storage.fetch_problem(clean_slug) or {}
         solutions = problem.get("solutions") or {}
         sol_code = solutions.get(clean_lang)
+        if sol_code and "single-responsibility" in clean_slug and ("solve(" in str(sol_code) or "sumEven" in str(sol_code) or "parkVehicle" not in str(sol_code)):
+            _PROBLEM_CACHE.pop(clean_slug, None)
+            problem = r2_storage.fetch_problem(clean_slug) or {}
+            solutions = problem.get("solutions") or {}
+            sol_code = solutions.get(clean_lang)
+            if sol_code and ("solve(" in str(sol_code) or "sumEven" in str(sol_code) or "parkVehicle" not in str(sol_code)):
+                sol_code = None
         meta = (problem.get("solutionsMeta") or {}).get(clean_lang) or {
             "approachName": "Optimal Solution (Validated)",
             "timeComplexity": "Optimal",
