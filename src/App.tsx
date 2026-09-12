@@ -18,7 +18,17 @@ import {
   BookOpen,
   CheckCircle2
 } from 'lucide-react';
-import { Navbar } from './components/Navbar';
+import { Navbar, AppTab } from './components/Navbar';
+import { useSEO } from './lib/useSEO';
+import { trackPageView } from './lib/analyticsTracker';
+import { NotFoundPage } from './components/NotFoundPage';
+import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
+import { TermsPage } from './components/TermsPage';
+import { ThankYouPage } from './components/ThankYouPage';
+import { ContactPage } from './components/ContactPage';
+import { Footer } from './components/Footer';
+import { StickyMobileCTA } from './components/StickyMobileCTA';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { VideoPlayer } from './components/VideoPlayer';
 import { CodeWorkspace } from './components/CodeWorkspace';
 import { QuizModule } from './components/QuizModule';
@@ -65,16 +75,21 @@ const sanitizeCaption = (cap?: string) => {
     .trim();
 };
 
-const getInitialTab = (): 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings' => {
+const getInitialTab = (): AppTab => {
   if (typeof window === 'undefined') return 'dashboard';
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   const pathname = window.location.pathname || '';
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
-  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(qTab)) {
-    return qTab as any;
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found'].includes(qTab)) {
+    return qTab as AppTab;
   }
+  if (hash.startsWith('#/privacy') || pathname.startsWith('/privacy')) return 'privacy';
+  if (hash.startsWith('#/terms') || pathname.startsWith('/terms')) return 'terms';
+  if (hash.startsWith('#/thank-you') || pathname.startsWith('/thank-you') || hash.startsWith('#/conversion') || pathname.startsWith('/conversion')) return 'thank_you';
+  if (hash.startsWith('#/contact') || pathname.startsWith('/contact')) return 'contact';
+  if (hash.startsWith('#/404') || pathname.startsWith('/404')) return 'not_found';
   if (hash.startsWith('#/dsa-problems') || hash.startsWith('#/company') || pathname.startsWith('/dsa-problems') || pathname.startsWith('/company')) return 'dsa_problems';
   if (hash.startsWith('#/problem/') || hash.startsWith('#/dsa-sheets') || hash.startsWith('#/sde-sheet') || pathname.startsWith('/dsa-sheets') || pathname.startsWith('/sde-sheet')) return 'sde_sheet';
   if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) return 'lld';
@@ -84,6 +99,12 @@ const getInitialTab = (): 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'd
   if (hash.startsWith('#/analytics') || pathname.startsWith('/analytics')) return 'analytics';
   if (hash.startsWith('#/channels') || pathname.startsWith('/channels') || hash.startsWith('#/channel/')) return 'channels';
   if (hash.startsWith('#/lesson') || hash.startsWith('#/video') || pathname.startsWith('/lesson') || pathname.startsWith('/video')) return 'lesson';
+
+  // Unknown hash route fallback -> 404
+  if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
+    return 'not_found';
+  }
+
   return 'dashboard';
 };
 
@@ -122,7 +143,7 @@ const getInitialVideo = (): Video => {
 
 export function App() {
   const { isMobile } = useDevice();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<AppTab>(getInitialTab);
   const [returnTarget, setReturnTarget] = useState<'channels' | 'sde_sheet'>('channels');
   const [channelViewMode, setChannelViewMode] = useState<'overview' | 'detail'>(getInitialChannelViewMode);
   const [selectedChannelId, setSelectedChannelId] = useState<string>(getInitialChannel);
@@ -146,6 +167,18 @@ export function App() {
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState<boolean>(false);
   const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState<boolean>(false);
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 2.0, action: 'Accessing Video Lecture' });
+
+  // Dynamic SEO Metadata (Requirement 2, 3, 8)
+  useSEO({
+    activeTab,
+    selectedVideo,
+    activeProblem: sdeFullscreenProblem || (activeSqlProblem ? activeSqlProblem.problem : null),
+  });
+
+  // Track Page Views (Requirement 18)
+  useEffect(() => {
+    trackPageView(`/#/${activeTab}`, document.title);
+  }, [activeTab]);
 
   const handleOpenPotdDirectly = () => {
     setIsPotdModalOpen(true);
@@ -174,11 +207,23 @@ export function App() {
   };
 
   // URL Hash-Based Navigation & Page Stubs for Browser Back/Forward Support
-  const navigateTo = (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings', extra?: { channelId?: string; videoId?: string }) => {
+  const navigateTo = (tab: AppTab, extra?: { channelId?: string; videoId?: string }) => {
     if (tab !== 'lesson') {
       window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
     }
-    let hash = `#/${tab === 'dashboard' ? 'dashboard' : tab === 'sde_sheet' ? 'dsa-sheets' : tab === 'dsa_problems' ? 'dsa-problems' : tab === 'lld' ? 'lld' : tab === 'hld' ? 'hld' : tab === 'system_design' ? 'system-design' : tab === 'interview' ? 'interview' : tab === 'profile' ? 'profile' : tab}`;
+    let hash = `#/${
+      tab === 'dashboard' ? 'dashboard' :
+      tab === 'sde_sheet' ? 'dsa-sheets' :
+      tab === 'dsa_problems' ? 'dsa-problems' :
+      tab === 'lld' ? 'lld' :
+      tab === 'hld' ? 'hld' :
+      tab === 'system_design' ? 'system-design' :
+      tab === 'interview' ? 'interview' :
+      tab === 'profile' ? 'profile' :
+      tab === 'thank_you' ? 'thank-you' :
+      tab === 'not_found' ? '404' :
+      tab
+    }`;
     if (tab === 'channels' && extra?.channelId) {
       hash = `#/channel/${extra.channelId}`;
     } else if (tab === 'lesson' && extra?.videoId) {
@@ -311,6 +356,18 @@ export function App() {
         } else if (hash.startsWith('#/channels') || pathname.startsWith('/channels')) {
           setActiveTab('channels');
           setChannelViewMode('overview');
+        } else if (hash.startsWith('#/privacy') || pathname.startsWith('/privacy')) {
+          setActiveTab('privacy');
+        } else if (hash.startsWith('#/terms') || pathname.startsWith('/terms')) {
+          setActiveTab('terms');
+        } else if (hash.startsWith('#/thank-you') || pathname.startsWith('/thank-you') || hash.startsWith('#/conversion') || pathname.startsWith('/conversion')) {
+          setActiveTab('thank_you');
+        } else if (hash.startsWith('#/contact') || pathname.startsWith('/contact')) {
+          setActiveTab('contact');
+        } else if (hash.startsWith('#/404') || pathname.startsWith('/404')) {
+          setActiveTab('not_found');
+        } else if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
+          setActiveTab('not_found');
         } else {
           setActiveTab('dashboard');
         }
@@ -379,7 +436,10 @@ export function App() {
 
     let targetHash = '#/' + (
       activeTab === 'sde_sheet' ? 'dsa-sheets' :
+      activeTab === 'dsa_problems' ? 'dsa-problems' :
       activeTab === 'system_design' ? 'system-design' :
+      activeTab === 'thank_you' ? 'thank-you' :
+      activeTab === 'not_found' ? '404' :
       activeTab
     );
     if (activeTab === 'lesson' && selectedVideo) {
@@ -1601,6 +1661,31 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           />
         )}
 
+        {/* VIEW 5: PRIVACY POLICY (GDPR & CCPA COMPLIANT) */}
+        {activeTab === 'privacy' && (
+          <PrivacyPolicyPage onBackToHome={() => navigateTo('dashboard')} />
+        )}
+
+        {/* VIEW 6: TERMS AND CONDITIONS OF SERVICE */}
+        {activeTab === 'terms' && (
+          <TermsPage onBackToHome={() => navigateTo('dashboard')} />
+        )}
+
+        {/* VIEW 7: THANK YOU / ACTION CONVERSION RECEIPT */}
+        {activeTab === 'thank_you' && (
+          <ThankYouPage onNavigateHome={() => navigateTo('dashboard')} onNavigateTab={navigateTo} />
+        )}
+
+        {/* VIEW 8: CONTACT FORM & BUSINESS OFFICE */}
+        {activeTab === 'contact' && (
+          <ContactPage onBackToHome={() => navigateTo('dashboard')} onNavigateToThankYou={() => navigateTo('thank_you')} />
+        )}
+
+        {/* VIEW 9: CUSTOM 404 NOT FOUND FALLBACK */}
+        {activeTab === 'not_found' && (
+          <NotFoundPage onNavigateHome={() => navigateTo('dashboard')} onNavigateTab={navigateTo} />
+        )}
+
       </main>
 
       {/* Fullscreen LeetCode Monaco Workspace for SDE Sheet Problems */}
@@ -1744,6 +1829,23 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           currentUserEmail={user?.email}
         />
       )}
+
+      {/* Production Structured Footer with Business Address & Schema details */}
+      <Footer onNavigate={navigateTo} />
+
+      {/* Persistent Sticky Mobile Action CTA Bar */}
+      {!sdeFullscreenProblem && !isSqlModalOpen && (
+        <StickyMobileCTA
+          onOpenPotd={handleOpenPotdDirectly}
+          onNavigateToSdeSheet={() => navigateTo('sde_sheet')}
+          onOpenAskAI={() => openAskAIWithMode()}
+          onNavigateToAnalytics={() => navigateTo('analytics')}
+          activeTab={activeTab}
+        />
+      )}
+
+      {/* Lightweight GDPR/ePrivacy Cookie Consent Banner */}
+      <CookieConsentBanner onNavigateToPrivacy={() => navigateTo('privacy')} />
 
     </div>
   );

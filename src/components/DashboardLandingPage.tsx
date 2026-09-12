@@ -351,6 +351,47 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 <span className="font-bold text-indigo-300">{totalDedicatedHours}h Dedicated</span>
               </div>
             </div>
+
+            {/* Above-the-Fold High-Converting Hero CTA Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-3">
+              <button
+                onClick={() => onOpenSdeProblem(sdePotd)}
+                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm tracking-tight shadow-xl shadow-amber-500/25 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                title="Solve Today's SDE Problem of the Day"
+              >
+                <Flame className="w-4 h-4 fill-slate-950 text-slate-950 animate-bounce" />
+                <span>Solve Today's POTD</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('sde_sheet')}
+                className="px-4 py-3 rounded-2xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+              >
+                <Code2 className="w-4 h-4 text-indigo-300" />
+                <span>Explore SDE Sheets (743 Qs)</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('interview')}
+                className="px-4 py-3 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+              >
+                <Bot className="w-4 h-4 text-purple-400" />
+                <span>AI Mock Interview</span>
+              </button>
+            </div>
+
+            {/* Hero Social Proof Tag */}
+            <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400 font-mono">
+              <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                100% Free & Open Access
+              </span>
+              <span>&bull;</span>
+              <span>Real Monaco IDE</span>
+              <span>&bull;</span>
+              <span>4,200+ Submissions Evaluated</span>
+            </div>
           </div>
 
           {/* Right Column: SDE Readiness Score Dial */}

@@ -32,9 +32,28 @@ import { addPasskeyToSupabase } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
 
+export type AppTab = 
+  | 'dashboard' 
+  | 'channels' 
+  | 'lesson' 
+  | 'sde_sheet' 
+  | 'dsa_problems' 
+  | 'lld' 
+  | 'hld' 
+  | 'system_design' 
+  | 'interview' 
+  | 'analytics' 
+  | 'profile' 
+  | 'settings'
+  | 'privacy'
+  | 'terms'
+  | 'thank_you'
+  | 'contact'
+  | 'not_found';
+
 interface NavbarProps {
-  activeTab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'channels' | 'lesson' | 'sde_sheet' | 'dsa_problems' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics' | 'profile' | 'settings') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   selectedChannel: string;
   setSelectedChannel: (channelId: string) => void;
   user: any;

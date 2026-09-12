@@ -2,20 +2,133 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SDETube — AI-Powered Computer Science & SDE Preparation Arena</title>
-    <link rel="manifest" href="/manifest.json" />
+    <meta name="description" content="Master technical software engineering interviews with in-browser video lectures, fullscreen Monaco LeetCode IDE, synchronized AI notes, and 743+ curated DSA problems." />
+    <meta name="keywords" content="SDE preparation, software engineer interview, LeetCode online IDE, DSA sheets, system design, LLD studio, HLD canvas, POTD, FAANG coding" />
+    <meta name="author" content="SDETube" />
     <meta name="theme-color" content="#020617" />
+    <link rel="canonical" href="https://sdetube.pages.dev/" />
+
+    <!-- Full Favicon Package Configuration -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph Social Share Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SDETube" />
+    <meta property="og:url" content="https://sdetube.pages.dev/" />
+    <meta property="og:title" content="SDETube — AI-Powered Computer Science & SDE Preparation Arena" />
+    <meta property="og:description" content="Master technical software engineering interviews with in-browser video lectures, fullscreen Monaco LeetCode IDE, synchronized AI notes, and 743+ curated DSA problems." />
+    <meta property="og:image" content="https://sdetube.pages.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SDETube AI-Powered Computer Science & SDE Preparation Arena" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@sdetube" />
+    <meta name="twitter:title" content="SDETube — AI-Powered Computer Science & SDE Preparation Arena" />
+    <meta name="twitter:description" content="Master technical software engineering interviews with in-browser video lectures, fullscreen Monaco LeetCode IDE, synchronized AI notes, and 743+ curated DSA problems." />
+    <meta name="twitter:image" content="https://sdetube.pages.dev/og-image.png" />
+    <meta name="twitter:image:alt" content="SDETube AI-Powered SDE Preparation Arena" />
+
     <meta name="google-site-verification" content="google701709f1021c4576" />
+
     <!-- Google Fonts Plus Jakarta Sans, Inter, JetBrains Mono, Fira Code, Lora & Merriweather -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Cloudflare Turnstile Captcha API -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+
+    <!-- Schema.org EducationalOrganization & WebSite Structured JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "EducationalOrganization",
+          "@id": "https://sdetube.pages.dev/#organization",
+          "name": "SDETube Open Learning Initiative",
+          "url": "https://sdetube.pages.dev/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://sdetube.pages.dev/pwa-512x512.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Comprehensive open computer science and software development engineer interview preparation platform.",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "support@sdetube.pages.dev",
+            "contactType": "Customer Support",
+            "availableLanguage": ["English", "Hindi"]
+          },
+          "sameAs": [
+            "https://github.com/mdalamrahman/edustreams"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://sdetube.pages.dev/#website",
+          "url": "https://sdetube.pages.dev/",
+          "name": "SDETube",
+          "publisher": {
+            "@id": "https://sdetube.pages.dev/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://sdetube.pages.dev/#/dsa-problems?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Analytics Integration (Consent-Gated Google Analytics 4) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      // Initialize with denied consent by default (GDPR compliance)
+      gtag('consent', 'default', {
+        'analytics_storage': 'denied',
+        'ad_storage': 'denied'
+      });
+
+      // Check stored user consent
+      try {
+        var rawConsent = localStorage.getItem('sdetube_cookie_consent');
+        if (rawConsent) {
+          var parsed = JSON.parse(rawConsent);
+          if (parsed.analytics) {
+            gtag('consent', 'update', {
+              'analytics_storage': 'granted'
+            });
+          }
+        }
+      } catch (e) {}
+
+      // Optional GA4 Measurement ID injection
+      var gaId = 'G-SDETUBEPROD';
+      if (gaId) {
+        var gaScript = document.createElement('script');
+        gaScript.async = true;
+        gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+        document.head.appendChild(gaScript);
+        gtag('config', gaId, { send_page_view: false });
+      }
+    </script>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>

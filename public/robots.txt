@@ -1,0 +1,34 @@
+# ==============================================================================
+# SDETube Robots.txt — Production Crawl Directives
+# Website: https://sdetube.pages.dev
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Allow: /dsa-sheets
+Allow: /dsa-problems
+Allow: /lld
+Allow: /hld
+Allow: /system-design
+Allow: /interview
+Allow: /privacy
+Allow: /terms
+Allow: /contact
+
+# Disallow private user states, authentication callbacks, and admin portals
+Disallow: /api/admin
+Disallow: /admin
+Disallow: /private
+Disallow: /tmp/
+Disallow: /*?verify_email=*
+Disallow: /*?passcode=*
+
+# Crawl Delay to avoid hammering edge functions
+Crawl-delay: 1
+
+# Staging Environment Directive Note:
+# For staging/preview deployments (*.pages.dev preview branches), the HTTP header
+# "X-Robots-Tag: noindex, nofollow" is configured in _headers.
+
+# XML Sitemap
+Sitemap: https://sdetube.pages.dev/sitemap.xml
