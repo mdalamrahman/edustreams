@@ -2150,9 +2150,192 @@ export function getDefaultDriverForProblem(slugOrTitle: string, language: Suppor
   const slug = toSlug(slugOrTitle);
   const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
 
+  // === SET MATRIX ZEROES (and similar in-place 2D matrix problems) ===
+  const isSetMatrixZeroes = slug.includes('set-matrix-zeroes') || slug.includes('setzeroes') || slug === 'set-matrix-zero';
+  if (isSetMatrixZeroes) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+using namespace std;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static string trim2(const string& s) {
+    size_t a = s.find_first_not_of(" \\t\\n\\r");
+    if (a == string::npos) return "";
+    size_t b = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(a, b - a + 1);
+}
+
+// Robust 2D integer matrix parser: handles "matrix = [[1,0],[0,1]]" or "[[1,0],[0,1]]"
+static vector<vector<int>> parseMatrix(const string& raw) {
+    vector<vector<int>> mat;
+    // Strip named prefix (e.g. "matrix =")
+    size_t lb = raw.find("[[");
+    if (lb == string::npos) return mat;
+    size_t rb = raw.rfind("]]");
+    if (rb == string::npos || rb <= lb) return mat;
+    string inner = raw.substr(lb + 2, rb - lb - 2); // content between outer [[ and ]]
+
+    // Split into rows by "],["
+    size_t pos = 0;
+    while (pos <= inner.size()) {
+        size_t end = inner.find("],[", pos);
+        string row_str = (end == string::npos) ? inner.substr(pos) : inner.substr(pos, end - pos);
+        // Remove stray brackets
+        row_str.erase(remove(row_str.begin(), row_str.end(), '['), row_str.end());
+        row_str.erase(remove(row_str.begin(), row_str.end(), ']'), row_str.end());
+        stringstream ss(row_str);
+        string tok;
+        vector<int> row;
+        while (getline(ss, tok, ',')) {
+            string t = trim2(tok);
+            if (!t.empty()) {
+                try { row.push_back(stoi(t)); } catch (...) {}
+            }
+        }
+        if (!row.empty()) mat.push_back(row);
+        if (end == string::npos) break;
+        pos = end + 3;
+    }
+    return mat;
+}
+
+static void printMatrix(const vector<vector<int>>& mat) {
+    cout << "[";
+    for (size_t i = 0; i < mat.size(); ++i) {
+        cout << "[";
+        for (size_t j = 0; j < mat[i].size(); ++j) {
+            cout << mat[i][j];
+            if (j + 1 < mat[i].size()) cout << ",";
+        }
+        cout << "]";
+        if (i + 1 < mat.size()) cout << ",";
+    }
+    cout << "]" << endl;
+}
+
+int main() {
+    string raw_input = R"RAW(matrix = [[1,1,1],[1,0,1],[1,1,1]])RAW";
+
+    vector<vector<int>> matrix = parseMatrix(raw_input);
+    if (matrix.empty()) {
+        cout << "[]" << endl;
+        return 0;
+    }
+
+    Solution sol;
+    sol.setZeroes(matrix);
+    printMatrix(matrix);
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def parse_matrix(raw):
+    m = re.search(r'\\[\\[(.*)\\]\\]', raw, re.DOTALL)
+    if not m:
+        return []
+    inner = m.group(0)  # full "[[...]]"
+    try:
+        import ast
+        return ast.literal_eval(inner)
+    except Exception:
+        return []
+
+def main():
+    raw_input = 'matrix = [[1,1,1],[1,0,1],[1,1,1]]'
+    matrix = parse_matrix(raw_input)
+    if not matrix:
+        print('[]')
+        return
+    sol = Solution()
+    sol.setZeroes(matrix)
+    print('[' + ','.join('[' + ','.join(str(x) for x in row) + ']' for row in matrix) + ']')
+
+if __name__ == '__main__':
+    main()`;
+    } else if (lang === 'javascript') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function parseMatrix(raw) {
+    const m = raw.match(/\\[\\[.*\\]\\]/s);
+    if (!m) return [];
+    try { return JSON.parse(m[0]); } catch(e) { return []; }
+}
+
+const rawInput = \`matrix = [[1,1,1],[1,0,1],[1,1,1]]\`;
+const matrix = parseMatrix(rawInput);
+if (!matrix || matrix.length === 0) { console.log('[]'); process.exit(0); }
+
+const sol = new Solution();
+sol.setZeroes(matrix);
+console.log('[' + matrix.map(r => '[' + r.join(',') + ']').join(',') + ']');`;
+    } else if (lang === 'java') {
+      return `import java.util.*;
+import java.util.regex.*;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    static int[][] parseMatrix(String raw) {
+        Pattern p = Pattern.compile("\\\\[\\\\[(.+?)\\\\]\\\\]");
+        Matcher m = p.matcher(raw);
+        if (!m.find()) return new int[0][0];
+        String full = m.group(0);
+        // strip outer brackets
+        full = full.substring(1, full.length() - 1);
+        String[] rows = full.split("\\\\],\\\\[");
+        int[][] mat = new int[rows.length][];
+        for (int i = 0; i < rows.length; i++) {
+            String row = rows[i].replace("[","").replace("]","").trim();
+            String[] cells = row.split(",");
+            mat[i] = new int[cells.length];
+            for (int j = 0; j < cells.length; j++) {
+                mat[i][j] = Integer.parseInt(cells[j].trim());
+            }
+        }
+        return mat;
+    }
+
+    public static void main(String[] args) {
+        String rawInput = "matrix = [[1,1,1],[1,0,1],[1,1,1]]";
+        int[][] matrix = parseMatrix(rawInput);
+        if (matrix.length == 0) { System.out.println("[]"); return; }
+        Solution sol = new Solution();
+        sol.setZeroes(matrix);
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < matrix.length; i++) {
+            sb.append("[");
+            for (int j = 0; j < matrix[i].length; j++) {
+                sb.append(matrix[i][j]);
+                if (j < matrix[i].length - 1) sb.append(",");
+            }
+            sb.append("]");
+            if (i < matrix.length - 1) sb.append(",");
+        }
+        sb.append("]");
+        System.out.println(sb.toString());
+    }
+}`;
+    }
+  }
+
   const isLCA = slug.includes('lowest-common-ancestor') || slug.includes('lowestcommonancestor');
   if (isLCA) {
     if (lang === 'cpp') {
+
       return `#include <iostream>
 #include <vector>
 #include <string>
