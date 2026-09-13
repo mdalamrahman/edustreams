@@ -15201,7 +15201,8 @@ export function getUniversalSdePotd(): DSAProblem {
             difficulty: parsed.difficulty || 'Medium',
             category: parsed.category || parsed.topic || 'DSA',
             leetcode: parsed.leetcode || parsed.url || `https://leetcode.com/problems/${parsed.slug}/`,
-            sheet: parsed.sheet || 'Curated POTD'
+            sheet: parsed.sheet || 'Curated POTD',
+            companies: Array.isArray(parsed.companies) && parsed.companies.length > 0 ? parsed.companies : ['FAANG', 'Top Product Companies']
           } as unknown as DSAProblem;
         }
       }

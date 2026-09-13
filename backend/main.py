@@ -3019,6 +3019,7 @@ async def set_sdetube_potd(req: Request):
             "url": leetcode,
             "sheet": sheet,
             "description": description,
+            "companies": payload.get("companies") or ["Top Tech", "FAANG"],
             "date": target_date,
             "overridden_at": datetime.now(timezone.utc).isoformat()
         }

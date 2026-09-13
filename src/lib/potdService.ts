@@ -28,6 +28,7 @@ export interface AdminPotdRecord {
   url?: string;
   sheet?: string;
   description?: string;
+  companies?: string[];
   date: string;
   overridden_at?: string;
 }
@@ -146,6 +147,7 @@ export async function setAdminPotdOverride(
     url: leetcode,
     sheet,
     description: problem.description || '',
+    companies: Array.isArray((problem as any).companies) && (problem as any).companies.length > 0 ? (problem as any).companies : ['Top Tech', 'FAANG'],
     date: targetDate,
     overridden_at: new Date().toISOString()
   };

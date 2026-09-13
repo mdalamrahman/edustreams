@@ -583,8 +583,12 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
               }`}>
                 {potdProblem.difficulty}
               </span>
-              <span>&bull;</span>
-              <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
+              {potdProblem.companies && potdProblem.companies.length > 0 && (
+                <>
+                  <span>&bull;</span>
+                  <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
+                </>
+              )}
               {isPotdSolved && (
                 <span className="inline-flex items-center gap-1 text-emerald-400 font-bold ml-2">
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1273,7 +1277,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                         {/* Companies */}
                                         <td className="py-2.5 px-3">
                                           <div className="flex flex-wrap gap-1 items-center">
-                                            {p.companies.slice(0, 2).map((comp) => (
+                                            {(p.companies || []).slice(0, 2).map((comp) => (
                                               <span
                                                 key={comp}
                                                 className="px-1.5 py-0.2 rounded bg-slate-900 text-slate-300 text-[10px] border border-slate-800"
@@ -1281,9 +1285,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                                 {comp}
                                               </span>
                                             ))}
-                                            {p.companies.length > 2 && (
+                                            {(p.companies?.length || 0) > 2 && (
                                               <span className="text-[9px] text-slate-500 font-mono">
-                                                +{p.companies.length - 2}
+                                                +{(p.companies?.length || 0) - 2}
                                               </span>
                                             )}
                                           </div>

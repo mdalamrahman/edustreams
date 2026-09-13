@@ -81,12 +81,28 @@ const getInitialTab = (): AppTab => {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   const pathname = window.location.pathname || '';
+  const hostname = window.location.hostname || '';
+  const isVercel = hostname.includes('vercel.app');
+  const isPagesDev = hostname.includes('pages.dev');
+
+  // If on Cloudflare Pages (Student Portal on Wrangler), route any admin request to Vercel Admin Portal
+  if (isPagesDev && (pathname.startsWith('/admin') || hash.startsWith('#/admin'))) {
+    window.location.href = 'https://sdetube.vercel.app/admin';
+    return 'admin';
+  }
+
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
   if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found', 'admin'].includes(qTab)) {
     return qTab as AppTab;
   }
   if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) return 'admin';
+
+  // Dedicated Admin Portal on Vercel: default directly to admin section
+  if (isVercel && (!hash || hash === '#/' || hash === '#' || hash === '#/dashboard')) {
+    return 'admin';
+  }
+
   if (hash.startsWith('#/privacy') || pathname.startsWith('/privacy')) return 'privacy';
   if (hash.startsWith('#/terms') || pathname.startsWith('/terms')) return 'terms';
   if (hash.startsWith('#/thank-you') || pathname.startsWith('/thank-you') || hash.startsWith('#/conversion') || pathname.startsWith('/conversion')) return 'thank_you';
@@ -107,7 +123,7 @@ const getInitialTab = (): AppTab => {
     return 'not_found';
   }
 
-  return 'dashboard';
+  return isVercel ? 'admin' : 'dashboard';
 };
 
 const getInitialChannel = (): string => {
@@ -368,13 +384,18 @@ export function App() {
         } else if (hash.startsWith('#/contact') || pathname.startsWith('/contact')) {
           setActiveTab('contact');
         } else if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) {
+          if (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev')) {
+            window.location.href = 'https://sdetube.vercel.app/admin';
+            return;
+          }
           setActiveTab('admin');
         } else if (hash.startsWith('#/404') || pathname.startsWith('/404')) {
           setActiveTab('not_found');
         } else if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
           setActiveTab('not_found');
         } else {
-          setActiveTab('dashboard');
+          const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+          setActiveTab(isVercel ? 'admin' : 'dashboard');
         }
       }
     };

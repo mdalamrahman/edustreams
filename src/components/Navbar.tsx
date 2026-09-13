@@ -25,7 +25,8 @@ import {
   Layers,
   User,
   CheckCircle2,
-  Building2
+  Building2,
+  ExternalLink
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
@@ -382,13 +383,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <button
                         onClick={() => {
                           setIsDropdownOpen(false);
-                          if (onOpenAdmin) onOpenAdmin();
-                          else setActiveTab('admin');
+                          if (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev')) {
+                            window.open('https://sdetube.vercel.app/admin', '_blank');
+                          } else {
+                            if (onOpenAdmin) onOpenAdmin();
+                            else setActiveTab('admin');
+                          }
                         }}
-                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-amber-300 hover:bg-amber-950/50 flex items-center gap-2 transition-all cursor-pointer border border-amber-900/40 my-1 bg-amber-950/20"
+                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-amber-300 hover:bg-amber-950/50 flex items-center justify-between transition-all cursor-pointer border border-amber-900/40 my-1 bg-amber-950/20"
                       >
-                        <ShieldCheck className="w-4 h-4 text-amber-400" />
-                        <span className="font-bold">SuperAdmin Portal (POTD)</span>
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold">SuperAdmin Portal (Vercel)</span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-amber-400/80" />
                       </button>
                     )}
 

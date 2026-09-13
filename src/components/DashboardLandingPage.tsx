@@ -515,8 +515,12 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
                     {sdePotd.category}
                   </span>
-                  <span>&bull;</span>
-                  <span className="truncate">{sdePotd.companies.slice(0, 2).join(', ')}</span>
+                  {sdePotd.companies && sdePotd.companies.length > 0 && (
+                    <>
+                      <span>&bull;</span>
+                      <span className="truncate">{sdePotd.companies.slice(0, 2).join(', ')}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
