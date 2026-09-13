@@ -49,7 +49,8 @@ export type AppTab =
   | 'terms'
   | 'thank_you'
   | 'contact'
-  | 'not_found';
+  | 'not_found'
+  | 'admin';
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -377,6 +378,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>LeetCode Profile & Heatmap</span>
                     </button>
 
+                    {isAdminUser && (
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          if (onOpenAdmin) onOpenAdmin();
+                          else setActiveTab('admin');
+                        }}
+                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-amber-300 hover:bg-amber-950/50 flex items-center gap-2 transition-all cursor-pointer border border-amber-900/40 my-1 bg-amber-950/20"
+                      >
+                        <ShieldCheck className="w-4 h-4 text-amber-400" />
+                        <span className="font-bold">SuperAdmin Portal (POTD)</span>
+                      </button>
+                    )}
+
 
 
                     <button
@@ -572,7 +587,22 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Drawer Footer */}
             {user && (
               <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
-
+                {isAdminUser && (
+                  <button
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      if (onOpenAdmin) onOpenAdmin();
+                      else setActiveTab('admin');
+                    }}
+                    className="w-full p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/50 text-amber-300 text-xs font-bold flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <ShieldCheck className="w-4 h-4 text-amber-400" />
+                      <span>Admin Control Center</span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200">POTD & Users</span>
+                  </button>
+                )}
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center space-x-2 truncate">

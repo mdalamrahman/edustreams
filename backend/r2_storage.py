@@ -448,6 +448,25 @@ class CloudflareR2Storage:
             pass
         return None
 
+    def upload_json(self, key: str, data: Any) -> Optional[str]:
+        """Uploads a dictionary/list as JSON into Cloudflare R2."""
+        try:
+            payload_bytes = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+            return self.upload_file(key, payload_bytes, content_type="application/json")
+        except Exception as e:
+            print(f"[R2 upload_json error]: {e}")
+            return None
+
+    def fetch_json(self, key: str) -> Optional[Any]:
+        """Fetches and parses a JSON object from Cloudflare R2."""
+        try:
+            raw_bytes = self.fetch_file(key)
+            if raw_bytes:
+                return json.loads(raw_bytes.decode("utf-8"))
+        except Exception as e:
+            print(f"[R2 fetch_json error]: {e}")
+        return None
+
     def save_note(self, key: str, content: str) -> Optional[str]:
         """Saves a text note or user code snippet into Cloudflare R2."""
         payload_bytes = content.encode("utf-8")

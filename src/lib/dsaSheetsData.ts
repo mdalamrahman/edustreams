@@ -15186,6 +15186,29 @@ export function getSheetData(sheetType: DSASheetType): DSAProblem[] {
 
 export function getUniversalSdePotd(): DSAProblem {
   const today = new Date().toISOString().slice(0, 10);
+  // 1. Check if admin has set a custom POTD override for today
+  if (typeof window !== 'undefined') {
+    try {
+      const customRaw = localStorage.getItem(`sdetube_custom_potd_${today}`);
+      if (customRaw) {
+        const parsed = JSON.parse(customRaw);
+        if (parsed && (parsed.name || parsed.title) && parsed.slug) {
+          return {
+            id: parsed.id || 9999,
+            name: parsed.name || parsed.title,
+            title: parsed.title || parsed.name,
+            slug: parsed.slug,
+            difficulty: parsed.difficulty || 'Medium',
+            category: parsed.category || parsed.topic || 'DSA',
+            leetcode: parsed.leetcode || parsed.url || `https://leetcode.com/problems/${parsed.slug}/`,
+            sheet: parsed.sheet || 'Curated POTD'
+          } as unknown as DSAProblem;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Default rotational seed based on date
   const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
   return SDE_SHEET_191_DATA[daySeed % SDE_SHEET_191_DATA.length] || SDE_SHEET_191_DATA[0];
 }

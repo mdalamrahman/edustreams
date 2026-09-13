@@ -66,6 +66,7 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { InterviewCompanion } from './components/InterviewCompanion';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
+import { AdminPage } from './components/AdminPage';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -82,9 +83,10 @@ const getInitialTab = (): AppTab => {
   const pathname = window.location.pathname || '';
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
-  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found'].includes(qTab)) {
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found', 'admin'].includes(qTab)) {
     return qTab as AppTab;
   }
+  if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) return 'admin';
   if (hash.startsWith('#/privacy') || pathname.startsWith('/privacy')) return 'privacy';
   if (hash.startsWith('#/terms') || pathname.startsWith('/terms')) return 'terms';
   if (hash.startsWith('#/thank-you') || pathname.startsWith('/thank-you') || hash.startsWith('#/conversion') || pathname.startsWith('/conversion')) return 'thank_you';
@@ -221,6 +223,7 @@ export function App() {
       tab === 'interview' ? 'interview' :
       tab === 'profile' ? 'profile' :
       tab === 'thank_you' ? 'thank-you' :
+      tab === 'admin' ? 'admin' :
       tab === 'not_found' ? '404' :
       tab
     }`;
@@ -364,6 +367,8 @@ export function App() {
           setActiveTab('thank_you');
         } else if (hash.startsWith('#/contact') || pathname.startsWith('/contact')) {
           setActiveTab('contact');
+        } else if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) {
+          setActiveTab('admin');
         } else if (hash.startsWith('#/404') || pathname.startsWith('/404')) {
           setActiveTab('not_found');
         } else if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
@@ -1684,6 +1689,15 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         {/* VIEW 9: CUSTOM 404 NOT FOUND FALLBACK */}
         {activeTab === 'not_found' && (
           <NotFoundPage onNavigateHome={() => navigateTo('dashboard')} onNavigateTab={navigateTo} />
+        )}
+
+        {/* VIEW 10: DEDICATED SUPERADMIN COMMAND CENTER & POTD MANAGER */}
+        {activeTab === 'admin' && (
+          <AdminPage 
+            user={user} 
+            onNavigate={navigateTo} 
+            onOpenAuthModal={() => setShowMobileGating(false)} 
+          />
         )}
 
       </main>

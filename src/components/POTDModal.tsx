@@ -27,10 +27,23 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const [isLoadingGfg, setIsLoadingGfg] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
+  const [potdUpdateTick, setPotdUpdateTick] = useState(0);
+
+  useEffect(() => {
+    const handlePotdUpdate = () => setPotdUpdateTick(t => t + 1);
+    window.addEventListener('sdetube_potd_updated', handlePotdUpdate);
+    import('../lib/potdService').then(({ fetchServerSdePotd }) => {
+      fetchServerSdePotd(today).then(override => {
+        if (override) setPotdUpdateTick(t => t + 1);
+      });
+    }).catch(() => {});
+    return () => window.removeEventListener('sdetube_potd_updated', handlePotdUpdate);
+  }, [today]);
+
   // Today's Curated SDETube POTD
   const sdePotd: SDEProblem = useMemo(() => {
     return getUniversalSdePotd();
-  }, [today]);
+  }, [today, potdUpdateTick]);
 
   const [isSolvedEventTriggered, setIsSolvedEventTriggered] = useState(0);
 

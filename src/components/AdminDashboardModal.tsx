@@ -30,8 +30,10 @@ import {
   QrCode,
   PlusCircle,
   XCircle,
-  Eye
+  Eye,
+  Calendar
 } from 'lucide-react';
+import { AdminPOTDManager } from './AdminPOTDManager';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { fetchSupabaseLiveTelemetry } from '../lib/supabaseAdmin';
 import { getAllRegisteredUsers } from '../lib/auth';
@@ -65,8 +67,10 @@ interface AdminUserStat {
 }
 
 interface AdminDashboardModalProps {
-  onClose: () => void;
+  onClose?: () => void;
   currentUserEmail?: string;
+  isPage?: boolean;
+  initialTab?: 'potd' | 'telemetry' | 'billing';
 }
 
 const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
@@ -105,7 +109,12 @@ const buildRealUsersList = (currentUserEmail?: string): AdminUserStat[] => {
   });
 };
 
-export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClose, currentUserEmail }) => {
+export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ 
+  onClose, 
+  currentUserEmail,
+  isPage = false,
+  initialTab = 'potd'
+}) => {
   const [activeSubTab, setActiveSubTab] = useState<'users' | 'transcripts' | 'notes' | 'storage'>('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<AdminUserStat | null>(null);
@@ -116,8 +125,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   // Real Dynamic User Stats List
   const [usersList, setUsersList] = useState<AdminUserStat[]>(() => buildRealUsersList(currentUserEmail));
 
-  // Billing Tab State
-  const [adminTab, setAdminTab] = useState<'telemetry' | 'billing'>('telemetry');
+  // Tab State (POTD Manager / Telemetry / Billing)
+  const [adminTab, setAdminTab] = useState<'potd' | 'telemetry' | 'billing'>(initialTab);
   const [topupRequests, setTopupRequests] = useState<TopupRequest[]>(() => getAllTopupRequests());
   const [topupFilter, setTopupFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [manualEmail, setManualEmail] = useState('');
@@ -338,8 +347,8 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn overflow-hidden">
-      <div className="w-full max-w-6xl h-[92vh] bg-slate-900 border border-purple-500/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+    <div className={isPage ? "w-full min-h-[calc(100vh-80px)] p-2 sm:p-6 flex flex-col animate-fadeIn" : "fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn overflow-hidden"}>
+      <div className={`w-full max-w-7xl bg-slate-900 border border-purple-500/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden ${isPage ? 'min-h-[85vh] flex-1' : 'h-[92vh]'}`}>
         
         {/* Top Navbar / Header */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between flex-shrink-0">
@@ -381,21 +390,35 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
             </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 cursor-pointer"
-              title="Close Admin Panel"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 cursor-pointer"
+                title="Close Admin Panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Navigation Subtabs */}
-        <div className="px-6 pt-3 pb-0 bg-slate-950 border-b border-slate-800 flex items-center space-x-3">
+        <div className="px-6 pt-3 pb-0 bg-slate-950 border-b border-slate-800 flex items-center space-x-2 sm:space-x-3 overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setAdminTab('potd')}
+            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer flex-shrink-0 ${
+              adminTab === 'potd'
+                ? 'border-amber-500 text-amber-300 bg-amber-950/40'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <span>POTD Manager</span>
+          </button>
+
           <button
             onClick={() => setAdminTab('telemetry')}
-            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer flex-shrink-0 ${
               adminTab === 'telemetry'
                 ? 'border-purple-500 text-purple-300 bg-purple-950/40'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -410,7 +433,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
               refreshTopups();
               setAdminTab('billing');
             }}
-            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer ${
+            className={`px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all border-b-2 flex items-center space-x-2 cursor-pointer flex-shrink-0 ${
               adminTab === 'billing'
                 ? 'border-emerald-500 text-emerald-300 bg-emerald-950/40'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -428,6 +451,13 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({ onClos
 
         {/* Scrollable Dashboard Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 no-scrollbar">
+
+          {/* ========================================================================= */}
+          {/* TAB 0: POTD MANAGEMENT                                                    */}
+          {/* ========================================================================= */}
+          {adminTab === 'potd' && (
+            <AdminPOTDManager />
+          )}
           
           {/* ========================================================================= */}
           {/* TAB 1: TELEMETRY & INFRASTRUCTURE                                         */}

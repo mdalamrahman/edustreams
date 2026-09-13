@@ -127,10 +127,23 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     syncExternalProfiles();
   }, [syncExternalProfiles]);
 
+  const [potdUpdateTick, setPotdUpdateTick] = useState(0);
+
+  useEffect(() => {
+    const handlePotdUpdate = () => setPotdUpdateTick(t => t + 1);
+    window.addEventListener('sdetube_potd_updated', handlePotdUpdate);
+    import('../lib/potdService').then(({ fetchServerSdePotd }) => {
+      fetchServerSdePotd().then((override) => {
+        if (override) setPotdUpdateTick(t => t + 1);
+      });
+    }).catch(() => {});
+    return () => window.removeEventListener('sdetube_potd_updated', handlePotdUpdate);
+  }, []);
+
   // SDETube Curated POTD
   const sdePotd: SDEProblem = useMemo(() => {
     return getUniversalSdePotd();
-  }, []);
+  }, [potdUpdateTick]);
 
   // LeetCode Official Daily POTD
   const [lcPotd, setLcPotd] = useState<LeetCodeDailyQuestion | null>(null);
