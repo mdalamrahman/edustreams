@@ -793,8 +793,8 @@ async function getAuthenticatedKokoroClient(token: string) {
     return cachedKokoroClient;
   }
   const app = await Client.connect("mdalamrahman/Kokoro-TTS", {
-    token: (token || "") as `hf_${string}`
-  });
+    token: (token || "") as any
+  } as any);
   cachedKokoroClient = app;
   lastConnectedToken = token;
   return app;
