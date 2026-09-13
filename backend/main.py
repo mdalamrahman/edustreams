@@ -584,9 +584,10 @@ class SupabaseConnectionManager:
             self._init_session()
         return self._session
 
-_supabase_conn_manager = SupabaseConnectionManager()
-
-from r2_storage import r2_storage
+try:
+    from r2_storage import r2_storage
+except ImportError:
+    from backend.r2_storage import r2_storage
 
 def sync_artifacts_to_supabase(data: dict):
     """
