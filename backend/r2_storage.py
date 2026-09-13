@@ -827,5 +827,69 @@ class CloudflareR2Storage:
 
         return True
 
+    def upload_json(self, key: str, data: Any) -> Optional[str]:
+        """Uploads arbitrary JSON data to the specified key in Cloudflare R2."""
+        clean_key = key.lstrip('/')
+        payload_str = json.dumps(data, indent=2, ensure_ascii=False)
+        payload_bytes = payload_str.encode("utf-8")
+
+        if self._boto_client:
+            try:
+                self._boto_client.put_object(
+                    Bucket=R2_BUCKET_NAME,
+                    Key=clean_key,
+                    Body=payload_bytes,
+                    ContentType="application/json"
+                )
+                print(f"[R2 Upload JSON Boto3] {clean_key} ({len(payload_bytes)} bytes)")
+                return clean_key
+            except Exception as e:
+                print(f"[R2 Upload JSON Boto3 Error]: {e}")
+
+        try:
+            headers = self._get_sigv4_headers("PUT", clean_key, payload_bytes)
+            headers["Content-Type"] = "application/json"
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.put(url, headers=headers, data=payload_bytes, timeout=10)
+            if resp.status_code in [200, 201]:
+                print(f"[R2 Upload JSON SigV4] {clean_key} ({len(payload_bytes)} bytes)")
+                return clean_key
+            else:
+                print(f"[R2 Upload JSON SigV4 Error]: {resp.status_code} {resp.text}")
+        except Exception as e:
+            print(f"[R2 Upload JSON SigV4 Error]: {e}")
+
+        return None
+
+    def fetch_json(self, key: str) -> Optional[Any]:
+        """Fetches arbitrary JSON data from the specified key in Cloudflare R2."""
+        clean_key = key.lstrip('/')
+
+        if self._boto_client:
+            try:
+                resp = self._boto_client.get_object(Bucket=R2_BUCKET_NAME, Key=clean_key)
+                content = resp['Body'].read().decode('utf-8')
+                return json.loads(content)
+            except Exception:
+                pass
+
+        try:
+            headers = self._get_sigv4_headers("GET", clean_key)
+            url = f"{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/{clean_key}"
+            resp = requests.get(url, headers=headers, timeout=8)
+            if resp.status_code == 200:
+                return json.loads(resp.text)
+        except Exception:
+            pass
+
+        return None
+
 
 r2_storage = CloudflareR2Storage()
+
+def upload_json(key: str, data: Any) -> Optional[str]:
+    return r2_storage.upload_json(key, data)
+
+def fetch_json(key: str) -> Optional[Any]:
+    return r2_storage.fetch_json(key)
+
