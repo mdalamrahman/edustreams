@@ -2936,13 +2936,18 @@ async def get_stored_solution(slug: str, lang: str):
 
 _POTD_CACHE = {}
 
+try:
+    from backend import r2_storage
+except ImportError:
+    import r2_storage
+
 @app.get("/api/potd/sdetube")
 async def get_sdetube_potd(date: Optional[str] = None):
     """
     Fetches the active SDETube Problem of the Day (POTD) for a given date (defaults to today).
     Checks in-memory cache and Cloudflare R2 object storage.
     """
-    target_date = date.strip() if date else datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    target_date = date.strip() if date else datetime.now(timezone.utc).strftime('%Y-%m-%d')
     # 1. Check in-memory cache
     if target_date in _POTD_CACHE:
         return JSONResponse({
@@ -2955,7 +2960,7 @@ async def get_sdetube_potd(date: Optional[str] = None):
     # 2. Check Cloudflare R2
     try:
         potd_r2 = r2_storage.fetch_json(f"potd/{target_date}.json")
-        if not potd_r2 and target_date == datetime.datetime.utcnow().strftime('%Y-%m-%d'):
+        if not potd_r2 and target_date == datetime.now(timezone.utc).strftime('%Y-%m-%d'):
             potd_r2 = r2_storage.fetch_json("potd/current_potd.json")
         
         if potd_r2 and isinstance(potd_r2, dict) and potd_r2.get("name"):
@@ -2988,7 +2993,7 @@ async def set_sdetube_potd(req: Request):
         if not payload or not isinstance(payload, dict):
             return JSONResponse(status_code=400, content={"success": False, "error": "Invalid POTD payload"})
 
-        target_date = payload.get("date") or datetime.datetime.utcnow().strftime('%Y-%m-%d')
+        target_date = payload.get("date") or datetime.now(timezone.utc).strftime('%Y-%m-%d')
         target_date = target_date.strip()
         name = (payload.get("name") or payload.get("title") or "").strip()
         if not name:
@@ -3014,7 +3019,7 @@ async def set_sdetube_potd(req: Request):
             "sheet": sheet,
             "description": description,
             "date": target_date,
-            "overridden_at": datetime.datetime.utcnow().isoformat() + "Z"
+            "overridden_at": datetime.now(timezone.utc).isoformat()
         }
 
         # 1. Update memory cache
@@ -3042,7 +3047,7 @@ async def reset_sdetube_potd(date: Optional[str] = None):
     """
     Resets the POTD override back to the standard rotational seed schedule.
     """
-    target_date = date.strip() if date else datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    target_date = date.strip() if date else datetime.now(timezone.utc).strftime('%Y-%m-%d')
     _POTD_CACHE.pop(target_date, None)
     _POTD_CACHE.pop("current", None)
     try:
