@@ -3489,6 +3489,676 @@ if __name__ == '__main__':
     }
   }
 
+  // === KTH SMALLEST ELEMENT IN A BST (LeetCode 230) ===
+  const isKthSmallest = slug.includes('kth-smallest-element-in-a-bst') || slug.includes('kthsmallestelementinabst') || slug.includes('kth-smallest-in-a-bst') || slug === '230';
+  if (isKthSmallest) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+// === DATA STRUCTURES ===
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [3,1,4,null,2], k = 1)RAW";
+    
+    // Parse root array
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+
+    // Parse k
+    int kVal = 1;
+    size_t kPos = raw_input.find("k =");
+    if (kPos == string::npos) kPos = raw_input.find("k=");
+    if (kPos != string::npos) {
+        size_t comma = raw_input.find(',', kPos);
+        string kStr = raw_input.substr(kPos + (raw_input[kPos+1] == '=' ? 2 : 3), (comma != string::npos ? comma - (kPos + 3) : string::npos));
+        try { kVal = stoi(trim(kStr)); } catch(...) { kVal = 1; }
+    } else if (rootEnd != string::npos) {
+        string after = raw_input.substr(rootEnd + 1);
+        size_t numPos = after.find_first_of("0123456789");
+        if (numPos != string::npos) {
+            try { kVal = stoi(after.substr(numPos)); } catch(...) { kVal = 1; }
+        }
+    }
+
+    Solution sol;
+    int ans = sol.kthSmallest(root, kVal);
+    cout << ans << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [3,1,4,null,2], k = 1"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                try:
+                    tree_vals.append(int(it))
+                except ValueError:
+                    tree_vals.append(None)
+    root = build_tree(tree_vals)
+
+    k_match = re.search(r'k\\s*=\\s*(-?\\d+)', raw_input)
+    k_val = int(k_match.group(1)) if k_match else 1
+
+    sol = Solution()
+    ans = sol.kthSmallest(root, k_val)
+    print(ans)
+
+if __name__ == '__main__':
+    main()`;
+    } else if (lang === 'javascript') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function TreeNode(val, left, right) {
+    this.val = (val===undefined ? 0 : val)
+    this.left = (left===undefined ? null : left)
+    this.right = (right===undefined ? null : right)
+}
+
+function buildTree(vals) {
+    if (!vals || vals.length === 0 || vals[0] === null || vals[0] === 'null') return null;
+    const root = new TreeNode(Number(vals[0]));
+    const q = [root];
+    let i = 1;
+    while (q.length > 0 && i < vals.length) {
+        const curr = q.shift();
+        if (i < vals.length && vals[i] !== null && vals[i] !== 'null') {
+            curr.left = new TreeNode(Number(vals[i]));
+            q.push(curr.left);
+        }
+        i++;
+        if (i < vals.length && vals[i] !== null && vals[i] !== 'null') {
+            curr.right = new TreeNode(Number(vals[i]));
+            q.push(curr.right);
+        }
+        i++;
+    }
+    return root;
+}
+
+function main() {
+    const rawInput = \`root = [3,1,4,null,2], k = 1\`;
+    const arrMatch = rawInput.match(/\\[(.*?)\\]/);
+    let treeVals = [];
+    if (arrMatch) {
+        treeVals = arrMatch[1].split(',').map(s => s.trim()).filter(s => s.length > 0).map(s => s === 'null' ? null : Number(s));
+    }
+    const root = buildTree(treeVals);
+
+    const kMatch = rawInput.match(/k\\s*=\\s*(-?\\d+)/);
+    const kVal = kMatch ? parseInt(kMatch[1], 10) : 1;
+
+    let ans;
+    if (typeof Solution !== 'undefined') {
+        const sol = new Solution();
+        ans = sol.kthSmallest(root, kVal);
+    } else if (typeof kthSmallest === 'function') {
+        ans = kthSmallest(root, kVal);
+    }
+    console.log(ans);
+}
+
+main();`;
+    } else if (lang === 'java') {
+      return `import java.util.*;
+import java.util.regex.*;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    static class TreeNode {
+        int val;
+        TreeNode left;
+        TreeNode right;
+        TreeNode() {}
+        TreeNode(int val) { this.val = val; }
+        TreeNode(int val, TreeNode left, TreeNode right) {
+            this.val = val;
+            this.left = left;
+            this.right = right;
+        }
+    }
+
+    static TreeNode buildTree(String[] vals) {
+        if (vals == null || vals.length == 0 || vals[0].equals("null") || vals[0].trim().isEmpty()) return null;
+        TreeNode root = new TreeNode(Integer.parseInt(vals[0].trim()));
+        Queue<TreeNode> q = new LinkedList<>();
+        q.add(root);
+        int i = 1;
+        while (!q.isEmpty() && i < vals.length) {
+            TreeNode curr = q.poll();
+            if (i < vals.length && !vals[i].trim().equals("null") && !vals[i].trim().isEmpty()) {
+                curr.left = new TreeNode(Integer.parseInt(vals[i].trim()));
+                q.add(curr.left);
+            }
+            i++;
+            if (i < vals.length && !vals[i].trim().equals("null") && !vals[i].trim().isEmpty()) {
+                curr.right = new TreeNode(Integer.parseInt(vals[i].trim()));
+                q.add(curr.right);
+            }
+            i++;
+        }
+        return root;
+    }
+
+    public static void main(String[] args) {
+        String rawInput = "root = [3,1,4,null,2], k = 1";
+        Pattern p = Pattern.compile("\\\\[(.*?)\\\\]");
+        Matcher m = p.matcher(rawInput);
+        String[] treeVals = new String[0];
+        if (m.find()) {
+            treeVals = m.group(1).split(",");
+        }
+        TreeNode root = buildTree(treeVals);
+
+        Pattern kp = Pattern.compile("k\\\\s*=\\\\s*(-?\\\\d+)");
+        Matcher km = kp.matcher(rawInput);
+        int kVal = km.find() ? Integer.parseInt(km.group(1)) : 1;
+
+        Solution sol = new Solution();
+        int ans = sol.kthSmallest(root, kVal);
+        System.out.println(ans);
+    }
+}`;
+    }
+  }
+
+  // === MAXIMUM DEPTH OF BINARY TREE (LeetCode 104) ===
+  const isMaxDepth = slug.includes('maximum-depth-of-binary-tree') || slug.includes('maximumdepthofbinarytree') || slug === '104';
+  if (isMaxDepth) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [3,9,20,null,null,15,7])RAW";
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+    Solution sol;
+    cout << sol.maxDepth(root) << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+// === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [3,9,20,null,null,15,7]"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                try:
+                    tree_vals.append(int(it))
+                except ValueError:
+                    tree_vals.append(None)
+    root = build_tree(tree_vals)
+    sol = Solution()
+    print(sol.maxDepth(root))
+
+if __name__ == '__main__':
+    main()`;
+    }
+  }
+
+  // === MINIMUM DEPTH OF BINARY TREE (LeetCode 111) ===
+  const isMinDepth = slug.includes('minimum-depth-of-binary-tree') || slug.includes('minimumdepthofbinarytree') || slug === '111';
+  if (isMinDepth) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [3,9,20,null,null,15,7])RAW";
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+    Solution sol;
+    cout << sol.minDepth(root) << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [3,9,20,null,null,15,7]"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                try:
+                    tree_vals.append(int(it))
+                except ValueError:
+                    tree_vals.append(None)
+    root = build_tree(tree_vals)
+    sol = Solution()
+    print(sol.minDepth(root))
+
+if __name__ == '__main__':
+    main()`;
+    }
+  }
+
+  // === COUNT COMPLETE TREE NODES (LeetCode 222) ===
+  const isCountNodes = slug.includes('count-complete-tree-nodes') || slug.includes('countcompletetreenodes') || slug === '222';
+  if (isCountNodes) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static TreeNode* buildTree(const vector<string>& vals) {
+    if (vals.empty() || vals[0] == "null" || vals[0].empty()) return nullptr;
+    TreeNode* root = new TreeNode(stoi(vals[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t idx = 1;
+    while (!q.empty() && idx < vals.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->left = new TreeNode(stoi(vals[idx]));
+            q.push(curr->left);
+        }
+        idx++;
+        if (idx < vals.size() && vals[idx] != "null" && !vals[idx].empty()) {
+            curr->right = new TreeNode(stoi(vals[idx]));
+            q.push(curr->right);
+        }
+        idx++;
+    }
+    return root;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(root = [1,2,3,4,5,6])RAW";
+    size_t rootStart = raw_input.find('[');
+    size_t rootEnd = raw_input.find(']');
+    vector<string> treeVals;
+    if (rootStart != string::npos && rootEnd != string::npos && rootEnd > rootStart) {
+        string inside = raw_input.substr(rootStart + 1, rootEnd - rootStart - 1);
+        stringstream ss(inside);
+        string item;
+        while (getline(ss, item, ',')) {
+            treeVals.push_back(trim(item));
+        }
+    }
+    TreeNode* root = buildTree(treeVals);
+    Solution sol;
+    cout << sol.countNodes(root) << endl;
+    return 0;
+}`;
+    } else if (lang === 'python') {
+      return `import sys
+import re
+from typing import Optional
+from collections import deque
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def build_tree(vals):
+    if not vals or vals[0] is None or vals[0] == 'null':
+        return None
+    root = TreeNode(int(vals[0]))
+    q = deque([root])
+    i = 1
+    while q and i < len(vals):
+        curr = q.popleft()
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.left = TreeNode(int(vals[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(vals) and vals[i] is not None and vals[i] != 'null':
+            curr.right = TreeNode(int(vals[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def main():
+    raw_input = """root = [1,2,3,4,5,6]"""
+    arr_match = re.search(r'\\[(.*?)\\]', raw_input)
+    tree_vals = []
+    if arr_match:
+        items = [x.strip() for x in arr_match.group(1).split(',')]
+        for it in items:
+            if it == 'null' or it == '':
+                tree_vals.append(None)
+            else:
+                try:
+                    tree_vals.append(int(it))
+                except ValueError:
+                    tree_vals.append(None)
+    root = build_tree(tree_vals)
+    sol = Solution()
+    print(sol.countNodes(root))
+
+if __name__ == '__main__':
+    main()`;
+    }
+  }
+
   return null;
 }
 

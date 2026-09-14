@@ -11,7 +11,6 @@ import {
   ChevronDown, 
   Sparkles, 
   Flame, 
-  ShieldCheck, 
   Fingerprint, 
   Cpu, 
   LayoutDashboard, 
@@ -50,8 +49,7 @@ export type AppTab =
   | 'terms'
   | 'thank_you'
   | 'contact'
-  | 'not_found'
-  | 'admin';
+  | 'not_found';
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -65,7 +63,6 @@ interface NavbarProps {
   onOpenAskAI?: () => void;
   onOpenWallet?: () => void;
   onOpenProfile?: () => void;
-  onOpenAdmin?: () => void;
   onSignOut: () => void;
 }
 
@@ -79,7 +76,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAskAI,
   onOpenWallet,
   onOpenProfile,
-  onOpenAdmin,
   onSignOut,
 }) => {
   const { isMobile } = useDevice();
@@ -101,12 +97,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => window.removeEventListener('sdetube_wallet_updated', updateBal);
   }, [user?.email]);
 
-  const isAdminUser = Boolean(
-    user?.email && (
-      user.email.toLowerCase().includes('mdalamrahman4') || 
-      user.email.toLowerCase() === 'mdalamrahman4@gmail.com'
-    )
-  );
 
   const handleAddPasskey = async () => {
     if (!user) return;
@@ -379,26 +369,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span>LeetCode Profile & Heatmap</span>
                     </button>
 
-                    {isAdminUser && (
-                      <button
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          if (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev')) {
-                            window.open('https://sdetube.vercel.app/admin', '_blank');
-                          } else {
-                            if (onOpenAdmin) onOpenAdmin();
-                            else setActiveTab('admin');
-                          }
-                        }}
-                        className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-amber-300 hover:bg-amber-950/50 flex items-center justify-between transition-all cursor-pointer border border-amber-900/40 my-1 bg-amber-950/20"
-                      >
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold">SuperAdmin Portal (Vercel)</span>
-                        </div>
-                        <ExternalLink className="w-3.5 h-3.5 text-amber-400/80" />
-                      </button>
-                    )}
 
 
 
@@ -595,22 +565,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Drawer Footer */}
             {user && (
               <div className="p-3 border-t border-slate-800 bg-slate-950 flex flex-col gap-2">
-                {isAdminUser && (
-                  <button
-                    onClick={() => {
-                      setIsDrawerOpen(false);
-                      if (onOpenAdmin) onOpenAdmin();
-                      else setActiveTab('admin');
-                    }}
-                    className="w-full p-2.5 rounded-xl bg-amber-950/30 border border-amber-800/50 text-amber-300 text-xs font-bold flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <ShieldCheck className="w-4 h-4 text-amber-400" />
-                      <span>Admin Control Center</span>
-                    </div>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200">POTD & Users</span>
-                  </button>
-                )}
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center space-x-2 truncate">

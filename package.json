@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && python scripts/copy_dist_assets.py",
+    "build:student": "tsc && vite build && python scripts/copy_dist_assets.py",
+    "build:admin": "cd admin-portal && npm run build",
     "preview": "vite preview",
-    "deploy:pages": "npm run build && wrangler pages deploy dist --project-name sdetube --branch main",
-    "deploy:vercel": "vercel --prod"
+    "deploy:student": "npm run build:student && npx wrangler pages deploy dist --project-name sdetube --branch main --commit-dirty=true",
+    "deploy:admin": "cd admin-portal && npm run build && vercel --prod",
+    "deploy:pages": "npm run deploy:student",
+    "deploy:vercel": "npm run deploy:admin"
   },
   "dependencies": {
     "@gradio/client": "^1.11.0",

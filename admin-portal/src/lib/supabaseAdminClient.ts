@@ -280,35 +280,66 @@ export async function generateAndDispatchAdminOtp(
     const now = Date.now();
     const expiresInMins = 10;
     const expiresAt = now + (expiresInMins * 60 * 1000);
+    const redirectUrl = typeof window !== 'undefined' && window.location.origin 
+      ? window.location.origin 
+      : 'https://sdetube.vercel.app';
 
-    // 1. Dispatch Supabase Magic Link / OTP via Supabase Auth built-in mailer
+    // 1. Dispatch Supabase Magic Link / OTP via Supabase Auth custom SMTP
+    let supabaseTriggered = false;
     try {
       const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
         email: cleanEmail,
         options: {
-          shouldCreateUser: true
+          shouldCreateUser: true,
+          emailRedirectTo: redirectUrl
         }
       });
-      if (otpErr) {
-        console.warn('Supabase signInWithOtp notice:', otpErr.message);
+      if (!otpErr) {
+        supabaseTriggered = true;
+      } else {
+        console.warn('Supabase SDK signInWithOtp notice:', otpErr.message);
       }
     } catch (sbErr) {
       console.warn('Supabase signInWithOtp exception:', sbErr);
     }
 
-    // 2. Generate secure cryptographic backup OTP token in Supabase platform config
-    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const rates = await fetchSystemRates();
-    rates.admin_auth_otp = {
-      code: randomCode,
-      createdAt: now,
-      expiresAt,
-      isUsed: false,
-      targetEmail: cleanEmail
-    };
-    await saveSystemRates(rates);
+    // 2. Direct REST fallback to Supabase /auth/v1/otp with service_role key to guarantee trigger
+    try {
+      const directRes = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+        method: 'POST',
+        headers: {
+          'apikey': SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          create_user: true,
+          data: { emailRedirectTo: redirectUrl }
+        })
+      });
+      if (directRes.ok) {
+        supabaseTriggered = true;
+      }
+    } catch (directErr) {
+      console.warn('Direct Supabase REST OTP trigger exception:', directErr);
+    }
 
-    // 3. Dispatch to backend mailer if active
+    // 3. Generate cryptographic backup OTP token in Supabase platform config
+    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    try {
+      const rates = await fetchSystemRates();
+      rates.admin_auth_otp = {
+        code: randomCode,
+        createdAt: now,
+        expiresAt,
+        isUsed: false,
+        targetEmail: cleanEmail
+      };
+      await saveSystemRates(rates);
+    } catch {}
+
+    // 4. Notify Render backend mailer if running
     try {
       fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-admin-auth-otp', {
         method: 'POST',
@@ -323,7 +354,7 @@ export async function generateAndDispatchAdminOtp(
 
     return {
       success: true,
-      message: `A secure verification code / magic link has been sent to ${cleanEmail} via Supabase. Please check your inbox or spam folder.`,
+      message: `A secure verification code and Magic Link have been dispatched via Supabase to ${cleanEmail}. Check your inbox or spam folder.`,
       expiresInMins
     };
   } catch (err: any) {

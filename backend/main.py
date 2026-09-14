@@ -970,7 +970,7 @@ async def send_admin_auth_otp_endpoint(payload: SendAdminAuthOtpRequest, request
 </body>
 </html>"""
 
-    # Dispatch via Resend or SMTP
+    # Dispatch via Supabase Custom SMTP, Resend, or SMTP
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER") or os.getenv("SMTP_USERNAME") or os.getenv("ADMIN_EMAIL")
@@ -978,7 +978,31 @@ async def send_admin_auth_otp_endpoint(payload: SendAdminAuthOtpRequest, request
     resend_api_key = os.getenv("RESEND_API_KEY")
 
     provider_used = None
-    if resend_api_key:
+
+    # 1. Dispatch via Supabase Custom SMTP & Auth Mailer
+    sb_url = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
+    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+    try:
+        sb_res = requests.post(
+            f"{sb_url}/auth/v1/otp",
+            headers={
+                "apikey": sb_key,
+                "Authorization": f"Bearer {sb_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "email": recipient,
+                "create_user": True,
+                "data": {"emailRedirectTo": "https://sdetube.vercel.app"}
+            },
+            timeout=10
+        )
+        if sb_res.status_code == 200:
+            provider_used = "Supabase Custom SMTP"
+    except Exception as sb_err:
+        print(f"[Supabase Custom SMTP Error for Admin OTP]: {sb_err}")
+
+    if not provider_used and resend_api_key:
         try:
             r = requests.post(
                 "https://api.resend.com/emails",
@@ -1117,14 +1141,37 @@ async def send_invite_email_endpoint(payload: SendInviteEmailRequest):
 </body>
 </html>"""
 
-    # Check for SMTP or Resend credentials in environment
+    # Dispatch via Supabase Custom SMTP, Resend, or SMTP
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER") or os.getenv("SMTP_USERNAME") or os.getenv("ADMIN_EMAIL")
     smtp_pass = os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or os.getenv("GMAIL_APP_PASSWORD")
     resend_api_key = os.getenv("RESEND_API_KEY")
 
-    # 1. Try Resend API if key is present
+    # 1. Try Supabase Custom SMTP & Auth Mailer first
+    sb_url = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
+    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+    try:
+        sb_res = requests.post(
+            f"{sb_url}/auth/v1/otp",
+            headers={
+                "apikey": sb_key,
+                "Authorization": f"Bearer {sb_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "email": recipient,
+                "create_user": True,
+                "data": {"emailRedirectTo": invite_url or "https://sdetube.pages.dev"}
+            },
+            timeout=10
+        )
+        if sb_res.status_code == 200:
+            return {"success": True, "provider": "Supabase Custom SMTP", "recipient": recipient}
+    except Exception as sb_err:
+        print(f"[Supabase Custom SMTP Error for Invite]: {sb_err}")
+
+    # 2. Try Resend API if key is present
     if resend_api_key:
         try:
             r = requests.post(

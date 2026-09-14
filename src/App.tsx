@@ -65,8 +65,6 @@ import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { InterviewCompanion } from './components/InterviewCompanion';
-import { AdminDashboardModal } from './components/AdminDashboardModal';
-import { AdminPage } from './components/AdminPage';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -81,26 +79,17 @@ const getInitialTab = (): AppTab => {
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   const pathname = window.location.pathname || '';
-  const hostname = window.location.hostname || '';
-  const isVercel = hostname.includes('vercel.app');
-  const isPagesDev = hostname.includes('pages.dev');
 
-  // If on Cloudflare Pages (Student Portal on Wrangler), route any admin request to Vercel Admin Portal
-  if (isPagesDev && (pathname.startsWith('/admin') || hash.startsWith('#/admin'))) {
-    window.location.href = 'https://sdetube.vercel.app/admin';
-    return 'admin';
+  // Route any direct admin requests to dedicated Vercel Admin Portal
+  if (pathname.startsWith('/admin') || hash.startsWith('#/admin')) {
+    window.location.href = 'https://sdetube.vercel.app/';
+    return 'dashboard';
   }
 
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
-  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found', 'admin'].includes(qTab)) {
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found'].includes(qTab)) {
     return qTab as AppTab;
-  }
-  if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) return 'admin';
-
-  // Dedicated Admin Portal on Vercel: default directly to admin section
-  if (isVercel && (!hash || hash === '#/' || hash === '#' || hash === '#/dashboard')) {
-    return 'admin';
   }
 
   if (hash.startsWith('#/privacy') || pathname.startsWith('/privacy')) return 'privacy';
@@ -123,7 +112,7 @@ const getInitialTab = (): AppTab => {
     return 'not_found';
   }
 
-  return isVercel ? 'admin' : 'dashboard';
+  return 'dashboard';
 };
 
 const getInitialChannel = (): string => {
@@ -182,7 +171,6 @@ export function App() {
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
-  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState<boolean>(false);
   const [isInsufficientCreditsOpen, setIsInsufficientCreditsOpen] = useState<boolean>(false);
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 2.0, action: 'Accessing Video Lecture' });
 
@@ -239,7 +227,6 @@ export function App() {
       tab === 'interview' ? 'interview' :
       tab === 'profile' ? 'profile' :
       tab === 'thank_you' ? 'thank-you' :
-      tab === 'admin' ? 'admin' :
       tab === 'not_found' ? '404' :
       tab
     }`;
@@ -384,18 +371,14 @@ export function App() {
         } else if (hash.startsWith('#/contact') || pathname.startsWith('/contact')) {
           setActiveTab('contact');
         } else if (hash.startsWith('#/admin') || pathname.startsWith('/admin')) {
-          if (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev')) {
-            window.location.href = 'https://sdetube.vercel.app/admin';
-            return;
-          }
-          setActiveTab('admin');
+          window.location.href = 'https://sdetube.vercel.app/';
+          return;
         } else if (hash.startsWith('#/404') || pathname.startsWith('/404')) {
           setActiveTab('not_found');
         } else if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
           setActiveTab('not_found');
         } else {
-          const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
-          setActiveTab(isVercel ? 'admin' : 'dashboard');
+          setActiveTab('dashboard');
         }
       }
     };
@@ -1239,7 +1222,6 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         onOpenAskAI={() => setIsAskAIOpen(true)}
         onOpenWallet={() => setIsWalletModalOpen(true)}
         onOpenProfile={() => setIsProfileModalOpen(true)}
-        onOpenAdmin={() => setIsAdminDashboardOpen(true)}
         onSignOut={() => {
           signOutStudent();
           setUser(null);
@@ -1712,15 +1694,6 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           <NotFoundPage onNavigateHome={() => navigateTo('dashboard')} onNavigateTab={navigateTo} />
         )}
 
-        {/* VIEW 10: DEDICATED SUPERADMIN COMMAND CENTER & POTD MANAGER */}
-        {activeTab === 'admin' && (
-          <AdminPage 
-            user={user} 
-            onNavigate={navigateTo} 
-            onOpenAuthModal={() => setShowMobileGating(false)} 
-          />
-        )}
-
       </main>
 
       {/* Fullscreen LeetCode Monaco Workspace for SDE Sheet Problems */}
@@ -1857,13 +1830,6 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
         }}
       />
 
-      {/* Admin Command Portal Modal */}
-      {isAdminDashboardOpen && (
-        <AdminDashboardModal
-          onClose={() => setIsAdminDashboardOpen(false)}
-          currentUserEmail={user?.email}
-        />
-      )}
 
       {/* Production Structured Footer with Business Address & Schema details */}
       <Footer onNavigate={navigateTo} />

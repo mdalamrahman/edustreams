@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, ShieldCheck, Zap, Shield, ArrowRight, RefreshCw, Smartphone, Laptop } from 'lucide-react';
-import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle } from '../lib/auth';
+import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle, signInWithEmailOtp } from '../lib/auth';
 import { verifyStudentPasskey } from '../lib/passkey';
 import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
 import { registerDeviceSession } from '../lib/session';
@@ -179,6 +179,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setSuccessMsg('A fresh verification link & OTP has been sent to your email.');
     } else {
       setError(resendErr || 'Failed to resend confirmation email.');
+    }
+  };
+
+  const handleSendLoginOtp = async () => {
+    if (!email || !email.includes('@')) {
+      setError('Please enter your email address above to receive a Magic Link / OTP code.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await signInWithEmailOtp(email.trim());
+      if (res.success) {
+        setMode('verify_otp');
+        setSuccessMsg(`We sent a login Magic Link and OTP to ${email.trim()}. Enter the code below or click the link in your email.`);
+      } else {
+        setError(res.error || 'Failed to dispatch email OTP.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to dispatch email OTP.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -530,6 +553,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </div>
             </div>
+
+            {mode === 'signin' && (
+              <div className="flex items-center justify-between pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleSendLoginOtp}
+                  disabled={loading}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Sign In via Email Magic Link / OTP Code</span>
+                </button>
+              </div>
+            )}
 
             {mode === 'signup' && (
               <div className="space-y-2">

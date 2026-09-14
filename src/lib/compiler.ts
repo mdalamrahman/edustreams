@@ -540,6 +540,7 @@ export function extractParamNamesFromCode(code: string, language: SupportedLangu
  * - stdin reading (cin >>, getline(cin)) which hangs headless Judge0 runners
  * - Missing struct declarations (TreeNode, ListNode, Node) before user solution insertion point
  * - Broken AI code generation artifacts / placeholder errors
+ * - Int-returning BST methods (kthSmallest, maxDepth, etc.) being wrongly serialized as trees (AI hallucination)
  */
 export function isDriverHarnessValid(
   driverCode: string | null | undefined,
@@ -607,6 +608,35 @@ export function isDriverHarnessValid(
   if (isLCAContext) {
     if (drv.includes('serializeTree(ans)') || drv.includes('printTree(ans)') || drv.includes('treeToString(ans)')) {
       return false;
+    }
+  }
+
+  // 6. Integer-returning BST / Tree methods incorrectly serialized as tree output (AI hallucination guard).
+  // These functions return int/bool, NOT a TreeNode*. A driver that tries to serialize the result
+  // as a tree (serializeTree / treeToString / printTree on the return value) will Segfault.
+  const INT_RETURNING_TREE_METHODS = [
+    'kthSmallest', 'kthLargest', 'maxDepth', 'minDepth', 'countNodes',
+    'goodNodes', 'numGoodLeaves', 'sumNumbers', 'pathSum',
+    'diameterOfBinaryTree', 'isBalanced', 'isSameTree', 'isSymmetric',
+    'hasPathSum', 'maxPathSum', 'closestValue', 'getMinimumDifference',
+    'rangeSumBST', 'findMode', 'kthSmallestInBST'
+  ];
+  const hasIntReturnMethod = INT_RETURNING_TREE_METHODS.some(m =>
+    drv.includes(`sol.${m}(`) || (codeOrStarter && codeOrStarter.includes(`${m}(`)));
+  if (hasIntReturnMethod) {
+    // The result must NOT be passed to any tree serializer
+    const badTreeSerialize = [
+      'serializeTree(ans)', 'serializeTree(res)', 'treeToString(ans)', 'treeToString(res)',
+      'printTree(ans)', 'printTree(res)'
+    ];
+    // Only reject if a tree serializer is called on the return value variable AND the return type isn't explicitly TreeNode*
+    const driverAfterSol = drv.substring(drv.indexOf('main(') !== -1 ? drv.indexOf('main(') : 0);
+    if (badTreeSerialize.some(bad => driverAfterSol.includes(bad))) {
+      // Extra check: if driver explicitly casts result to int (-> val) then it's fine
+      if (!driverAfterSol.includes('ans->val') && !driverAfterSol.includes('res->val')) {
+        console.warn('[isDriverHarnessValid] Rejecting driver: int-returning BST method result serialized as tree.');
+        return false;
+      }
     }
   }
 
@@ -1801,16 +1831,27 @@ export async function executeCode(
       const compileOut = decodeB64(data.compile_output);
       
       let rawDiag = (stderr + (compileOut ? '\n' + compileOut : '')).trim();
+      const isSegfault = Boolean(
+        (data.status && (data.status.id === 11 || data.status.id === 12 || data.status.id === 13)) ||
+        (stderr && (stderr.includes('Segmentation fault') || stderr.includes('SIGSEGV') || stderr.includes('SIGFPE') || stderr.includes('SIGABRT')))
+      );
       const isFatalErr = Boolean(
         (data.status && data.status.id > 3) ||
         (data.exit_code && data.exit_code !== 0) ||
         (stderr && (stderr.includes('Runtime Error:') || stderr.includes('Exception') || stderr.includes('Traceback'))) ||
-        (compileOut && compileOut.includes('error:'))
+        (compileOut && compileOut.includes('error:')) ||
+        isSegfault
       );
 
-      // Self-healing fallback: If preloaded driver failed compilation on Judge0, automatically retry with universal harness
-      if (preloadedDriver && ((data.status && data.status.id === 6) || (compileOut && compileOut.includes('error:')))) {
-        console.warn('[SDETube Compiler] Preloaded driver failed compilation on Judge0. Testing universal fallback harness...');
+      // Self-healing fallback: If preloaded driver caused Segfault, compilation error, or runtime crash on Judge0,
+      // automatically retry with the safe universal harness and evict the broken driver from cache & R2.
+      const driverFailedJudge0 = preloadedDriver && (
+        (data.status && (data.status.id === 6 || data.status.id === 11 || data.status.id === 12 || data.status.id === 13)) ||
+        (compileOut && compileOut.includes('error:')) ||
+        isSegfault
+      );
+      if (driverFailedJudge0) {
+        console.warn(`[SDETube Compiler] Preloaded driver failed on Judge0 (status=${data.status?.id}, segfault=${isSegfault}). Testing universal fallback harness...`);
         const fallbackRes = await executeCode(code, language, testInput, problemTitle, undefined);
         if (fallbackRes.status === 'SUCCESS' || !fallbackRes.stderr.includes('error:')) {
           console.log('[SDETube Compiler] Universal fallback harness succeeded! Evicting broken driver from cache and R2.');
