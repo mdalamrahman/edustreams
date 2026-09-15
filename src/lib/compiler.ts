@@ -569,8 +569,8 @@ export function isDriverHarnessValid(
 
   const normLang = (language || 'cpp').toLowerCase();
 
-  // 3. Headless sandboxes (Judge0) do not supply stdin by default; cin/getline(cin) will hang or fail
-  if (drv.includes('cin >>') || drv.includes('getline(cin') || drv.includes('cin.tie')) {
+  // 3. Headless sandboxes (Judge0) do not supply stdin by default; cin >> or getline(cin) will hang or fail
+  if (drv.includes('cin >>') || drv.includes('getline(cin')) {
     return false;
   }
 
@@ -638,6 +638,26 @@ export function isDriverHarnessValid(
         return false;
       }
     }
+  }
+
+  // 7. Broken tree parsing rejections (comma searching before bracket, 2*i+1 indexing, deleteTree)
+  if (drv.includes('find("root =') || drv.includes('find("root = ') || drv.includes('find("root=')) {
+    if (drv.includes('.find(",",') || drv.includes('.find(\',\',') || drv.includes("find(',',")) {
+      if (!drv.includes("find(']')") && !drv.includes('find("]")') && !drv.includes("rfind(']')") && !drv.includes('rfind("]")')) {
+        console.warn('[isDriverHarnessValid] Rejecting driver: broken tree parser searches for comma before bracket.');
+        return false;
+      }
+    }
+  }
+
+  if (drv.includes('2 * i + 1') || drv.includes('2*i + 1') || drv.includes('2*i+1')) {
+    console.warn('[isDriverHarnessValid] Rejecting driver: incorrect 2*i+1 tree array indexing.');
+    return false;
+  }
+
+  if (drv.includes('deleteTree(') || drv.includes('deleteTree (')) {
+    console.warn('[isDriverHarnessValid] Rejecting driver: deleteTree call detected.');
+    return false;
   }
 
   return true;

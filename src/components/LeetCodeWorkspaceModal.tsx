@@ -373,6 +373,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           } catch (_) {}
         }
 
+        if (targetSlug.includes('kth-smallest') || targetSlug.includes('kthsmallest')) {
+          try {
+            localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
+            localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
+          } catch (_) {}
+        }
+
         if (targetSlug.includes('lowest-common-ancestor')) {
           try {
             const cachedDrv = localStorage.getItem(`edustream_driver_${targetSlug}_${language}`);
@@ -381,14 +388,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
             }
           } catch (_) {}
-          if (enriched.driverCode?.[language]) {
-            if (enriched.driverCode[language].includes('serializeTree(ans)') || !enriched.driverCode[language].includes('ans->val')) {
-              const defaultLCA = getDefaultDriverForProblem(targetSlug, language);
-              if (defaultLCA) {
-                enriched.driverCode[language] = defaultLCA;
-              }
-            }
-          }
+        }
+
+        // Attach built-in default driver if one exists (e.g. kth-smallest, lowest-common-ancestor, etc.)
+        const defaultBuiltIn = getDefaultDriverForProblem(targetSlug, language);
+        if (defaultBuiltIn) {
+          enriched.driverCode = { ...(enriched.driverCode || {}), [language]: defaultBuiltIn } as Record<SupportedLanguage, string>;
+          try {
+            localStorage.setItem(`edustream_driver_${targetSlug}_${language}`, defaultBuiltIn);
+          } catch (_) {}
         }
 
         // Prefetch & generate type-safe driver harness asynchronously
@@ -1305,7 +1313,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const activeTemplate = templateOverride || problemTemplate;
 
     try {
-      let preloadedDriver = activeTemplate?.driverCode?.[language];
+      // Built-in authentic drivers in problemService ALWAYS take absolute precedence over any unverified/cached drivers
+      const builtInDriver = getDefaultDriverForProblem(currentProblemSlug, language);
+      let preloadedDriver = builtInDriver || activeTemplate?.driverCode?.[language];
       if (currentProblemSlug.includes('convert-sorted-array-to-binary-search-tree')) {
         if (preloadedDriver && !preloadedDriver.includes('res.back() == "null"')) {
           preloadedDriver = undefined;

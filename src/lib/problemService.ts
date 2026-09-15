@@ -1102,6 +1102,19 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     problem.solutions = problem.starters;
   }
 
+  // Ensure authentic built-in driver is attached for problems with known drivers
+  const checkSlug = (problem as any).slug || toSlug(problem.name || '');
+  const knownLangs: SupportedLanguage[] = ['cpp', 'python', 'javascript', 'java'];
+  for (const l of knownLangs) {
+    const builtIn = getDefaultDriverForProblem(checkSlug, l);
+    if (builtIn) {
+      if (!problem.driverCode) {
+        problem.driverCode = {} as Record<SupportedLanguage, string>;
+      }
+      problem.driverCode![l] = builtIn;
+    }
+  }
+
   const paramNames = extractParamNames(problem.starters, problem.examples);
   const numParams = paramNames.length;
   const tcs = problem.testCases || [];
@@ -1565,7 +1578,11 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
     }`;
     const gqlRes = await fetch('https://leetcode.com/graphql', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': `https://leetcode.com/problems/${slug}/`
+      },
       body: JSON.stringify({ query, variables: { titleSlug: slug } }),
       signal: AbortSignal.timeout(8000)
     });

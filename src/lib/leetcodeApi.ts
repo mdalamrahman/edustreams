@@ -150,7 +150,10 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
     }`;
     const gqlRes = await fetch('https://leetcode.com/graphql', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
       body: JSON.stringify({ query }),
       signal: AbortSignal.timeout(5000)
     });
@@ -450,3 +453,191 @@ export async function fetchLeetCodeMonthlyPOTD(
   return fallbackList;
 }
 
+export interface LeetCodeQuestionItem {
+  questionFrontendId: string;
+  title: string;
+  titleSlug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  isPaidOnly?: boolean;
+  topicTags?: { name: string; slug: string }[];
+}
+
+export interface LeetCodeProblemListResult {
+  total: number;
+  questions: LeetCodeQuestionItem[];
+}
+
+export interface LeetCodeQuestionDetail {
+  questionId: string;
+  questionFrontendId: string;
+  title: string;
+  titleSlug: string;
+  difficulty: string;
+  content: string;
+  codeSnippets: Array<{
+    lang: string;
+    langSlug: string;
+    code: string;
+  }>;
+  sampleTestCase?: string;
+  exampleTestcases?: string;
+  hints?: string[];
+  topicTags?: Array<{ name: string; slug: string }>;
+}
+
+/**
+ * 1. Fetch Problem Content & Starter Driver Code via LeetCode GraphQL
+ * Prioritizes local Cloudflare Pages function proxy, then direct GraphQL with User-Agent header.
+ */
+export async function fetchLeetCodeQuestionData(titleSlug: string): Promise<LeetCodeQuestionDetail | null> {
+  const cleanSlug = titleSlug.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+  if (!cleanSlug) return null;
+
+  const endpoints = [
+    `/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
+    `/api/leetcode/${encodeURIComponent(cleanSlug)}`
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const res = await fetch(ep, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const json = await res.json();
+        const q = json?.data?.question || json?.question;
+        if (q && q.title) return q as LeetCodeQuestionDetail;
+      }
+    } catch {}
+  }
+
+  // Direct GraphQL query with required User-Agent header
+  try {
+    const query = `query questionData($titleSlug: String!) {
+      question(titleSlug: $titleSlug) {
+        questionId
+        questionFrontendId
+        title
+        titleSlug
+        difficulty
+        content
+        codeSnippets {
+          lang
+          langSlug
+          code
+        }
+        sampleTestCase
+        exampleTestcases
+        hints
+        topicTags {
+          name
+          slug
+        }
+      }
+    }`;
+
+    const res = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': `https://leetcode.com/problems/${cleanSlug}/`
+      },
+      body: JSON.stringify({ query, variables: { titleSlug: cleanSlug } }),
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const q = json?.data?.question;
+      if (q && q.title) return q as LeetCodeQuestionDetail;
+    }
+  } catch (err) {
+    console.warn('[LeetCode GraphQL fetch error]:', err);
+  }
+
+  return null;
+}
+
+/**
+ * 3. Fetch a Paginated List of All Problems from LeetCode GraphQL
+ * Prioritizes local Cloudflare Pages function proxy (/api/leetcode/list), then direct GraphQL.
+ */
+export async function fetchLeetCodeProblemList(
+  categorySlug: string = 'all-code-essentials',
+  skip: number = 0,
+  limit: number = 50,
+  filters: Record<string, any> = {}
+): Promise<LeetCodeProblemListResult | null> {
+  const query = `query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
+    problemsetQuestionList: questionList(
+      categorySlug: $categorySlug
+      limit: $limit
+      skip: $skip
+      filters: $filters
+    ) {
+      total: totalNum
+      questions: data {
+        questionFrontendId
+        title
+        titleSlug
+        difficulty
+        isPaidOnly
+        topicTags {
+          name
+          slug
+        }
+      }
+    }
+  }`;
+
+  // 1. Try local proxy
+  try {
+    const res = await fetch('/api/leetcode/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categorySlug, skip, limit, filters }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const listData = json?.data?.problemsetQuestionList;
+      if (listData && Array.isArray(listData.questions)) {
+        return {
+          total: listData.total || listData.questions.length,
+          questions: listData.questions
+        };
+      }
+    }
+  } catch {}
+
+  // 2. Direct GraphQL query
+  try {
+    const res = await fetch('https://leetcode.com/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://leetcode.com/problemset/all/'
+      },
+      body: JSON.stringify({
+        query,
+        variables: { categorySlug, skip, limit, filters }
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const listData = json?.data?.problemsetQuestionList;
+      if (listData && Array.isArray(listData.questions)) {
+        return {
+          total: listData.total || listData.questions.length,
+          questions: listData.questions
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[LeetCode Problem List GraphQL fetch error]:', err);
+  }
+
+  return null;
+}
