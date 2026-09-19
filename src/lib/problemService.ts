@@ -4472,6 +4472,7 @@ struct TreeNode {
 
 // === USER SOLUTION ===
 
+// === HIDDEN DRIVER ===
 static TreeNode* parseInputTree(string s) {
     auto start = s.find('[');
     auto end = s.rfind(']');
@@ -4512,7 +4513,7 @@ static TreeNode* parseInputTree(string s) {
     return root;
 }
 
-static string formatTree(TreeNode* root) {
+static string treeToString(TreeNode* root) {
     if (!root) return "[]";
     vector<string> vals;
     queue<TreeNode*> q;
@@ -4548,7 +4549,7 @@ int main() {
     Codec ser, deser;
     string serialized = ser.serialize(originalTree);
     TreeNode* reconstitutedTree = deser.deserialize(serialized);
-    cout << formatTree(reconstitutedTree) << "\n";
+    cout << treeToString(reconstitutedTree) << "\n";
     return 0;
 }`;
     }

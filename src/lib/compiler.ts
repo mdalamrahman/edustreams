@@ -1497,11 +1497,19 @@ ${userCode}
 // === HIDDEN DRIVER ===
 int main() {
     try {
-        ${(userCode.includes('class Solution') || userCode.includes('struct Solution'))
+        ${(userCode.includes('class Codec') || userCode.includes('struct Codec'))
+          ? `Codec ser, deser;
+        string raw_input = R"RAW(${cleanInput || 'root = [1,2,3,null,null,4,5]'})RAW";
+        TreeNode* root = parse_tree_arg(raw_input);
+        string s = ser.serialize(root);
+        TreeNode* ans = deser.deserialize(s);
+        print_tree(ans);
+        cout << endl;`
+          : ((userCode.includes('class Solution') || userCode.includes('struct Solution'))
           ? `Solution sol;
         string raw_input = R"RAW(${cleanInput || 'nums = [1, 2, 2]'})RAW";
         ${invocation}`
-          : `cout << "Compiled and verified successfully." << endl;`}
+          : `cout << "Compiled and verified successfully." << endl;`)}
     } catch (const exception& e) {
         cerr << "Runtime Error: " << e.what() << endl;
         return 1;
