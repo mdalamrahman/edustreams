@@ -1176,15 +1176,35 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   if (problem.testCases && problem.expectedOutputs) {
     const validPairs: { input: string; output: string }[] = [];
     const isNextPerm = (problem.name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes('nextpermutation');
+    const isKthProblem = (problem.name || '').toLowerCase().includes('kth') ||
+      paramNames.includes('k') ||
+      (problem.testCases[0] && problem.testCases[0].includes('k ='));
+    
+    // Check if the problem return type is a scalar primitive (int, bool, double) that can NEVER return null
+    const startersStr = JSON.stringify(problem.starters || {});
+    const isScalarReturn = startersStr.includes('int ') || startersStr.includes('bool ') || startersStr.includes('double ') || startersStr.includes('float ') || startersStr.includes('long ');
+    const isPointerReturn = startersStr.includes('TreeNode*') || startersStr.includes('ListNode*') || startersStr.includes('Node*');
 
     for (let i = 0; i < problem.testCases.length; i++) {
       const tc = String(problem.testCases[i] || '').trim();
       const eo = String(problem.expectedOutputs[i] || '').trim();
       if (!tc) continue;
 
+      // 1. Next permutation cannot accept empty array
       if (isNextPerm && (tc === 'nums = []' || tc === '[]' || tc === 'nums = [ ]')) {
         continue;
       }
+
+      // 2. Any problem with 'k' requires 1 <= k <= nums.length. An empty array nums = [] with k is illegal
+      if (isKthProblem && (tc.includes('nums = []') || tc.includes('nums = [ ]') || tc.includes('[]') || tc.startsWith('[],'))) {
+        continue;
+      }
+
+      // 3. Hallucinated null expected outputs for scalar-returning problems are completely invalid
+      if (isScalarReturn && !isPointerReturn && (eo.toLowerCase() === 'null' || eo.toLowerCase() === 'undefined' || eo === '')) {
+        continue;
+      }
+
       validPairs.push({ input: tc, output: eo });
     }
 
@@ -1192,6 +1212,27 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
       problem.testCases = validPairs.map(p => p.input);
       problem.expectedOutputs = validPairs.map(p => p.output);
     }
+  }
+
+  // Ensure minimum 12 verified test cases for Kth Largest Element in an Array
+  const normProbSlug = (checkSlug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (normProbSlug.includes('kthlargestelementinanarray') || normProbSlug === '215') {
+    const standardKthLargestCases = [
+      { input: 'nums = [3, 2, 1, 5, 6, 4], k = 2', output: '5' },
+      { input: 'nums = [3, 2, 3, 1, 2, 4, 5, 5, 6], k = 4', output: '4' },
+      { input: 'nums = [1], k = 1', output: '1' },
+      { input: 'nums = [2, 1], k = 1', output: '2' },
+      { input: 'nums = [2, 1], k = 2', output: '1' },
+      { input: 'nums = [7, 10, 4, 3, 20, 15], k = 3', output: '10' },
+      { input: 'nums = [7, 10, 4, 3, 20, 15], k = 4', output: '7' },
+      { input: 'nums = [-1, -1], k = 2', output: '-1' },
+      { input: 'nums = [-1, 2, 0], k = 1', output: '2' },
+      { input: 'nums = [-1, 2, 0], k = 2', output: '0' },
+      { input: 'nums = [-1, 2, 0], k = 3', output: '-1' },
+      { input: 'nums = [99, 99], k = 1', output: '99' }
+    ];
+    problem.testCases = standardKthLargestCases.map(c => c.input);
+    problem.expectedOutputs = standardKthLargestCases.map(c => c.output);
   }
 
   // Ensure minimum 10 verified test cases for Next Permutation
@@ -2166,6 +2207,219 @@ export async function fetchEnrichedProblem(
 export function getDefaultDriverForProblem(slugOrTitle: string, language: SupportedLanguage): string | null {
   const slug = toSlug(slugOrTitle);
   const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+  // === KTH LARGEST ELEMENT IN AN ARRAY ===
+  const isKthLargest = slug.includes('kth-largest-element-in-an-array') || slug.includes('kthlargest') || slug === '215';
+  if (isKthLargest) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+using namespace std;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static vector<int> parseVectorInt(const string& raw) {
+    vector<int> res;
+    size_t lb = raw.find('[');
+    size_t rb = raw.find(']', lb == string::npos ? 0 : lb);
+    if (lb == string::npos || rb == string::npos || rb <= lb) return res;
+    string inner = raw.substr(lb + 1, rb - lb - 1);
+    stringstream ss(inner);
+    string tok;
+    while (getline(ss, tok, ',')) {
+        size_t a = tok.find_first_not_of(" \\t\\n\\r");
+        if (a != string::npos) {
+            size_t b = tok.find_last_not_of(" \\t\\n\\r");
+            string t = tok.substr(a, b - a + 1);
+            if (!t.empty()) {
+                try { res.push_back(stoi(t)); } catch (...) {}
+            }
+        }
+    }
+    return res;
+}
+
+static int parseIntK(const string& raw) {
+    size_t kpos = raw.find("k");
+    while (kpos != string::npos) {
+        bool boundBefore = (kpos == 0 || (!isalnum(raw[kpos - 1]) && raw[kpos - 1] != '_'));
+        bool boundAfter = (kpos + 1 >= raw.size() || (!isalnum(raw[kpos + 1]) && raw[kpos + 1] != '_'));
+        if (boundBefore && boundAfter) {
+            size_t eq = raw.find('=', kpos);
+            if (eq != string::npos) {
+                string sub = raw.substr(eq + 1);
+                stringstream ss(sub);
+                int kVal;
+                if (ss >> kVal) return kVal;
+            }
+        }
+        kpos = raw.find("k", kpos + 1);
+    }
+    size_t rb = raw.rfind(']');
+    if (rb != string::npos) {
+        string sub = raw.substr(rb + 1);
+        size_t digitPos = sub.find_first_of("0123456789-");
+        if (digitPos != string::npos) {
+            try { return stoi(sub.substr(digitPos)); } catch (...) {}
+        }
+    }
+    return 1;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    string raw_input = R"RAW(INPUT_PLACEHOLDER)RAW";
+    vector<int> nums = parseVectorInt(raw_input);
+    int k = parseIntK(raw_input);
+    if (nums.empty()) {
+        cout << 0 << "\\n";
+        return 0;
+    }
+    if (k <= 0) k = 1;
+    if (k > (int)nums.size()) k = (int)nums.size();
+    Solution sol;
+    int ans = sol.findKthLargest(nums, k);
+    cout << ans << "\\n";
+    return 0;
+}
+`;
+    }
+    if (lang === 'python' || (lang as any) === 'py') {
+      return `import sys, json, re
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def run_case():
+    raw_input = """INPUT_PLACEHOLDER"""
+    nums = []
+    k = 1
+    m_nums = re.search(r'\\[([^\\]]*)\\]', raw_input)
+    if m_nums:
+        try:
+            nums = json.loads(m_nums.group(0))
+        except Exception:
+            nums = [int(x.strip()) for x in m_nums.group(1).split(',') if x.strip()]
+    
+    m_k = re.search(r'\\bk\\s*=\\s*(-?\\d+)', raw_input)
+    if m_k:
+        k = int(m_k.group(1))
+    else:
+        rb = raw_input.rfind(']')
+        if rb != -1:
+            m_num = re.search(r'(-?\\d+)', raw_input[rb:])
+            if m_num:
+                k = int(m_num.group(1))
+
+    if not nums:
+        print(0)
+        return
+    if k <= 0: k = 1
+    if k > len(nums): k = len(nums)
+    sol = Solution()
+    res = sol.findKthLargest(nums, k)
+    print(res)
+
+if __name__ == '__main__':
+    run_case()
+`;
+    }
+    if (lang === 'javascript' || (lang as any) === 'js') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function run() {
+    const raw_input = \`INPUT_PLACEHOLDER\`;
+    let nums = [];
+    let k = 1;
+    const m_nums = raw_input.match(/\\[([^\\]]*)\\]/);
+    if (m_nums) {
+        try { nums = JSON.parse(m_nums[0]); } catch (_) {
+            nums = m_nums[1].split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        }
+    }
+    const m_k = raw_input.match(/\\bk\\s*=\\s*(-?\\d+)/);
+    if (m_k) {
+        k = parseInt(m_k[1], 10);
+    } else {
+        const rb = raw_input.lastIndexOf(']');
+        if (rb !== -1) {
+            const m_num = raw_input.slice(rb).match(/(-?\\d+)/);
+            if (m_num) k = parseInt(m_num[1], 10);
+        }
+    }
+    if (!nums || nums.length === 0) { console.log(0); return; }
+    if (k <= 0) k = 1;
+    if (k > nums.length) k = nums.length;
+    const sol = new Solution();
+    const ans = sol.findKthLargest(nums, k);
+    console.log(ans);
+}
+run();
+`;
+    }
+    if (lang === 'java') {
+      return `import java.util.*;
+import java.io.*;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    public static void main(String[] args) {
+        String raw = "INPUT_PLACEHOLDER";
+        List<Integer> list = new ArrayList<>();
+        int lb = raw.indexOf('[');
+        int rb = raw.indexOf(']', lb == -1 ? 0 : lb);
+        if (lb != -1 && rb != -1 && rb > lb) {
+            String inner = raw.substring(lb + 1, rb);
+            for (String tok : inner.split(",")) {
+                String t = tok.trim();
+                if (!t.isEmpty()) {
+                    try { list.add(Integer.parseInt(t)); } catch (Exception ignored) {}
+                }
+            }
+        }
+        int[] nums = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) nums[i] = list.get(i);
+
+        int k = 1;
+        int kpos = raw.indexOf("k");
+        if (kpos != -1) {
+            int eq = raw.indexOf('=', kpos);
+            if (eq != -1) {
+                String sub = raw.substring(eq + 1).trim();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < sub.length(); i++) {
+                    char c = sub.charAt(i);
+                    if (Character.isDigit(c) || (c == '-' && sb.length() == 0)) sb.append(c);
+                    else if (sb.length() > 0) break;
+                }
+                if (sb.length() > 0) {
+                    try { k = Integer.parseInt(sb.toString()); } catch (Exception ignored) {}
+                }
+            }
+        }
+        if (nums.length == 0) {
+            System.out.println(0);
+            return;
+        }
+        if (k <= 0) k = 1;
+        if (k > nums.length) k = nums.length;
+        Solution sol = new Solution();
+        int ans = sol.findKthLargest(nums, k);
+        System.out.println(ans);
+    }
+}
+`;
+    }
+  }
 
   // === SET MATRIX ZEROES (and similar in-place 2D matrix problems) ===
   const isSetMatrixZeroes = slug.includes('set-matrix-zeroes') || slug.includes('setzeroes') || slug === 'set-matrix-zero';

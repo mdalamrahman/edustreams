@@ -18,7 +18,7 @@ import {
   LeetCodeDailyQuestion 
 } from '../lib/leetcodeApi';
 import { SDEProblem } from '../lib/dsaSheetsData';
-import { isProblemSlugSolved } from '../lib/analytics';
+import { isProblemSlugSolved, markProblemSolved, toggleProblemSolvedGlobally } from '../lib/analytics';
 
 interface LeetCodePOTDCalendarWidgetProps {
   onOpenCodingWorkspace?: (problem: SDEProblem) => void;
@@ -115,6 +115,19 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
                       localStorage.setItem(`sdetube_potd_leetcode_solved_${ymd}`, 'true');
                       localStorage.setItem(`sdetube_potd_solved_${ymd}`, 'true');
                     }
+                    // Also try to sync the slug into global solved list so DSA page shows tick
+                    try {
+                      // Look up cached monthly challenges to find the slug for this date
+                      const cachedMonthlyKey = `sdetube_monthly_potd_${y}_${mm}`;
+                      const cachedMonthly = localStorage.getItem(cachedMonthlyKey);
+                      if (cachedMonthly) {
+                        const monthItems: Array<{ date?: string; question?: { titleSlug?: string; title?: string } }> = JSON.parse(cachedMonthly);
+                        const item = monthItems.find(i => i.date === ymd);
+                        if (item?.question?.titleSlug) {
+                          markProblemSolved(item.question.titleSlug, 0, item.question.titleSlug);
+                        }
+                      }
+                    } catch {}
                   }
                 }
               }
@@ -229,20 +242,27 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
     if (!dayObj || dayObj.isFuture) return;
     const current = dayObj.isSolved;
     const next = !current;
+    const titleSlug = dayObj.challenge?.question?.titleSlug;
     if (next) {
       localStorage.setItem(`sdetube_potd_leetcode_solved_${dayObj.dateStr}`, 'true');
       localStorage.setItem(`sdetube_potd_solved_${dayObj.dateStr}`, 'true');
-      if (dayObj.challenge?.question?.titleSlug) {
-        localStorage.setItem(`edustream_submissions_${dayObj.challenge.question.titleSlug}`, JSON.stringify([{
+      if (titleSlug) {
+        localStorage.setItem(`edustream_submissions_${titleSlug}`, JSON.stringify([{
           id: `${Date.now()}_potd`,
           status: 'Accepted',
           passedCount: 1,
           totalCount: 1,
           timestamp: Date.now()
         }]));
+        // Sync into global solved slugs so DSA Problems page shows tick mark
+        markProblemSolved(titleSlug, 0, titleSlug);
       }
     } else {
       localStorage.removeItem(`sdetube_potd_leetcode_solved_${dayObj.dateStr}`);
+      // Remove from global solved slugs list
+      if (titleSlug) {
+        toggleProblemSolvedGlobally(titleSlug);
+      }
     }
     window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: dayObj.dateStr } }));
     setSolveEventCount((c) => c + 1);

@@ -1146,8 +1146,8 @@ inline vector<string> split_top_level_args(const string& s) {
             } else if (c == '}') {
                 brace_depth = max(0, brace_depth - 1);
                 cur += c;
-            } else if ((c == ',' || c == '\n') && bracket_depth == 0 && brace_depth == 0) {
-                if (cur.find_first_not_of(" \t\r\n") != string::npos) {
+            } else if ((c == ',' || c == '\\n') && bracket_depth == 0 && brace_depth == 0) {
+                if (cur.find_first_not_of(" \\t\\r\\n") != string::npos) {
                     args.push_back(cur);
                     cur.clear();
                 }
@@ -1156,7 +1156,7 @@ inline vector<string> split_top_level_args(const string& s) {
             }
         }
     }
-    if (cur.find_first_not_of(" \t\r\n") != string::npos) {
+    if (cur.find_first_not_of(" \\t\\r\\n") != string::npos) {
         args.push_back(cur);
     }
     return args;
@@ -1325,8 +1325,8 @@ inline TreeNode* parse_tree_node(string s) {
     string token;
     vector<string> tokens;
     while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \t\r\n\"'"));
-        token.erase(token.find_last_not_of(" \t\r\n\"'") + 1);
+        token.erase(0, token.find_first_not_of(" \\t\\r\\n\\\"'"));
+        token.erase(token.find_last_not_of(" \\t\\r\\n\\\"'") + 1);
         if (!token.empty()) tokens.push_back(token);
     }
     if (tokens.empty() || tokens[0] == "null") return nullptr;
@@ -1365,8 +1365,8 @@ inline ListNode* parse_list_node(string s) {
     ListNode dummy(0);
     ListNode* tail = &dummy;
     while (getline(ss, token, ',')) {
-        token.erase(0, token.find_first_not_of(" \t\r\n\"'"));
-        token.erase(token.find_last_not_of(" \t\r\n\"'") + 1);
+        token.erase(0, token.find_first_not_of(" \\t\\r\\n\\\"'"));
+        token.erase(token.find_last_not_of(" \\t\\r\\n\\\"'") + 1);
         if (!token.empty()) {
             try {
                 tail->next = new ListNode(stoi(token));

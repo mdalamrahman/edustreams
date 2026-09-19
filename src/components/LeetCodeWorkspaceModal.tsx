@@ -55,7 +55,8 @@ import {
   Volume2,
   VolumeX,
   Radio,
-  ZoomIn
+  ZoomIn,
+  ShieldCheck
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
@@ -76,6 +77,7 @@ import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } fro
 import { ReportTestCaseModal } from './ReportTestCaseModal';
 import { ReportDriverCodeModal } from './ReportDriverCodeModal';
 import { ProblemMultiOptionsModal } from './ProblemMultiOptionsModal';
+import { PipelineVerificationModal } from './PipelineVerificationModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
@@ -286,6 +288,35 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         enriched = guaranteeAtLeast10TestCases(enriched);
         enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
         enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
+
+        // Purge any corrupted testcases (e.g. nums = [] with k >= 1 or null expected output for scalar returns)
+        const isKth = targetSlug.includes('kth') || enriched.name.toLowerCase().includes('kth');
+        const startersStr = JSON.stringify(enriched.starters || {});
+        const isScalar = startersStr.includes('int ') || startersStr.includes('bool ') || startersStr.includes('double ');
+        const isPointer = startersStr.includes('TreeNode*') || startersStr.includes('ListNode*') || startersStr.includes('Node*');
+
+        if (enriched.testCases && enriched.expectedOutputs) {
+          const cleanPairs: { tc: string; eo: string }[] = [];
+          for (let idx = 0; idx < enriched.testCases.length; idx++) {
+            const tc = String(enriched.testCases[idx] || '').trim();
+            const eo = String(enriched.expectedOutputs[idx] || '').trim();
+            if (!tc) continue;
+            if (isKth && (tc.includes('nums = []') || tc.includes('nums = [ ]') || tc.includes('[]') || tc.startsWith('[],'))) continue;
+            if (isScalar && !isPointer && (eo.toLowerCase() === 'null' || eo.toLowerCase() === 'undefined' || eo === '')) continue;
+            cleanPairs.push({ tc, eo });
+          }
+          if (cleanPairs.length > 0) {
+            enriched.testCases = cleanPairs.map(p => p.tc);
+            enriched.expectedOutputs = cleanPairs.map(p => p.eo);
+          }
+        }
+
+        if (targetSlug.includes('kth-largest') || targetSlug.includes('kth-smallest')) {
+          try {
+            localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
+          } catch (_) {}
+        }
+
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
 
@@ -500,6 +531,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   // AI Driver Code Inspection & Auto-Resolver Modal State
   const [isReportDriverOpen, setIsReportDriverOpen] = useState<boolean>(false);
   const [driverUpdatedBadge, setDriverUpdatedBadge] = useState<boolean>(false);
+  // Platform Pipeline Verification & Automated AI Self-Healing Modal State
+  const [isPipelineVerifierOpen, setIsPipelineVerifierOpen] = useState<boolean>(false);
 
   // Checks if this problem accepts multiple correct testcase solutions
   const isMultiOutputQuestion = useMemo(() => {
@@ -2797,6 +2830,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <span>{isGeneratingSolution ? 'Deriving...' : hasWorkedSolution ? 'Regenerate' : 'AI Generate'}</span>
                       </button>
 
+                      <button
+                        onClick={() => setIsPipelineVerifierOpen(true)}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                        title="Verify Platform Pipeline: Test backend reference solution against all test cases & auto-heal discrepancies"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Verify Pipeline</span>
+                      </button>
+
                       {hasWorkedSolution && activeSolutionCode && (
                         <>
                           <button
@@ -3475,6 +3517,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               {/* Execution Run, Submit & Minimize/Maximize Buttons */}
               <div className="flex items-center space-x-2">
                 <button
+                  onClick={() => setIsPipelineVerifierOpen(true)}
+                  disabled={isExecuting}
+                  title="Verify Platform Pipeline: Test backend reference solution against all test cases & auto-heal discrepancies"
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 group"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                  <span>Verify Pipeline</span>
+                </button>
+
+                <button
                   onClick={() => handleExecute(false)}
                   disabled={isExecuting}
                   title="Run code against active test case (Ctrl + ')"
@@ -3645,27 +3697,69 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                     : `Accepted (Case ${activeTestCaseIdx + 1})`}
                                 </span>
                               </>
-                            ) : (
-                              <>
-                                <XCircle className="w-5 h-5 text-amber-400" />
-                                <span className="text-amber-400 flex items-center gap-1.5 flex-wrap">
-                                  {submissionResult.isSubmission ? (
-                                    (submissionResult.failedCaseIdx ?? 0) >= sampleCount ? (
-                                      <>
-                                        <span>Wrong Answer (Failed on Hidden Test Case {(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})</span>
-                                        <span className="px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1">
-                                          <Lock className="w-3 h-3" /> Hidden Case
-                                        </span>
-                                      </>
+                            ) : (() => {
+                              const failedStderr = submissionResult.failedStderr || '';
+                              const isSegfault = Boolean(
+                                failedStderr.includes('Segmentation fault') ||
+                                failedStderr.includes('SIGSEGV') ||
+                                failedStderr.includes('core dumped')
+                              );
+                              const isTLE = Boolean(
+                                failedStderr.includes('Time Limit Exceeded') ||
+                                failedStderr.includes('SIGXCPU') ||
+                                failedStderr.includes('timed out')
+                              );
+                              const isMLE = Boolean(
+                                failedStderr.includes('Memory Limit Exceeded') ||
+                                failedStderr.includes('bad_alloc') ||
+                                failedStderr.includes('OutOfMemoryError')
+                              );
+                              const isCompileErr = Boolean(
+                                failedStderr.includes('error:') ||
+                                failedStderr.includes('Compilation Error')
+                              );
+                              const isRuntimeErr = isSegfault || isTLE || isMLE || failedStderr.includes('Runtime Error') || failedStderr.includes('Exception') || failedStderr.includes('Traceback');
+
+                              const failureLabel = isSegfault
+                                ? 'Runtime Error (SIGSEGV - Segmentation Fault)'
+                                : isTLE
+                                ? 'Time Limit Exceeded'
+                                : isMLE
+                                ? 'Memory Limit Exceeded'
+                                : isCompileErr
+                                ? 'Compilation Error'
+                                : isRuntimeErr
+                                ? 'Runtime Error'
+                                : 'Wrong Answer';
+
+                              const badgeColor = isRuntimeErr || isCompileErr
+                                ? 'text-rose-400'
+                                : 'text-amber-400';
+
+                              const IconComp = isRuntimeErr || isCompileErr ? AlertTriangle : XCircle;
+
+                              return (
+                                <>
+                                  <IconComp className={`w-5 h-5 ${badgeColor}`} />
+                                  <span className={`${badgeColor} flex items-center gap-1.5 flex-wrap`}>
+                                    {submissionResult.isSubmission ? (
+                                      (submissionResult.failedCaseIdx ?? 0) >= sampleCount ? (
+                                        <>
+                                          <span>{failureLabel} (Failed on Hidden Test Case {(submissionResult.failedCaseIdx ?? 0) + 1} of {submissionResult.totalCount})</span>
+                                          <span className={`px-2 py-0.5 rounded-md ${isRuntimeErr ? 'bg-rose-950/80 border border-rose-500/50 text-rose-300' : 'bg-amber-950/80 border border-amber-500/50 text-amber-300'} text-[10px] font-mono font-bold flex items-center gap-1`}>
+                                            <Lock className="w-3 h-3" /> Hidden Case
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span>{failureLabel} (Failed on Sample Case {(submissionResult.failedCaseIdx ?? 0) + 1} of {submissionResult.totalCount})</span>
+                                      )
                                     ) : (
-                                      <span>Wrong Answer (Failed on Sample Case {(submissionResult.failedCaseIdx ?? 0) + 1} of ${submissionResult.totalCount})</span>
-                                    )
-                                  ) : (
-                                    <span>Wrong Answer (Case ${activeTestCaseIdx + 1})</span>
-                                  )}
-                                </span>
-                              </>
-                            )}
+                                      <span>{failureLabel} (Case {activeTestCaseIdx + 1})</span>
+                                    )}
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
 
                           <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
@@ -3682,6 +3776,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                               <span className="text-[11px] font-medium">Issue with testcase data or boilerplate code harness?</span>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
+                              <button
+                                onClick={() => setIsPipelineVerifierOpen(true)}
+                                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
+                                title="Run backend reference solution against all test cases to verify platform correctness and auto-heal discrepancies"
+                              >
+                                <ShieldCheck className="w-3 h-3 text-cyan-200" />
+                                <span>Verify Platform Pipeline</span>
+                              </button>
                               <button
                                 onClick={() => {
                                   setReportTestCaseIdx(submissionResult?.failedCaseIdx ?? activeTestCaseIdx);
@@ -4168,6 +4270,45 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           });
           setDriverUpdatedBadge(true);
           setTimeout(() => setDriverUpdatedBadge(false), 4000);
+        }}
+      />
+
+      {/* Platform Pipeline Verification & Automated AI Self-Healing Modal */}
+      <PipelineVerificationModal
+        isOpen={isPipelineVerifierOpen}
+        onClose={() => setIsPipelineVerifierOpen(false)}
+        slug={currentProblemSlug}
+        problemTitle={cleanTitle}
+        problemStatement={problemTemplate.description}
+        language={language}
+        starterCode={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
+        testCases={problemTemplate.testCases && problemTemplate.testCases.length > 0 ? problemTemplate.testCases : [testInput]}
+        expectedOutputs={problemTemplate.expectedOutputs && problemTemplate.expectedOutputs.length > 0 ? problemTemplate.expectedOutputs : [currentExpectedOutput]}
+        existingSolutionCode={problemTemplate.solutions?.[language]}
+        existingDriverCode={problemTemplate.driverCode?.[language]}
+        onApplySolutionToEditor={(verifiedSolution) => {
+          setCode(verifiedSolution);
+          setIsPipelineVerifierOpen(false);
+        }}
+        onPipelineHealed={({ solutionCode, driverCode, expectedOutputs: healedExp }) => {
+          setProblemTemplate((prev) => {
+            const next = {
+              ...prev,
+              solutions: {
+                ...(prev.solutions || {}),
+                [language]: solutionCode
+              } as Record<SupportedLanguage, string>,
+              driverCode: driverCode ? {
+                ...(prev.driverCode || {}),
+                [language]: driverCode
+              } as Record<SupportedLanguage, string> : prev.driverCode,
+              expectedOutputs: (healedExp && healedExp.length > 0) ? healedExp : prev.expectedOutputs
+            };
+            try {
+              localStorage.setItem(`edustream_problem_spec_${currentProblemSlug}`, JSON.stringify(next));
+            } catch (_) {}
+            return next;
+          });
         }}
       />
 

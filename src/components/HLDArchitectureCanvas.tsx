@@ -72,7 +72,12 @@ import {
   Timer,
   Building2,
   PenTool,
-  Pencil
+  Pencil,
+  Undo2,
+  Redo2,
+  Grid,
+  Copy,
+  Palette
 } from 'lucide-react';
 import { requestMistralChat } from '../lib/mistral';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -302,6 +307,26 @@ export const PREBUILT_TEMPLATES = [
   }
 ];
 
+export const CONNECTION_PRESETS = [
+  { label: 'HTTP / REST', color: '#38bdf8', style: 'solid' as const, desc: 'REST API' },
+  { label: 'gRPC / RPC', color: '#818cf8', style: 'solid' as const, desc: 'Binary RPC' },
+  { label: 'WebSocket', color: '#60a5fa', style: 'solid' as const, desc: 'Realtime Push' },
+  { label: 'Kafka / Queue', color: '#fb923c', style: 'dashed' as const, desc: 'Event Queue' },
+  { label: 'Async Worker', color: '#f472b6', style: 'dashed' as const, desc: 'Async Job' },
+  { label: 'SQL / Query', color: '#34d399', style: 'solid' as const, desc: 'Database Query' },
+  { label: 'Cache Lookup', color: '#f87171', style: 'dashed' as const, desc: 'Redis / Memcached' },
+  { label: 'Internal Call', color: '#94a3b8', style: 'solid' as const, desc: 'Internal Traffic' },
+];
+
+export const COLOR_THEMES = [
+  { name: 'Sky', color: 'text-sky-400', bgColor: 'bg-sky-950/40', borderColor: 'border-sky-500/60', glowColor: 'rgba(56, 189, 248, 0.2)' },
+  { name: 'Emerald', color: 'text-emerald-400', bgColor: 'bg-emerald-950/40', borderColor: 'border-emerald-500/60', glowColor: 'rgba(52, 211, 153, 0.2)' },
+  { name: 'Amber', color: 'text-amber-400', bgColor: 'bg-amber-950/40', borderColor: 'border-amber-500/60', glowColor: 'rgba(251, 191, 36, 0.2)' },
+  { name: 'Purple', color: 'text-purple-400', bgColor: 'bg-purple-950/40', borderColor: 'border-purple-500/60', glowColor: 'rgba(192, 132, 252, 0.2)' },
+  { name: 'Rose', color: 'text-rose-400', bgColor: 'bg-rose-950/40', borderColor: 'border-rose-500/60', glowColor: 'rgba(244, 63, 94, 0.2)' },
+  { name: 'Orange', color: 'text-orange-400', bgColor: 'bg-orange-950/40', borderColor: 'border-orange-500/60', glowColor: 'rgba(251, 146, 60, 0.2)' },
+];
+
 interface HLDArchitectureCanvasProps {
   problem?: HLDProblemSpec;
   onBack?: () => void;
@@ -346,21 +371,12 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   const [insufficientMeta, setInsufficientMeta] = useState<{ cost: number; action: string }>({ cost: 1.0, action: 'AI Architecture Review' });
   const [sessionStudioCharged, setSessionStudioCharged] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen]);
-  
   // Selection & Dragging
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedConnId, setSelectedConnId] = useState<string | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Arrow Connection in Progress
   const [connectingStart, setConnectingStart] = useState<{ nodeId: string; port: 'top' | 'right' | 'bottom' | 'left' } | null>(null);
@@ -372,10 +388,125 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // UI Modes
+  // UI Modes & Tools
   const [activeTool, setActiveTool] = useState<'select' | 'connect' | 'pan'>('select');
   const [connLabelInput, setConnLabelInput] = useState<string>('HTTP / REST');
   const [connStyleInput, setConnStyleInput] = useState<'solid' | 'dashed'>('solid');
+  const [connColorInput, setConnColorInput] = useState<string>('#38bdf8');
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(false);
+
+  // Node Context Menu
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    nodeId: string;
+  } | null>(null);
+
+  // Undo / Redo History Stack (up to 30 snapshots)
+  interface HistorySnapshot {
+    nodes: HLDNode[];
+    connections: HLDConnection[];
+  }
+  const historyRef = useRef<HistorySnapshot[]>([
+    { nodes: initialStarterNodes, connections: [] }
+  ]);
+  const historyIndexRef = useRef<number>(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const isHistoryActionRef = useRef(false);
+
+  const pushHistorySnapshot = useCallback((newNodes: HLDNode[], newConns: HLDConnection[]) => {
+    if (isHistoryActionRef.current) return;
+    const nextHist = historyRef.current.slice(0, historyIndexRef.current + 1);
+    nextHist.push({
+      nodes: JSON.parse(JSON.stringify(newNodes)),
+      connections: JSON.parse(JSON.stringify(newConns))
+    });
+    if (nextHist.length > 30) {
+      nextHist.shift();
+    }
+    historyRef.current = nextHist;
+    historyIndexRef.current = nextHist.length - 1;
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(false);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isHistoryActionRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setConnections(JSON.parse(JSON.stringify(snapshot.connections)));
+    setSelectedNodeId(null);
+    setSelectedConnId(null);
+    isHistoryActionRef.current = false;
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(true);
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const snapshot = historyRef.current[historyIndexRef.current];
+    isHistoryActionRef.current = true;
+    setNodes(JSON.parse(JSON.stringify(snapshot.nodes)));
+    setConnections(JSON.parse(JSON.stringify(snapshot.connections)));
+    setSelectedNodeId(null);
+    setSelectedConnId(null);
+    isHistoryActionRef.current = false;
+    setCanUndo(true);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  // Node duplication
+  const handleDuplicateNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const newId = `node-${Date.now()}`;
+    const duplicated: HLDNode = {
+      ...node,
+      id: newId,
+      label: `${node.label} (Copy)`,
+      x: node.x + 32,
+      y: node.y + 32
+    };
+    const nextNodes = [...nodes, duplicated];
+    setNodes(nextNodes);
+    setSelectedNodeId(newId);
+    pushHistorySnapshot(nextNodes, connections);
+  }, [nodes, connections, pushHistorySnapshot]);
+
+  // Node recoloring
+  const handleRecolorNode = useCallback((nodeId: string, theme: typeof COLOR_THEMES[0]) => {
+    const nextNodes = nodes.map(n => {
+      if (n.id === nodeId) {
+        return {
+          ...n,
+          color: theme.color,
+          bgColor: theme.bgColor,
+          borderColor: theme.borderColor,
+          glowColor: theme.glowColor,
+        };
+      }
+      return n;
+    });
+    setNodes(nextNodes);
+    pushHistorySnapshot(nextNodes, connections);
+  }, [nodes, connections, pushHistorySnapshot]);
+
+  // Context Menu trigger
+  const handleNodeContextMenu = useCallback((e: React.MouseEvent, node: HLDNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedNodeId(node.id);
+    setSelectedConnId(null);
+    setContextMenu({
+      x: Math.min(window.innerWidth - 220, e.clientX),
+      y: Math.min(window.innerHeight - 280, e.clientY),
+      nodeId: node.id
+    });
+  }, []);
 
   // AI Review
   const [aiReport, setAiReport] = useState<string | null>(null);
@@ -466,6 +597,239 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     };
   }, [pan, zoom]);
 
+  // Delete selected node or connection
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedNodeId) {
+      const nextNodes = nodes.filter(n => n.id !== selectedNodeId);
+      const nextConns = connections.filter(c => c.fromNodeId !== selectedNodeId && c.toNodeId !== selectedNodeId);
+      setNodes(nextNodes);
+      setConnections(nextConns);
+      setSelectedNodeId(null);
+      pushHistorySnapshot(nextNodes, nextConns);
+    } else if (selectedConnId) {
+      const nextConns = connections.filter(c => c.id !== selectedConnId);
+      setConnections(nextConns);
+      setSelectedConnId(null);
+      pushHistorySnapshot(nodes, nextConns);
+    }
+  }, [selectedNodeId, selectedConnId, nodes, connections, pushHistorySnapshot]);
+
+  // Global Keyboard Shortcuts (Undo, Redo, Delete, Duplicate, Escape)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea') return;
+
+      if (e.key === 'Escape') {
+        if (contextMenu) {
+          setContextMenu(null);
+        } else if (isConfirmRevealOpen) {
+          setIsConfirmRevealOpen(false);
+        } else if (editingNode) {
+          setEditingNode(null);
+        } else if (isFullscreen) {
+          setIsFullscreen(false);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        if (selectedNodeId) {
+          e.preventDefault();
+          handleDuplicateNode(selectedNodeId);
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNodeId || selectedConnId) {
+          e.preventDefault();
+          handleDeleteSelected();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [contextMenu, isConfirmRevealOpen, editingNode, isFullscreen, selectedNodeId, selectedConnId, handleUndo, handleRedo, handleDuplicateNode, handleDeleteSelected]);
+
+  // Export Canvas directly to high-res PNG image
+  const handleExportPng = useCallback(() => {
+    if (nodes.length === 0) return;
+
+    const minX = Math.min(...nodes.map(n => n.x));
+    const maxX = Math.max(...nodes.map(n => n.x + n.width));
+    const minY = Math.min(...nodes.map(n => n.y));
+    const maxY = Math.max(...nodes.map(n => n.y + n.height));
+
+    const padding = 60;
+    const rawW = Math.max(700, maxX - minX + padding * 2);
+    const rawH = Math.max(450, maxY - minY + padding * 2 + 30);
+    const scale = 2; // 2x retina clarity
+
+    const canvas = document.createElement('canvas');
+    canvas.width = rawW * scale;
+    canvas.height = rawH * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.scale(scale, scale);
+
+    // Canvas Background
+    ctx.fillStyle = '#0b0f19';
+    ctx.fillRect(0, 0, rawW, rawH);
+
+    // Subtle grid dots
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.12)';
+    for (let gx = 0; gx < rawW; gx += 24) {
+      for (let gy = 0; gy < rawH; gy += 24) {
+        ctx.beginPath();
+        ctx.arc(gx, gy, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Header Title
+    ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(problem?.title || 'Distributed System Architecture', padding, 24);
+
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('Exported from SDETube HLD Architecture Studio', padding, 46);
+
+    const offsetX = padding - minX;
+    const offsetY = padding + 40 - minY;
+
+    const drawRoundRectPath = (x: number, y: number, w: number, h: number, r: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    };
+
+    // Draw Connections
+    connections.forEach((conn) => {
+      const fromNode = nodes.find(n => n.id === conn.fromNodeId);
+      const toNode = nodes.find(n => n.id === conn.toNodeId);
+      if (!fromNode || !toNode) return;
+
+      const p1 = getPortPos(fromNode, conn.fromPort);
+      const p2 = getPortPos(toNode, conn.toPort);
+
+      const x1 = p1.x + offsetX;
+      const y1 = p1.y + offsetY;
+      const x2 = p2.x + offsetX;
+      const y2 = p2.y + offsetY;
+
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const cx1 = x1 + (conn.fromPort === 'right' ? Math.max(40, dx / 2) : conn.fromPort === 'left' ? -Math.max(40, -dx / 2) : 0);
+      const cy1 = y1 + (conn.fromPort === 'bottom' ? Math.max(40, dy / 2) : conn.fromPort === 'top' ? -Math.max(40, -dy / 2) : 0);
+      const cx2 = x2 + (conn.toPort === 'left' ? -Math.max(40, -dx / 2) : conn.toPort === 'right' ? Math.max(40, dx / 2) : 0);
+      const cy2 = y2 + (conn.toPort === 'top' ? -Math.max(40, -dy / 2) : conn.toPort === 'bottom' ? Math.max(40, dy / 2) : 0);
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+      ctx.strokeStyle = conn.color || '#818cf8';
+      ctx.lineWidth = 2;
+      if (conn.style === 'dashed') {
+        ctx.setLineDash([5, 5]);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw arrow head at end
+      const angle = Math.atan2(y2 - cy2, x2 - cx2);
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - 10 * Math.cos(angle - Math.PI / 7), y2 - 10 * Math.sin(angle - Math.PI / 7));
+      ctx.lineTo(x2 - 10 * Math.cos(angle + Math.PI / 7), y2 - 10 * Math.sin(angle + Math.PI / 7));
+      ctx.closePath();
+      ctx.fillStyle = conn.color || '#818cf8';
+      ctx.fill();
+
+      // Label badge
+      if (conn.label) {
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        ctx.font = 'bold 9px monospace';
+        const tw = ctx.measureText(conn.label).width;
+        drawRoundRectPath(midX - tw / 2 - 6, midY - 9, tw + 12, 18, 5);
+        ctx.fillStyle = '#020617';
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(conn.label, midX, midY);
+      }
+    });
+
+    // Draw Nodes
+    nodes.forEach((node) => {
+      const nx = node.x + offsetX;
+      const ny = node.y + offsetY;
+      const nw = node.width;
+      const nh = node.height;
+
+      // Node shadow
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+
+      // Node container
+      drawRoundRectPath(nx, ny, nw, nh, 12);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Node border
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Node title
+      ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(node.label, nx + 14, ny + 16);
+
+      // Node subtitle
+      if (node.sublabel) {
+        ctx.font = '9px monospace';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(node.sublabel, nx + 14, ny + 36);
+      }
+    });
+
+    const link = document.createElement('a');
+    link.download = `${(problem?.title || 'architecture-design').toLowerCase().replace(/[^a-z0-9]/g, '-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, [nodes, connections, problem, getPortPos]);
+
   // Add Component from Catalog to Canvas
   const handleAddComponent = (templateItem: typeof COMPONENT_CATALOG[0]['items'][0]) => {
     // If not charged for Architecture Studio platform drawing today, charge 50 paise (₹0.50)
@@ -503,8 +867,10 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
       borderColor: templateItem.borderColor,
       glowColor: templateItem.glowColor,
     };
-    setNodes(prev => [...prev, newNode]);
+    const nextNodes = [...nodes, newNode];
+    setNodes(nextNodes);
     setSelectedNodeId(id);
+    pushHistorySnapshot(nextNodes, connections);
   };
 
   // Dragging Nodes
@@ -515,6 +881,7 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
+    dragStartPosRef.current = { x: node.x, y: node.y };
     const canvasPos = screenToCanvas(e.clientX, e.clientY);
     setDraggingNodeId(nodeId);
     setDragOffset({
@@ -523,6 +890,7 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     });
     setSelectedNodeId(nodeId);
     setSelectedConnId(null);
+    setContextMenu(null);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
@@ -540,10 +908,19 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     if (draggingNodeId) {
       setNodes(prev => prev.map(node => {
         if (node.id === draggingNodeId) {
+          let nx = canvasPos.x - dragOffset.x;
+          let ny = canvasPos.y - dragOffset.y;
+          if (snapToGrid) {
+            nx = Math.round(nx / 16) * 16;
+            ny = Math.round(ny / 16) * 16;
+          } else {
+            nx = Math.round(nx);
+            ny = Math.round(ny);
+          }
           return {
             ...node,
-            x: Math.round(canvasPos.x - dragOffset.x),
-            y: Math.round(canvasPos.y - dragOffset.y)
+            x: nx,
+            y: ny
           };
         }
         return node;
@@ -552,6 +929,13 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
   };
 
   const handleCanvasMouseUp = () => {
+    if (draggingNodeId && dragStartPosRef.current) {
+      const movedNode = nodes.find(n => n.id === draggingNodeId);
+      if (movedNode && (movedNode.x !== dragStartPosRef.current.x || movedNode.y !== dragStartPosRef.current.y)) {
+        pushHistorySnapshot(nodes, connections);
+      }
+    }
+    dragStartPosRef.current = null;
     setDraggingNodeId(null);
     setIsPanning(false);
     if (connectingStart) {
@@ -574,22 +958,13 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
           toPort: port,
           label: connLabelInput,
           style: connStyleInput,
-          color: '#818cf8'
+          color: connColorInput || '#818cf8'
         };
-        setConnections(prev => [...prev, newConn]);
+        const nextConns = [...connections, newConn];
+        setConnections(nextConns);
+        pushHistorySnapshot(nodes, nextConns);
       }
       setConnectingStart(null);
-    }
-  };
-
-  const handleDeleteSelected = () => {
-    if (selectedNodeId) {
-      setNodes(prev => prev.filter(n => n.id !== selectedNodeId));
-      setConnections(prev => prev.filter(c => c.fromNodeId !== selectedNodeId && c.toNodeId !== selectedNodeId));
-      setSelectedNodeId(null);
-    } else if (selectedConnId) {
-      setConnections(prev => prev.filter(c => c.id !== selectedConnId));
-      setSelectedConnId(null);
     }
   };
 
@@ -598,13 +973,17 @@ export const HLDArchitectureCanvas: React.FC<HLDArchitectureCanvasProps> = ({
     setConnections([]);
     setSelectedNodeId(null);
     setSelectedConnId(null);
+    pushHistorySnapshot([], []);
   };
 
   const handleLoadTemplate = (tmpl: typeof PREBUILT_TEMPLATES[0]) => {
-    setNodes(tmpl.nodes as HLDNode[]);
-    setConnections(tmpl.connections as HLDConnection[]);
+    const nextNodes = tmpl.nodes as HLDNode[];
+    const nextConns = tmpl.connections as HLDConnection[];
+    setNodes(nextNodes);
+    setConnections(nextConns);
     setSelectedNodeId(null);
     setSelectedConnId(null);
+    pushHistorySnapshot(nextNodes, nextConns);
     setTimeout(() => handleFitToScreen(), 100);
   };
 
@@ -754,9 +1133,59 @@ Provide an authoritative, highly structured Principal Review with:
           </button>
         </div>
 
-        {/* Right Action Tools: Templates, Reveal Solution, Fullscreen, AI Review */}
+        {/* Right Action Tools: Undo/Redo, Snap, Export PNG, Templates, Reveal, Fit, Fullscreen, AI Review */}
         <div className="flex items-center gap-2">
           
+          {/* Undo / Redo */}
+          {studioMode === 'studio' && (
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-2xl p-0.5">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Snap to Grid Toggle */}
+          {studioMode === 'studio' && (
+            <button
+              onClick={() => setSnapToGrid(s => !s)}
+              className={`px-3 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                snapToGrid
+                  ? 'bg-indigo-950 border-indigo-500/60 text-indigo-300 hover:bg-indigo-900'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+              title="Snap to 16px Grid"
+            >
+              <Grid className="w-4 h-4" />
+              <span className="hidden sm:inline">Snap: {snapToGrid ? 'ON' : 'OFF'}</span>
+            </button>
+          )}
+
+          {/* Export PNG */}
+          {studioMode === 'studio' && (
+            <button
+              onClick={handleExportPng}
+              className="px-3 py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-sky-300 hover:text-sky-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              title="Export Canvas to High-Res PNG"
+            >
+              <Download className="w-4 h-4 text-sky-400" />
+              <span className="hidden sm:inline">Export PNG</span>
+            </button>
+          )}
+
           {/* Reveal Solution / Reference Architecture Button */}
           {problem && (
             <button
@@ -969,12 +1398,18 @@ Provide an authoritative, highly structured Principal Review with:
             ref={canvasRef}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
+            onContextMenu={(e) => {
+              // Right-click on empty canvas closes node context menu
+              e.preventDefault();
+              setContextMenu(null);
+            }}
             onMouseDown={(e) => {
               // Drag on background starts canvas panning
               setIsPanning(true);
               setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
               setSelectedNodeId(null);
               setSelectedConnId(null);
+              setContextMenu(null);
             }}
             className={`flex-1 glass-panel rounded-3xl border border-slate-800 bg-slate-950 overflow-hidden relative shadow-2xl w-full ${isFullscreen ? 'h-full min-h-0' : 'min-h-[720px]'}`}
             style={{
@@ -1038,15 +1473,42 @@ Provide an authoritative, highly structured Principal Review with:
 
             {/* ── Floating Canvas Viewport & Tooling Controls (Bottom Center) ── */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center gap-2 bg-slate-900/90 border border-slate-800/90 p-2 rounded-2xl shadow-2xl backdrop-blur-md">
-              {/* Connector Style Options */}
-              <div className="flex items-center space-x-1 pr-2 border-r border-slate-800">
+              {/* Connector Protocol Preset & Options */}
+              <div className="flex items-center space-x-1.5 pr-2 border-r border-slate-800">
+                <select
+                  onChange={(e) => {
+                    const preset = CONNECTION_PRESETS.find(p => p.label === e.target.value);
+                    if (preset) {
+                      setConnLabelInput(preset.label);
+                      setConnStyleInput(preset.style);
+                      setConnColorInput(preset.color);
+                    }
+                  }}
+                  value={connLabelInput}
+                  className="px-2 py-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  title="Select Protocol Preset"
+                >
+                  {CONNECTION_PRESETS.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+
                 <input
                   type="text"
                   value={connLabelInput}
                   onChange={(e) => setConnLabelInput(e.target.value)}
                   placeholder="Protocol / Label"
-                  className="w-28 px-2 py-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-24 px-2 py-1 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
+
+                <div
+                  className="w-3.5 h-3.5 rounded-full border border-slate-700 flex-shrink-0"
+                  style={{ backgroundColor: connColorInput }}
+                  title={`Connection Color: ${connColorInput}`}
+                />
+
                 <button
                   onClick={() => setConnStyleInput(s => s === 'solid' ? 'dashed' : 'solid')}
                   className="px-2 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 hover:text-white cursor-pointer"
@@ -1219,6 +1681,7 @@ Provide an authoritative, highly structured Principal Review with:
                   <div
                     key={node.id}
                     onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
+                    onContextMenu={(e) => handleNodeContextMenu(e, node)}
                     style={{
                       left: `${node.x}px`,
                       top: `${node.y}px`,
@@ -1352,7 +1815,9 @@ Provide an authoritative, highly structured Principal Review with:
               </button>
               <button
                 onClick={() => {
-                  setNodes(prev => prev.map(n => n.id === editingNode.id ? editingNode : n));
+                  const nextNodes = nodes.map(n => n.id === editingNode.id ? editingNode : n);
+                  setNodes(nextNodes);
+                  pushHistorySnapshot(nextNodes, connections);
                   setEditingNode(null);
                 }}
                 className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer"
@@ -1363,6 +1828,93 @@ Provide an authoritative, highly structured Principal Review with:
           </div>
         </div>
       )}
+
+      {/* ── Node Right-Click Context Menu ── */}
+      {contextMenu && (() => {
+        const targetNode = nodes.find(n => n.id === contextMenu.nodeId);
+        if (!targetNode) return null;
+        return (
+          <div
+            className="fixed z-[99999] w-52 bg-slate-900/98 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur-xl p-1.5 space-y-1 animate-scaleUp text-xs select-none"
+            style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-2.5 py-1.5 border-b border-slate-800">
+              <p className="font-bold text-slate-200 truncate">{targetNode.label}</p>
+              <p className="text-[10px] text-slate-500 font-mono truncate">{targetNode.sublabel || targetNode.type}</p>
+            </div>
+
+            {/* Actions */}
+            <button
+              onClick={() => {
+                handleDuplicateNode(targetNode.id);
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 cursor-pointer transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <Copy className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Duplicate</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">Ctrl+D</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setEditingNode(targetNode);
+                setContextMenu(null);
+              }}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 cursor-pointer transition-colors"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>Edit Properties</span>
+            </button>
+
+            {/* Recolor Options */}
+            <div className="px-2.5 py-1.5 border-t border-slate-800 space-y-1.5">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Change Color</p>
+              <div className="flex items-center gap-1.5">
+                {COLOR_THEMES.map((th) => (
+                  <button
+                    key={th.name}
+                    onClick={() => {
+                      handleRecolorNode(targetNode.id, th);
+                      setContextMenu(null);
+                    }}
+                    title={th.name}
+                    className={`w-5 h-5 rounded-full border border-slate-700 cursor-pointer transition-transform hover:scale-125 ${
+                      th.name === 'Sky' ? 'bg-sky-500' :
+                      th.name === 'Emerald' ? 'bg-emerald-500' :
+                      th.name === 'Amber' ? 'bg-amber-500' :
+                      th.name === 'Purple' ? 'bg-purple-500' :
+                      th.name === 'Rose' ? 'bg-rose-500' :
+                      'bg-orange-500'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Delete */}
+            <div className="border-t border-slate-800 pt-1">
+              <button
+                onClick={() => {
+                  handleDeleteSelected();
+                  setContextMenu(null);
+                }}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl hover:bg-rose-950 text-rose-300 cursor-pointer transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Delete</span>
+                </span>
+                <span className="text-[10px] font-mono text-rose-400/60">Del</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── AI Evaluation Review Drawer ── */}
       {isAiDrawerOpen && (
