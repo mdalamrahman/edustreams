@@ -2830,14 +2830,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <span>{isGeneratingSolution ? 'Deriving...' : hasWorkedSolution ? 'Regenerate' : 'AI Generate'}</span>
                       </button>
 
-                      <button
-                        onClick={() => setIsPipelineVerifierOpen(true)}
-                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
-                        title="Verify Platform Pipeline: Test backend reference solution against all test cases & auto-heal discrepancies"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Verify Pipeline</span>
-                      </button>
 
                       {hasWorkedSolution && activeSolutionCode && (
                         <>
@@ -3516,15 +3508,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
               {/* Execution Run, Submit & Minimize/Maximize Buttons */}
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setIsPipelineVerifierOpen(true)}
-                  disabled={isExecuting}
-                  title="Verify Platform Pipeline: Test backend reference solution against all test cases & auto-heal discrepancies"
-                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 group"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-                  <span>Verify Pipeline</span>
-                </button>
 
                 <button
                   onClick={() => handleExecute(false)}
@@ -3776,14 +3759,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                               <span className="text-[11px] font-medium">Issue with testcase data or boilerplate code harness?</span>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <button
-                                onClick={() => setIsPipelineVerifierOpen(true)}
-                                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
-                                title="Run backend reference solution against all test cases to verify platform correctness and auto-heal discrepancies"
-                              >
-                                <ShieldCheck className="w-3 h-3 text-cyan-200" />
-                                <span>Verify Platform Pipeline</span>
-                              </button>
                               <button
                                 onClick={() => {
                                   setReportTestCaseIdx(submissionResult?.failedCaseIdx ?? activeTestCaseIdx);

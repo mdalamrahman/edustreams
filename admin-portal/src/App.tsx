@@ -70,6 +70,7 @@ import {
   AdminPasskeyRecord
 } from './lib/supabaseAdminClient';
 import confetti from 'canvas-confetti';
+import { ProblemManagementStudio } from './components/ProblemManagementStudio';
 
 const REQUIRED_ADMIN_PASSWORD = 'Zerocheck@6289943543';
 
@@ -102,7 +103,7 @@ export default function App() {
   const [passkeyModalStatus, setPasskeyModalStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   // Active Hub Tab
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits' | 'questions'>('analytics');
 
   // Live Data States (Direct from Supabase)
   const [rates, setRates] = useState<SystemPlatformRates>({
@@ -888,10 +889,29 @@ export default function App() {
           <CreditCard className="w-4 h-4" />
           <span>Manual Credit Grantor</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('questions')}
+          className={`px-4 py-2.5 rounded-t-2xl transition-all cursor-pointer flex items-center space-x-2 border-t border-x ${
+            activeTab === 'questions'
+              ? 'bg-slate-900 border-slate-800 text-cyan-400 shadow-sm'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Code2 className="w-4 h-4" />
+          <span>DSA & LLD Problem Studio</span>
+        </button>
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+      <main className={activeTab === 'questions' ? "flex-1 flex flex-col w-full" : "flex-1 p-6 max-w-7xl w-full mx-auto space-y-6"}>
+        
+        {/* ===================================================================
+            TAB: DSA & LLD PROBLEM MANAGEMENT STUDIO & PIPELINE VERIFIER
+            =================================================================== */}
+        {activeTab === 'questions' && (
+          <ProblemManagementStudio />
+        )}
         
         {/* ===================================================================
             TAB 1: EXECUTIVE REVENUE & USAGE TELEMETRY (100% ACCURATE FROM SUPABASE)
