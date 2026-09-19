@@ -3675,6 +3675,121 @@ async def delete_all_problem_drivers(slug: str):
     return {"success": res, "slug": clean_slug}
 
 
+class ProblemReportPayload(BaseModel):
+    id: Optional[str] = None
+    slug: str
+    problemTitle: Optional[str] = ""
+    issueType: str  # 'testcases' | 'driver' | 'solution' | 'problem'
+    note: Optional[str] = ""
+    language: Optional[str] = "cpp"
+    studentCode: Optional[str] = ""
+    testInput: Optional[str] = ""
+    expectedOutput: Optional[str] = ""
+    status: Optional[str] = "open"  # 'open' | 'auto_healed' | 'resolved'
+    autoHealDetails: Optional[str] = ""
+    timestamp: Optional[str] = None
+    userEmail: Optional[str] = None
+
+_PROBLEM_REPORTS_CACHE: List[dict] = []
+_REPORTS_LOADED = False
+
+def _ensure_reports_loaded():
+    global _PROBLEM_REPORTS_CACHE, _REPORTS_LOADED
+    if not _REPORTS_LOADED:
+        try:
+            stored = r2_storage.fetch_json("reports/all_reports.json")
+            if isinstance(stored, list):
+                _PROBLEM_REPORTS_CACHE = stored
+            elif isinstance(stored, dict) and "reports" in stored:
+                _PROBLEM_REPORTS_CACHE = stored["reports"]
+        except Exception as e:
+            print(f"[R2 Reports Load Notice]: {e}")
+        _REPORTS_LOADED = True
+
+@app.post("/api/problem-reports")
+async def create_problem_report(payload: ProblemReportPayload):
+    """
+    Logs an issue report for a problem.
+    If issueType is 'testcases' or 'driver', it can be auto-healed.
+    If 'solution' or 'problem', it is saved for admin review in Admin Portal.
+    """
+    _ensure_reports_loaded()
+    rep_id = payload.id or f"rep_{int(time.time() * 1000)}"
+    ts = payload.timestamp or datetime.utcnow().isoformat() + "Z"
+    
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', payload.slug.lower()).strip('-')
+    report_dict = {
+        "id": rep_id,
+        "slug": clean_slug,
+        "problemTitle": payload.problemTitle or clean_slug,
+        "issueType": payload.issueType,
+        "note": payload.note or "",
+        "language": payload.language or "cpp",
+        "studentCode": (payload.studentCode or "")[:5000],
+        "testInput": payload.testInput or "",
+        "expectedOutput": payload.expectedOutput or "",
+        "status": payload.status or "open",
+        "autoHealDetails": payload.autoHealDetails or "",
+        "timestamp": ts,
+        "userEmail": payload.userEmail or "student@sdetube.io"
+    }
+
+    _PROBLEM_REPORTS_CACHE.insert(0, report_dict)
+    if len(_PROBLEM_REPORTS_CACHE) > 500:
+        _PROBLEM_REPORTS_CACHE.pop()
+
+    try:
+        r2_storage.upload_json(f"reports/{rep_id}.json", report_dict)
+        r2_storage.upload_json("reports/all_reports.json", _PROBLEM_REPORTS_CACHE)
+    except Exception as e:
+        print(f"[R2 Report Save Error]: {e}")
+
+    return {
+        "success": True,
+        "id": rep_id,
+        "status": report_dict["status"],
+        "message": "Report logged successfully in Admin Portal"
+    }
+
+@app.get("/api/problem-reports")
+async def get_problem_reports():
+    """Returns all student problem issue reports for Admin Portal."""
+    _ensure_reports_loaded()
+    return {
+        "success": True,
+        "reports": _PROBLEM_REPORTS_CACHE,
+        "total": len(_PROBLEM_REPORTS_CACHE)
+    }
+
+@app.post("/api/problem-reports/{report_id}/resolve")
+async def resolve_problem_report(report_id: str, req: Request):
+    """Marks a student problem report as resolved."""
+    _ensure_reports_loaded()
+    body = {}
+    try:
+        body = await req.json()
+    except Exception:
+        pass
+    
+    resolution_note = body.get("resolutionNote", "Resolved by Admin")
+    found = False
+    for rep in _PROBLEM_REPORTS_CACHE:
+        if rep.get("id") == report_id:
+            rep["status"] = "resolved"
+            rep["resolvedAt"] = datetime.utcnow().isoformat() + "Z"
+            rep["resolutionNote"] = resolution_note
+            found = True
+            break
+
+    if found:
+        try:
+            r2_storage.upload_json("reports/all_reports.json", _PROBLEM_REPORTS_CACHE)
+        except Exception as e:
+            print(f"[R2 Reports Save Error]: {e}")
+
+    return {"success": found, "reportId": report_id, "status": "resolved"}
+
+
 class VerifyTestCasePayload(BaseModel):
     problemTitle: str
     problemStatement: str

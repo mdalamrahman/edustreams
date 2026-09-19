@@ -56,8 +56,10 @@ import {
   VolumeX,
   Radio,
   ZoomIn,
-  ShieldCheck
+  ShieldCheck,
+  Flag
 } from 'lucide-react';
+import { ProblemReportModal } from './ProblemReportModal';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
@@ -311,9 +313,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         }
 
-        if (targetSlug.includes('kth-largest') || targetSlug.includes('kth-smallest')) {
+        if (targetSlug.includes('kth-largest') || targetSlug.includes('kth-smallest') || targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) {
           try {
             localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
+            localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
           } catch (_) {}
         }
 
@@ -334,6 +337,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             // Sanity check: purge contaminated argumentsLength code from BST problems
             if ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) {
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+            } else if ((targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec')) {
+              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
+              setCode(cleanStarter);
+              if (enriched.testCases && enriched.testCases.length > 0) {
+                setActiveTestCaseIdx(0);
+                setTestInput(enriched.testCases[0]);
+              }
+              return;
             } else if (targetSlug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) {
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
               const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
@@ -472,7 +484,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
       }
     } catch {}
-    return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp;
+    return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp || '';
   });
 
   const [codeSaveStatus, setCodeSaveStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
@@ -1173,9 +1185,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
     if (problemTemplate.approaches && problemTemplate.approaches.length > 0) {
       const curApp = problemTemplate.approaches.find(a => a.id === selectedApproachId) || problemTemplate.approaches[0];
-      setCode((curApp?.starters && curApp.starters[newLang]) || problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
+      setCode((curApp?.starters && curApp.starters[newLang]) || problemTemplate.starters[newLang] || problemTemplate.starters.cpp || '');
     } else {
-      setCode(problemTemplate.starters[newLang] || problemTemplate.starters.cpp);
+      setCode(problemTemplate.starters[newLang] || problemTemplate.starters.cpp || '');
     }
   };
 
@@ -1914,6 +1926,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const [showCompaniesModal, setShowCompaniesModal] = useState(false);
   const [companyModalSearch, setCompanyModalSearch] = useState('');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // If dataset wasn't ready synchronously on initial render, load it and update resolvedCompanies
   useEffect(() => {
@@ -3376,6 +3389,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 </div>
               </div>
 
+              {/* Report Issue Button with Hover Tooltip */}
+              <div className="relative group">
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-mono font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 transition-colors cursor-pointer"
+                  aria-label="Report issue with problem, driver, testcases, or solution"
+                >
+                  <Flag className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[11px]">Report</span>
+                </button>
+                <div className="absolute top-8 right-0 bg-slate-900 border border-slate-700/80 text-slate-200 text-[11px] font-sans px-2.5 py-1 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl pointer-events-none z-30">
+                  Report problem, driver, testcases, or solution
+                </div>
+              </div>
+
               {/* Reset to Default Template Button */}
               <div className="relative group">
                 <button
@@ -4425,6 +4453,30 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Student Problem Report Modal with AI Auto-Healing */}
+      <ProblemReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        problemTitle={cleanTitle}
+        problemSlug={currentProblemSlug}
+        language={language}
+        currentInput={testInput}
+        expectedOutput={currentExpectedOutput}
+        actualOutput={executionResult?.stdout}
+        studentCode={code}
+        onAutoHealComplete={(healedType) => {
+          if (healedType === 'driver') {
+            const drv = getDefaultDriverForProblem(currentProblemSlug, language);
+            if (drv) {
+              setProblemTemplate(prev => ({
+                ...prev,
+                driverCode: { ...(prev.driverCode || {}), [language]: drv } as Record<SupportedLanguage, string>
+              }));
+            }
+          }
+        }}
+      />
 
     </div>
   );

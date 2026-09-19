@@ -27,14 +27,18 @@ import {
   HardDrive,
   Wand2,
   BookOpen,
-  ArrowUpRight
+  ArrowUpRight,
+  Flag,
+  X,
+  Inbox
 } from 'lucide-react';
 import {
   ALL_ADMIN_PROBLEMS,
   AdminProblemItem,
   SupportedLanguage,
   generateStarterCode,
-  toSlug
+  toSlug,
+  fetchExtendedCatalog
 } from '../lib/problemCatalog';
 import {
   fetchProblemSpec,
@@ -49,7 +53,10 @@ import {
   validateBackendPipeline,
   expandTestcasesAI,
   assembleCodeWithDriver,
-  ProblemSpec
+  ProblemSpec,
+  fetchStudentReports,
+  resolveStudentReport,
+  StudentReportItem
 } from '../lib/problemAdminApi';
 
 interface TestCaseRow {
@@ -70,6 +77,32 @@ interface TestRunResult {
 }
 
 export const ProblemManagementStudio: React.FC = () => {
+  // Full Catalog State (loads 3,400+ DSA & LLD problems)
+  const [catalog, setCatalog] = useState<AdminProblemItem[]>(ALL_ADMIN_PROBLEMS);
+
+  // Student Reports Queue States
+  const [reports, setReports] = useState<StudentReportItem[]>([]);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [reportFilter, setReportFilter] = useState<'all' | 'open' | 'auto_healed' | 'resolved'>('all');
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+
+  const loadReports = async () => {
+    setIsLoadingReports(true);
+    try {
+      const data = await fetchStudentReports();
+      setReports(data);
+    } finally {
+      setIsLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExtendedCatalog().then(setCatalog);
+    loadReports();
+  }, []);
+
+  const openReportsCount = useMemo(() => reports.filter(r => r.status === 'open').length, [reports]);
+
   // Catalog Filter & Search States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'all' | 'dsa' | 'lld'>('all');
@@ -111,7 +144,7 @@ export const ProblemManagementStudio: React.FC = () => {
 
   // Filtered Catalog
   const filteredProblems = useMemo(() => {
-    return ALL_ADMIN_PROBLEMS.filter(p => {
+    return catalog.filter(p => {
       if (selectedType !== 'all' && p.type !== selectedType) return false;
       if (selectedSheet !== 'all' && !p.sheets.includes(selectedSheet)) return false;
       if (selectedDifficulty !== 'all' && p.difficulty !== selectedDifficulty) return false;
@@ -1225,7 +1258,7 @@ export const ProblemManagementStudio: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <h2 className="text-xl font-black text-white tracking-tight">DSA & LLD Problem Studio</h2>
                 <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold border border-cyan-500/40">
-                  {ALL_ADMIN_PROBLEMS.length} Questions Curated
+                  {catalog.length} Questions Available
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono">
@@ -1234,19 +1267,31 @@ export const ProblemManagementStudio: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Stat Chips */}
-          <div className="flex items-center space-x-2">
+          {/* Quick Stat Chips & Student Reports Button */}
+          <div className="flex items-center space-x-2 flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setIsReportsOpen(true);
+                loadReports();
+              }}
+              className="flex items-center space-x-2 p-2.5 px-3.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all font-mono text-xs font-bold cursor-pointer shadow-lg shadow-amber-500/5"
+            >
+              <Flag className="w-4 h-4 text-amber-400" />
+              <span>Student Reports</span>
+              {openReportsCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
+                  {openReportsCount}
+                </span>
+              )}
+            </button>
+
             <div className="p-2.5 px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
               <span className="text-[10px] text-slate-400 uppercase font-mono block">DSA Problems</span>
-              <span className="text-sm font-black text-cyan-400 font-mono">668</span>
+              <span className="text-sm font-black text-cyan-400 font-mono">{catalog.filter(p => p.type === 'dsa').length}</span>
             </div>
             <div className="p-2.5 px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
               <span className="text-[10px] text-slate-400 uppercase font-mono block">LLD Systems</span>
               <span className="text-sm font-black text-purple-400 font-mono">10</span>
-            </div>
-            <div className="p-2.5 px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-mono block">Sheets</span>
-              <span className="text-sm font-black text-emerald-400 font-mono">5 Curated</span>
             </div>
           </div>
         </div>
@@ -1302,7 +1347,8 @@ export const ProblemManagementStudio: React.FC = () => {
             onChange={(e) => { setSelectedSheet(e.target.value); setCurrentPage(1); }}
             className="px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono cursor-pointer"
           >
-            <option value="all">All Sheets & Tracks</option>
+            <option value="all">All Sheets & Tracks ({catalog.length})</option>
+            <option value="company_dsa">Company DSA (3,400+ Problems)</option>
             <option value="sde">SDETube SDE Sheet (191)</option>
             <option value="a2z">A2Z Complete Roadmap (474)</option>
             <option value="79">79 Fast-Track Yield</option>
@@ -1490,6 +1536,193 @@ export const ProblemManagementStudio: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Student Reports Drawer Modal */}
+      {isReportsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-[#12141a] border border-slate-800 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#161922]">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Flag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    Student Issue Reports Queue
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono font-normal">
+                      {reports.length} Total
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Reports submitted by students regarding test cases, compiler drivers, reference solutions, or problem descriptions.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={loadReports}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                  title="Refresh Reports"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingReports ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setIsReportsOpen(false)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="px-6 py-2 border-b border-slate-800 bg-slate-950/60 flex items-center gap-2 text-xs">
+              {(['all', 'open', 'auto_healed', 'resolved'] as const).map(f => {
+                const count = f === 'all' ? reports.length : reports.filter(r => r.status === f).length;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg font-mono font-bold transition-all cursor-pointer ${
+                      reportFilter === f
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                    }`}
+                  >
+                    {f === 'all' ? 'All' : f === 'open' ? 'Open' : f === 'auto_healed' ? 'Auto-Healed' : 'Resolved'} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Reports List */}
+            <div className="p-6 overflow-y-auto space-y-3 flex-1">
+              {isLoadingReports && reports.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-mono text-xs flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+                  <span>Fetching reported issues from Cloudflare R2...</span>
+                </div>
+              ) : reports.filter(r => reportFilter === 'all' || r.status === reportFilter).length === 0 ? (
+                <div className="py-16 text-center space-y-2">
+                  <Inbox className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-400">No reports found in this category</p>
+                  <p className="text-xs text-slate-500 font-mono">All student issue reports are resolved or queue is clear.</p>
+                </div>
+              ) : (
+                reports
+                  .filter(r => reportFilter === 'all' || r.status === reportFilter)
+                  .map(rep => (
+                    <div
+                      key={rep.id}
+                      className={`p-4 rounded-2xl border transition-all space-y-2.5 ${
+                        rep.status === 'open'
+                          ? 'bg-amber-950/10 border-amber-500/30'
+                          : rep.status === 'auto_healed'
+                          ? 'bg-blue-950/10 border-blue-500/30'
+                          : 'bg-slate-950/40 border-slate-800 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                            rep.issueType === 'driver'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : rep.issueType === 'testcases'
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              : rep.issueType === 'solution'
+                              ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                              : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                          }`}>
+                            {rep.issueType}
+                          </span>
+                          <span className="text-sm font-bold text-white">{rep.problemTitle}</span>
+                          <span className="text-[11px] font-mono text-slate-400">({rep.language.toUpperCase()})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                            rep.status === 'open'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                              : rep.status === 'auto_healed'
+                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          }`}>
+                            {rep.status === 'open' ? 'OPEN' : rep.status === 'auto_healed' ? '⚡ AUTO-HEALED' : 'RESOLVED'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {new Date(rep.timestamp).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {rep.note && (
+                        <p className="text-xs text-slate-300 font-mono bg-black/40 p-2.5 rounded-xl border border-slate-800/80">
+                          {rep.note}
+                        </p>
+                      )}
+
+                      {rep.autoHealDetails && (
+                        <div className="text-[11px] text-blue-300 font-mono bg-blue-950/20 p-2 rounded-lg border border-blue-800/30">
+                          ⚡ {rep.autoHealDetails}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1 gap-2">
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          User: {rep.userEmail || 'student@sdetube.io'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const found = catalog.find(p => p.slug === rep.slug || toSlug(p.slug) === toSlug(rep.slug));
+                              if (found) {
+                                setActiveProblem(found);
+                                if (rep.issueType === 'driver') setActiveStudioTab('driver');
+                                else if (rep.issueType === 'testcases') setActiveStudioTab('testcases');
+                                else if (rep.issueType === 'solution') setActiveStudioTab('solution');
+                                setIsReportsOpen(false);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-cyan-500/30"
+                          >
+                            <Code2 className="w-3.5 h-3.5" />
+                            <span>Open in Studio</span>
+                          </button>
+                          {rep.status !== 'resolved' && (
+                            <button
+                              onClick={async () => {
+                                const ok = await resolveStudentReport(rep.id);
+                                if (ok) {
+                                  setReports(prev => prev.map(r => r.id === rep.id ? { ...r, status: 'resolved' } : r));
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-emerald-500/30"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Mark Resolved</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-slate-800 bg-[#161922] flex items-center justify-between text-xs text-slate-400">
+              <span className="font-mono text-[11px]">Reports sync directly with Cloudflare R2</span>
+              <button
+                onClick={() => setIsReportsOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

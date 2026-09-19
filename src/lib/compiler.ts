@@ -602,7 +602,7 @@ export function isDriverHarnessValid(
     }
 
     if ((drv.includes('new TreeNode(1)') || drv.includes('new TreeNode(0)')) &&
-        !drv.includes('parseTree') && !drv.includes('buildTree') && !drv.includes('parse_tree') && !drv.includes('build_tree')) {
+        !drv.includes('parseTree') && !drv.includes('buildTree') && !drv.includes('parse_tree') && !drv.includes('build_tree') && !drv.includes('parseInputTree')) {
       console.warn('[isDriverHarnessValid] Rejecting driver: contains hardcoded mock tree nodes.');
       return false;
     }

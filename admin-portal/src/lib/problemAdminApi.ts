@@ -6,7 +6,7 @@
 
 export const BACKEND_FALLBACK = 'https://edustream-backend-90vm.onrender.com';
 
-async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
+export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   // Normalize path
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
@@ -387,4 +387,47 @@ export function assembleCodeWithDriver(
   }
 
   return code;
+}
+
+export interface StudentReportItem {
+  id: string;
+  slug: string;
+  problemTitle: string;
+  issueType: 'testcases' | 'driver' | 'solution' | 'problem';
+  note: string;
+  language: string;
+  studentCode?: string;
+  testInput?: string;
+  expectedOutput?: string;
+  status: 'open' | 'auto_healed' | 'resolved';
+  autoHealDetails?: string;
+  timestamp: string;
+  userEmail?: string;
+}
+
+export async function fetchStudentReports(): Promise<StudentReportItem[]> {
+  try {
+    const res = await apiFetch('/api/problem-reports');
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data.reports) ? data.reports : [];
+    }
+  } catch (err) {
+    console.error('[fetchStudentReports Error]:', err);
+  }
+  return [];
+}
+
+export async function resolveStudentReport(reportId: string, note: string = 'Resolved in Studio'): Promise<boolean> {
+  try {
+    const res = await apiFetch(`/api/problem-reports/${reportId}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resolutionNote: note })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[resolveStudentReport Error]:', err);
+    return false;
+  }
 }

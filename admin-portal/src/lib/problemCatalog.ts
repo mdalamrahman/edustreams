@@ -14683,3 +14683,64 @@ export function generateStarterCode(slug: string, lang: SupportedLanguage): stri
       return `// Starter code for ${slug}`;
   }
 }
+
+// In-memory cache for full merged catalog (DSA sheets + 3,400 company problems + LLD)
+let cachedExtendedCatalog: AdminProblemItem[] | null = null;
+let extendedCatalogPromise: Promise<AdminProblemItem[]> | null = null;
+
+export async function fetchExtendedCatalog(): Promise<AdminProblemItem[]> {
+  if (cachedExtendedCatalog) return cachedExtendedCatalog;
+  if (extendedCatalogPromise) return extendedCatalogPromise;
+
+  extendedCatalogPromise = (async () => {
+    const existingSlugs = new Set(ALL_ADMIN_PROBLEMS.map(p => toSlug(p.slug)));
+    const merged: AdminProblemItem[] = [...ALL_ADMIN_PROBLEMS];
+
+    // 1. Try local static asset from admin-portal/public/data
+    let companyProblemsData: any = null;
+    try {
+      const resp = await fetch('/data/company_problems.json');
+      if (resp.ok) {
+        companyProblemsData = await resp.json();
+      }
+    } catch (_) {}
+
+    // 2. Try sdetube CDN fallback
+    if (!companyProblemsData) {
+      try {
+        const resp = await fetch('https://sdetube.pages.dev/data/company_problems.json');
+        if (resp.ok) {
+          companyProblemsData = await resp.json();
+        }
+      } catch (_) {}
+    }
+
+    if (companyProblemsData && companyProblemsData.problems) {
+      const problemsObj = companyProblemsData.problems;
+      for (const key of Object.keys(problemsObj)) {
+        const cp = problemsObj[key];
+        const s = toSlug(cp.slug || cp.title || key);
+        if (!existingSlugs.has(s)) {
+          existingSlugs.add(s);
+          merged.push({
+            id: String(cp.id || s),
+            name: cp.title || cp.name || s,
+            slug: s,
+            type: 'dsa',
+            category: cp.topicTags?.[0] || 'Company DSA',
+            subcategory: cp.topicTags?.slice(1).join(', ') || undefined,
+            difficulty: (cp.difficulty || 'Medium') as ProblemDifficulty,
+            sheets: ['company_dsa'],
+            leetcode: cp.url || (cp.slug ? `https://leetcode.com/problems/${cp.slug}/` : undefined),
+            companies: Array.isArray(cp.companies) ? cp.companies : []
+          });
+        }
+      }
+    }
+
+    cachedExtendedCatalog = merged;
+    return merged;
+  })();
+
+  return extendedCatalogPromise;
+}
