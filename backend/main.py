@@ -2717,36 +2717,71 @@ Return ONLY a valid JSON object matching:
                 driver_code = raw_content.replace('```json', '').replace('```', '').strip()
 
             if driver_code and len(driver_code) > 50:
-                # Stage 3: Validate with Judge0 sandbox
+                # Stage 3: Validate driver + reference solution with Judge0 (up to 3 repair attempts)
                 if solution_code and "// === USER SOLUTION ===" in driver_code:
                     test_exec = driver_code.replace("// === USER SOLUTION ===", solution_code)
                     res = execute_judge0_sandbox(test_exec, clean_lang)
-                    if not res["success"] and res.get("stderr"):
-                        # Self-healing attempt with compiler error feedback
-                        heal_prompt = f"""The driver code in {clean_lang} failed compilation:
-Error: {res['stderr']}
+                    actual_out = (res.get("stdout") or "").strip().replace(" ", "").lower()
+                    expected_out = str(sample_eo).strip().replace(" ", "").lower()
 
-Driver Code:
+                    has_compile_error = not res.get("success") and bool(res.get("stderr"))
+                    has_output_mismatch = bool(actual_out) and actual_out != expected_out
+
+                    if has_compile_error or has_output_mismatch:
+                        error_ctx = res.get("stderr", "") if has_compile_error else (
+                            f"Wrong output: got '{(res.get('stdout') or '').strip()}', expected '{sample_eo}'"
+                        )
+                        print(f"[Driver Self-Heal '{clean_slug}' {clean_lang}] Issue: {error_ctx[:120]}")
+
+                        for drv_attempt in range(3):
+                            heal_prompt = f"""You are a Principal Compiler Architect fixing a {clean_lang.upper()} judge driver harness.
+Problem: "{name}" ({clean_slug})
+Function Signature:
+```{clean_lang}
+{starter_code}
+```
+Sample Input: {sample_tc}
+Expected Output: {sample_eo}
+Actual Output: {(res.get('stdout') or '').strip()}
+Error/Issue (Attempt {drv_attempt+1}/3): {error_ctx}
+
+Current Driver Code:
 ```{clean_lang}
 {driver_code}
 ```
 
-Fix the driver code so it compiles cleanly.
+Fix the driver harness to correctly parse input, invoke the Solution, and print output matching the expected format.
+For binary tree problems: serialize output as level-order BFS with 'null' for missing nodes, trailing nulls trimmed.
+For serialize/deserialize problems: the output must be the deserialized-then-reserialized tree in level-order format.
+Keep // === USER SOLUTION === and // === HIDDEN DRIVER === markers intact.
 Return ONLY valid JSON:
-{{ "driver": "fixed driver code with // === USER SOLUTION === and // === HIDDEN DRIVER ===" }}"""
-                        try:
-                            h_resp = requests.post(
-                                "https://api.mistral.ai/v1/chat/completions",
-                                headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-                                json={"model": "codestral-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
-                                timeout=20
-                            )
-                            if h_resp.status_code == 200:
-                                h_data = json.loads(h_resp.json()["choices"][0]["message"]["content"])
-                                if h_data.get("driver"):
-                                    driver_code = h_data["driver"]
-                        except Exception:
-                            pass
+{{"driver": "complete fixed driver code", "solution": "corrected solution code"}}"""
+                            try:
+                                h_resp = requests.post(
+                                    "https://api.mistral.ai/v1/chat/completions",
+                                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                                    json={"model": "codestral-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.15, "response_format": {"type": "json_object"}},
+                                    timeout=30
+                                )
+                                if h_resp.status_code == 200:
+                                    h_data = json.loads(h_resp.json()["choices"][0]["message"]["content"])
+                                    new_driver = h_data.get("driver", "")
+                                    new_solution = h_data.get("solution", "") or solution_code
+                                    if new_driver and len(new_driver) > 50 and "// === USER SOLUTION ===" in new_driver:
+                                        re_exec = new_driver.replace("// === USER SOLUTION ===", new_solution)
+                                        re_res = execute_judge0_sandbox(re_exec, clean_lang)
+                                        re_out = (re_res.get("stdout") or "").strip().replace(" ", "").lower()
+                                        re_err = re_res.get("stderr", "")
+                                        if re_res.get("success") and re_out == expected_out:
+                                            print(f"[Driver Self-Heal '{clean_slug}' {clean_lang}] Fixed on attempt {drv_attempt+1}")
+                                            driver_code = new_driver
+                                            solution_code = new_solution
+                                            break
+                                        else:
+                                            error_ctx = re_err if re_err else f"Wrong output: got '{re_res.get('stdout','').strip()}', expected '{sample_eo}'"
+                                            driver_code = new_driver  # carry forward even if not perfect yet
+                            except Exception as drv_he:
+                                print(f"[Driver Self-Heal Attempt {drv_attempt+1} Error]: {drv_he}")
 
                 r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
                 return driver_code
@@ -3298,57 +3333,116 @@ async def validate_and_store_solution_endpoint(slug: str, req: Request):
         # Round 1: Test original candidate
         passed_cnt, fail_i, fail_in, fail_out, fail_exp, fail_err = test_candidate(code, driver)
         sample_count = min(len(test_cases), 5)
-        
-        # Self-Healing Loop: If any case failed, prompt Mistral to fix the solution
+
+        # --- 4-Attempt Self-Healing Loop ---
+        # Each attempt: feeds accumulated history + driver harness to AI for informed repair.
+        # Intermediate improvements are saved to R2 immediately so the next call can build on them.
         final_code = code
-        if passed_cnt < sample_count:
-            print(f"[Self-Healing Solution for '{clean_slug}' {lang}]: {passed_cnt}/{sample_count} passed. Repairing...")
-            heal_prompt = f"""You are a Lead Algorithms Engineer.
-The following {lang.upper()} solution for '{problem.get('name', clean_slug)}' failed validation:
-Problem Description: {problem.get('description', '')[:1000]}
-Starter Code: {(problem.get('starters') or {}).get(lang, '')}
+        MAX_HEAL_ATTEMPTS = 4
+        heal_history = []  # accumulates context across all attempts
 
-Failed Test Case:
-Input: {fail_in}
+        for attempt in range(MAX_HEAL_ATTEMPTS):
+            if passed_cnt >= sample_count:
+                break
+
+            print(f"[Self-Healing Attempt {attempt + 1}/{MAX_HEAL_ATTEMPTS} for '{clean_slug}' {lang}]: {passed_cnt}/{sample_count} passed. Repairing...")
+
+            # Build accumulated failure history so AI doesn't repeat mistakes
+            history_ctx = ""
+            for h in heal_history:
+                history_ctx += (
+                    f"\n--- Attempt {h['attempt']} (got {h['passed']}/{sample_count}) ---"
+                    f"\nActual Output: {h['actual']!r}  Expected: {h['expected']!r}"
+                    f"\nExplanation tried: {h.get('explanation', 'N/A')}"
+                    f"\nCode:\n```{lang}\n{h['code']}\n```\n"
+                )
+
+            driver_ctx = f"```{lang}\n{driver}\n```" if driver else "No driver available — solution runs standalone."
+
+            heal_prompt = f"""You are a Lead Algorithms Engineer performing attempt {attempt + 1} of {MAX_HEAL_ATTEMPTS} to fix a {lang.upper()} solution.
+
+Problem: {problem.get('name', clean_slug)}
+Description: {problem.get('description', '')[:1500]}
+Starter Code / Signature:
+{(problem.get('starters') or {{}}).get(lang, 'N/A')}
+
+Driver Harness (DO NOT modify — fix only the Solution class):
+{driver_ctx}
+
+CURRENT FAILING STATE:
+Input:           {fail_in}
 Expected Output: {fail_exp}
-Actual Output: {fail_out}
-Error: {fail_err}
+Actual Output:   {fail_out!r}
+Compile/Runtime Error: {fail_err or 'None'}
 
-Current Code:
+Current Solution Code:
 ```{lang}
-{code}
+{final_code}
 ```
+{f'HISTORY OF FAILED ATTEMPTS (MUST NOT repeat these approaches):{chr(10)}{history_ctx}' if heal_history else ''}
+Common root causes for this problem type:
+- Serialize/Deserialize tree: use BFS level-order with exact 'null' for missing children, trim trailing nulls.
+- String splitting: never split inside nested brackets; track bracket depth.
+- Output format: match exactly — no extra spaces, correct bracket style.
+- For void in-place methods: print the mutated structure, never 'null'.
 
-Fix the solution code completely so that all test cases pass.
-Return ONLY valid JSON matching:
-{{
-  "code": "complete fixed solution code",
-  "explanation": "concise explanation of the fix"
-}}"""
+Fix the Solution class so ALL test cases pass.
+Return ONLY valid JSON:
+{{"code": "complete fixed Solution class", "explanation": "what was wrong and exactly what you changed"}}"""
+
             try:
                 h_resp = requests.post(
                     "https://api.mistral.ai/v1/chat/completions",
                     headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-                    json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
-                    timeout=30
+                    json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": heal_prompt}], "temperature": 0.15, "response_format": {"type": "json_object"}},
+                    timeout=45
                 )
                 if h_resp.status_code == 200:
                     h_json = json.loads(h_resp.json()["choices"][0]["message"]["content"])
-                    if h_json.get("code"):
-                        healed_code = h_json["code"]
-                        h_pass, h_fi, h_fin, h_fout, h_fexp, _ = test_candidate(healed_code, driver)
-                        if h_pass >= passed_cnt:
+                    healed_code = (h_json.get("code") or "").strip()
+                    explanation = h_json.get("explanation", "")
+
+                    if healed_code:
+                        h_pass, h_fi, h_fin, h_fout, h_fexp, h_err = test_candidate(healed_code, driver)
+
+                        # Record this attempt in history regardless of outcome
+                        heal_history.append({
+                            "attempt": attempt + 1,
+                            "code": healed_code,
+                            "passed": h_pass,
+                            "actual": h_fout,
+                            "expected": h_fexp,
+                            "explanation": explanation
+                        })
+
+                        print(f"[Self-Healing Attempt {attempt + 1}]: {h_pass}/{sample_count} passed. {explanation[:100]}")
+
+                        if h_pass > passed_cnt:
+                            # Always update final_code on any improvement
                             final_code = healed_code
                             passed_cnt = h_pass
                             fail_i = h_fi
                             fail_in = h_fin
                             fail_out = h_fout
                             fail_exp = h_fexp
-                            print(f"[Self-Healing Success]: Passed {h_pass}/{sample_count}")
+                            fail_err = h_err
+
+                            # Save intermediate improvement to R2 immediately so next frontend
+                            # call always starts from the best known code
+                            try:
+                                _prob_snapshot = _PROBLEM_CACHE.get(clean_slug) or problem
+                                if "solutions" not in _prob_snapshot or not isinstance(_prob_snapshot["solutions"], dict):
+                                    _prob_snapshot["solutions"] = {}
+                                _prob_snapshot["solutions"][lang] = final_code
+                                _PROBLEM_CACHE[clean_slug] = _prob_snapshot
+                                r2_storage.save_solution_to_problem(clean_slug, lang, final_code)
+                                print(f"[Self-Healing] Saved intermediate improvement ({h_pass}/{sample_count}) to R2")
+                            except Exception as save_e:
+                                print(f"[Self-Healing] Intermediate R2 save error: {save_e}")
             except Exception as h_err:
-                print(f"[Self-Healing Error]: {h_err}")
-        
-        # If passed >= 80% of testcases, store permanently to Cloudflare R2
+                print(f"[Self-Healing Attempt {attempt + 1} Error]: {h_err}")
+
+        # Store permanently if >= 80% passing
         is_passed = (passed_cnt >= sample_count) or (sample_count > 0 and (passed_cnt / sample_count) >= 0.8)
         if is_passed:
             if "solutions" not in problem or not isinstance(problem["solutions"], dict):
@@ -3356,8 +3450,11 @@ Return ONLY valid JSON matching:
             problem["solutions"][lang] = final_code
             _PROBLEM_CACHE[clean_slug] = problem
             r2_storage.upload_problem(clean_slug, problem)
-            print(f"[Cloudflare R2 Solution Stored]: '{clean_slug}' in '{lang}'")
-        
+            print(f"[Cloudflare R2 Solution Stored]: '{clean_slug}' in '{lang}' ({passed_cnt}/{sample_count} passed)")
+        else:
+            total_attempts = len(heal_history)
+            print(f"[Self-Healing Exhausted]: '{clean_slug}' {lang} — {passed_cnt}/{sample_count} after {total_attempts} attempts. Saved best intermediate to R2.")
+
         return {
             "validationPassed": is_passed,
             "passedCount": passed_cnt,
@@ -3367,7 +3464,9 @@ Return ONLY valid JSON matching:
             "failedCaseIdx": fail_i,
             "failedInput": fail_in,
             "failedOutput": fail_out,
-            "failedExpected": fail_exp
+            "failedExpected": fail_exp,
+            "healAttempts": len(heal_history),
+            "healHistory": [{"attempt": h["attempt"], "passed": h["passed"], "explanation": h.get("explanation", "")[:120]} for h in heal_history]
         }
     except Exception as e:
         print(f"[Validate & Store Solution Error]: {e}")
