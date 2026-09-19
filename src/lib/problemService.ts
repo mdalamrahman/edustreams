@@ -1360,6 +1360,25 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     }
   }
 
+  // Harden Serialize and Deserialize Binary Tree
+  const isSerialize = normProblemName.includes('serializeanddeserialize') || probSlug.includes('serialize-and-deserialize') || probSlug === '297';
+  if (isSerialize) {
+    const standardSerializeCases = [
+      { input: 'root = [1,2,3,null,null,4,5]', output: '[1,2,3,null,null,4,5]' },
+      { input: 'root = []', output: '[]' },
+      { input: 'root = [1]', output: '[1]' },
+      { input: 'root = [1,2,3]', output: '[1,2,3]' },
+      { input: 'root = [1,null,2,null,3]', output: '[1,null,2,null,3]' },
+      { input: 'root = [1,2,null,3,null,4,null]', output: '[1,2,null,3,null,4]' },
+      { input: 'root = [0,-1,1,null,null,2,-2]', output: '[0,-1,1,null,null,2,-2]' },
+      { input: 'root = [5,5,5,5,5,5,5]', output: '[5,5,5,5,5,5,5]' },
+      { input: 'root = [1,2,3,4,5,6,7,8,9,10]', output: '[1,2,3,4,5,6,7,8,9,10]' },
+      { input: 'root = [10,9,null,8,null,7,null,6,null,5]', output: '[10,9,null,8,null,7,null,6,null,5]' }
+    ];
+    problem.testCases = standardSerializeCases.map(c => c.input);
+    problem.expectedOutputs = standardSerializeCases.map(c => c.output);
+  }
+
   // Ensure first example gets an image if problem has images
   if (problem.images && problem.images.length > 0 && problem.examples && problem.examples.length > 0) {
     if (!problem.examples[0].image) {
@@ -4427,6 +4446,344 @@ def main():
 
 if __name__ == '__main__':
     main()`;
+    }
+  }
+
+  // Built-in verified driver for Serialize and Deserialize Binary Tree
+  const normSlug = (slug || '').toLowerCase();
+  const l = (lang || '').toLowerCase();
+  if (normSlug.includes('serialize-and-deserialize') || normSlug.includes('serializeanddeserialize') || normSlug === '297') {
+    if (l === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+};
+
+// === USER SOLUTION ===
+
+static TreeNode* parseInputTree(string s) {
+    auto start = s.find('[');
+    auto end = s.rfind(']');
+    if (start == string::npos || end == string::npos || end <= start) return nullptr;
+    string content = s.substr(start + 1, end - start - 1);
+    while (!content.empty() && isspace(content.front())) content.erase(content.begin());
+    while (!content.empty() && isspace(content.back())) content.pop_back();
+    if (content.empty()) return nullptr;
+
+    vector<string> tokens;
+    stringstream ss(content);
+    string token;
+    while (getline(ss, token, ',')) {
+        while (!token.empty() && isspace(token.front())) token.erase(token.begin());
+        while (!token.empty() && isspace(token.back())) token.pop_back();
+        tokens.push_back(token);
+    }
+    if (tokens.empty() || tokens[0] == "null" || tokens[0].empty()) return nullptr;
+
+    TreeNode* root = new TreeNode(stoi(tokens[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    int i = 1;
+    while (!q.empty() && i < (int)tokens.size()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (i < (int)tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            curr->left = new TreeNode(stoi(tokens[i]));
+            q.push(curr->left);
+        }
+        i++;
+        if (i < (int)tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            curr->right = new TreeNode(stoi(tokens[i]));
+            q.push(curr->right);
+        }
+        i++;
+    }
+    return root;
+}
+
+static string formatTree(TreeNode* root) {
+    if (!root) return "[]";
+    vector<string> vals;
+    queue<TreeNode*> q;
+    q.push(root);
+    while (!q.empty()) {
+        TreeNode* curr = q.front();
+        q.pop();
+        if (curr) {
+            vals.push_back(to_string(curr->val));
+            q.push(curr->left);
+            q.push(curr->right);
+        } else {
+            vals.push_back("null");
+        }
+    }
+    while (!vals.empty() && vals.back() == "null") {
+        vals.pop_back();
+    }
+    string out = "[";
+    for (size_t i = 0; i < vals.size(); ++i) {
+        if (i > 0) out += ",";
+        out += vals[i];
+    }
+    out += "]";
+    return out;
+}
+
+int main() {
+    string line;
+    string full_input = "";
+    while (getline(cin, line)) {
+        full_input += line + "\\n";
+    }
+    if (full_input.empty()) {
+        full_input = R"(%%INPUT%%)";
+    }
+    TreeNode* originalTree = parseInputTree(full_input);
+    Codec ser, deser;
+    string serialized = ser.serialize(originalTree);
+    TreeNode* reconstitutedTree = deser.deserialize(serialized);
+    cout << formatTree(reconstitutedTree) << endl;
+    return 0;
+}`;
+    }
+
+    if (l === 'python') {
+      return `import sys
+import collections
+
+class TreeNode(object):
+    def __init__(self, x):
+        self.val = x
+        self.left = None
+        self.right = None
+
+# === USER SOLUTION ===
+
+def parse_input_tree(s):
+    start = s.find('[')
+    end = s.rfind(']')
+    if start == -1 or end == -1 or end <= start:
+        return None
+    content = s[start+1:end].strip()
+    if not content:
+        return None
+    tokens = [t.strip() for t in content.split(',')]
+    if not tokens or tokens[0] == 'null' or not tokens[0]:
+        return None
+    root = TreeNode(int(tokens[0]))
+    q = collections.deque([root])
+    i = 1
+    while q and i < len(tokens):
+        curr = q.popleft()
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.left = TreeNode(int(tokens[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.right = TreeNode(int(tokens[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def format_tree(root):
+    if not root:
+        return '[]'
+    res = []
+    q = collections.deque([root])
+    while q:
+        curr = q.popleft()
+        if curr:
+            res.append(str(curr.val))
+            q.append(curr.left)
+            q.append(curr.right)
+        else:
+            res.append('null')
+    while res and res[-1] == 'null':
+        res.pop()
+    return '[' + ','.join(res) + ']'
+
+def main():
+    full_input = sys.stdin.read()
+    if not full_input.strip():
+        full_input = """%%INPUT%%"""
+    original_tree = parse_input_tree(full_input)
+    ser = Codec()
+    deser = Codec()
+    serialized = ser.serialize(original_tree)
+    reconstituted = deser.deserialize(serialized)
+    print(format_tree(reconstituted))
+
+if __name__ == '__main__':
+    main()`;
+    }
+
+    if (l === 'javascript') {
+      return `const fs = require('fs');
+
+function TreeNode(val) {
+    this.val = val;
+    this.left = this.right = null;
+}
+
+// === USER SOLUTION ===
+
+function parseInputTree(s) {
+    const start = s.indexOf('[');
+    const end = s.lastIndexOf(']');
+    if (start === -1 || end === -1 || end <= start) return null;
+    const content = s.slice(start + 1, end).trim();
+    if (!content) return null;
+    const tokens = content.split(',').map(t => t.trim());
+    if (!tokens.length || tokens[0] === 'null' || !tokens[0]) return null;
+    const root = new TreeNode(parseInt(tokens[0], 10));
+    const q = [root];
+    let i = 1;
+    while (q.length > 0 && i < tokens.length) {
+        const curr = q.shift();
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i] !== '') {
+            curr.left = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.left);
+        }
+        i++;
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i] !== '') {
+            curr.right = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.right);
+        }
+        i++;
+    }
+    return root;
+}
+
+function formatTree(root) {
+    if (!root) return '[]';
+    const res = [];
+    const q = [root];
+    while (q.length > 0) {
+        const curr = q.shift();
+        if (curr) {
+            res.push(String(curr.val));
+            q.push(curr.left);
+            q.push(curr.right);
+        } else {
+            res.push('null');
+        }
+    }
+    while (res.length > 0 && res[res.length - 1] === 'null') {
+        res.pop();
+    }
+    return '[' + res.join(',') + ']';
+}
+
+function main() {
+    let input = '';
+    try {
+        input = fs.readFileSync(0, 'utf-8');
+    } catch (_) {}
+    if (!input || !input.trim()) {
+        input = \`%%INPUT%%\`;
+    }
+    const originalTree = parseInputTree(input);
+    const serialized = serialize(originalTree);
+    const reconstituted = deserialize(serialized);
+    console.log(formatTree(reconstituted));
+}
+
+main();`;
+    }
+
+    if (l === 'java') {
+      return `import java.util.*;
+import java.io.*;
+
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    TreeNode(int x) { val = x; }
+}
+
+// === USER SOLUTION ===
+
+public class Main {
+    static TreeNode parseInputTree(String s) {
+        int start = s.indexOf('[');
+        int end = s.lastIndexOf(']');
+        if (start == -1 || end == -1 || end <= start) return null;
+        String content = s.substring(start + 1, end).trim();
+        if (content.isEmpty()) return null;
+        String[] tokens = content.split(",");
+        for (int i = 0; i < tokens.length; i++) tokens[i] = tokens[i].trim();
+        if (tokens.length == 0 || tokens[0].equals("null") || tokens[0].isEmpty()) return null;
+        TreeNode root = new TreeNode(Integer.parseInt(tokens[0]));
+        Queue<TreeNode> q = new LinkedList<>();
+        q.add(root);
+        int i = 1;
+        while (!q.isEmpty() && i < tokens.length) {
+            TreeNode curr = q.poll();
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.left = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.left);
+            }
+            i++;
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.right = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.right);
+            }
+            i++;
+        }
+        return root;
+    }
+
+    static String formatTree(TreeNode root) {
+        if (root == null) return "[]";
+        List<String> res = new ArrayList<>();
+        Queue<TreeNode> q = new LinkedList<>();
+        q.add(root);
+        while (!q.isEmpty()) {
+            TreeNode curr = q.poll();
+            if (curr != null) {
+                res.add(String.valueOf(curr.val));
+                q.add(curr.left);
+                q.add(curr.right);
+            } else {
+                res.add("null");
+            }
+        }
+        while (!res.isEmpty() && res.get(res.size() - 1).equals("null")) {
+            res.remove(res.size() - 1);
+        }
+        return "[" + String.join(",", res) + "]";
+    }
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        StringBuilder sb = new StringBuilder();
+        while (sc.hasNextLine()) {
+            sb.append(sc.nextLine()).append("\\n");
+        }
+        String input = sb.toString();
+        if (input.trim().isEmpty()) {
+            input = "%%INPUT%%";
+        }
+        TreeNode originalTree = parseInputTree(input);
+        Codec ser = new Codec();
+        Codec deser = new Codec();
+        String serialized = ser.serialize(originalTree);
+        TreeNode reconstituted = deser.deserialize(serialized);
+        System.out.println(formatTree(reconstituted));
+    }
+}`;
     }
   }
 

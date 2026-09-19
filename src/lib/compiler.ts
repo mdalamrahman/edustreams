@@ -596,6 +596,23 @@ export function isDriverHarnessValid(
       }
     }
 
+    if ((drv.includes('cout') || drv.includes('cin')) && !drv.includes('<iostream>')) {
+      console.warn('[isDriverHarnessValid] Rejecting driver: uses cout/cin without <iostream>.');
+      return false;
+    }
+
+    if ((drv.includes('new TreeNode(1)') || drv.includes('new TreeNode(0)')) &&
+        !drv.includes('parseTree') && !drv.includes('buildTree') && !drv.includes('parse_tree') && !drv.includes('build_tree')) {
+      console.warn('[isDriverHarnessValid] Rejecting driver: contains hardcoded mock tree nodes.');
+      return false;
+    }
+
+    const isCodecProblem = (codeOrStarter && codeOrStarter.includes('class Codec')) || drv.includes('class Codec');
+    if (isCodecProblem && drv.includes('Solution sol;')) {
+      console.warn('[isDriverHarnessValid] Rejecting driver: instantiated Solution instead of Codec.');
+      return false;
+    }
+
     if (!drv.includes('main(') && !drv.includes('main (')) {
       return false;
     }

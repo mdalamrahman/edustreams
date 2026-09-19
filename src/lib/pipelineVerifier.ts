@@ -89,6 +89,12 @@ export function isOutputValidForTestCase(
     }
   }
 
+  if (cleanSlug.includes('serialize-and-deserialize')) {
+    const normActual = stdout.trim().replace(/\s+/g, '');
+    const normExp = String(expectedOutput ?? '').trim().replace(/\s+/g, '');
+    if (normActual === normExp) return true;
+  }
+
   const expStr = String(expectedOutput ?? '').trim();
   if (!expStr) return stdout.trim().length > 0;
   return compareOutputs(stdout, expStr);
@@ -134,8 +140,9 @@ async function resolveReferenceSolution(
         const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) {
           const data = await resp.json();
-          if (data?.solution && typeof data.solution === 'string' && data.solution.trim().length > 20) {
-            return data.solution.trim();
+          const sol = data?.code || data?.solution;
+          if (sol && typeof sol === 'string' && sol.trim().length > 20) {
+            return sol.trim();
           }
         }
       } catch (_) {}
@@ -231,6 +238,25 @@ export async function verifyAndHealPipeline(
   }
 
   let activeExpectedOutputs = [...expectedOutputs];
+
+  // Self-heal corrupted expected outputs for serialize-and-deserialize-binary-tree
+  if (slug.includes('serialize-and-deserialize')) {
+    activeExpectedOutputs = activeExpectedOutputs.map((eo, idx) => {
+      const s = String(eo || '').trim();
+      if (s.includes(' or ') || s.includes('#') || !s.startsWith('[')) {
+        const tc = testCases[idx] || '';
+        const lb = tc.indexOf('[');
+        const rb = tc.lastIndexOf(']');
+        if (lb !== -1 && rb !== -1 && rb > lb) {
+          const rawTree = tc.substring(lb, rb + 1).replace(/\s+/g, '');
+          return rawTree.replace(/(,null)+\]$/, ']');
+        }
+        return '[]';
+      }
+      return eo;
+    });
+  }
+
   let healed = false;
   let healingDiagnosis: string | undefined;
   let defectType: 'solution' | 'driver' | 'testcase' | 'none' = 'none';
