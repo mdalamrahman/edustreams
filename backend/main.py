@@ -2642,6 +2642,65 @@ def execute_judge0_sandbox(code: str, lang: str = "cpp", stdin: str = "") -> dic
     return {"success": False, "stdout": "", "stderr": "Execution failed"}
 
 
+def assemble_driver_execution_code(driver_code: str, solution_code: str, lang: str, sample_tc: str = "") -> str:
+    """
+    Robustly injects user/reference solution into // === USER SOLUTION === placeholder
+    before // === HIDDEN DRIVER === and main().
+    Also injects necessary aliases strictly AFTER solution code and substitutes sample input.
+    """
+    clean_lang = lang.lower().strip()
+    sol = solution_code.strip()
+
+    post_inject = ""
+    if clean_lang in ("cpp", "c++"):
+        if "class Codec" in sol and "class Solution" not in sol:
+            post_inject = "\nusing Solution = Codec;\n"
+        elif "class Solution" in sol and "class Codec" not in sol:
+            post_inject = "\nusing Codec = Solution;\n"
+    elif clean_lang in ("python", "py"):
+        if "class Codec" in sol and "class Solution" not in sol:
+            post_inject = "\nSolution = Codec\n"
+        elif "class Solution" in sol and "class Codec" not in sol:
+            post_inject = "\nCodec = Solution\n"
+
+    full_sol = f"{sol}\n{post_inject}" if post_inject else sol
+
+    exec_code = driver_code
+    if "// === USER SOLUTION ===" in exec_code:
+        if "// === HIDDEN DRIVER ===" in exec_code:
+            exec_code = re.sub(
+                r'//\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=//\s*===\s*HIDDEN DRIVER\s*===)',
+                f'// === USER SOLUTION ===\n{full_sol}\n\n',
+                exec_code
+            )
+        else:
+            exec_code = exec_code.replace("// === USER SOLUTION ===", f'// === USER SOLUTION ===\n{full_sol}\n')
+    elif "# === USER SOLUTION ===" in exec_code:
+        if "# === HIDDEN DRIVER ===" in exec_code:
+            exec_code = re.sub(
+                r'#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)',
+                f'# === USER SOLUTION ===\n{full_sol}\n\n',
+                exec_code
+            )
+        else:
+            exec_code = exec_code.replace("# === USER SOLUTION ===", f'# === USER SOLUTION ===\n{full_sol}\n')
+    else:
+        if "int main(" in exec_code:
+            exec_code = re.sub(r'(int\s+main\s*\()', f'{full_sol}\n\n\\1', exec_code)
+        else:
+            exec_code = f'{full_sol}\n\n{exec_code}'
+
+    if sample_tc:
+        exec_code = exec_code.replace("%%INPUT%%", str(sample_tc)).replace("INPUT_PLACEHOLDER", str(sample_tc))
+        if clean_lang in ("cpp", "c++"):
+            exec_code = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({sample_tc})RAW";', exec_code, flags=re.DOTALL | re.IGNORECASE)
+            exec_code = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({sample_tc})RAW";', exec_code, flags=re.IGNORECASE)
+        elif clean_lang in ("python", "py"):
+            exec_code = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{sample_tc}"""', exec_code, flags=re.DOTALL | re.IGNORECASE)
+
+    return exec_code
+
+
 def generate_ai_driver_for_problem(clean_slug: str, lang: str, problem_data: dict) -> Optional[str]:
     """
     Generates and self-validates an authentic execution harness using Mistral Large + Judge0.
@@ -2721,13 +2780,7 @@ Return ONLY a valid JSON object matching:
             if driver_code and len(driver_code) > 50:
                 # Stage 3: Validate driver + reference solution with Judge0 (up to 3 repair attempts)
                 if solution_code and ("// === USER SOLUTION ===" in driver_code or "# === USER SOLUTION ===" in driver_code):
-                    test_exec = driver_code.replace("// === USER SOLUTION ===", solution_code) if "// === USER SOLUTION ===" in driver_code else driver_code.replace("# === USER SOLUTION ===", solution_code)
-                    test_exec = test_exec.replace("%%INPUT%%", str(sample_tc)).replace("INPUT_PLACEHOLDER", str(sample_tc))
-                    if clean_lang == "cpp":
-                        test_exec = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({sample_tc})RAW";', test_exec, flags=re.DOTALL | re.IGNORECASE)
-                        test_exec = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({sample_tc})RAW";', test_exec, flags=re.IGNORECASE)
-                    elif clean_lang == "python":
-                        test_exec = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{sample_tc}"""', test_exec, flags=re.DOTALL | re.IGNORECASE)
+                    test_exec = assemble_driver_execution_code(driver_code, solution_code, clean_lang, sample_tc)
                     res = execute_judge0_sandbox(test_exec, clean_lang, stdin=str(sample_tc))
                     actual_out = (res.get("stdout") or "").strip().replace(" ", "").lower()
                     expected_out = str(sample_eo).strip().replace(" ", "").lower()
@@ -2776,13 +2829,7 @@ Return ONLY valid JSON:
                                     new_driver = h_data.get("driver", "")
                                     new_solution = h_data.get("solution", "") or solution_code
                                     if new_driver and len(new_driver) > 50 and ("// === USER SOLUTION ===" in new_driver or "# === USER SOLUTION ===" in new_driver):
-                                        re_exec = new_driver.replace("// === USER SOLUTION ===", new_solution) if "// === USER SOLUTION ===" in new_driver else new_driver.replace("# === USER SOLUTION ===", new_solution)
-                                        re_exec = re_exec.replace("%%INPUT%%", str(sample_tc)).replace("INPUT_PLACEHOLDER", str(sample_tc))
-                                        if clean_lang == "cpp":
-                                            re_exec = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({sample_tc})RAW";', re_exec, flags=re.DOTALL | re.IGNORECASE)
-                                            re_exec = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({sample_tc})RAW";', re_exec, flags=re.IGNORECASE)
-                                        elif clean_lang == "python":
-                                            re_exec = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{sample_tc}"""', re_exec, flags=re.DOTALL | re.IGNORECASE)
+                                        re_exec = assemble_driver_execution_code(new_driver, new_solution, clean_lang, sample_tc)
                                         re_res = execute_judge0_sandbox(re_exec, clean_lang, stdin=str(sample_tc))
                                         re_out = (re_res.get("stdout") or "").strip().replace(" ", "").lower()
                                         re_err = re_res.get("stderr", "")

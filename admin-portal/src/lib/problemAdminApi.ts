@@ -277,3 +277,114 @@ export async function expandTestcasesAI(slug: string): Promise<{ success: boolea
   }
   return { success: false };
 }
+
+/**
+ * Assembles user solution with driver code harness:
+ * 1. Strictly injects user solution into // === USER SOLUTION === before // === HIDDEN DRIVER === and main()
+ * 2. Emits typedef / alias compatibility (e.g. using Solution = Codec) strictly AFTER user solution
+ * 3. Substitutes %%INPUT%%, INPUT_PLACEHOLDER, and raw_input literals with testcase input
+ */
+export function assembleCodeWithDriver(
+  driverCode: string,
+  userSolution: string,
+  language: string,
+  testInput: string = ''
+): string {
+  const normLang = (language || 'cpp').toLowerCase();
+  const rawInput = (testInput || '').trim();
+
+  // If no driver harness is provided or placeholder not found, return userSolution
+  if (!driverCode || driverCode.includes('not found in R2')) {
+    return userSolution;
+  }
+
+  let code = driverCode;
+
+  // 1. Locate User Solution Insertion Point
+  const markerRegex = /(?:\/\/|#|\/\*)\s*===\s*USER SOLUTION\s*===(?:\*\/)?/i;
+  const endMarkerRegex = /(?:\/\/|#|\/\*)\s*===\s*END USER SOLUTION\s*===(?:\*\/)?/i;
+  const hiddenDriverRegex = /(?:\/\/|#|\/\*)\s*===\s*HIDDEN DRIVER\s*===(?:\*\/)?/i;
+
+  const solClean = (userSolution || '').trim();
+
+  // Prepare struct and alias injection if missing
+  let preInject = '';
+  let postInject = '';
+
+  if (normLang.includes('cpp') || normLang.includes('c++')) {
+    const userSolPos = code.search(markerRegex);
+    const header = userSolPos !== -1 ? code.substring(0, userSolPos) : '';
+
+    if (solClean.includes('TreeNode') && !header.includes('struct TreeNode')) {
+      preInject += `\nstruct TreeNode { int val; TreeNode *left; TreeNode *right; TreeNode(int x) : val(x), left(NULL), right(NULL) {} };\n`;
+    }
+    if (solClean.includes('ListNode') && !header.includes('struct ListNode')) {
+      preInject += `\nstruct ListNode { int val; ListNode *next; ListNode(int x) : val(x), next(NULL) {} };\n`;
+    }
+    // Post-inject aliases so they refer to the already declared class
+    if (solClean.includes('class Codec') && !solClean.includes('class Solution')) {
+      postInject += `\nusing Solution = Codec;\n`;
+    } else if (solClean.includes('class Solution') && !solClean.includes('class Codec')) {
+      postInject += `\nusing Codec = Solution;\n`;
+    }
+  } else if (normLang.includes('python') || normLang.includes('py')) {
+    if (solClean.includes('class Codec') && !solClean.includes('class Solution')) {
+      postInject += `\nSolution = Codec\n`;
+    } else if (solClean.includes('class Solution') && !solClean.includes('class Codec')) {
+      postInject += `\nCodec = Solution\n`;
+    }
+  }
+
+  const solutionBlock = `${preInject}${solClean}${postInject ? '\n' + postInject : ''}`;
+
+  if (markerRegex.test(code)) {
+    if (endMarkerRegex.test(code)) {
+      code = code.replace(
+        new RegExp(`${markerRegex.source}[\\s\\S]*?${endMarkerRegex.source}`),
+        `// === USER SOLUTION ===\n${solutionBlock}\n// === END USER SOLUTION ===`
+      );
+    } else if (hiddenDriverRegex.test(code)) {
+      code = code.replace(
+        new RegExp(`${markerRegex.source}[\\s\\S]*?(?=${hiddenDriverRegex.source})`),
+        `// === USER SOLUTION ===\n${solutionBlock}\n\n`
+      );
+    } else {
+      code = code.replace(markerRegex, `// === USER SOLUTION ===\n${solutionBlock}\n`);
+    }
+  } else {
+    if (code.includes('int main(') || code.includes('int main (')) {
+      code = code.replace(/(int\s+main\s*\()/, `${solutionBlock}\n\n$1`);
+    } else if (code.includes('if __name__ == "__main__":') || code.includes("if __name__ == '__main__':")) {
+      code = `${solutionBlock}\n\n${code}`;
+    } else {
+      code = `${code}\n\n${solutionBlock}`;
+    }
+  }
+
+  // 2. Universal Input Placement
+  if (rawInput) {
+    if (code.includes('%%INPUT%%')) {
+      code = code.split('%%INPUT%%').join(rawInput);
+    }
+    if (code.includes('INPUT_PLACEHOLDER')) {
+      code = code.split('INPUT_PLACEHOLDER').join(rawInput);
+    }
+
+    if (normLang.includes('cpp') || normLang.includes('c++')) {
+      if (code.includes('R"RAW(')) {
+        code = code.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${rawInput})RAW"`);
+      } else if (code.includes('R"(')) {
+        code = code.replace(/R"\((.*?)\)"/s, `R"(${rawInput})"`);
+      }
+      code = code.replace(
+        /(?:string\s+)?(raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|R"\(.*?\)"|"[^"]*");/gi,
+        `string $1 = R"RAW(${rawInput})RAW";`
+      );
+    } else if (normLang.includes('python') || normLang.includes('py')) {
+      code = code.replace(/raw_?input\s*=\s*""".*?"""/s, `raw_input = """${rawInput}"""`);
+      code = code.replace(/raw_?input\s*=\s*'''.*?'''/s, `raw_input = '''${rawInput}'''`);
+    }
+  }
+
+  return code;
+}

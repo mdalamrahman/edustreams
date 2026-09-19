@@ -779,6 +779,7 @@ export function wrapLeetCodeExecutableCode(
       if (replaced.includes('// === USER SOLUTION ===')) {
         // Double safety: ensure any needed structs are declared before user solution
         let structInject = '';
+        let postInject = '';
         if (language === 'cpp' || (language as any) === 'c++') {
           const userSolPos = replaced.indexOf('// === USER SOLUTION ===');
           const header = userSolPos !== -1 ? replaced.substring(0, userSolPos) : '';
@@ -788,37 +789,41 @@ export function wrapLeetCodeExecutableCode(
           if (userCode.includes('ListNode') && !header.includes('struct ListNode')) {
             structInject += `\nstruct ListNode { int val; ListNode *next; ListNode() : val(0), next(nullptr) {} ListNode(int x) : val(x), next(nullptr) {} ListNode(int x, ListNode *next) : val(x), next(next) {} };\n`;
           }
+          // Note: using Solution = Codec must be placed AFTER userCode where Codec is defined
           if (userCode.includes('class Codec') && !userCode.includes('class Solution')) {
-            structInject += `\nusing Solution = Codec;\n`;
+            postInject += `\nusing Solution = Codec;\n`;
           } else if (userCode.includes('class Solution') && !userCode.includes('class Codec')) {
-            structInject += `\nusing Codec = Solution;\n`;
+            postInject += `\nusing Codec = Solution;\n`;
           }
         }
 
+        const userBlock = `${structInject}${userCode}${postInject ? '\n' + postInject : ''}`;
+
         const endMarkerRegex = /(?:\/\/|\/\*)\s*===\s*END USER SOLUTION\s*===(?:\*\/)?/;
         if (endMarkerRegex.test(replaced)) {
-          replaced = replaced.replace(new RegExp(`//\\s*===\\s*USER SOLUTION\\s*===[\\s\\S]*?${endMarkerRegex.source}`), `// === USER SOLUTION ===\n${structInject}${userCode}\n// === END USER SOLUTION ===`);
+          replaced = replaced.replace(new RegExp(`//\\s*===\\s*USER SOLUTION\\s*===[\\s\\S]*?${endMarkerRegex.source}`), `// === USER SOLUTION ===\n${userBlock}\n// === END USER SOLUTION ===`);
         } else if (replaced.includes('// === HIDDEN DRIVER ===')) {
-          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${structInject}${userCode}\n\n`);
+          replaced = replaced.replace(/\/\/\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=\/\/\s*===\s*HIDDEN DRIVER\s*===)/, `// === USER SOLUTION ===\n${userBlock}\n\n`);
         } else {
           // Non-destructive replacement: replace only the comment itself, NEVER wipe out following helpers or structs!
-          replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${structInject}${userCode}\n`);
+          replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userBlock}\n`);
         }
       } else if (replaced.includes('# === USER SOLUTION ===')) {
-        let structInject = '';
+        let postInject = '';
         if (language === 'python' || (language as any) === 'py') {
           if (userCode.includes('class Codec') && !userCode.includes('class Solution')) {
-            structInject += `\nSolution = Codec\n`;
+            postInject += `\nSolution = Codec\n`;
           } else if (userCode.includes('class Solution') && !userCode.includes('class Codec')) {
-            structInject += `\nCodec = Solution\n`;
+            postInject += `\nCodec = Solution\n`;
           }
         }
+        const userBlock = `${userCode}${postInject ? '\n' + postInject : ''}`;
         if (replaced.includes('# === END USER SOLUTION ===')) {
-          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${structInject}${userCode}\n# === END USER SOLUTION ===`);
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userBlock}\n# === END USER SOLUTION ===`);
         } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
-          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${structInject}${userCode}\n\n`);
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userBlock}\n\n`);
         } else {
-          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${structInject}${userCode}\n`);
+          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userBlock}\n`);
         }
       }
 

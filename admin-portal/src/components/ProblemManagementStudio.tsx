@@ -48,6 +48,7 @@ import {
   executeCompile,
   validateBackendPipeline,
   expandTestcasesAI,
+  assembleCodeWithDriver,
   ProblemSpec
 } from '../lib/problemAdminApi';
 
@@ -402,23 +403,6 @@ export const ProblemManagementStudio: React.FC = () => {
       return;
     }
 
-    // Determine code to execute:
-    // If driverCode contains a main function or harness, combine solution + driver
-    let fullExecutionCode = solutionCode;
-    if (driverCode && !driverCode.includes('not found in R2')) {
-      if (selectedSolutionLang === 'cpp') {
-        fullExecutionCode = `${driverCode}\n\n// Student/Reference Implementation\n${solutionCode}`;
-      } else if (selectedSolutionLang === 'python') {
-        fullExecutionCode = `from typing import List, Optional, Dict, Any, Tuple\nimport sys\nimport math\nimport collections\nimport heapq\n\n${solutionCode}\n\n# Execution Driver Harness\n${driverCode}`;
-      } else if (selectedSolutionLang === 'java') {
-        fullExecutionCode = `${solutionCode}\n\n${driverCode}`;
-      } else if (selectedSolutionLang === 'javascript') {
-        fullExecutionCode = `${solutionCode}\n\n// Driver Harness\n${driverCode}`;
-      } else {
-        fullExecutionCode = `${solutionCode}\n\n${driverCode}`;
-      }
-    }
-
     const results: TestRunResult[] = [];
 
     for (let i = 0; i < validTestCases.length; i++) {
@@ -428,6 +412,15 @@ export const ProblemManagementStudio: React.FC = () => {
         total: validTestCases.length,
         message: `Executing Case ${i + 1} of ${validTestCases.length} via Compiler API...`
       });
+
+      // Properly assemble driver harness with user solution injected into // === USER SOLUTION ===
+      // and testcase input substituted into %%INPUT%% or raw_input
+      const fullExecutionCode = assembleCodeWithDriver(
+        driverCode,
+        solutionCode,
+        selectedSolutionLang,
+        tc.input
+      );
 
       const compileRes = await executeCompile(fullExecutionCode, selectedSolutionLang, tc.input);
 
