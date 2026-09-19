@@ -2984,11 +2984,6 @@ async def get_stored_solution(slug: str, lang: str):
 
 _POTD_CACHE = {}
 
-try:
-    from backend import r2_storage
-except ImportError:
-    import r2_storage
-
 @app.get("/api/potd/sdetube")
 async def get_sdetube_potd(date: Optional[str] = None):
     """
