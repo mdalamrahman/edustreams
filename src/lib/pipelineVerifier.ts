@@ -267,6 +267,16 @@ export async function verifyAndHealPipeline(
   const MAX_HEALING_ATTEMPTS = 3;
   let lastTestResults: PipelineTestCaseResult[] = [];
   let attemptsUsed = 0;
+  const healingHistory: Array<{
+    attempt: number;
+    passed: number;
+    total: number;
+    failedInput?: string;
+    expectedOutput?: string;
+    actualOutput?: string;
+    error?: string;
+    diagnosis?: string;
+  }> = [];
 
   // Run execution loop: initial test + up to MAX_HEALING_ATTEMPTS if failures occur
   for (let attempt = 1; attempt <= MAX_HEALING_ATTEMPTS + 1; attempt++) {
@@ -348,17 +358,38 @@ export async function verifyAndHealPipeline(
       break;
     }
 
+    // Record failure in healing history for context in next attempts
+    const failedCases = caseResults.filter(c => !c.passed);
+    const firstFailure = failedCases[0] || {} as any;
+    healingHistory.push({
+      attempt,
+      passed: caseResults.length - failedCases.length,
+      total: totalCases,
+      failedInput: firstFailure.input,
+      expectedOutput: firstFailure.expectedOutput,
+      actualOutput: firstFailure.actualOutput,
+      error: firstFailure.error,
+      diagnosis: healingDiagnosis
+    });
+
     // If we have not exhausted our healing attempts, trigger AI self-healing!
     if (attempt <= MAX_HEALING_ATTEMPTS) {
       onProgress?.({
         stage: 'ai_healing',
         attempt,
         maxAttempts: MAX_HEALING_ATTEMPTS,
-        message: `Discrepancy detected. AI diagnosing defect & self-healing pipeline (Attempt ${attempt}/${MAX_HEALING_ATTEMPTS})...`
+        message: `Discrepancy detected (${caseResults.length - failedCases.length}/${totalCases} passed). AI diagnosing defect & self-healing pipeline (Attempt ${attempt}/${MAX_HEALING_ATTEMPTS})...`
       });
 
-      const failedCases = caseResults.filter(c => !c.passed);
-      const firstFailure = failedCases[0];
+      const historySection = healingHistory.length > 0
+        ? `\nHISTORY OF PREVIOUS FAILED ATTEMPTS (DO NOT REPEAT THESE MISTAKES):
+${healingHistory.map(h => `--- Attempt ${h.attempt} (${h.passed}/${h.total} passed) ---
+Input: ${h.failedInput}
+Expected: ${h.expectedOutput}
+Actual Output: ${h.actualOutput || '<empty>'}
+Error: ${h.error || 'None'}
+Prior Attempt Diagnosis: ${h.diagnosis || 'None'}`).join('\n')}\n`
+        : '';
 
       const healingPrompt = `You are a Principal Test Platform & Compiler Architect for an enterprise LeetCode platform.
 A pipeline verification test failed for problem "${problemTitle}" (${slug}) in ${language.toUpperCase()}.
@@ -396,10 +427,10 @@ ${firstFailure.error || 'None'}
 
 All Failed Cases:
 ${failedCases.map(f => `Case ${f.index + 1}: Input: ${f.input.substring(0, 100)} | Expected: ${f.expectedOutput} | Actual: ${f.actualOutput.substring(0, 100)} | Err: ${f.error || 'None'}`).join('\n')}
-
+${historySection}
 DIAGNOSIS & HEALING INSTRUCTIONS:
 1. Determine the root cause of the testcase failure:
-   - "solution": The algorithm in the Solution class has a bug (e.g. edge cases, off-by-one, type overflow, wrong return format).
+   - "solution": The algorithm in the Solution/Codec class has a bug (e.g. edge cases, off-by-one, type overflow, wrong return format).
    - "driver": The driver harness failed to deserialize inputs (e.g. tree/graph/matrix formatting) or serialize the output correctly.
    - "testcase": The testcase expected output itself is hallucinated, outdated, or logically incorrect for the problem statement.
 2. Provide the corrected code to make ALL test cases pass.
@@ -408,7 +439,7 @@ DIAGNOSIS & HEALING INSTRUCTIONS:
   "defectType": "solution" | "driver" | "testcase",
   "diagnosis": "1-3 sentences explaining exactly what went wrong and how it was healed",
   "repairedSolutionCode": "Complete replacement Solution class/code (if solution had the defect)",
-  "repairedDriverCode": "Complete replacement driver harness code with // === USER SOLUTION === (if driver had the defect)",
+  "repairedDriverCode": "Complete replacement driver harness code with // === USER SOLUTION === or # === USER SOLUTION === (if driver had the defect)",
   "repairedExpectedOutputs": ["corrected_expected_1", "corrected_expected_2"] // Only if testcase expected output was provably wrong
 }`;
 
@@ -434,7 +465,7 @@ DIAGNOSIS & HEALING INSTRUCTIONS:
 
             if (parsed.repairedDriverCode && typeof parsed.repairedDriverCode === 'string') {
               const cleanDrv = parsed.repairedDriverCode.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
-              if (cleanDrv.includes('// === USER SOLUTION ===')) {
+              if (cleanDrv.includes('// === USER SOLUTION ===') || cleanDrv.includes('# === USER SOLUTION ===')) {
                 currentDriver = cleanDrv;
                 driverRepaired = true;
               }

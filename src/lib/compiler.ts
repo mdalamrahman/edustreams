@@ -788,6 +788,11 @@ export function wrapLeetCodeExecutableCode(
           if (userCode.includes('ListNode') && !header.includes('struct ListNode')) {
             structInject += `\nstruct ListNode { int val; ListNode *next; ListNode() : val(0), next(nullptr) {} ListNode(int x) : val(x), next(nullptr) {} ListNode(int x, ListNode *next) : val(x), next(next) {} };\n`;
           }
+          if (userCode.includes('class Codec') && !userCode.includes('class Solution')) {
+            structInject += `\nusing Solution = Codec;\n`;
+          } else if (userCode.includes('class Solution') && !userCode.includes('class Codec')) {
+            structInject += `\nusing Codec = Solution;\n`;
+          }
         }
 
         const endMarkerRegex = /(?:\/\/|\/\*)\s*===\s*END USER SOLUTION\s*===(?:\*\/)?/;
@@ -800,21 +805,53 @@ export function wrapLeetCodeExecutableCode(
           replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${structInject}${userCode}\n`);
         }
       } else if (replaced.includes('# === USER SOLUTION ===')) {
+        let structInject = '';
+        if (language === 'python' || (language as any) === 'py') {
+          if (userCode.includes('class Codec') && !userCode.includes('class Solution')) {
+            structInject += `\nSolution = Codec\n`;
+          } else if (userCode.includes('class Solution') && !userCode.includes('class Codec')) {
+            structInject += `\nCodec = Solution\n`;
+          }
+        }
         if (replaced.includes('# === END USER SOLUTION ===')) {
-          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${userCode}\n# === END USER SOLUTION ===`);
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?#\s*===\s*END USER SOLUTION\s*===/, `# === USER SOLUTION ===\n${structInject}${userCode}\n# === END USER SOLUTION ===`);
         } else if (replaced.includes('# === HIDDEN DRIVER ===')) {
-          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${userCode}\n\n`);
+          replaced = replaced.replace(/#\s*===\s*USER SOLUTION\s*===[\s\S]*?(?=#\s*===\s*HIDDEN DRIVER\s*===)/, `# === USER SOLUTION ===\n${structInject}${userCode}\n\n`);
         } else {
-          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${userCode}\n`);
+          replaced = replaced.replace('# === USER SOLUTION ===', `# === USER SOLUTION ===\n${structInject}${userCode}\n`);
         }
       }
 
-      if (replaced.includes('R"RAW(')) {
-        replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${effectiveInput})RAW"`);
-      } else if (replaced.includes('raw_input = """')) {
-        replaced = replaced.replace(/raw_input = """.*?"""/s, `raw_input = """${effectiveInput}"""`);
-      } else if (replaced.includes('const rawInput = `')) {
-        replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${effectiveInput}\`;`);
+      // Universal Input Placeholder Replacement
+      if (replaced.includes('%%INPUT%%')) {
+        replaced = replaced.split('%%INPUT%%').join(effectiveInput);
+      }
+      if (replaced.includes('INPUT_PLACEHOLDER')) {
+        replaced = replaced.split('INPUT_PLACEHOLDER').join(effectiveInput);
+      }
+
+      // Language-specific raw string literal substitutions
+      if (language === 'cpp' || (language as any) === 'c++') {
+        if (replaced.includes('R"RAW(')) {
+          replaced = replaced.replace(/R"RAW\(.*?\)RAW"/s, `R"RAW(${effectiveInput})RAW"`);
+        } else if (replaced.includes('R"(')) {
+          replaced = replaced.replace(/R"\((.*?)\)"/s, `R"(${effectiveInput})"`);
+        }
+        replaced = replaced.replace(/(?:string\s+)?(raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|R"\(.*?\)"|"[^"]*");/gi, `string $1 = R"RAW(${effectiveInput})RAW";`);
+      } else if (language === 'python' || (language as any) === 'py') {
+        if (replaced.includes('raw_input = """')) {
+          replaced = replaced.replace(/raw_input\s*=\s*""".*?"""/s, `raw_input = """${effectiveInput}"""`);
+        } else {
+          replaced = replaced.replace(/(?:raw_?input|rawInput|full_?input)\s*=\s*(?:""".*?"""|'''.*?'''|".*?"|'.*?')/s, `raw_input = """${effectiveInput}"""`);
+        }
+      } else if (language === 'javascript' || (language as any) === 'js') {
+        if (replaced.includes('const rawInput = `')) {
+          replaced = replaced.replace(/const rawInput = `.*?`;/s, `const rawInput = \`${effectiveInput.replace(/`/g, '\\`')}\`;`);
+        } else {
+          replaced = replaced.replace(/(?:const|let|var)\s+(?:raw_?input|rawInput|full_?input|input)\s*=\s*(?:`.*?`|"[^"]*"|'[^']*');/s, `const rawInput = \`${effectiveInput.replace(/`/g, '\\`')}\`;`);
+        }
+      } else if (language === 'java') {
+        replaced = replaced.replace(/(?:String\s+)?(?:raw_?input|rawInput|full_?input|input)\s*=\s*(?:""".*?"""|"[^"]*");/s, `String rawInput = "${effectiveInput.replace(/"/g, '\\"')}";`);
       }
 
       if (language === 'cpp' || (language as any) === 'c++') {
@@ -1839,6 +1876,11 @@ export async function executeCode(
       source_code: encodedCode,
       language_id: langId
     };
+    if (testInput && testInput.trim()) {
+      try {
+        j0Payload.stdin = btoa(unescape(encodeURIComponent(testInput.trim())));
+      } catch (_) {}
+    }
     if (langId === 54 || normLang === 'cpp' || (normLang as any) === 'c++') {
       j0Payload.compiler_options = "-std=c++17 -O2";
     }

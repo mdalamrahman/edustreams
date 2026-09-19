@@ -2605,12 +2605,14 @@ async def get_problem_testcases_txt(slug: str):
     return PlainTextResponse("\n".join(txt_lines))
 
 
-def execute_judge0_sandbox(code: str, lang: str = "cpp") -> dict:
+def execute_judge0_sandbox(code: str, lang: str = "cpp", stdin: str = "") -> dict:
     """Executes code using Judge0 sandbox compiler to verify stdout matches expected output."""
     lang_id = {"cpp": 54, "c++": 54, "python": 71, "py": 71, "javascript": 63, "js": 63, "java": 62}.get(lang.lower(), 54)
     encoded = base64.b64encode(code.encode('utf-8')).decode('utf-8')
     try:
         payload = {"source_code": encoded, "language_id": lang_id}
+        if stdin:
+            payload["stdin"] = base64.b64encode(str(stdin).encode('utf-8')).decode('utf-8')
         if lang_id in (54, 76, 105):
             payload["compiler_options"] = "-std=c++17 -O2"
 
@@ -2718,9 +2720,15 @@ Return ONLY a valid JSON object matching:
 
             if driver_code and len(driver_code) > 50:
                 # Stage 3: Validate driver + reference solution with Judge0 (up to 3 repair attempts)
-                if solution_code and "// === USER SOLUTION ===" in driver_code:
-                    test_exec = driver_code.replace("// === USER SOLUTION ===", solution_code)
-                    res = execute_judge0_sandbox(test_exec, clean_lang)
+                if solution_code and ("// === USER SOLUTION ===" in driver_code or "# === USER SOLUTION ===" in driver_code):
+                    test_exec = driver_code.replace("// === USER SOLUTION ===", solution_code) if "// === USER SOLUTION ===" in driver_code else driver_code.replace("# === USER SOLUTION ===", solution_code)
+                    test_exec = test_exec.replace("%%INPUT%%", str(sample_tc)).replace("INPUT_PLACEHOLDER", str(sample_tc))
+                    if clean_lang == "cpp":
+                        test_exec = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({sample_tc})RAW";', test_exec, flags=re.DOTALL | re.IGNORECASE)
+                        test_exec = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({sample_tc})RAW";', test_exec, flags=re.IGNORECASE)
+                    elif clean_lang == "python":
+                        test_exec = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{sample_tc}"""', test_exec, flags=re.DOTALL | re.IGNORECASE)
+                    res = execute_judge0_sandbox(test_exec, clean_lang, stdin=str(sample_tc))
                     actual_out = (res.get("stdout") or "").strip().replace(" ", "").lower()
                     expected_out = str(sample_eo).strip().replace(" ", "").lower()
 
@@ -2767,9 +2775,15 @@ Return ONLY valid JSON:
                                     h_data = json.loads(h_resp.json()["choices"][0]["message"]["content"])
                                     new_driver = h_data.get("driver", "")
                                     new_solution = h_data.get("solution", "") or solution_code
-                                    if new_driver and len(new_driver) > 50 and "// === USER SOLUTION ===" in new_driver:
-                                        re_exec = new_driver.replace("// === USER SOLUTION ===", new_solution)
-                                        re_res = execute_judge0_sandbox(re_exec, clean_lang)
+                                    if new_driver and len(new_driver) > 50 and ("// === USER SOLUTION ===" in new_driver or "# === USER SOLUTION ===" in new_driver):
+                                        re_exec = new_driver.replace("// === USER SOLUTION ===", new_solution) if "// === USER SOLUTION ===" in new_driver else new_driver.replace("# === USER SOLUTION ===", new_solution)
+                                        re_exec = re_exec.replace("%%INPUT%%", str(sample_tc)).replace("INPUT_PLACEHOLDER", str(sample_tc))
+                                        if clean_lang == "cpp":
+                                            re_exec = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({sample_tc})RAW";', re_exec, flags=re.DOTALL | re.IGNORECASE)
+                                            re_exec = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({sample_tc})RAW";', re_exec, flags=re.IGNORECASE)
+                                        elif clean_lang == "python":
+                                            re_exec = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{sample_tc}"""', re_exec, flags=re.DOTALL | re.IGNORECASE)
+                                        re_res = execute_judge0_sandbox(re_exec, clean_lang, stdin=str(sample_tc))
                                         re_out = (re_res.get("stdout") or "").strip().replace(" ", "").lower()
                                         re_err = re_res.get("stderr", "")
                                         if re_res.get("success") and re_out == expected_out:
@@ -3303,19 +3317,23 @@ async def validate_and_store_solution_endpoint(slug: str, req: Request):
                 else:
                     exec_code = cand_code
                 
-                # Replace raw_input string literal
+                # Replace input placeholders robustly
+                exec_code = exec_code.replace("%%INPUT%%", str(tc)).replace("INPUT_PLACEHOLDER", str(tc))
                 if lang == "cpp":
-                    exec_code = re.sub(r'raw_input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({tc})RAW";', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_?input\s*=\s*R"RAW\(.*?\)RAW";', f'raw_input = R"RAW({tc})RAW";', exec_code, flags=re.DOTALL | re.IGNORECASE)
+                    exec_code = re.sub(r'string\s+(?:raw_?input|rawInput|full_?input)\s*=\s*(?:R"RAW\(.*?\)RAW"|"[^"]*");', f'string rawInput = R"RAW({tc})RAW";', exec_code, flags=re.IGNORECASE)
                 elif lang == "python":
-                    exec_code = re.sub(r'raw_input\s*=\s*""".*?"""', f'raw_input = """{tc}"""', exec_code, flags=re.DOTALL)
-                    exec_code = re.sub(r'raw_input\s*=\s*r""".*?"""', f'raw_input = r"""{tc}"""', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_?input\s*=\s*""".*?"""', f'raw_input = """{tc}"""', exec_code, flags=re.DOTALL | re.IGNORECASE)
+                    exec_code = re.sub(r'raw_?input\s*=\s*r""".*?"""', f'raw_input = r"""{tc}"""', exec_code, flags=re.DOTALL | re.IGNORECASE)
+                    exec_code = re.sub(r'(?:raw_?input|rawInput|full_?input)\s*=\s*"[^"]*"', f'raw_input = """{tc}"""', exec_code, flags=re.IGNORECASE)
                 elif lang == "javascript":
-                    exec_code = re.sub(r'raw_input\s*=\s*`.*?`;', f'raw_input = `{tc}`;', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_?input\s*=\s*`.*?`;', f'raw_input = `{tc}`;', exec_code, flags=re.DOTALL | re.IGNORECASE)
+                    exec_code = re.sub(r'(?:const|let|var)\s+(?:raw_?input|rawInput|full_?input|input)\s*=\s*(?:`.*?`|"[^"]*");', f'const rawInput = `{tc}`;', exec_code, flags=re.DOTALL | re.IGNORECASE)
                 elif lang == "java":
-                    exec_code = re.sub(r'raw_input\s*=\s*".*?";', f'raw_input = "{tc}";', exec_code, flags=re.DOTALL)
-                    exec_code = re.sub(r'raw_input\s*=\s*""".*?""";', f'raw_input = """{tc}""";', exec_code, flags=re.DOTALL)
+                    exec_code = re.sub(r'raw_?input\s*=\s*".*?";', f'raw_input = "{tc}";', exec_code, flags=re.DOTALL | re.IGNORECASE)
+                    exec_code = re.sub(r'raw_?input\s*=\s*""".*?""";', f'raw_input = """{tc}""";', exec_code, flags=re.DOTALL | re.IGNORECASE)
                 
-                res = execute_judge0_sandbox(exec_code, lang)
+                res = execute_judge0_sandbox(exec_code, lang, stdin=str(tc))
                 stdout = (res.get("stdout") or "").strip().replace(" ", "").lower()
                 clean_eo = str(eo).strip().replace(" ", "").lower()
                 

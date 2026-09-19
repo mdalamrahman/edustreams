@@ -4541,19 +4541,14 @@ static string formatTree(TreeNode* root) {
 }
 
 int main() {
-    string line;
-    string full_input = "";
-    while (getline(cin, line)) {
-        full_input += line + "\\n";
-    }
-    if (full_input.empty()) {
-        full_input = R"(%%INPUT%%)";
-    }
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    string full_input = R"RAW(%%INPUT%%)RAW";
     TreeNode* originalTree = parseInputTree(full_input);
     Codec ser, deser;
     string serialized = ser.serialize(originalTree);
     TreeNode* reconstitutedTree = deser.deserialize(serialized);
-    cout << formatTree(reconstitutedTree) << endl;
+    cout << formatTree(reconstitutedTree) << "\n";
     return 0;
 }`;
     }
@@ -4614,9 +4609,7 @@ def format_tree(root):
     return '[' + ','.join(res) + ']'
 
 def main():
-    full_input = sys.stdin.read()
-    if not full_input.strip():
-        full_input = """%%INPUT%%"""
+    full_input = """%%INPUT%%"""
     original_tree = parse_input_tree(full_input)
     ser = Codec()
     deser = Codec()
@@ -4629,9 +4622,7 @@ if __name__ == '__main__':
     }
 
     if (l === 'javascript') {
-      return `const fs = require('fs');
-
-function TreeNode(val) {
+      return `function TreeNode(val) {
     this.val = val;
     this.left = this.right = null;
 }
@@ -4686,13 +4677,7 @@ function formatTree(root) {
 }
 
 function main() {
-    let input = '';
-    try {
-        input = fs.readFileSync(0, 'utf-8');
-    } catch (_) {}
-    if (!input || !input.trim()) {
-        input = \`%%INPUT%%\`;
-    }
+    const input = \`%%INPUT%%\`;
     const originalTree = parseInputTree(input);
     const serialized = serialize(originalTree);
     const reconstituted = deserialize(serialized);
@@ -4767,15 +4752,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        StringBuilder sb = new StringBuilder();
-        while (sc.hasNextLine()) {
-            sb.append(sc.nextLine()).append("\\n");
-        }
-        String input = sb.toString();
-        if (input.trim().isEmpty()) {
-            input = "%%INPUT%%";
-        }
+        String input = """%%INPUT%%""";
         TreeNode originalTree = parseInputTree(input);
         Codec ser = new Codec();
         Codec deser = new Codec();
