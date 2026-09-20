@@ -2,6 +2,7 @@ import { SupportedLanguage, isDriverHarnessValid } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
 import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
+import { SOLID_PREDEFINED_PROBLEMS, getSolidDriver } from './solidProblems';
 
 export interface ProblemApproach {
   id: string;
@@ -67,9 +68,10 @@ export const toSlug = (str?: string): string => {
   }
 
   // If full URL or contains leetcode.com/problems/, extract the problem slug accurately
-  if (s.startsWith('http://') || s.startsWith('https://') || s.toLowerCase().includes('leetcode.com/problems/')) {
+  // If full URL or contains leetcode.com or geeksforgeeks.org, extract the problem slug accurately
+  if (s.startsWith('http://') || s.startsWith('https://') || s.toLowerCase().includes('leetcode.com') || s.toLowerCase().includes('geeksforgeeks.org')) {
     try {
-      const match = s.match(/leetcode\.com\/problems\/([^/?#\s]+)/i);
+      const match = s.match(/leetcode\.com\/problems\/([^/?#\s]+)/i) || s.match(/geeksforgeeks\.org\/problems\/([^/?#\s]+)/i);
       if (match && match[1]) {
         s = match[1];
       } else {
@@ -78,12 +80,14 @@ export const toSlug = (str?: string): string => {
         const probIdx = segments.indexOf('problems');
         if (probIdx !== -1 && segments[probIdx + 1]) {
           s = segments[probIdx + 1];
-        } else if (segments.length > 0) {
+        } else if (segments.length > 0 && segments[segments.length - 1] !== 'problems') {
           s = segments[segments.length - 1];
+        } else {
+          return 'algorithm-problem';
         }
       }
     } catch {
-      s = s.replace(/^https?:\/\/[^/]+\//, '');
+      s = s.replace(/^https?:\/\/[^/]+\/?/, '');
     }
   }
 
@@ -95,7 +99,7 @@ export const toSlug = (str?: string): string => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 
-  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com' || slug === 'problems' || slug === 'all' || slug === 'problem-list') {
+  if (!slug || slug === 'https' || slug === 'http' || slug === 'www' || slug === 'com' || slug === 'problems' || slug === 'all' || slug === 'problem-list' || slug === 'https-leetcode-com' || slug === 'https-www-geeksforgeeks-org' || slug === 'leetcode-com') {
     return 'algorithm-problem';
   }
   return slug;
@@ -224,7 +228,11 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
     PREDEFINED_SPECIAL_PROBLEMS[slug] ||
     PREDEFINED_SPECIAL_PROBLEMS[slug + '-'] ||
     PREDEFINED_SPECIAL_PROBLEMS[slug.replace(/-+$/, '')] ||
-    (slug.includes('single-responsibility') ? PREDEFINED_SPECIAL_PROBLEMS['2-1-single-responsibility-principle-srp-solid-principles-'] : undefined)
+    (slug.includes('single-responsibility') ? PREDEFINED_SPECIAL_PROBLEMS['2-1-single-responsibility-principle-srp-solid-principles-'] : undefined) ||
+    (slug.includes('open-closed') || slug.includes('ocp') ? SOLID_PREDEFINED_PROBLEMS['2-2-open-closed-principle-ocp-'] : undefined) ||
+    (slug.includes('liskov') || slug.includes('lsp') ? SOLID_PREDEFINED_PROBLEMS['2-3-liskov-substitution-principle-lsp-'] : undefined) ||
+    (slug.includes('interface-segregation') || slug.includes('isp') ? SOLID_PREDEFINED_PROBLEMS['2-4-interface-segregation-principle-isp-'] : undefined) ||
+    (slug.includes('dependency-inversion') || slug.includes('dip') ? SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-'] : undefined)
   ) : undefined;
   if (matchedPredefined && matchedPredefined.starters) {
     return matchedPredefined.starters;
@@ -248,6 +256,7 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
 }
 
 export const PREDEFINED_SPECIAL_PROBLEMS: Record<string, ProblemTemplate> = {
+  ...SOLID_PREDEFINED_PROBLEMS,
   'binary-tree-to-double-linkedlist': {
     name: 'Convert Binary Tree to Doubly Linked List',
     category: 'Binary Trees',
@@ -2646,6 +2655,43 @@ export async function fetchEnrichedProblem(
   ) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['2-1-single-responsibility-principle-srp-solid-principles-']);
   }
+  if (
+    slug === '2-2-open-closed-principle-ocp-' ||
+    slug === '2-2-open-closed-principle-ocp' ||
+    slug.includes('open-closed-principle') ||
+    normSlug.includes('openclosedprinciple') ||
+    normSlug.includes('22openclosed') ||
+    slug.includes('shape-area-calculator-open-closed')
+  ) {
+    return applyOverride(SOLID_PREDEFINED_PROBLEMS['2-2-open-closed-principle-ocp-']);
+  }
+  if (
+    slug === '2-3-liskov-substitution-principle-lsp-' ||
+    slug === '2-3-liskov-substitution-principle-lsp' ||
+    slug.includes('liskov-substitution-principle') ||
+    normSlug.includes('liskovsubstitutionprinciple') ||
+    normSlug.includes('23liskov')
+  ) {
+    return applyOverride(SOLID_PREDEFINED_PROBLEMS['2-3-liskov-substitution-principle-lsp-']);
+  }
+  if (
+    slug === '2-4-interface-segregation-principle-isp-' ||
+    slug === '2-4-interface-segregation-principle-isp' ||
+    slug.includes('interface-segregation-principle') ||
+    normSlug.includes('interfacesegregationprinciple') ||
+    normSlug.includes('24interfacesegregation')
+  ) {
+    return applyOverride(SOLID_PREDEFINED_PROBLEMS['2-4-interface-segregation-principle-isp-']);
+  }
+  if (
+    slug === '2-5-dependency-inversion-principle-dip-' ||
+    slug === '2-5-dependency-inversion-principle-dip' ||
+    slug.includes('dependency-inversion-principle') ||
+    normSlug.includes('dependencyinversionprinciple') ||
+    normSlug.includes('25dependencyinversion')
+  ) {
+    return applyOverride(SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-']);
+  }
   if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
@@ -2768,6 +2814,11 @@ export async function fetchEnrichedProblem(
 export function getDefaultDriverForProblem(slugOrTitle: string, language: SupportedLanguage): string | null {
   const slug = toSlug(slugOrTitle);
   const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+  const solidDrv = getSolidDriver(slug, lang);
+  if (solidDrv) {
+    return solidDrv;
+  }
 
   // === BINARY TREE TO DOUBLE LINKEDLIST ===
   const isBTtoDLL = slug.includes('binary-tree-to-double-linkedlist') || slug.includes('binary-tree-to-dll') || slug.includes('tree-to-doubly-list') || slug.includes('convert-binary-tree-to-doubly');

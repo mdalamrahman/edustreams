@@ -62,7 +62,7 @@ import {
 import { ProblemReportModal } from './ProblemReportModal';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases, PREDEFINED_SPECIAL_PROBLEMS } from '../lib/problemService';
 import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
@@ -209,13 +209,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     if (codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()) {
       return toSlug(codingProblem.slug);
     }
-    if (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && !codingProblem.leetcode.includes('problem-list') && !codingProblem.leetcode.includes('search=')) {
+    const candidateNameSlug = toSlug(codingProblem?.name || codingProblem?.title || cleanTitle);
+    if (PREDEFINED_SPECIAL_PROBLEMS[candidateNameSlug]) {
+      return candidateNameSlug;
+    }
+    if (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && codingProblem.leetcode.includes('/problems/')) {
       return toSlug(codingProblem.leetcode);
     }
-    if (codingProblem?.gfg && typeof codingProblem.gfg === 'string') {
+    if (codingProblem?.gfg && typeof codingProblem.gfg === 'string' && codingProblem.gfg.includes('/problems/')) {
       return toSlug(codingProblem.gfg);
     }
-    return toSlug(codingProblem?.name || codingProblem?.title || cleanTitle);
+    return candidateNameSlug;
   }, [codingProblem, cleanTitle]);
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
@@ -245,13 +249,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
-    const rawTarget = (codingProblem?.name && (codingProblem.name.toLowerCase().includes('floor in bst') || codingProblem.name.toLowerCase().includes('floor in a binary search tree')))
-      ? 'floor-in-bst'
-      : (codingProblem?.slug && typeof codingProblem.slug === 'string')
+    const rawTarget = codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()
       ? codingProblem.slug
-      : (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && !codingProblem.leetcode.includes('problem-list') && !codingProblem.leetcode.includes('search='))
+      : PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug]
+      ? currentProblemSlug
+      : (codingProblem?.name && (codingProblem.name.toLowerCase().includes('floor in bst') || codingProblem.name.toLowerCase().includes('floor in a binary search tree')))
+      ? 'floor-in-bst'
+      : (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && codingProblem.leetcode.includes('/problems/'))
       ? codingProblem.leetcode
-      : (codingProblem?.gfg || codingProblem?.name || cleanTitle);
+      : (codingProblem?.gfg && typeof codingProblem.gfg === 'string' && codingProblem.gfg.includes('/problems/'))
+      ? codingProblem.gfg
+      : (codingProblem?.name || cleanTitle);
     const targetSlug = currentProblemSlug;
 
     fetchEnrichedProblem(
@@ -320,13 +328,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           targetSlug.includes('serializeanddeserialize') ||
           targetSlug.includes('binary-tree-to-double-linkedlist') ||
           targetSlug.includes('binary-tree-to-dll') ||
-          targetSlug.includes('tree-to-doubly-list')
+          targetSlug.includes('tree-to-doubly-list') ||
+          targetSlug.includes('open-closed') ||
+          targetSlug.includes('liskov') ||
+          targetSlug.includes('interface-segregation') ||
+          targetSlug.includes('dependency-inversion') ||
+          targetSlug.includes('single-responsibility')
         ) {
           try {
             localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
             localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
             localStorage.removeItem(`edustream_problem_spec_${targetSlug}`);
             localStorage.removeItem(`edustream_testcase_override_${targetSlug}`);
+            localStorage.removeItem(`edustream_user_code_https-leetcode-com_${language}`);
+            localStorage.removeItem(`edustream_problem_spec_https-leetcode-com`);
           } catch (_) {}
         }
 
@@ -344,29 +359,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
           const cached = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
           if (cached !== null && cached.trim().length > 0) {
-            // Sanity check: purge contaminated argumentsLength code from BST problems
-            if ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) {
-              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
-            } else if ((targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec')) {
-              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
-              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
-              setCode(cleanStarter);
-              if (enriched.testCases && enriched.testCases.length > 0) {
-                setActiveTestCaseIdx(0);
-                setTestInput(enriched.testCases[0]);
-              }
-              return;
-            } else if ((targetSlug.includes('binary-tree-to-double-linkedlist') || targetSlug.includes('binary-tree-to-dll') || targetSlug.includes('tree-to-doubly-list')) && (cached.includes('TreeNode* prev') || cached.includes('Node* prev') || cached.includes('TreeNode *prev') || !cached.includes('treeToDoublyList'))) {
-              // Purge outdated solution containing ambiguous prev
-              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
-              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
-              setCode(cleanStarter);
-              if (enriched.testCases && enriched.testCases.length > 0) {
-                setActiveTestCaseIdx(0);
-                setTestInput(enriched.testCases[0]);
-              }
-              return;
-            } else if (targetSlug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) {
+            const isContaminated = (
+              ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) ||
+              ((targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec')) ||
+              ((targetSlug.includes('binary-tree-to-double-linkedlist') || targetSlug.includes('binary-tree-to-dll') || targetSlug.includes('tree-to-doubly-list')) && (cached.includes('TreeNode* prev') || cached.includes('Node* prev') || cached.includes('TreeNode *prev') || !cached.includes('treeToDoublyList'))) ||
+              (targetSlug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) ||
+              (targetSlug.includes('open-closed') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('solve(') || !cached.includes('calculateDiscount'))) ||
+              (targetSlug.includes('liskov') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('BankingSystem'))) ||
+              (targetSlug.includes('interface-segregation') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('Workstation'))) ||
+              (targetSlug.includes('dependency-inversion') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('NotificationEngine')))
+            );
+
+            if (isContaminated) {
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
               const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
               setCode(cleanStarter);
@@ -495,9 +499,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       const slug = currentProblemSlug;
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${initialLanguage}`);
       if (cached !== null && cached.trim().length > 0) {
-        if (slug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) {
-          localStorage.removeItem(`edustream_user_code_${slug}_${initialLanguage}`);
-        } else if ((slug.includes('floor') || slug.includes('closest-binary')) && cached.includes('argumentsLength')) {
+        const isContaminated = (
+          (slug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) ||
+          (slug.includes('open-closed') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('solve(') || !cached.includes('calculateDiscount'))) ||
+          (slug.includes('liskov') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('BankingSystem'))) ||
+          (slug.includes('interface-segregation') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('Workstation'))) ||
+          (slug.includes('dependency-inversion') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('NotificationEngine'))) ||
+          ((slug.includes('floor') || slug.includes('closest-binary')) && cached.includes('argumentsLength')) ||
+          ((slug.includes('serialize-and-deserialize-binary-tree') || slug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec'))
+        );
+        if (isContaminated) {
           localStorage.removeItem(`edustream_user_code_${slug}_${initialLanguage}`);
         } else {
           return cached;
@@ -654,8 +665,21 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     try {
       const cached = localStorage.getItem(`edustream_user_code_${slug}_${language}`);
       if (cached !== null && cached.trim().length > 0) {
-        setCode(cached);
-        return;
+        const isContaminated = (
+          (slug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) ||
+          (slug.includes('open-closed') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('solve(') || !cached.includes('calculateDiscount'))) ||
+          (slug.includes('liskov') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('BankingSystem'))) ||
+          (slug.includes('interface-segregation') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('Workstation'))) ||
+          (slug.includes('dependency-inversion') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('NotificationEngine'))) ||
+          ((slug.includes('floor') || slug.includes('closest-binary')) && cached.includes('argumentsLength')) ||
+          ((slug.includes('serialize-and-deserialize-binary-tree') || slug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec'))
+        );
+        if (!isContaminated) {
+          setCode(cached);
+          return;
+        } else {
+          localStorage.removeItem(`edustream_user_code_${slug}_${language}`);
+        }
       }
     } catch {}
     if (problemTemplate.starters && problemTemplate.starters[language]) {

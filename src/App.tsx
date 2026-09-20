@@ -58,6 +58,7 @@ import { startSessionHeartbeat } from './lib/session';
 import { recordRealActivity, markProblemSolved } from './lib/analytics';
 import { Video, QuizQuestion } from './lib/types';
 import { fetchCatalog, TELEGRAM_BACKEND_URL } from './lib/telegram';
+import { toSlug, PREDEFINED_SPECIAL_PROBLEMS } from './lib/problemService';
 import { requestMistralQuiz } from './lib/mistral';
 import { handleVideoViewBilling, canAffordAction, deductCredits, syncWalletWithDatabase, PRICING_CONFIG } from './lib/billing';
 import { InsufficientCreditsModal } from './components/InsufficientCreditsModal';
@@ -296,12 +297,16 @@ export function App() {
 
         if (!found && pIdStr) {
           const cleanName = pIdStr.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          const predefined = PREDEFINED_SPECIAL_PROBLEMS[pIdStr] ||
+            PREDEFINED_SPECIAL_PROBLEMS[pIdStr + '-'] ||
+            PREDEFINED_SPECIAL_PROBLEMS[pIdStr.replace(/-+$/, '')];
+
           found = {
             id: 9999,
             sheetType: 'sde',
-            category: 'Algorithms',
-            name: cleanName,
-            difficulty: 'Medium',
+            category: predefined?.category || 'Algorithms',
+            name: predefined?.name || cleanName,
+            difficulty: (predefined?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
             rating: '5.0 / 5',
             leetcode: `https://leetcode.com/problems/${pIdStr}/`,
             gfg: `https://www.geeksforgeeks.org/problems/${pIdStr}/1`,
@@ -997,7 +1002,7 @@ export function App() {
 
     const targetSlug = (problem.name && (problem.name.toLowerCase().includes('floor in bst') || problem.name.toLowerCase().includes('floor in a binary search tree')))
       ? 'floor-in-bst'
-      : (problem.slug || problem.id);
+      : (problem.slug || toSlug(problem.name) || problem.id);
 
     // Detect if problem is an SQL/Database question and open SQL compiler arena
     if (isSqlProblem(problem)) {
@@ -1520,21 +1525,35 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
                   <button
                     onClick={() => {
                       const cleanName = selectedVideo.title.replace(/\.(mp4|mkv)$/i, '').replace(/_/g, ' ');
+                      const videoSlug = toSlug(cleanName);
+                      
                       const matchedProblem = SDE_SHEET_DATA.find(p => 
                         p.name.toLowerCase().includes(cleanName.toLowerCase()) || 
                         cleanName.toLowerCase().includes(p.name.toLowerCase())
-                      ) || {
-                        id: 999,
+                      );
+
+                      if (matchedProblem) {
+                        handleOpenCodingFullscreen(matchedProblem);
+                        return;
+                      }
+
+                      const predefined = PREDEFINED_SPECIAL_PROBLEMS[videoSlug] || 
+                        PREDEFINED_SPECIAL_PROBLEMS[videoSlug + '-'] ||
+                        PREDEFINED_SPECIAL_PROBLEMS[videoSlug.replace(/-+$/, '')];
+
+                      const fallbackProblem: SDEProblem = {
+                        id: 9000 + Math.abs(videoSlug.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 999),
                         sheetType: 'sde' as const,
-                        category: activeChannelObj?.name || 'System Design & LLD',
-                        name: cleanName,
-                        leetcode: 'https://leetcode.com',
-                        gfg: 'https://www.geeksforgeeks.org',
+                        category: predefined?.category || activeChannelObj?.name || 'Low Level Design',
+                        name: predefined?.name || cleanName,
+                        slug: videoSlug,
+                        leetcode: `https://leetcode.com/problems/${videoSlug}/`,
+                        gfg: `https://www.geeksforgeeks.org/problems/${videoSlug}/1`,
                         companies: ['Amazon', 'Microsoft', 'Google', 'Meta'],
-                        difficulty: 'Medium' as const,
+                        difficulty: (predefined?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
                         rating: '5.0 / 5 (Must Do)'
                       };
-                      handleOpenCodingFullscreen(matchedProblem);
+                      handleOpenCodingFullscreen(fallbackProblem);
                     }}
                     className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40 cursor-pointer"
                   >
