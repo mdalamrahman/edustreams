@@ -11,25 +11,27 @@ export async function apiFetch(path: string, options?: RequestInit): Promise<Res
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
   // Try relative path first (in Vercel, proxied via vercel.json rewrites)
+  // Fast 4s timeout so we do not hang when Render is waking up from free-tier sleep
   try {
     const res = await fetch(cleanPath, {
       ...options,
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(4000)
     });
     if (res.ok || res.status === 404) {
       return res;
     }
   } catch (_) {
-    // Relative fetch failed, fallback directly to Render backend URL
+    // Relative fetch failed or timed out, fallback directly to Render backend URL
   }
 
-  // Fallback directly to Render backend
+  // Fallback directly to Render backend with generous 50s timeout for cold starts
   const directUrl = `${BACKEND_FALLBACK}${cleanPath}`;
   return await fetch(directUrl, {
     ...options,
-    signal: AbortSignal.timeout(25000)
+    signal: AbortSignal.timeout(50000)
   });
 }
+
 
 export interface ProblemSpec {
   name?: string;

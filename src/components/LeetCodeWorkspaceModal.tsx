@@ -313,10 +313,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         }
 
-        if (targetSlug.includes('kth-largest') || targetSlug.includes('kth-smallest') || targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) {
+        if (
+          targetSlug.includes('kth-largest') ||
+          targetSlug.includes('kth-smallest') ||
+          targetSlug.includes('serialize-and-deserialize-binary-tree') ||
+          targetSlug.includes('serializeanddeserialize') ||
+          targetSlug.includes('binary-tree-to-double-linkedlist') ||
+          targetSlug.includes('binary-tree-to-dll') ||
+          targetSlug.includes('tree-to-doubly-list')
+        ) {
           try {
             localStorage.removeItem(`edustream_driver_${targetSlug}_${language}`);
             localStorage.removeItem(`edustream_driver_${language}_${targetSlug}`);
+            localStorage.removeItem(`edustream_problem_spec_${targetSlug}`);
+            localStorage.removeItem(`edustream_testcase_override_${targetSlug}`);
           } catch (_) {}
         }
 
@@ -338,6 +348,16 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             if ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) {
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
             } else if ((targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec')) {
+              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
+              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
+              setCode(cleanStarter);
+              if (enriched.testCases && enriched.testCases.length > 0) {
+                setActiveTestCaseIdx(0);
+                setTestInput(enriched.testCases[0]);
+              }
+              return;
+            } else if ((targetSlug.includes('binary-tree-to-double-linkedlist') || targetSlug.includes('binary-tree-to-dll') || targetSlug.includes('tree-to-doubly-list')) && (cached.includes('TreeNode* prev') || cached.includes('Node* prev') || cached.includes('TreeNode *prev') || !cached.includes('treeToDoublyList'))) {
+              // Purge outdated solution containing ambiguous prev
               localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
               const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
               setCode(cleanStarter);

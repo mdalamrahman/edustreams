@@ -795,9 +795,34 @@ export function wrapLeetCodeExecutableCode(
           } else if (userCode.includes('class Solution') && !userCode.includes('class Codec')) {
             postInject += `\nusing Codec = Solution;\n`;
           }
+
+          // Forwarding for Binary Tree to DLL (LeetCode treeToDoublyList vs GFG bToDLL vs Solution class)
+          if (replaced.includes('treeToDoublyList(') || normTitle.includes('binarytreetodouble') || normTitle.includes('binarytreetodll')) {
+            if (userCode.includes('bToDLL(') && !userCode.includes('treeToDoublyList(')) {
+              if (userCode.includes('class Solution')) {
+                postInject += `\nTreeNode* treeToDoublyList(TreeNode* root) { Solution sol; return sol.bToDLL(root); }\n`;
+              } else {
+                postInject += `\nTreeNode* treeToDoublyList(TreeNode* root) { return bToDLL(root); }\n`;
+              }
+            } else if (userCode.includes('class Solution') && userCode.includes('treeToDoublyList(')) {
+              postInject += `\nTreeNode* treeToDoublyList(TreeNode* root) { Solution sol; return sol.treeToDoublyList(root); }\n`;
+            }
+          }
         }
 
-        const userBlock = `${structInject}${userCode}${postInject ? '\n' + postInject : ''}`;
+        // Disambiguate C++ pointer variable prev to prevent collision with std::prev from <iterator>/<algorithm>
+        let sanitizedUserCode = userCode;
+        if (language === 'cpp' || (language as any) === 'c++') {
+          if (
+            /\b(?:TreeNode|ListNode|Node|\w+)\s*\*\s*prev\b/.test(sanitizedUserCode) ||
+            /(?:^|\n|\;)\s*(?:TreeNode|ListNode|Node)\s*\*\s*prev\s*=/.test(sanitizedUserCode) ||
+            /(?:!prev\b|prev\s*=\s*(?:nullptr|NULL|node|curr|root|head|\w+)|prev->left|prev->right|prev->next)/.test(sanitizedUserCode)
+          ) {
+            sanitizedUserCode = sanitizedUserCode.replace(/(?<!\.|->|::)\bprev\b/g, '_prev_node');
+          }
+        }
+
+        const userBlock = `${structInject}${sanitizedUserCode}${postInject ? '\n' + postInject : ''}`;
 
         const endMarkerRegex = /(?:\/\/|\/\*)\s*===\s*END USER SOLUTION\s*===(?:\*\/)?/;
         if (endMarkerRegex.test(replaced)) {
@@ -1007,6 +1032,15 @@ export function wrapLeetCodeExecutableCode(
 `;
     }
 
+    // Disambiguate C++ pointer variable prev to prevent collision with std::prev
+    let cppUserCode = userCode;
+    if (
+      /\b(?:TreeNode|ListNode|Node|\w+)\s*\*\s*prev\b/.test(cppUserCode) ||
+      /(?:^|\n|\;)\s*(?:TreeNode|ListNode|Node)\s*\*\s*prev\s*=/.test(cppUserCode) ||
+      /(?:!prev\b|prev\s*=\s*(?:nullptr|NULL|node|curr|root|head|\w+)|prev->left|prev->right|prev->next)/.test(cppUserCode)
+    ) {
+      cppUserCode = cppUserCode.replace(/(?<!\.|->|::)\bprev\b/g, '_prev_node');
+    }
 
     return `// SDETube Universal LeetCode C++ Test Harness
 #include <iostream>
@@ -1497,9 +1531,11 @@ inline string parse_string_arg(string s) {
 }
 
 // === USER SOLUTION ===
-${userCode}
+${cppUserCode}
 
 // === HIDDEN DRIVER ===
+
+
 int main() {
     try {
         ${(userCode.includes('class Codec') || userCode.includes('struct Codec'))

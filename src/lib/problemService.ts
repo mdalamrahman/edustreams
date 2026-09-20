@@ -248,6 +248,275 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
 }
 
 export const PREDEFINED_SPECIAL_PROBLEMS: Record<string, ProblemTemplate> = {
+  'binary-tree-to-double-linkedlist': {
+    name: 'Convert Binary Tree to Doubly Linked List',
+    category: 'Binary Trees',
+    difficulty: 'Hard',
+    description: `Given the root of a binary tree, convert it into a doubly linked list in-place. The order of nodes in the doubly linked list should be the same as the in-order traversal of the binary tree.
+
+The left and right pointers of the tree nodes should be used as the previous and next pointers of the doubly linked list, respectively. The head of the doubly linked list should be returned.
+
+You must perform the conversion in-place without creating any new nodes or using auxiliary data structures for storing node elements.
+
+### Example 1:
+\`\`\`
+Input: root = [4,2,5,1,3]
+Output: [1,2,3,4,5]
+Explanation: The in-order traversal of the tree is [1,2,3,4,5]. The left and right pointers are adjusted to form a doubly linked list in this order.
+\`\`\`
+
+### Example 2:
+\`\`\`
+Input: root = [2,1,3]
+Output: [1,2,3]
+Explanation: The in-order traversal is [1,2,3]. Left and right pointers are adjusted accordingly.
+\`\`\`
+
+### Example 3:
+\`\`\`
+Input: root = []
+Output: []
+Explanation: An empty tree produces an empty doubly linked list.
+\`\`\`
+
+### Constraints:
+- The number of nodes in the tree is in the range \`[0, 2000]\`.
+- \`-1000 <= Node.val <= 1000\`
+- All node values are unique.`,
+    examples: [
+      { input: 'root = [4,2,5,1,3]', output: '[1,2,3,4,5]', explanation: 'The in-order traversal of the tree is [1,2,3,4,5].' },
+      { input: 'root = [2,1,3]', output: '[1,2,3]', explanation: 'The in-order traversal is [1,2,3].' },
+      { input: 'root = []', output: '[]', explanation: 'An empty tree produces an empty doubly linked list.' }
+    ],
+    constraints: [
+      'The number of nodes in the tree is in the range [0, 2000].',
+      '-1000 <= Node.val <= 1000',
+      'All node values are unique.'
+    ],
+    testCases: [
+      'root = [4,2,5,1,3]',
+      'root = [2,1,3]',
+      'root = []',
+      'root = [1,null,2]',
+      'root = [5,3,6,2,4,null,null,1]',
+      'root = [42]',
+      'root = [0,-3,2,null,-1]',
+      'root = [7,7,7,7,7]',
+      'root = [8,4,12,2,6,10,14,1,3,5,7,9,11,13,15]',
+      'root = [1,null,2,null,3,null,4,null,5]',
+      'root = [5,4,null,3,null,2,null,1]'
+    ],
+    expectedOutputs: [
+      '[1,2,3,4,5]',
+      '[1,2,3]',
+      '[]',
+      '[1,2]',
+      '[1,2,3,4,5,6]',
+      '[42]',
+      '[-3,-1,0,2]',
+      '[7,7,7,7,7]',
+      '[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]',
+      '[1,2,3,4,5]',
+      '[1,2,3,4,5]'
+    ],
+    hints: [
+      'Use an in-order traversal (Left -> Node -> Right) to process nodes in sorted order.',
+      'Maintain a reference pointer to the previously visited node (e.g. previousNode) to update previousNode->right and curr->left.',
+      'Remember to set dllHead->left = nullptr and lastNode->right = nullptr at the end.'
+    ],
+    approaches: [
+      {
+        id: 'inorder_recursive',
+        name: 'Recursive In-order Traversal',
+        timeComplexity: 'O(N)',
+        spaceComplexity: 'O(H) recursion stack where H is tree height',
+        description: 'Traverse the binary tree using in-order traversal while keeping track of the previous visited node. Wire the left and right pointers in-place.'
+      }
+    ],
+    starters: {
+      cpp: `/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+ * };
+ */
+TreeNode* treeToDoublyList(TreeNode* root) {
+    // Write your code here
+    return nullptr;
+}`,
+      python: `"""
+# Definition for a Node.
+class Node:
+    def __init__(self, val, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+"""
+def treeToDoublyList(root: 'Node') -> 'Node':
+    # Write your code here
+    return None`,
+      javascript: `/**
+ * // Definition for a Node.
+ * function Node(val, left, right) {
+ *    this.val = val;
+ *    this.left = left;
+ *    this.right = right;
+ * };
+ */
+var treeToDoublyList = function(root) {
+    // Write your code here
+    return null;
+};`,
+      java: `/*
+// Definition for a Node.
+class Node {
+    public int val;
+    public Node left;
+    public Node right;
+    public Node() {}
+    public Node(int _val) { val = _val; }
+    public Node(int _val,Node _left,Node _right) {
+        val = _val;
+        left = _left;
+        right = _right;
+    }
+};
+*/
+class Solution {
+    public Node treeToDoublyList(Node root) {
+        // Write your code here
+        return null;
+    }
+}`,
+      go: `func treeToDoublyList(root *Node) *Node {
+    // Write your code here
+    return nil
+}`,
+      rust: `pub fn tree_to_doubly_list(root: Option<Box<Node>>) -> Option<Box<Node>> {
+    // Write your code here
+    None
+}`
+    },
+    solutions: {
+      cpp: `TreeNode* previousNode = nullptr;
+TreeNode* dllHead = nullptr;
+
+void inorder(TreeNode* node) {
+    if (!node)
+        return;
+
+    inorder(node->left);
+
+    if (previousNode == nullptr) {
+        dllHead = node;
+    } else {
+        previousNode->right = node;
+        node->left = previousNode;
+    }
+
+    previousNode = node;
+
+    inorder(node->right);
+}
+
+TreeNode* treeToDoublyList(TreeNode* root) {
+    if (!root)
+        return nullptr;
+
+    previousNode = nullptr;
+    dllHead = nullptr;
+
+    inorder(root);
+
+    // First node's left must be NULL
+    dllHead->left = nullptr;
+
+    // Last node's right must be NULL
+    previousNode->right = nullptr;
+
+    return dllHead;
+}`,
+      python: `class Solution:
+    def treeToDoublyList(self, root: 'Optional[Node]') -> 'Optional[Node]':
+        if not root:
+            return None
+        self.prev = None
+        self.head = None
+        self.inorder(root)
+        self.head.left = None
+        self.prev.right = None
+        return self.head
+
+    def inorder(self, node):
+        if not node:
+            return
+        self.inorder(node.left)
+        if not self.prev:
+            self.head = node
+        else:
+            self.prev.right = node
+            node.left = self.prev
+        self.prev = node
+        self.inorder(node.right)
+
+def treeToDoublyList(root):
+    return Solution().treeToDoublyList(root)
+`,
+      javascript: `var treeToDoublyList = function(root) {
+    if (!root) return null;
+    let prev = null;
+    let head = null;
+
+    const inorder = (node) => {
+        if (!node) return;
+        inorder(node.left);
+        if (!prev) {
+            head = node;
+        } else {
+            prev.right = node;
+            node.left = prev;
+        }
+        prev = node;
+        inorder(node.right);
+    };
+
+    inorder(root);
+    if (head) head.left = null;
+    if (prev) prev.right = null;
+    return head;
+};`,
+      java: `class Solution {
+    Node prev = null;
+    Node head = null;
+
+    public Node treeToDoublyList(Node root) {
+        if (root == null) return null;
+        prev = null;
+        head = null;
+        inorder(root);
+        head.left = null;
+        prev.right = null;
+        return head;
+    }
+
+    private void inorder(Node node) {
+        if (node == null) return;
+        inorder(node.left);
+        if (prev == null) {
+            head = node;
+        } else {
+            prev.right = node;
+            node.left = prev;
+        }
+        prev = node;
+        inorder(node.right);
+    }
+}`
+    }
+  },
   'serialize-and-deserialize-binary-tree': {
     name: 'Serialize and Deserialize Binary Tree',
     category: 'Binary Trees',
@@ -2336,6 +2605,17 @@ export async function fetchEnrichedProblem(
   // 0. Check predefined special problems (Exact Match Only)
   const normSlug = slug.replace(/[^a-z0-9]/g, '');
   if (
+    slug === 'binary-tree-to-double-linkedlist' ||
+    slug === 'binary-tree-to-dll' ||
+    normSlug === 'binarytreetodoublelinkedlist' ||
+    normSlug === 'binarytreetodll' ||
+    slug.includes('binary-tree-to-double-linkedlist') ||
+    slug.includes('binary-tree-to-dll') ||
+    normSlug.includes('convertbinarytreetodll')
+  ) {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['binary-tree-to-double-linkedlist']);
+  }
+  if (
     slug === 'serialize-and-deserialize-binary-tree' ||
     normSlug === 'serializeanddeserializebinarytree' ||
     slug.includes('serialize-and-deserialize-binary-tree') ||
@@ -2488,6 +2768,325 @@ export async function fetchEnrichedProblem(
 export function getDefaultDriverForProblem(slugOrTitle: string, language: SupportedLanguage): string | null {
   const slug = toSlug(slugOrTitle);
   const lang = (language || 'cpp').toLowerCase() as SupportedLanguage;
+
+  // === BINARY TREE TO DOUBLE LINKEDLIST ===
+  const isBTtoDLL = slug.includes('binary-tree-to-double-linkedlist') || slug.includes('binary-tree-to-dll') || slug.includes('tree-to-doubly-list') || slug.includes('convert-binary-tree-to-doubly');
+  if (isBTtoDLL) {
+    if (lang === 'cpp' || (lang as any) === 'c++') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <cctype>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode* left;
+    TreeNode* right;
+
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+};
+
+using Node = TreeNode;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+
+static TreeNode* parseInputTree(const string& input) {
+    size_t open = input.find('[');
+    size_t close = input.rfind(']');
+    if (open == string::npos || close == string::npos || close <= open) {
+        return nullptr;
+    }
+    string content = input.substr(open + 1, close - open - 1);
+    if (content.empty()) return nullptr;
+
+    vector<string> tokens;
+    stringstream ss(content);
+    string token;
+    while (getline(ss, token, ',')) {
+        size_t start = 0;
+        while (start < token.size() && isspace(static_cast<unsigned char>(token[start]))) start++;
+        size_t end = token.size();
+        while (end > start && isspace(static_cast<unsigned char>(token[end - 1]))) end--;
+        token = token.substr(start, end - start);
+        tokens.push_back(token);
+    }
+    if (tokens.empty() || tokens[0] == "null" || tokens[0].empty()) return nullptr;
+
+    TreeNode* root = new TreeNode(stoi(tokens[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t i = 1;
+    while (!q.empty() && i < tokens.size()) {
+        TreeNode* current = q.front();
+        q.pop();
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->left = new TreeNode(stoi(tokens[i]));
+            q.push(current->left);
+        }
+        i++;
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->right = new TreeNode(stoi(tokens[i]));
+            q.push(current->right);
+        }
+        i++;
+    }
+    return root;
+}
+
+static string dllToString(TreeNode* head) {
+    if (head == nullptr) return "[]";
+    vector<int> values;
+    TreeNode* current = head;
+    TreeNode* prevTracker = nullptr;
+    while (current != nullptr) {
+        if (current->left != prevTracker) {
+            return "[INVALID_DLL]";
+        }
+        values.push_back(current->val);
+        prevTracker = current;
+        current = current->right;
+    }
+    ostringstream out;
+    out << "[";
+    for (size_t i = 0; i < values.size(); i++) {
+        if (i > 0) out << ",";
+        out << values[i];
+    }
+    out << "]";
+    return out.str();
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    string input = R"RAW(INPUT_PLACEHOLDER)RAW";
+    TreeNode* root = parseInputTree(input);
+    TreeNode* head = treeToDoublyList(root);
+    cout << dllToString(head) << endl;
+    return 0;
+}
+`;
+    }
+    if (lang === 'python' || (lang as any) === 'py') {
+      return `import collections
+
+class Node:
+    def __init__(self, val, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+TreeNode = Node
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def parse_tree(s):
+    lb = s.find('[')
+    rb = s.rfind(']')
+    if lb == -1 or rb == -1 or rb <= lb:
+        return None
+    content = s[lb+1:rb].strip()
+    if not content:
+        return None
+    tokens = [t.strip() for t in content.split(',')]
+    if not tokens or tokens[0] == 'null' or not tokens[0]:
+        return None
+    root = Node(int(tokens[0]))
+    q = collections.deque([root])
+    i = 1
+    while q and i < len(tokens):
+        curr = q.popleft()
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.left = Node(int(tokens[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.right = Node(int(tokens[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+def dll_to_string(head):
+    if not head:
+        return "[]"
+    vals = []
+    curr = head
+    prev = None
+    while curr:
+        if curr.left != prev:
+            return "[INVALID_DLL]"
+        vals.append(str(curr.val))
+        prev = curr
+        curr = curr.right
+    return "[" + ",".join(vals) + "]"
+
+if __name__ == '__main__':
+    raw = """INPUT_PLACEHOLDER"""
+    root = parse_tree(raw)
+    head = None
+    if 'treeToDoublyList' in globals():
+        head = treeToDoublyList(root)
+    elif 'tree_to_doubly_list' in globals():
+        head = tree_to_doubly_list(root)
+    elif 'bToDLL' in globals():
+        head = bToDLL(root)
+    elif 'Solution' in globals():
+        sol = Solution()
+        if hasattr(sol, 'treeToDoublyList'):
+            head = sol.treeToDoublyList(root)
+        elif hasattr(sol, 'bToDLL'):
+            head = sol.bToDLL(root)
+    print(dll_to_string(head))
+`;
+    }
+    if (lang === 'javascript' || (lang as any) === 'js') {
+      return `function TreeNode(val, left, right) {
+    this.val = (val===undefined ? 0 : val);
+    this.left = (left===undefined ? null : left);
+    this.right = (right===undefined ? null : right);
+}
+const Node = TreeNode;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function parseTree(s) {
+    const lb = s.indexOf('[');
+    const rb = s.lastIndexOf(']');
+    if (lb === -1 || rb === -1 || rb <= lb) return null;
+    const content = s.slice(lb + 1, rb).trim();
+    if (!content) return null;
+    const tokens = content.split(',').map(t => t.trim());
+    if (!tokens.length || tokens[0] === 'null' || !tokens[0]) return null;
+    const root = new TreeNode(parseInt(tokens[0], 10));
+    const q = [root];
+    let i = 1;
+    while (q.length && i < tokens.length) {
+        const curr = q.shift();
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i] !== '') {
+            curr.left = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.left);
+        }
+        i++;
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i] !== '') {
+            curr.right = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.right);
+        }
+        i++;
+    }
+    return root;
+}
+
+function dllToString(head) {
+    if (!head) return '[]';
+    const vals = [];
+    let curr = head;
+    let prev = null;
+    while (curr) {
+        if (curr.left !== prev) return '[INVALID_DLL]';
+        vals.push(curr.val);
+        prev = curr;
+        curr = curr.right;
+    }
+    return '[' + vals.join(',') + ']';
+}
+
+const raw = \`INPUT_PLACEHOLDER\`;
+const root = parseTree(raw);
+let head = null;
+if (typeof treeToDoublyList === 'function') {
+    head = treeToDoublyList(root);
+} else if (typeof bToDLL === 'function') {
+    head = bToDLL(root);
+}
+console.log(dllToString(head));
+`;
+    }
+    if (lang === 'java') {
+      return `import java.util.*;
+
+class Node {
+    public int val;
+    public Node left;
+    public Node right;
+    public Node() {}
+    public Node(int _val) { val = _val; }
+    public Node(int _val,Node _left,Node _right) {
+        val = _val;
+        left = _left;
+        right = _right;
+    }
+};
+
+class TreeNode extends Node {
+    public TreeNode(int x) { super(x); }
+}
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    static Node parseTree(String s) {
+        int lb = s.indexOf('[');
+        int rb = s.lastIndexOf(']');
+        if (lb == -1 || rb == -1 || rb <= lb) return null;
+        String content = s.substring(lb + 1, rb).trim();
+        if (content.isEmpty()) return null;
+        String[] tokens = content.split(",");
+        for (int i = 0; i < tokens.length; i++) tokens[i] = tokens[i].trim();
+        if (tokens.length == 0 || tokens[0].equals("null") || tokens[0].isEmpty()) return null;
+        Node root = new Node(Integer.parseInt(tokens[0]));
+        Queue<Node> q = new LinkedList<>();
+        q.offer(root);
+        int i = 1;
+        while (!q.isEmpty() && i < tokens.length) {
+            Node curr = q.poll();
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.left = new Node(Integer.parseInt(tokens[i]));
+                q.offer(curr.left);
+            }
+            i++;
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.right = new Node(Integer.parseInt(tokens[i]));
+                q.offer(curr.right);
+            }
+            i++;
+        }
+        return root;
+    }
+
+    static String dllToString(Node head) {
+        if (head == null) return "[]";
+        List<String> res = new ArrayList<>();
+        Node curr = head;
+        Node prev = null;
+        while (curr != null) {
+            if (curr.left != prev) return "[INVALID_DLL]";
+            res.add(String.valueOf(curr.val));
+            prev = curr;
+            curr = curr.right;
+        }
+        return "[" + String.join(",", res) + "]";
+    }
+
+    public static void main(String[] args) {
+        String raw = "INPUT_PLACEHOLDER";
+        Node root = parseTree(raw);
+        Solution sol = new Solution();
+        Node head = sol.treeToDoublyList(root);
+        System.out.println(dllToString(head));
+    }
+}
+`;
+    }
+  }
 
   // === SERIALIZE AND DESERIALIZE BINARY TREE ===
   const isSerialize = slug.includes('serialize-and-deserialize-binary-tree') || slug.includes('serializeanddeserialize') || slug === '297';
