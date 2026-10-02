@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Code2, 
   Cpu, 
@@ -167,6 +167,8 @@ export function App() {
   const [askAITimestamp, setAskAITimestamp] = useState<number | undefined>(undefined);
   const [sdeFullscreenProblem, setSdeFullscreenProblem] = useState<SDEProblem | DSAProblem | null>(null);
   const [sdeFullscreenVideo, setSdeFullscreenVideo] = useState<Video | null>(null);
+  // Track the hash to return to when closing a problem modal (back navigation)
+  const prevHashBeforeProblem = useRef<string>('#/dsa-sheets');
   const [isSqlModalOpen, setIsSqlModalOpen] = useState<boolean>(false);
   const [activeSqlProblem, setActiveSqlProblem] = useState<{ title: string; problem?: SDEProblem | DSAProblem } | null>(null);
   const [isPotdModalOpen, setIsPotdModalOpen] = useState<boolean>(false);
@@ -236,7 +238,7 @@ export function App() {
     } else if (tab === 'lesson' && extra?.videoId) {
       hash = `#/lesson/${encodeURIComponent(extra.videoId)}`;
     }
-    setActiveTab(tab);
+
     if (tab === 'channels') {
       if (extra?.channelId) {
         setSelectedChannelId(extra.channelId);
@@ -244,6 +246,12 @@ export function App() {
       } else {
         setChannelViewMode('overview');
       }
+    }
+
+    if (window.location.hash !== hash) {
+      window.location.hash = hash;
+    } else {
+      setActiveTab(tab);
     }
   };
 
@@ -328,13 +336,17 @@ export function App() {
               return pWords.every(w => vTitle.includes(w)) || vTitle.includes(pName);
             }) || list.find(v => v.channel_id === 'ch-dsa-01') || list[0];
             setSdeFullscreenVideo(matched || null);
-            setActiveTab('sde_sheet');
+            setActiveTab(prev => (['sde_sheet', 'dsa_problems', 'lld', 'hld'].includes(prev) ? prev : 'sde_sheet'));
           }
         }
       } else {
         setSdeFullscreenProblem(null);
+        setActiveSqlProblem(null);
+        setIsSqlModalOpen(false);
+        setIsPotdModalOpen(hash === '#/potd');
+
         if (hash === '#/potd') {
-          setIsPotdModalOpen(true);
+          // Keep POTD view open
         } else if (hash.startsWith('#/dashboard') || pathname === '/dashboard') {
           setActiveTab('dashboard');
         } else if (hash.startsWith('#/channel/') || pathname.startsWith('/channel/')) {
@@ -419,21 +431,7 @@ export function App() {
       });
     }
 
-    if (sdeFullscreenProblem) {
-      const problemSlug = sdeFullscreenProblem.slug || sdeFullscreenProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const targetHash = `#/problem/${problemSlug}`;
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, '', targetHash);
-      }
-      return;
-    }
-
-    if (activeSqlProblem) {
-      const problemSlug = activeSqlProblem.problem?.slug || activeSqlProblem.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const targetHash = `#/problem/${problemSlug}`;
-      if (window.location.hash !== targetHash) {
-        window.history.replaceState(null, '', targetHash);
-      }
+    if (sdeFullscreenProblem || activeSqlProblem) {
       return;
     }
 
@@ -448,24 +446,24 @@ export function App() {
       } catch {}
     }
 
-    let targetHash = '#/' + (
-      activeTab === 'sde_sheet' ? 'dsa-sheets' :
-      activeTab === 'dsa_problems' ? 'dsa-problems' :
-      activeTab === 'system_design' ? 'system-design' :
-      activeTab === 'thank_you' ? 'thank-you' :
-      activeTab === 'not_found' ? '404' :
-      activeTab
-    );
-    if (activeTab === 'lesson' && selectedVideo) {
-      targetHash = `#/lesson/${selectedVideo.channel_id || 'ch'}/${selectedVideo.telegram_message_id || selectedVideo.id}`;
-    } else if (activeTab === 'channels' && channelViewMode === 'detail' && selectedChannelId) {
-      targetHash = `#/channel/${selectedChannelId}`;
-    }
-
-    if (window.location.hash !== targetHash) {
+    // Only set initial default hash on empty root navigation without corrupting history stack
+    if (!window.location.hash || window.location.hash === '#/' || window.location.hash === '#') {
+      let targetHash = '#/' + (
+        activeTab === 'sde_sheet' ? 'dsa-sheets' :
+        activeTab === 'dsa_problems' ? 'dsa-problems' :
+        activeTab === 'system_design' ? 'system-design' :
+        activeTab === 'thank_you' ? 'thank-you' :
+        activeTab === 'not_found' ? '404' :
+        activeTab
+      );
+      if (activeTab === 'lesson' && selectedVideo) {
+        targetHash = `#/lesson/${selectedVideo.channel_id || 'ch'}/${selectedVideo.telegram_message_id || selectedVideo.id}`;
+      } else if (activeTab === 'channels' && channelViewMode === 'detail' && selectedChannelId) {
+        targetHash = `#/channel/${selectedChannelId}`;
+      }
       window.history.replaceState(null, '', targetHash);
     }
-  }, [activeTab, selectedVideo, selectedChannelId, channelViewMode, sdeFullscreenProblem, isSqlModalOpen, isPotdModalOpen]);
+  }, [activeTab, selectedVideo, selectedChannelId, channelViewMode, sdeFullscreenProblem, isSqlModalOpen, activeSqlProblem, isPotdModalOpen]);
 
   // Lecture completion tracking
   const [completedLectures, setCompletedLectures] = useState<Set<string>>(() => {
@@ -1006,10 +1004,11 @@ export function App() {
 
     // Detect if problem is an SQL/Database question and open SQL compiler arena
     if (isSqlProblem(problem)) {
+      prevHashBeforeProblem.current = window.location.hash || '#/dsa-sheets';
       setActiveSqlProblem({ title: problem.name, problem });
       window.scrollTo({ top: 0, behavior: 'instant' });
       if (window.location.hash !== `#/problem/${targetSlug}`) {
-        window.history.pushState(null, '', `#/problem/${targetSlug}`);
+        window.history.pushState({ isProblemModal: true }, '', `#/problem/${targetSlug}`);
       }
       return;
     }
@@ -1019,11 +1018,13 @@ export function App() {
     const dsaVideos = allVideos.filter(v => v.channel_id === 'ch-dsa-01');
     const matched = findMatchingDsaVideo(problem.name, dsaVideos);
 
+    // Capture current hash before navigating to problem (for back-button restoration)
+    prevHashBeforeProblem.current = window.location.hash || '#/dsa-sheets';
     setSdeFullscreenProblem(problem);
     setSdeFullscreenVideo(matched || null);
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (window.location.hash !== `#/problem/${targetSlug}`) {
-      window.history.pushState(null, '', `#/problem/${targetSlug}`);
+      window.history.pushState({ isProblemModal: true }, '', `#/problem/${targetSlug}`);
     }
   };
 
@@ -1690,12 +1691,12 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
 
         {/* VIEW 5: PRIVACY POLICY (GDPR & CCPA COMPLIANT) */}
         {activeTab === 'privacy' && (
-          <PrivacyPolicyPage onBackToHome={() => navigateTo('dashboard')} />
+          <PrivacyPolicyPage onBackToHome={() => (window.history.length > 1 ? window.history.back() : navigateTo('dashboard'))} />
         )}
 
         {/* VIEW 6: TERMS AND CONDITIONS OF SERVICE */}
         {activeTab === 'terms' && (
-          <TermsPage onBackToHome={() => navigateTo('dashboard')} />
+          <TermsPage onBackToHome={() => (window.history.length > 1 ? window.history.back() : navigateTo('dashboard'))} />
         )}
 
         {/* VIEW 7: THANK YOU / ACTION CONVERSION RECEIPT */}
@@ -1705,7 +1706,7 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
 
         {/* VIEW 8: CONTACT FORM & BUSINESS OFFICE */}
         {activeTab === 'contact' && (
-          <ContactPage onBackToHome={() => navigateTo('dashboard')} onNavigateToThankYou={() => navigateTo('thank_you')} />
+          <ContactPage onBackToHome={() => (window.history.length > 1 ? window.history.back() : navigateTo('dashboard'))} onNavigateToThankYou={() => navigateTo('thank_you')} />
         )}
 
         {/* VIEW 9: CUSTOM 404 NOT FOUND FALLBACK */}
@@ -1724,14 +1725,13 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           transcript={sdeFullscreenVideo?.telegram_caption}
           codingProblem={sdeFullscreenProblem}
           onClose={() => {
+            const returnHash = prevHashBeforeProblem.current || '#/dsa-sheets';
             setSdeFullscreenProblem(null);
             setSdeFullscreenVideo(null);
-            if (window.location.hash.startsWith('#/problem/')) {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.hash = '#/sde-sheet';
-              }
+            if (window.history.state?.isProblemModal) {
+              window.history.back();
+            } else if (window.location.hash.startsWith('#/problem/')) {
+              window.location.hash = returnHash;
             }
           }}
           onCodeExecuted={handleQuestionSolved}
@@ -1746,14 +1746,13 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
           notes={videoArtifacts?.notes}
           codingProblem={activeSqlProblem?.problem}
           onClose={() => {
+            const returnHash = prevHashBeforeProblem.current || '#/dsa-sheets';
             setIsSqlModalOpen(false);
             setActiveSqlProblem(null);
-            if (window.location.hash.startsWith('#/problem/')) {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                window.location.hash = '#/sde-sheet';
-              }
+            if (window.history.state?.isProblemModal) {
+              window.history.back();
+            } else if (window.location.hash.startsWith('#/problem/')) {
+              window.location.hash = returnHash;
             }
           }}
           onCodeExecuted={handleQuestionSolved}

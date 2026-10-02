@@ -1346,22 +1346,31 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
     };
   };
 
-  // 1. Try Backend FastAPI route
-  try {
-    const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(25000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data.isIncorrect === 'boolean') {
-        return sanitizeResult(data);
+  // 1. Try Backend FastAPI route across multiple fallback endpoints
+  const verifyEndpoints = [
+    `/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
+    `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
+    `https://sdetube.pages.dev/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
+    `https://edustream-backend-90vm.onrender.com/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`
+  ];
+
+  for (const ep of verifyEndpoints) {
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.isIncorrect === 'boolean') {
+          return sanitizeResult(data);
+        }
       }
+    } catch (e) {
+      console.warn(`[Backend Verify TestCase notice on ${ep}]:`, e);
     }
-  } catch (e) {
-    console.warn('[Backend Verify TestCase notice, falling back to direct AI cascade]:', e);
   }
 
   // 2. Cascade AI fallback

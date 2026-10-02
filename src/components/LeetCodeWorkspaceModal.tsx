@@ -4276,6 +4276,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             setTestInput(finalInput);
           }
 
+          // Clear previous failed submission result so that:
+          // 1. currentExpectedOutput immediately evaluates to the new expected output
+          // 2. The failure banner is reset for the fresh re-submission
+          setSubmissionResult(null);
+          setExecutionResult(null);
+
           return next;
         }}
         onSwitchToDriverReport={() => {

@@ -126,6 +126,108 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
     };
   }, [autoResubmitCountdown, handleResubmit]);
 
+  const applyResolvedCorrection = async (rawInput: string, rawExpected: string, isFromUserOutput = false) => {
+    let finalInput = (rawInput || '').trim();
+    const finalExpected = (rawExpected || '').trim();
+
+    // Deterministic fallback: If input lacks '=', auto-prefix parameter name
+    if (!finalInput.includes('=')) {
+      let pName = 'grid';
+      const m = (methodSignature || '').match(/(?:int|void|bool|vector<[^>]+>|string|double|List<[^>]+>)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(?:self\s*,\s*)?(?:const\s+)?[a-zA-Z0-9_<>,:[\]\s\*&]+?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/);
+      if (m && m[2]) {
+        pName = m[2];
+      } else {
+        const simpleMatch = (methodSignature || '').match(/\(\s*(?:self\s*,\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[:\)]/);
+        if (simpleMatch && simpleMatch[1]) pName = simpleMatch[1];
+      }
+      finalInput = `${pName} = ${finalInput}`;
+    }
+
+    const student = getCurrentStudent();
+    const activeEmail = userEmail || student?.email || 'student@edustream.io';
+
+    // 1. Check if this user already claimed ANY bounty for this problem (frontend guard: 1 bounty per problem)
+    const bountyClaimKey = `edustream_bounty_claimed_${problemSlug}_${activeEmail}`;
+    const legacyTestcaseKey = `edustream_bounty_claimed_testcase_${problemSlug}_${activeEmail}`;
+    const legacyDriverKey = `edustream_bounty_claimed_driver_${problemSlug}_${language}_${activeEmail}`;
+    const alreadyClaimedLocally = (() => {
+      try {
+        return !!(
+          localStorage.getItem(bountyClaimKey) ||
+          localStorage.getItem(legacyTestcaseKey) ||
+          localStorage.getItem(legacyDriverKey)
+        );
+      } catch {
+        return false;
+      }
+    })();
+
+    // 2. Credit ₹1.00 bounty reward locally only if not already claimed
+    let localCredit = { newBalance: null as number | null };
+    if (!alreadyClaimedLocally) {
+      const bountyDesc = `🎉 Bug Bounty: ₹1.00 credited for finding and auto-resolving testcase issue in ${problemTitle}`;
+      localCredit = creditUserReward(1.00, bountyDesc, activeEmail) as any;
+      try {
+        localStorage.setItem(bountyClaimKey, '1');
+        localStorage.setItem(legacyTestcaseKey, '1');
+      } catch {}
+    }
+
+    // 3. Multi-tier upload to Cloudflare R2 and memory cache
+    let backendMessage = isFromUserOutput
+      ? `Testcase expected output updated to accept your output '${finalExpected}'! Auto-resubmitting...`
+      : "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Auto-resubmitting your solution...";
+    let backendBalance = localCredit.newBalance;
+
+    const endpoints = [
+      `/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
+      `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
+      `https://sdetube.pages.dev/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
+      `https://edustream-backend-90vm.onrender.com/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const resp = await fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            testCaseIndex,
+            correctedInput: finalInput,
+            correctedExpectedOutput: finalExpected,
+            email: activeEmail,
+            problemTitle
+          })
+        });
+        if (resp.ok) {
+          const resData = await resp.json();
+          if (resData.message) backendMessage = resData.message;
+          if (typeof resData.newBalance === 'number') backendBalance = resData.newBalance;
+          break;
+        }
+      } catch (e) {
+        console.warn(`[Auto-Resolve Testcase ep notice for ${ep}]:`, e);
+      }
+    }
+
+    // 4. Apply correction in the workspace and retain latest template
+    const updatedTpl = onApplyCorrection(finalInput, finalExpected);
+    latestUpdatedTemplateRef.current = updatedTpl;
+
+    setResolvedStatus({
+      autoResolved: true,
+      credited: !alreadyClaimedLocally,
+      creditedAmount: alreadyClaimedLocally ? 0 : 1.00,
+      newBalance: backendBalance,
+      message: alreadyClaimedLocally
+        ? `Testcase fixed! Your report has been auto-resolved and the correction applied. (Bounty for this problem was already claimed earlier.)`
+        : backendMessage
+    });
+
+    // 5. Trigger auto-resubmit countdown (2 seconds for clear feedback and smooth UX)
+    setAutoResubmitCountdown(2);
+  };
+
   const handleRunVerification = async () => {
     setIsVerifying(true);
     setAiResult(null);
@@ -150,70 +252,9 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
 
       // If an issue was detected, automatically auto-resolve on backend & credit ₹1 to user
       if (result.isIncorrect) {
-        let finalInput = (result.correctedInput || currentInput || '').trim();
-        const finalExpected = String(result.correctedExpectedOutput || currentExpectedOutput || '').trim();
-
-        // Deterministic fallback: If input lacks '=', auto-prefix parameter name
-        if (!finalInput.includes('=')) {
-          let pName = 'grid';
-          const m = (methodSignature || '').match(/(?:int|void|bool|vector<[^>]+>|string|double|List<[^>]+>)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(?:self\s*,\s*)?(?:const\s+)?[a-zA-Z0-9_<>,:\[\]\s\*&]+?\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\)/);
-          if (m && m[2]) {
-            pName = m[2];
-          } else {
-            const simpleMatch = (methodSignature || '').match(/\(\s*(?:self\s*,\s*)?([a-zA-Z_][a-zA-Z0-9_]*)\s*[:\)]/);
-            if (simpleMatch && simpleMatch[1]) pName = simpleMatch[1];
-          }
-          finalInput = `${pName} = ${finalInput}`;
-        }
-
-        const student = getCurrentStudent();
-        const activeEmail = userEmail || student?.email || 'student@edustream.io';
-
-        // 1. Credit ₹1.00 bounty reward locally
-        const bountyDesc = `🎉 Bug Bounty: ₹1.00 credited for finding and auto-resolving testcase issue in ${problemTitle}`;
-        const localCredit = creditUserReward(1.00, bountyDesc, activeEmail);
-
-        // 2. Call backend to auto-resolve problem in R2 + memory cache and record credit in DB
-        let backendMessage = result.verdict === 'MULTIPLE_VALID_OUTPUTS'
-          ? "Multiple valid BST structures detected! Testcase updated to accept valid solutions. ₹1 credited to balance. Auto-resubmitting..."
-          : "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Auto-resubmitting your solution...";
-        let backendBalance = localCredit.newBalance;
-
-        try {
-          const resp = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              testCaseIndex,
-              correctedInput: finalInput,
-              correctedExpectedOutput: finalExpected,
-              email: activeEmail,
-              problemTitle
-            })
-          });
-          if (resp.ok) {
-            const resData = await resp.json();
-            if (resData.message) backendMessage = resData.message;
-            if (typeof resData.newBalance === 'number') backendBalance = resData.newBalance;
-          }
-        } catch (e) {
-          console.warn('[Auto-Resolve Backend Notice]:', e);
-        }
-
-        // 3. Apply correction in the workspace and retain latest template
-        const updatedTpl = onApplyCorrection(finalInput, finalExpected);
-        latestUpdatedTemplateRef.current = updatedTpl;
-
-        setResolvedStatus({
-          autoResolved: true,
-          credited: true,
-          creditedAmount: 1.00,
-          newBalance: backendBalance,
-          message: backendMessage
-        });
-
-        // 4. Trigger auto-resubmit countdown (2 seconds for clear feedback and smooth UX)
-        setAutoResubmitCountdown(2);
+        const inputToUse = (result.correctedInput || currentInput || '').trim();
+        const expectedToUse = String(result.correctedExpectedOutput || currentExpectedOutput || '').trim();
+        await applyResolvedCorrection(inputToUse, expectedToUse, false);
       }
     } catch (e) {
       console.error('[Verify TestCase Error]:', e);
@@ -371,16 +412,37 @@ export const ReportTestCaseModal: React.FC<ReportTestCaseModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-2xl border flex items-start gap-3 shadow-lg bg-emerald-950/40 border-emerald-500/60 text-emerald-200">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                      Testcase Verified Correct
-                    </h4>
-                    <p className="text-xs mt-0.5 text-slate-300">
-                      {aiResult.explanation}
-                    </p>
+                <div className="space-y-3">
+                  <div className="p-4 rounded-2xl border flex items-start gap-3 shadow-lg bg-emerald-950/40 border-emerald-500/60 text-emerald-200">
+                    <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                        Testcase Verified Correct by AI
+                      </h4>
+                      <p className="text-xs mt-0.5 text-slate-300">
+                        {aiResult.explanation}
+                      </p>
+                    </div>
                   </div>
+
+                  {userActualOutput && userActualOutput.trim() !== String(currentExpectedOutput || '').trim() && (
+                    <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/50 space-y-2.5">
+                      <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>Force Auto-Resolve with Your Code&apos;s Output:</span>
+                      </div>
+                      <p className="text-xs text-slate-300">
+                        If your solution is valid and you believe the expected output should accept your result, click below to update the testcase in Cloudflare R2 and auto-resubmit.
+                      </p>
+                      <button
+                        onClick={() => applyResolvedCorrection(currentInput, userActualOutput.trim(), true)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-indigo-600 to-emerald-600 hover:from-amber-500 hover:to-emerald-500 text-white text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                      >
+                        <Check className="w-3.5 h-3.5 text-white" />
+                        <span>Accept Output &apos;{userActualOutput.length > 25 ? userActualOutput.slice(0, 25) + '...' : userActualOutput}&apos; &amp; Auto-Fix</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

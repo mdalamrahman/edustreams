@@ -204,6 +204,19 @@ class DatabaseManager:
                     )
                 """)
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_dsa_prog_email ON user_dsa_progress(user_email)")
+
+                # Bounty claims table: one bounty per user per problem per type
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS problem_bounty_claims (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_email TEXT NOT NULL,
+                        problem_slug TEXT NOT NULL,
+                        bounty_type TEXT NOT NULL,
+                        claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(user_email, problem_slug, bounty_type)
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_bounty_email ON problem_bounty_claims(user_email)")
                 conn.commit()
         except Exception as e:
             print(f"[DatabaseManager Init Notice]: {e}")
@@ -3582,24 +3595,32 @@ async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
                 _PROBLEM_CACHE[clean_slug]["solutions"] = {}
             _PROBLEM_CACHE[clean_slug]["solutions"][clean_lang] = solution_code
 
-    # 4. Auto-credit ₹1.00 bounty to user's wallet if email provided
+    # 4. Auto-credit ₹1.00 bounty to user's wallet if email provided (once per user per problem+lang)
     credited = False
     new_balance = None
+    already_claimed = False
     if payload.email:
         try:
-            prob_title = payload.problemTitle or clean_slug
-            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_lang.upper()} boilerplate code in {prob_title}"
-            credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
-            credited = credit_res.get("success", False)
-            new_balance = credit_res.get("newBalance")
+            clean_email = (payload.email or "").lower().strip()
+            bounty_key = f"driver-{clean_lang}"
+            already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
+            if not already_claimed:
+                claim_recorded = claim_bounty(clean_email, clean_slug, bounty_key)
+                if claim_recorded:
+                    prob_title = payload.problemTitle or clean_slug
+                    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_lang.upper()} boilerplate code in {prob_title}"
+                    credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
+                    credited = credit_res.get("success", False)
+                    new_balance = credit_res.get("newBalance")
         except Exception as e:
             print(f"[Credit Driver Bounty Error]: {e}")
 
-    message = (
-        f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2! ₹1.00 has been credited to your balance."
-        if credited
-        else f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2!"
-    )
+    if already_claimed:
+        message = f"Boilerplate code for {clean_lang.upper()} corrected in Cloudflare R2! (Bounty already claimed for this problem.)"
+    elif credited:
+        message = f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2! ₹1.00 has been credited to your balance."
+    else:
+        message = f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2!"
 
     return {
         "success": True,
@@ -3609,6 +3630,7 @@ async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
         "slug": clean_slug,
         "language": clean_lang,
         "credited": credited,
+        "alreadyClaimed": already_claimed,
         "newBalance": new_balance,
         "message": message
     }
@@ -3629,27 +3651,36 @@ async def save_problem_driver_code(slug: str, lang: str, req: Request):
             stored = r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
             credited = False
             new_balance = None
+            already_claimed = False
             if email:
                 try:
-                    prob_title = body.get("problemTitle") or clean_slug
-                    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for correcting {clean_lang.upper()} driver code harness in {prob_title}"
-                    credit_res = credit_user_wallet_db(email, 1.0, "BUG_BOUNTY", reward_desc)
-                    credited = credit_res.get("success", False)
-                    new_balance = credit_res.get("newBalance")
+                    clean_email = (email or "").lower().strip()
+                    bounty_key = f"driver-{clean_lang}"
+                    already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
+                    if not already_claimed:
+                        claim_recorded = claim_bounty(clean_email, clean_slug, bounty_key)
+                        if claim_recorded:
+                            prob_title = body.get("problemTitle") or clean_slug
+                            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for correcting {clean_lang.upper()} driver code harness in {prob_title}"
+                            credit_res = credit_user_wallet_db(email, 1.0, "BUG_BOUNTY", reward_desc)
+                            credited = credit_res.get("success", False)
+                            new_balance = credit_res.get("newBalance")
                 except Exception as e:
                     print(f"[Credit Driver Bounty Error]: {e}")
 
-            message = (
-                f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2! ₹1.00 has been credited to your balance."
-                if credited
-                else f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2!"
-            )
+            if already_claimed:
+                message = f"Driver harness for {clean_lang.upper()} updated in R2! (Bounty already claimed for this problem.)"
+            elif credited:
+                message = f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2! ₹1.00 has been credited to your balance."
+            else:
+                message = f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2!"
             return {
                 "success": True,
                 "slug": clean_slug,
                 "language": clean_lang,
                 "stored_in_r2": stored,
                 "credited": credited,
+                "alreadyClaimed": already_claimed,
                 "newBalance": new_balance,
                 "message": message
             }
@@ -4121,30 +4152,39 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
     _PROBLEM_CACHE[clean_slug] = problem
     r2_storage.upload_problem(clean_slug, problem)
 
-    # Auto-credit ₹1.00 bounty to user's wallet if email provided
+    # Auto-credit ₹1.00 bounty to user's wallet if email provided (once per user per problem)
     credited = False
     new_balance = None
+    already_claimed = False
     if payload.email:
         try:
-            prob_title = payload.problemTitle or problem.get("name") or clean_slug
-            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and resolving testcase issue in {prob_title}"
-            credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
-            credited = credit_res.get("success", False)
-            new_balance = credit_res.get("newBalance")
+            clean_email = (payload.email or "").lower().strip()
+            already_claimed = has_claimed_bounty(clean_email, clean_slug, "testcase")
+            if not already_claimed:
+                # Atomically record claim then credit — avoids double-credit on retry
+                claim_recorded = claim_bounty(clean_email, clean_slug, "testcase")
+                if claim_recorded:
+                    prob_title = payload.problemTitle or problem.get("name") or clean_slug
+                    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and resolving testcase issue in {prob_title}"
+                    credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
+                    credited = credit_res.get("success", False)
+                    new_balance = credit_res.get("newBalance")
         except Exception as e:
             print(f"[Credit Bounty Error]: {e}")
 
-    message = (
-        "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue."
-        if credited
-        else "Your reported issue was found correct! It has been resolved. Please resubmit to resolve the issue."
-    )
+    if already_claimed:
+        message = "Your reported issue was found correct! It has been resolved. (Bounty already claimed for this problem.) Please resubmit to verify the fix."
+    elif credited:
+        message = "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue."
+    else:
+        message = "Your reported issue was found correct! It has been resolved. Please resubmit to resolve the issue."
 
     return {
         "success": True,
         "slug": clean_slug,
         "issueFound": True,
         "credited": credited,
+        "alreadyClaimed": already_claimed,
         "creditedAmount": 1.0 if credited else 0.0,
         "newBalance": new_balance,
         "message": message,
@@ -7598,7 +7638,55 @@ class CreditCreditsPayload(BaseModel):
     description: str = "🎉 Verified Issue Report Bounty"
 
 
+def has_claimed_bounty(email: str, slug: str, bounty_type: str = None) -> bool:
+    """Returns True if the user has already claimed a bounty for this problem (1 bounty per problem per user)."""
+    import sqlite3
+    try:
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? LIMIT 1",
+            (email.lower().strip(), slug.lower().strip())
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+    except Exception as e:
+        print(f"[BountyCheck Notice]: {e}")
+        return False
+
+
+def claim_bounty(email: str, slug: str, bounty_type: str = "bounty") -> bool:
+    """Records a bounty claim (returns True on success, False if already claimed for this problem or error)."""
+    import sqlite3
+    try:
+        clean_email = email.lower().strip()
+        clean_slug = slug.lower().strip()
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? LIMIT 1",
+            (clean_email, clean_slug)
+        )
+        if cursor.fetchone():
+            conn.close()
+            return False
+
+        cursor.execute(
+            "INSERT OR IGNORE INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)",
+            (clean_email, clean_slug, bounty_type)
+        )
+        inserted = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return inserted
+    except Exception as e:
+        print(f"[BountyClaim Notice]: {e}")
+        return False
+
+
 def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "🎉 Verified Issue Report Bounty") -> dict:
+
     """Atomically credits funds to user wallet in SQLite database and syncs to Cloudflare R2."""
     import sqlite3
     clean_email = (email or "student@edustream.io").lower().strip()

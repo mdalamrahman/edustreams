@@ -185,15 +185,40 @@ export const ReportDriverCodeModal: React.FC<ReportDriverCodeModalProps> = ({
         const student = getCurrentStudent();
         const activeEmail = userEmail || student?.email || 'student@edustream.io';
 
-        // 1. Credit ₹1.00 bounty reward locally
-        const bountyDesc = `🎉 Bug Bounty: ₹1.00 credited for reporting & auto-resolving boilerplate code in ${problemTitle} (${language.toUpperCase()})`;
-        const localCredit = creditUserReward(1.00, bountyDesc, activeEmail);
+        // 1. Check if this user already claimed ANY bounty for this problem (frontend guard: 1 bounty per problem)
+        const bountyClaimKey = `edustream_bounty_claimed_${problemSlug}_${activeEmail}`;
+        const legacyDriverKey = `edustream_bounty_claimed_driver_${problemSlug}_${language}_${activeEmail}`;
+        const legacyTestcaseKey = `edustream_bounty_claimed_testcase_${problemSlug}_${activeEmail}`;
+        const alreadyClaimedLocally = (() => {
+          try {
+            return !!(
+              localStorage.getItem(bountyClaimKey) ||
+              localStorage.getItem(legacyDriverKey) ||
+              localStorage.getItem(legacyTestcaseKey)
+            );
+          } catch {
+            return false;
+          }
+        })();
+
+        // 2. Credit ₹1.00 bounty reward locally only if not already claimed
+        let localCredit = { newBalance: null as number | null };
+        if (!alreadyClaimedLocally) {
+          const bountyDesc = `🎉 Bug Bounty: ₹1.00 credited for reporting & auto-resolving boilerplate code in ${problemTitle} (${language.toUpperCase()})`;
+          localCredit = creditUserReward(1.00, bountyDesc, activeEmail) as any;
+          try {
+            localStorage.setItem(bountyClaimKey, '1');
+            localStorage.setItem(legacyDriverKey, '1');
+          } catch {}
+        }
 
         let backendBalance = localCredit.newBalance;
-        let backendMessage = `Boilerplate driver for ${language.toUpperCase()} was successfully auto-corrected and saved in Cloudflare R2! ₹1.00 has been credited to your balance.`;
+        let backendMessage = alreadyClaimedLocally
+          ? `Boilerplate driver for ${language.toUpperCase()} auto-corrected and saved in Cloudflare R2! (Bounty already claimed for this problem.)`
+          : `Boilerplate driver for ${language.toUpperCase()} was successfully auto-corrected and saved in Cloudflare R2! ₹1.00 has been credited to your balance.`;
         let storedInR2 = true;
 
-        // 2. Multi-tier upload to Cloudflare R2 (edge function proxy, direct backend, and failover)
+        // 3. Multi-tier upload to Cloudflare R2 (edge function proxy, direct backend, and failover)
         const endpoints = [
           `/api/problem/${encodeURIComponent(problemSlug)}/correct-driver`,
           `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-driver`,
