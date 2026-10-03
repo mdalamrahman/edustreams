@@ -57,7 +57,7 @@ export interface RealtimeTranscriptStatus {
   source: 'redis' | 'db' | 'backend';
 }
 
-function sanitizeKey(raw: string): string {
+export function sanitizeKey(raw: string): string {
   return raw.replace(/[^a-zA-Z0-9_\-]/g, '_').toLowerCase();
 }
 
@@ -94,8 +94,9 @@ export async function setRealtimeTranscriptStatus(
       source: 'redis'
     };
 
-    // Store in Redis (24-hour retention for active transcript jobs)
-    await redis.set(redisKey, merged, { ex: 86400 });
+    // Store in Redis (24-hour retention for completed jobs, 180s for active in-progress jobs)
+    const isCompleted = merged.status === 'completed' || merged.progressPercent >= 100;
+    await redis.set(redisKey, merged, { ex: isCompleted ? 86400 : 180 });
 
     // Broadcast update via custom DOM event for active UI components
     if (typeof window !== 'undefined') {
@@ -134,39 +135,55 @@ export async function getRealtimeTranscriptStatus(
     // 1. Upstash Redis fast hit
     const cached = await redis.get<RealtimeTranscriptStatus>(redisKey).catch(() => null);
     if (cached) {
-      return cached;
+      // If completed or 100%, return immediately
+      if (cached.status === 'completed' || cached.progressPercent >= 100) {
+        return cached;
+      }
+      // If in progress and updated within last 2 seconds, return cached to avoid hammering backend
+      const ageMs = cached.lastUpdated ? Date.now() - new Date(cached.lastUpdated).getTime() : 99999;
+      if (ageMs < 2000) {
+        return cached;
+      }
     }
 
-    // 2. Fallback to database / backend route if chatId and msgId provided
+    // 2. Query backend for live status update if chatId and msgId provided
     if (chatId && msgId) {
       try {
-        const resp = await fetch(`${BACKEND_URL}/api/transcript/status/${chatId}/${msgId}?title=${encodeURIComponent(title || '')}`);
+        const resp = await fetch(`${BACKEND_URL}/api/transcript/status/${chatId}/${msgId}?title=${encodeURIComponent(title || '')}`, {
+          signal: AbortSignal.timeout(3500)
+        });
         if (resp.ok) {
           const data = await resp.json();
+          const isComplete = data.status === 'completed' || data.has_artifacts || Number(data.progress_percent || 0) >= 100;
           const fromBackend: RealtimeTranscriptStatus = {
             key: cleanId,
             videoId: cleanId,
             chatId,
             msgId,
             title,
-            status: data.status === 'completed' ? 'completed' : 'transcribing',
-            progressPercent: Number(data.progress_percent || (data.status === 'completed' ? 100 : 25)),
+            status: isComplete ? 'completed' : 'transcribing',
+            progressPercent: isComplete ? 100 : Number(data.progress_percent || (data.status === 'completed' ? 100 : 25)),
             currentPart: data.current_part || 1,
             totalParts: data.total_parts || 30,
-            stage: data.stage || 'In progress',
-            hasArtifacts: Boolean(data.has_artifacts),
-            estimatedSecondsLeft: data.estimated_seconds_left,
+            stage: isComplete ? 'Completed' : (data.stage || 'In progress'),
+            hasArtifacts: isComplete || Boolean(data.has_artifacts),
+            estimatedSecondsLeft: isComplete ? 0 : data.estimated_seconds_left,
             lastUpdated: new Date().toISOString(),
             source: 'backend'
           };
-          // Cache in Redis
-          await redis.set(redisKey, fromBackend, { ex: 86400 }).catch(() => {});
+          // Cache in Redis (86400s if completed, 180s if in progress)
+          await redis.set(redisKey, fromBackend, { ex: isComplete ? 86400 : 180 }).catch(() => {});
           return fromBackend;
         }
       } catch (_) {}
     }
 
-    // 3. Fallback to Supabase video table
+    // 3. If cached status existed (even if slightly older), return it as fallback
+    if (cached) {
+      return cached;
+    }
+
+    // 4. Fallback to Supabase video table
     try {
       const { data } = await supabaseAdmin
         .from('videos')

@@ -31,7 +31,7 @@ import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
 import { getStreamUrl, getDirectStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { getCurrentStudent } from '../lib/auth';
-import { getRealtimeTranscriptStatus, setRealtimeTranscriptStatus } from '../lib/redis';
+import { getRealtimeTranscriptStatus, setRealtimeTranscriptStatus, sanitizeKey } from '../lib/redis';
 
 interface VideoPlayerProps {
   video: Video;
@@ -88,6 +88,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [showControls, setShowControls] = useState(true);
   const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
   const [loadingTranscript, setLoadingTranscript] = useState<boolean>(false);
+  const [liveProgress, setLiveProgress] = useState<{
+    progressPercent?: number;
+    stage?: string;
+    currentPart?: number;
+    totalParts?: number;
+    estimatedSecondsLeft?: number;
+  } | null>(null);
   const [autoCompleted, setAutoCompleted] = useState(false);
   const [showRegenModal, setShowRegenModal] = useState<boolean>(false);
   const [confirmInput, setConfirmInput] = useState<string>('');
@@ -572,11 +579,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     let isCancelled = false;
     let pollInterval: any = null;
 
-    const fetchTranscript = async () => {
+    const fetchTranscript = async (): Promise<boolean> => {
       try {
         const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
-        const resp = await fetch(url, { signal: AbortSignal.timeout(4000) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
+        if (!resp.ok) return false;
         const data = await resp.json();
         
         if (!isCancelled && data?.transcript && data.transcript.length > 50) {
@@ -584,16 +591,50 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           setLoadingTranscript(false);
           try { localStorage.setItem(cacheKey, data.transcript); } catch {}
           if (pollInterval) clearInterval(pollInterval);
+          return true;
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[fetchTranscript Notice]:', err);
+      }
+      return false;
     };
 
     fetchTranscript();
 
+    // Listen to realtime custom events from Redis/App
+    const handleStatusEvent = (e: any) => {
+      if (isCancelled) return;
+      const detail = e.detail;
+      if (!detail) return;
+      const targetKey = sanitizeKey(video.id || `${video.channel_id}_${video.telegram_message_id}`);
+      if (detail.key === targetKey || detail.videoId === video.id || (detail.msgId && String(detail.msgId) === String(video.telegram_message_id))) {
+        if (detail.transcript && detail.transcript.length > 50) {
+          setDynamicTranscript(detail.transcript);
+          setLoadingTranscript(false);
+          if (pollInterval) clearInterval(pollInterval);
+        } else if (detail.status === 'completed' || detail.hasArtifacts || detail.progressPercent >= 100) {
+          fetchTranscript().then((gotIt) => {
+            if (gotIt && pollInterval) clearInterval(pollInterval);
+          });
+        } else {
+          setLiveProgress({
+            progressPercent: detail.progressPercent,
+            stage: detail.stage,
+            currentPart: detail.currentPart,
+            totalParts: detail.totalParts,
+            estimatedSecondsLeft: detail.estimatedSecondsLeft
+          });
+        }
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sdetube_transcript_status_updated', handleStatusEvent);
+    }
+
     let attempts = 0;
     // Poll status while loading to update live progress bar and auto-fetch once ready
     pollInterval = setInterval(async () => {
-      if (isCancelled || attempts > 45) {
+      if (isCancelled || attempts > 60) {
         if (pollInterval) clearInterval(pollInterval);
         return;
       }
@@ -607,30 +648,55 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           video.telegram_message_id,
           cleanTitle
         );
-        if (redisStatus?.status === 'completed' || redisStatus?.hasArtifacts || (redisStatus?.transcriptSnippet && redisStatus.transcriptSnippet.length > 50)) {
-          await fetchTranscript();
-          if (pollInterval) clearInterval(pollInterval);
-          return;
+        if (redisStatus && !isCancelled) {
+          setLiveProgress({
+            progressPercent: redisStatus.progressPercent,
+            stage: redisStatus.stage,
+            currentPart: redisStatus.currentPart,
+            totalParts: redisStatus.totalParts,
+            estimatedSecondsLeft: redisStatus.estimatedSecondsLeft
+          });
+          if (redisStatus.status === 'completed' || redisStatus.hasArtifacts || redisStatus.progressPercent >= 100 || (redisStatus.transcriptSnippet && redisStatus.transcriptSnippet.length > 50)) {
+            const gotIt = await fetchTranscript();
+            if (gotIt) {
+              if (pollInterval) clearInterval(pollInterval);
+              return;
+            }
+          }
         }
       } catch (_) {}
 
       // 2. Fallback to Telegram backend route
       try {
         const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
-        const resp = await fetch(statusUrl, { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) {
+        const resp = await fetch(statusUrl, { signal: AbortSignal.timeout(4000) });
+        if (resp.ok && !isCancelled) {
           const statusData = await resp.json();
-          if (statusData?.status === 'completed' || statusData?.has_artifacts || (statusData?.transcript && statusData.transcript.length > 50)) {
-            await fetchTranscript();
-            if (pollInterval) clearInterval(pollInterval);
+          if (statusData) {
+            setLiveProgress({
+              progressPercent: Number(statusData.progress_percent || 0),
+              stage: statusData.stage,
+              currentPart: statusData.current_part,
+              totalParts: statusData.total_parts,
+              estimatedSecondsLeft: statusData.estimated_seconds_left
+            });
+            if (statusData.status === 'completed' || statusData.has_artifacts || Number(statusData.progress_percent || 0) >= 100 || (statusData.transcript && statusData.transcript.length > 50)) {
+              const gotIt = await fetchTranscript();
+              if (gotIt && pollInterval) {
+                clearInterval(pollInterval);
+              }
+            }
           }
         }
       } catch {}
-    }, 3000);
+    }, 2500);
 
     return () => {
       isCancelled = true;
       if (pollInterval) clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sdetube_transcript_status_updated', handleStatusEvent);
+      }
     };
   }, [video.id, video.title, video.channel_id, video.telegram_message_id, video.duration_seconds, videoArtifacts?.transcript, video.transcript]);
 
@@ -1196,15 +1262,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </button>
             </div>
             <div className="max-h-72 overflow-y-auto whitespace-pre-line leading-relaxed pr-1">
-              {loadingTranscript ? (
+              {loadingTranscript && !videoArtifacts?.transcript && !dynamicTranscript && (!video.transcript || video.transcript.includes('Ingested from')) ? (
                 <AIProcessingStatusCard 
                   videoTitle={video.title || 'Lecture'} 
                   durationSeconds={video.duration_seconds || 900} 
-                  progressPercent={videoArtifacts?.progress_percent}
-                  currentPart={videoArtifacts?.current_part}
-                  totalParts={videoArtifacts?.total_parts}
-                  stage={videoArtifacts?.stage}
-                  estimatedSecondsLeft={videoArtifacts?.estimated_seconds_left}
+                  progressPercent={liveProgress?.progressPercent ?? videoArtifacts?.progress_percent}
+                  currentPart={liveProgress?.currentPart ?? videoArtifacts?.current_part}
+                  totalParts={liveProgress?.totalParts ?? videoArtifacts?.total_parts}
+                  stage={liveProgress?.stage ?? videoArtifacts?.stage}
+                  estimatedSecondsLeft={liveProgress?.estimatedSecondsLeft ?? videoArtifacts?.estimated_seconds_left}
                 />
               ) : (
                 videoArtifacts?.transcript || dynamicTranscript || (video.transcript && !video.transcript.includes('Ingested from') ? video.transcript : 'SDETube AI Speech Engine processing verbatim lecture transcript...')

@@ -815,10 +815,10 @@ export function App() {
     }
 
     let pollAttempts = 0;
-    const maxPollAttempts = 60; // Poll up to 3 minutes while background speech & synthesis runs
+    const maxPollAttempts = 80; // Poll while background speech & synthesis runs
 
     const pollStatus = async () => {
-      if (pollAttempts >= maxPollAttempts) return;
+      if (pollAttempts >= maxPollAttempts || !isMounted) return;
       pollAttempts += 1;
 
       // 1. Check Upstash Redis first for sub-millisecond realtime status
@@ -827,7 +827,6 @@ export function App() {
         if (redisStatus && isMounted) {
           if (redisStatus.status === 'completed' || redisStatus.hasArtifacts || redisStatus.progressPercent >= 100) {
             fetchArtifacts();
-            return;
           } else {
             setVideoArtifacts((prev: any) => {
               if (prev && prev.notes && prev.transcript) return prev;
@@ -836,16 +835,22 @@ export function App() {
                 status: redisStatus.status,
                 progress_percent: redisStatus.progressPercent,
                 stage: redisStatus.stage,
+                current_part: redisStatus.currentPart,
+                total_parts: redisStatus.totalParts,
                 estimated_seconds_left: redisStatus.estimatedSecondsLeft
               };
             });
+            if (isMounted && pollAttempts < maxPollAttempts) {
+              pollTimer = setTimeout(pollStatus, 2500);
+            }
+            return;
           }
         }
       } catch (_) {}
 
       const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
-      fetch(statusUrl, { signal: AbortSignal.timeout(3500) })
+      fetch(statusUrl, { signal: AbortSignal.timeout(4000) })
         .then((r) => r.json())
         .then((statusData) => {
           if (!isMounted) return;
@@ -868,24 +873,28 @@ export function App() {
               if (!hasLocalComplete) {
                 setQuizLoading(true);
               }
-              pollTimer = setTimeout(pollStatus, 2500);
+              if (isMounted && pollAttempts < maxPollAttempts) {
+                pollTimer = setTimeout(pollStatus, 2500);
+              }
             }
           }
         })
         .catch(() => {
-          // Silent catch if backend is sleeping or unreachable
+          if (isMounted && pollAttempts < maxPollAttempts) {
+            pollTimer = setTimeout(pollStatus, 2500);
+          }
         });
     };
 
     const fetchArtifacts = () => {
       const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
-      fetch(url)
+      fetch(url, { signal: AbortSignal.timeout(12000) })
         .then((r) => r.json())
         .then((data) => {
           if (!isMounted) return;
           if (data) {
-            if ((data.status === 'completed' || data.notes) && data.transcript) {
+            if ((data.status === 'completed' || data.notes) && data.transcript && data.transcript.length > 50) {
               const normalizedMCQs = (data.mcqs || []).map((m: any, idx: number) => ({
                 id: m.id || `mcq-${idx + 1}`,
                 type: 'MCQ' as const,
@@ -903,6 +912,11 @@ export function App() {
               selectedVideo.quiz_json = normalizedMCQs;
               setQuizLoading(false);
 
+              // Broadcast update to VideoPlayer and all components
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('sdetube_transcript_status_updated', { detail: completeObj }));
+              }
+
               // Persist into localStorage for instant 0ms access across reloads
               try {
                 localStorage.setItem(localKey, JSON.stringify(completeObj));
@@ -912,7 +926,7 @@ export function App() {
               } catch (storageErr) {
                 console.warn('[EduStream Local Storage Notice]:', storageErr);
               }
-            } else if (data.status === 'processing') {
+            } else {
               setVideoArtifacts((prev: any) => {
                 if (prev && prev.notes && prev.transcript) {
                   return prev; // Never overwrite completed state
@@ -925,15 +939,15 @@ export function App() {
               if (!hasLocalComplete) {
                 setQuizLoading(true);
               }
-              pollTimer = setTimeout(pollStatus, 1500);
-            } else {
-              setQuizLoading(false);
+              if (isMounted && pollAttempts < maxPollAttempts) {
+                pollTimer = setTimeout(pollStatus, 2000);
+              }
             }
           }
         })
         .catch((err) => {
           console.warn('[EduStream Artifact Fetch Notice]:', err);
-          if (isMounted) {
+          if (isMounted && pollAttempts < maxPollAttempts) {
             pollTimer = setTimeout(pollStatus, 2500);
           }
         });
