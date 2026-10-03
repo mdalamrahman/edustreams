@@ -7,7 +7,7 @@ import random
 import threading
 import sqlite3
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import asyncio
 import subprocess
 import json
@@ -17,7 +17,7 @@ import requests
 import urllib.request
 import urllib.error
 from bs4 import BeautifulSoup
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union, Dict
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +45,107 @@ MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5
 # Supabase Configuration for Multi-User Global Persistence
 SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://bbxwgezqiqjbmxthchfn.supabase.co"
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM"
+
+# Upstash Redis Global Realtime & Billing Cache
+UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL") or os.getenv("VITE_UPSTASH_REDIS_REST_URL") or "https://organic-tahr-192308.upstash.io"
+UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN") or os.getenv("VITE_UPSTASH_REDIS_REST_TOKEN") or "gQAAAAAAAu80AAIgcDI0MDVlNzYxY2RlMDE0MmUzYTBkMTc5MzU4ZDI1YTJlMA"
+USAGE_PRICE_TTL_SECONDS = 300  # 5 minutes strict TTL
+
+def upstash_redis_set(key: str, value: Any, ex: Optional[int] = None) -> bool:
+    """Writes key-value with optional TTL to Upstash Redis REST endpoint."""
+    try:
+        val_str = json.dumps(value) if not isinstance(value, str) else value
+        cmd = ["SET", key, val_str]
+        if ex and ex > 0:
+            cmd.extend(["EX", ex])
+        headers = {"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}
+        resp = requests.post(UPSTASH_REDIS_REST_URL, headers=headers, json=cmd, timeout=3.5)
+        return resp.status_code == 200
+    except Exception as e:
+        print(f"[Upstash Redis Set Notice]: {e}")
+        return False
+
+def upstash_redis_get(key: str) -> Optional[Any]:
+    """Reads key from Upstash Redis REST endpoint."""
+    try:
+        headers = {"Authorization": f"Bearer {UPSTASH_REDIS_REST_TOKEN}"}
+        resp = requests.get(f"{UPSTASH_REDIS_REST_URL}/get/{key}", headers=headers, timeout=3.5)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            raw = res_json.get("result")
+            if raw is None:
+                return None
+            try:
+                return json.loads(raw)
+            except Exception:
+                return raw
+    except Exception as e:
+        print(f"[Upstash Redis Get Notice]: {e}")
+    return None
+
+def store_usage_price_in_redis(user_email: str, category: str, price: float, description: str, balance_after: Optional[float] = None, metadata: Optional[dict] = None) -> None:
+    """Stores the price of each usage in Redis with a TTL of 5 min (300 seconds), keeping sync with DB."""
+    try:
+        clean_email = (user_email or 'student@sdetube.com').lower().strip()
+        usage_id = f"usage_{int(time.time()*1000)}_{random.randint(1000, 9999)}"
+        record = {
+            "id": usage_id,
+            "userEmail": clean_email,
+            "category": category,
+            "price": round(float(price or 0), 4),
+            "description": description or f"Platform usage: {category}",
+            "balanceAfter": round(float(balance_after), 4) if balance_after is not None else None,
+            "metadata": metadata or {},
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "expiresAt": (datetime.utcnow() + timedelta(seconds=USAGE_PRICE_TTL_SECONDS)).isoformat() + "Z",
+            "ttlSeconds": USAGE_PRICE_TTL_SECONDS,
+            "syncedWithDb": True
+        }
+        item_key = f"usage:price:{clean_email}:{usage_id}"
+        latest_key = f"usage:latest:{clean_email}"
+        index_key = f"usage:recent_ids:{clean_email}"
+
+        upstash_redis_set(item_key, record, ex=USAGE_PRICE_TTL_SECONDS)
+        upstash_redis_set(latest_key, record, ex=USAGE_PRICE_TTL_SECONDS)
+
+        # Update recent usage index list (5 min TTL)
+        try:
+            curr_keys = upstash_redis_get(index_key)
+            if not isinstance(curr_keys, list):
+                curr_keys = []
+            updated_keys = [item_key] + [k for k in curr_keys if k != item_key][:19]
+            upstash_redis_set(index_key, updated_keys, ex=USAGE_PRICE_TTL_SECONDS)
+        except Exception:
+            pass
+
+        print(f"[Redis Usage Price Stored] {clean_email} -> {category} (INR {price}) [TTL: 5m / 300s]")
+    except Exception as e:
+        print(f"[Redis Usage Price Error]: {e}")
+
+def update_transcript_status_in_redis(chat_id: str, msg_id: Union[int, str], status_obj: dict) -> None:
+    """Stores realtime transcript status in Upstash Redis."""
+    try:
+        clean_key = f"{chat_id}_{msg_id}".replace("-", "_").lower()
+        redis_key = f"transcript:status:{clean_key}"
+        payload = {
+            "key": clean_key,
+            "videoId": clean_key,
+            "chatId": str(chat_id),
+            "msgId": msg_id,
+            "status": status_obj.get("status", "processing"),
+            "progressPercent": float(status_obj.get("progress_percent", 0.0)),
+            "currentPart": status_obj.get("current_part", 1),
+            "totalParts": status_obj.get("total_parts", 30),
+            "stage": status_obj.get("stage", "Processing transcript"),
+            "hasArtifacts": bool(status_obj.get("has_artifacts", False)),
+            "estimatedSecondsLeft": status_obj.get("estimated_seconds_left", 0),
+            "lastUpdated": datetime.utcnow().isoformat() + "Z",
+            "source": "backend"
+        }
+        upstash_redis_set(redis_key, payload, ex=86400)
+    except Exception as e:
+        print(f"[Redis Transcript Status Error]: {e}")
+
 
 # Media Storage Directory (saves downloaded videos locally for instant range seeking)
 MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", r"C:\Users\User\Desktop\edustreamfiles")
@@ -1301,7 +1402,7 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
             save_ai_cache(cache)
 
     if cached_obj and cached_obj.get("transcript") and len(cached_obj.get("transcript", "").strip()) > 120:
-        return {
+        completed_job = {
             "status": "completed",
             "progress_percent": 100.0,
             "current_part": 30,
@@ -1310,6 +1411,8 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
             "has_artifacts": True,
             "estimated_seconds_left": 0
         }
+        update_transcript_status_in_redis(chat_id, msg_id, completed_job)
+        return completed_job
 
     # If background task is not yet running, spawn it in the background!
     if cache_key not in active_background_tasks or active_background_tasks[cache_key].done():
@@ -1327,6 +1430,7 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
         "has_artifacts": False,
         "estimated_seconds_left": 40
     })
+    update_transcript_status_in_redis(chat_id, msg_id, job)
     return job
 
 
@@ -6558,6 +6662,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
             "has_artifacts": False,
             "estimated_seconds_left": 40
         }
+        update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
 
         # 1. REAL TELEGRAM VIDEO FULL AUDIO WHISPER STT: Zero-disk FFmpeg pipe
         if GROQ_API_KEY:
@@ -6607,6 +6712,8 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                         "has_artifacts": False,
                                         "estimated_seconds_left": secs_left
                                     }
+                                    if chunk_index % 5 == 0 or chunk_index == total_chunks:
+                                        update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
                                     if bytes_streamed >= stream_target_bytes:
                                         break
 
@@ -6656,6 +6763,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                                 "has_artifacts": False,
                                 "estimated_seconds_left": 10
                             }
+                            update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
 
                             groq_headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
                             groq_files = {
@@ -6741,6 +6849,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                 "has_artifacts": False,
                 "estimated_seconds_left": 4
             }
+            update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
 
             artifacts = generate_all_ai_artifacts_from_transcript(real_stt_transcript, clean_title)
 
@@ -6786,6 +6895,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                 "has_artifacts": True,
                 "estimated_seconds_left": 0
             }
+            update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
             print(f"[EduStream Background Job Done] Persisted complete artifacts for {cache_key} in RAM, Disk & Supabase")
             return response_data
         else:
@@ -6799,6 +6909,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                 "has_artifacts": False,
                 "estimated_seconds_left": 0
             }
+            update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
     except Exception as job_err:
         print(f"[EduStream Background Task Exception]: {job_err}")
         active_transcription_jobs[cache_key] = {
@@ -6810,6 +6921,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
             "has_artifacts": False,
             "estimated_seconds_left": 0
         }
+        update_transcript_status_in_redis(chat_id, msg_id, active_transcription_jobs[cache_key])
     finally:
         active_background_tasks.pop(cache_key, None)
 
@@ -7824,6 +7936,15 @@ async def deduct_credits_endpoint(payload: DeductCreditsPayload):
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
     save_wallet_to_cloud(wallet)
     
+    # Store price of this usage in Upstash Redis with 5-min TTL (keeping sync with DB)
+    store_usage_price_in_redis(
+        user_email=wallet["userEmail"],
+        category=payload.category,
+        price=payload.amount,
+        description=payload.description,
+        balance_after=new_balance
+    )
+
     return {
         "success": True,
         "newBalance": new_balance,
@@ -7904,6 +8025,17 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
     save_wallet_to_cloud(wallet)
     
+    # Store video unlocking usage price in Upstash Redis with 5-min TTL (keeping sync with DB)
+    if cost > 0:
+        store_usage_price_in_redis(
+            user_email=wallet["userEmail"],
+            category=cat,
+            price=cost,
+            description=desc,
+            balance_after=new_balance,
+            metadata={"videoId": video_id, "videoTitle": payload.video_title}
+        )
+
     return {
         "success": True,
         "newBalance": new_balance,
@@ -7913,6 +8045,34 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
         "message": f"Unlocked for 24 hours (₹{cost:.2f} deducted)",
         "wallet": wallet
     }
+
+
+@app.get("/api/redis/transcript-status/{video_id}")
+async def get_redis_transcript_status_endpoint(video_id: str):
+    """Fetches realtime transcript status directly from Upstash Redis."""
+    clean_id = video_id.replace("-", "_").lower()
+    val = upstash_redis_get(f"transcript:status:{clean_id}")
+    if val:
+        return {"success": True, "source": "redis", "data": val}
+    return {"success": False, "message": "Not found in Redis"}
+
+
+@app.get("/api/billing/redis/active-usages")
+async def get_redis_active_usages_endpoint(email: str):
+    """Fetches all active usage price records (within 5-min TTL) for a user from Upstash Redis."""
+    clean_email = email.lower().strip()
+    keys = upstash_redis_get(f"usage:recent_ids:{clean_email}")
+    records = []
+    if isinstance(keys, list):
+        for k in keys:
+            rec = upstash_redis_get(k)
+            if rec:
+                records.append(rec)
+    if not records:
+        latest = upstash_redis_get(f"usage:latest:{clean_email}")
+        if latest:
+            records.append(latest)
+    return {"success": True, "email": clean_email, "count": len(records), "usages": records}
 
 
 @app.post("/api/billing/topup-request")

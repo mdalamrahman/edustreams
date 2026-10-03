@@ -31,6 +31,7 @@ import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
 import { getStreamUrl, getDirectStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { getCurrentStudent } from '../lib/auth';
+import { getRealtimeTranscriptStatus, setRealtimeTranscriptStatus } from '../lib/redis';
 
 interface VideoPlayerProps {
   video: Video;
@@ -597,6 +598,23 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         return;
       }
       attempts += 1;
+
+      // 1. Check Upstash Redis first for realtime status
+      try {
+        const redisStatus = await getRealtimeTranscriptStatus(
+          video.id || `${video.channel_id}_${video.telegram_message_id}`,
+          video.channel_id,
+          video.telegram_message_id,
+          cleanTitle
+        );
+        if (redisStatus?.status === 'completed' || redisStatus?.hasArtifacts || (redisStatus?.transcriptSnippet && redisStatus.transcriptSnippet.length > 50)) {
+          await fetchTranscript();
+          if (pollInterval) clearInterval(pollInterval);
+          return;
+        }
+      } catch (_) {}
+
+      // 2. Fallback to Telegram backend route
       try {
         const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
         const resp = await fetch(statusUrl, { signal: AbortSignal.timeout(3000) });
@@ -628,6 +646,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     localStorage.removeItem(`edustream_transcript_${video.id || cleanTitle}`);
     setLoadingTranscript(true);
 
+    // Set realtime status in Upstash Redis
+    setRealtimeTranscriptStatus(video.id || `${video.channel_id}_${video.telegram_message_id}`, {
+      title: cleanTitle,
+      status: 'extracting_audio',
+      progressPercent: 10,
+      stage: 'Starting fresh audio extraction & Whisper STT pipeline'
+    }, false).catch(() => {});
+
     const url = `${TELEGRAM_BACKEND_URL}/api/transcript/${video.channel_id}/${video.telegram_message_id}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}&force=true`;
     fetch(url)
       .then((r) => r.json())
@@ -635,6 +661,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (data?.transcript) {
           setDynamicTranscript(data.transcript);
           localStorage.setItem(cacheKey, data.transcript);
+
+          // Mark completed in Redis and sync with DB
+          setRealtimeTranscriptStatus(video.id || `${video.channel_id}_${video.telegram_message_id}`, {
+            title: cleanTitle,
+            status: 'completed',
+            progressPercent: 100,
+            hasArtifacts: true,
+            stage: 'Completed',
+            transcriptSnippet: data.transcript.slice(0, 200)
+          }, true).catch(() => {});
         }
       })
       .catch((err) => console.warn('[Regenerate Transcript Notice]:', err))

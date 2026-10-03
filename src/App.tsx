@@ -66,6 +66,7 @@ import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { InterviewCompanion } from './components/InterviewCompanion';
+import { getRealtimeTranscriptStatus } from './lib/redis';
 
 const sanitizeCaption = (cap?: string) => {
   if (!cap) return '';
@@ -816,9 +817,32 @@ export function App() {
     let pollAttempts = 0;
     const maxPollAttempts = 60; // Poll up to 3 minutes while background speech & synthesis runs
 
-    const pollStatus = () => {
+    const pollStatus = async () => {
       if (pollAttempts >= maxPollAttempts) return;
       pollAttempts += 1;
+
+      // 1. Check Upstash Redis first for sub-millisecond realtime status
+      try {
+        const redisStatus = await getRealtimeTranscriptStatus(`${channelId}_${msgId}`, channelId, msgId, cleanTitle);
+        if (redisStatus && isMounted) {
+          if (redisStatus.status === 'completed' || redisStatus.hasArtifacts || redisStatus.progressPercent >= 100) {
+            fetchArtifacts();
+            return;
+          } else {
+            setVideoArtifacts((prev: any) => {
+              if (prev && prev.notes && prev.transcript) return prev;
+              return {
+                ...(prev || {}),
+                status: redisStatus.status,
+                progress_percent: redisStatus.progressPercent,
+                stage: redisStatus.stage,
+                estimated_seconds_left: redisStatus.estimatedSecondsLeft
+              };
+            });
+          }
+        }
+      } catch (_) {}
+
       const statusUrl = `${TELEGRAM_BACKEND_URL}/api/transcript/status/${channelId}/${msgId}?title=${encodeURIComponent(cleanTitle)}&duration=${durationMins}`;
 
       fetch(statusUrl, { signal: AbortSignal.timeout(3500) })

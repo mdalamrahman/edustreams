@@ -6,6 +6,11 @@
  */
 
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
+import {
+  storeUsagePriceInRedis,
+  getCachedPricingConfigFromRedis,
+  cachePricingConfigInRedis
+} from './redis';
 
 export const PRICING_CONFIG = {
   SIGNUP_FREE_CREDITS: 10.00,        // Free ₹10 credits upon opening an account
@@ -31,6 +36,14 @@ export const PRICING_CONFIG = {
 
 export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG> {
   try {
+    // 1. Check Upstash Redis cache first (5-minute TTL)
+    const cached = await getCachedPricingConfigFromRedis().catch(() => null);
+    if (cached) {
+      Object.assign(PRICING_CONFIG, cached);
+      return PRICING_CONFIG;
+    }
+
+    // 2. Fetch from database (Supabase)
     const res = await fetch(`https://bbxwgezqiqjbmxthchfn.supabase.co/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
         'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo',
@@ -56,6 +69,9 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
         if (p.ai_quiz_gen_cost !== undefined) PRICING_CONFIG.AI_QUIZ_GEN_BATCH = Number(p.ai_quiz_gen_cost);
         if (p.daily_usage_fee !== undefined) PRICING_CONFIG.DAILY_USAGE_FEE = Number(p.daily_usage_fee);
         if (p.signup_bonus_credits !== undefined) PRICING_CONFIG.SIGNUP_FREE_CREDITS = Number(p.signup_bonus_credits);
+
+        // Cache in Redis with 5-minute TTL to keep sync with DB
+        await cachePricingConfigInRedis({ ...PRICING_CONFIG }).catch(() => {});
       }
     }
   } catch {}
@@ -578,6 +594,19 @@ export function deductCredits(
   saveTransactions(allTx, wallet);
   emitWalletUpdate(wallet);
 
+  // Store price of each usage in Upstash Redis with 5-minute TTL keeping sync with DB
+  storeUsagePriceInRedis({
+    userEmail,
+    category,
+    price: amount,
+    description,
+    balanceAfter: wallet.balance,
+    metadata: { txId: tx.id },
+    syncWithDb: false
+  }).catch((err) => {
+    console.warn('[Redis Usage Price Store Notice]:', err);
+  });
+
   // Sync with persistent SQLite Database
   fetch(`${BACKEND_URL}/api/billing/deduct`, {
     method: 'POST',
@@ -678,6 +707,19 @@ export function handleVideoViewBilling(
   allTx.unshift(tx);
   saveTransactions(allTx, wallet);
   emitWalletUpdate(wallet);
+
+  // Store price of video view usage in Upstash Redis with 5-minute TTL keeping sync with DB
+  storeUsagePriceInRedis({
+    userEmail,
+    category: isFirstTime ? 'VIDEO_FIRST_TIME' : 'VIDEO_SUBSEQUENT',
+    price: cost,
+    description: `📺 Video Access (24h Pass): ${videoTitle.slice(0, 40)}`,
+    balanceAfter: wallet.balance,
+    metadata: { videoId, isFirstTime, txId: tx.id },
+    syncWithDb: false
+  }).catch((err) => {
+    console.warn('[Redis Video Usage Price Store Notice]:', err);
+  });
 
   // Sync with persistent SQLite Database
   fetch(`${BACKEND_URL}/api/billing/video-view`, {
