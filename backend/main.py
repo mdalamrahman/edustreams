@@ -1390,16 +1390,18 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
     clean_title = (title or f"Lecture Post #{msg_id}").replace(".mp4", "").replace(".mkv", "").replace("_", " ").strip()
     dur_mins = max(3, duration or 15)
 
+    # 1. If actively processing in background, return live job state immediately (0ms instant response)
+    job_info = active_transcription_jobs.get(cache_key)
+    if job_info and job_info.get("status") == "processing":
+        update_transcript_status_in_redis(chat_id, msg_id, job_info)
+        return job_info
+
+    # 2. Fast RAM & SQLite Cache Check
     cache = load_ai_cache()
     cached_obj = cache.get(cache_key) or cache.get(f"tg-{chat_id}-{msg_id}") or cache.get(str(msg_id)) or cache.get(clean_title) or cache.get(clean_title.lower())
     
     if not cached_obj:
-        cached_obj = fetch_artifacts_from_supabase(chat_id, msg_id, clean_title)
-        if cached_obj:
-            cache[cache_key] = cached_obj
-            cache[f"tg-{chat_id}-{msg_id}"] = cached_obj
-            cache[clean_title] = cached_obj
-            save_ai_cache(cache)
+        cached_obj = fetch_from_sqlite(chat_id, msg_id, clean_title)
 
     if cached_obj and cached_obj.get("transcript") and len(cached_obj.get("transcript", "").strip()) > 120:
         completed_job = {
@@ -1414,7 +1416,12 @@ async def get_transcript_status_route(chat_id: str, msg_id: int, title: Optional
         update_transcript_status_in_redis(chat_id, msg_id, completed_job)
         return completed_job
 
-    # If background task is not yet running, spawn it in the background!
+    # 3. If finished job is recorded in memory
+    if job_info and job_info.get("status") == "completed":
+        update_transcript_status_in_redis(chat_id, msg_id, job_info)
+        return job_info
+
+    # 4. If background task is not yet running, spawn it in the background!
     if cache_key not in active_background_tasks or active_background_tasks[cache_key].done():
         print(f"[EduStream Background Start] Auto-starting background pipeline for {cache_key}...")
         active_background_tasks[cache_key] = asyncio.create_task(
