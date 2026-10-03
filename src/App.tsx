@@ -814,7 +814,7 @@ export function App() {
     }
 
     let pollAttempts = 0;
-    const maxPollAttempts = 4;
+    const maxPollAttempts = 60; // Poll up to 3 minutes while background speech & synthesis runs
 
     const pollStatus = () => {
       if (pollAttempts >= maxPollAttempts) return;
@@ -826,9 +826,11 @@ export function App() {
         .then((statusData) => {
           if (!isMounted) return;
           if (statusData) {
-            if (statusData.status === 'completed' || (typeof statusData.progress_percent === 'number' && statusData.progress_percent >= 100)) {
+            if (statusData.status === 'completed' || statusData.has_artifacts || (typeof statusData.progress_percent === 'number' && statusData.progress_percent >= 100)) {
               // Background task is finished! Fetch complete artifacts
               fetchArtifacts();
+            } else if (statusData.status === 'error') {
+              setQuizLoading(false);
             } else {
               setVideoArtifacts((prev: any) => {
                 if (prev && prev.notes && prev.transcript) {
@@ -842,7 +844,7 @@ export function App() {
               if (!hasLocalComplete) {
                 setQuizLoading(true);
               }
-              pollTimer = setTimeout(pollStatus, 3000);
+              pollTimer = setTimeout(pollStatus, 2500);
             }
           }
         })

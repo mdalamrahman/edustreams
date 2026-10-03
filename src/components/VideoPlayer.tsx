@@ -20,13 +20,11 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
-  BookOpen,
   X,
   Lock,
   FileEdit,
   StickyNote
 } from 'lucide-react';
-import { AINotesAndSimulation } from './AINotesAndSimulation';
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { StudentVideoNotesTab } from './StudentVideoNotesTab';
 import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
@@ -83,7 +81,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isCachedOffline, setIsCachedOffline] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'notes_sim' | 'student_notes'>('caption');
+  const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'student_notes'>('caption');
   const [streamError, setStreamError] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
   const [showControls, setShowControls] = useState(true);
@@ -592,9 +590,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     fetchTranscript();
 
     let attempts = 0;
-    // Poll status while loading to update live progress bar
+    // Poll status while loading to update live progress bar and auto-fetch once ready
     pollInterval = setInterval(async () => {
-      if (isCancelled || attempts > 3) {
+      if (isCancelled || attempts > 45) {
         if (pollInterval) clearInterval(pollInterval);
         return;
       }
@@ -604,15 +602,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         const resp = await fetch(statusUrl, { signal: AbortSignal.timeout(3000) });
         if (resp.ok) {
           const statusData = await resp.json();
-          if (statusData?.transcript && statusData.transcript.length > 50) {
-            setDynamicTranscript(statusData.transcript);
-            setLoadingTranscript(false);
-            try { localStorage.setItem(cacheKey, statusData.transcript); } catch {}
-            clearInterval(pollInterval);
+          if (statusData?.status === 'completed' || statusData?.has_artifacts || (statusData?.transcript && statusData.transcript.length > 50)) {
+            await fetchTranscript();
+            if (pollInterval) clearInterval(pollInterval);
           }
         }
       } catch {}
-    }, 4000);
+    }, 3000);
 
     return () => {
       isCancelled = true;
@@ -1118,17 +1114,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               <span>Speech Transcript</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('notes_sim')}
-              className={`flex items-center space-x-1.5 text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                activeTab === 'notes_sim'
-                  ? 'text-emerald-400 border-b-2 border-emerald-400 pb-1'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-              <span>AI Notes & Simulation</span>
-            </button>
+
 
             <button
               onClick={() => setActiveTab('student_notes')}
@@ -1200,9 +1186,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               }
             }}
           />
-        ) : (
-          <AINotesAndSimulation video={video} videoArtifacts={videoArtifacts} isLoading={loadingTranscript} onOpenAskAI={onOpenAskAI} />
-        )}
+        ) : null}
       </div>
 
       {/* Regeneration Confirmation Modal ("i am sure") */}

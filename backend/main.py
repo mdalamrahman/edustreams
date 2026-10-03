@@ -6312,46 +6312,82 @@ def generate_all_ai_artifacts_from_transcript(transcript: str, title: str) -> di
     prompt = f"""You are a Principal Software Engineer & FAANG Interview Prep Lead at Algomaster.io.
 Given the verbatim lecture transcript for '{title}', generate high-yield, interview-grade educational artifacts in strict JSON format.
 
-MANDATORY GUIDELINES:
-- Ground everything DIRECTLY in the concepts, code examples, trade-offs, and edge cases from the TRANSCRIPT.
-- Notes MUST be formatted like Algomaster.io / ByteByteGo SDE study guides (detailed, beautifully structured in Markdown, practical, with clear sections).
-- Coding challenge must have complete problem statements, input/output formats, constraints, and both Python and C++ solutions.
-- Simulation steps must contain 4-6 interactive state steps representing the algorithm/system trace.
+CRITICAL RULES (MUST FOLLOW — no exceptions):
+- EVERY section of the notes MUST be strictly grounded in the TRANSCRIPT. Do NOT invent concepts not discussed in the transcript.
+- Quote or paraphrase specific examples, code snippets, analogies, and explanations FROM THE TRANSCRIPT.
+- Notes MUST be extremely detailed — minimum 800 words for the notes field.
+- Interview questions MUST be based on topics discussed in the transcript, with complete, detailed model answers.
+- Coding challenge must implement the EXACT algorithm or design pattern from the transcript.
+- Simulation steps must trace the specific algorithm/flow demonstrated in the transcript.
 
-TRANSCRIPT:
-{transcript[:15000]}
+FULL LECTURE TRANSCRIPT:
+{transcript[:20000]}
 
 Return a JSON object with EXACTLY these 4 keys:
 
-1. "notes": Comprehensive Algomaster-style markdown note containing:
+1. "notes": Extremely comprehensive Algomaster-style markdown notes containing ALL of the following sections:
+
    # 📘 {title} — SDE Mastery Guide
    > [!NOTE]
-   > Executive Summary: 2-3 sentence overview of the core problem, why naive approaches fail, and the optimal solution taught in the lecture.
+   > **Executive Summary**: 3-4 sentence overview: what was taught in this lecture, the core problem addressed, why naive approaches fail, and the optimal solution/pattern explained by the instructor.
 
    ## 💡 1. Core Intuition & Mental Model
-   - **The Problem**: What real-world / software engineering bottleneck does this solve?
-   - **Real-World Analogy**: A concrete analogy that makes the concept unforgettable.
-   - **Key Invariants**: The fundamental rules and guarantees that always hold.
+   - **The Problem**: What real-world / software engineering problem does this solve? (from transcript)
+   - **Real-World Analogy**: The exact analogy the instructor used (or a concrete one grounded in the transcript topic).
+   - **Key Invariants**: The fundamental rules and guarantees the instructor emphasized.
+   - **Why Naive Approaches Fail**: Specific drawbacks of simpler approaches mentioned in the lecture.
 
-   ## 🧠 2. Deep Dive & Architectural / Algorithmic Breakdown
-   - Step-by-step breakdown of how the pattern/algorithm operates.
-   - Component responsibilities and decoupling strategy.
+   ## 📖 2. Key Concepts from the Lecture (Transcript-Grounded)
+   For each major concept covered in the transcript:
+   - **Concept Name**: Detailed explanation of what the instructor taught.
+   - Include all definitions, distinctions, and examples from the transcript.
+   - Use sub-bullets for nuances and edge cases discussed.
 
-   ## 💻 3. Production-Ready Code Implementation
-   Include clean, documented implementation in C++ and Python with inline commentary explaining the critical design choices.
+   ## 🧠 3. Deep Dive & Architectural / Algorithmic Breakdown
+   - Step-by-step detailed breakdown of how the pattern/algorithm works (as explained in the lecture).
+   - Component responsibilities and why each component exists.
+   - Include specific data structures, APIs, or design patterns mentioned.
 
-   ## ⚡ 4. Complexity & Trade-Off Analysis
-   Provide a detailed markdown comparison table:
+   ## 💻 4. Production-Ready Code Implementation
+   Include clean, well-documented implementation in C++ and Python with inline commentary explaining the critical design choices matching the transcript content.
+
+   ## ⚡ 5. Complexity & Trade-Off Analysis
+   Provide a detailed markdown table:
    | Metric | Complexity | Technical Justification |
    | :--- | :--- | :--- |
    | **Time Complexity** | `O(...)` | ... |
    | **Space Complexity** | `O(...)` | ... |
+   | **Comparison Approach** | `O(...)` | Why the transcript approach beats this |
 
-   ## ⚠️ 5. Common Traps, Anti-Patterns & Edge Cases
-   - Highlight 2-3 critical pitfalls developers make.
+   ## ⚠️ 6. Common Traps, Anti-Patterns & Edge Cases
+   - At least 3 critical pitfalls mentioned (explicitly or implicitly) in the transcript.
+   - How to avoid each one.
 
-   ## 🏢 6. FAANG SDE Interview Follow-Ups & Real-World Scaling
-   - 2 practical interview follow-up questions with sample answers.
+   ## 🏆 7. FAANG SDE Interview Questions & Model Answers
+   IMPORTANT: Include at least 5 interview questions with COMPLETE, DETAILED model answers (150+ words each):
+
+   ### Q1: [Conceptual Question from Transcript Topic]
+   **Question**: [Full interview question based on the transcript]
+   **Model Answer**: [Complete, detailed answer covering: core concept, how it works, trade-offs, when to use it, time/space complexity, and real examples. Minimum 150 words.]
+
+   ### Q2: [Design / Architecture Question]
+   **Question**: [Full question]
+   **Model Answer**: [Complete answer with design rationale, alternatives considered, scalability concerns. Minimum 150 words.]
+
+   ### Q3: [Implementation / Code Question]
+   **Question**: [Full question — e.g., "How would you implement X?"]
+   **Model Answer**: [Complete answer with pseudocode or code snippet and explanation. Minimum 150 words.]
+
+   ### Q4: [Follow-up Depth Question]
+   **Question**: [Follow-up that probes deeper understanding]
+   **Model Answer**: [Complete answer demonstrating expert-level understanding. Minimum 150 words.]
+
+   ### Q5: [Real-World Application Question]
+   **Question**: [How does this apply in production / at scale?]
+   **Model Answer**: [Complete answer with real-world systems, scaling considerations, monitoring. Minimum 150 words.]
+
+   ## 🔑 8. Key Takeaways & Revision Checklist
+   Numbered checklist of the most important points from the lecture — structured for quick revision before an interview.
 
 2. "mcqs": Array of 5 conceptual multiple-choice questions testing specific points, code snippets, or rules explained in the lecture. Each with:
    - "question": string
@@ -6370,56 +6406,66 @@ Return a JSON object with EXACTLY these 4 keys:
    - "step_number": integer
    - "title": string (e.g., "Step 1: Monolithic Invoice Inspection")
    - "desc": string (detailed narrative of what happens in this step)
-   - "array": array of 4-6 strings or numbers representing the data structure / component states (e.g. ["InvoiceModel", "SQL_DB", "EmailService"] or [2, 3, 5, 7, 11])
+   - "array": array of 4-6 strings or numbers representing the data structure / component states
    - "activeIndices": array of integer indices currently active / highlighted (e.g. [0, 1])
    - "status": string (e.g. "Violation: 3 Reasons to Change", "Extracting Persistence Layer", "Optimal Decoupled State")
    - "variables": key-value dict showing live state (e.g. {{"Coupling": "High", "Responsibilities": 3, "State": "Refactoring"}})
    - "code_line": string showing the relevant code/action for this step
 """
 
-    # 1. PRIMARY PROVIDER: Mistral AI
+    # 1. PRIMARY PROVIDER: Mistral AI (codestral-latest / ministral-8b-latest)
     if MISTRAL_API_KEY:
         url = "https://api.mistral.ai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {MISTRAL_API_KEY}",
             "Content-Type": "application/json"
         }
-        payload = {
-            "model": "mistral-large-latest",
-            "response_format": {"type": "json_object"},
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.2
-        }
-        try:
-            print(f"[EduStream AI Engine] Synthesizing SDE notes & simulation via Mistral AI for '{title}'...")
-            resp = requests.post(url, headers=headers, json=payload, timeout=45)
-            if resp.status_code == 200:
-                data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                print(f"[EduStream AI Engine Success] Mistral generated Algomaster-grade notes, MCQs & simulation for '{title}'")
-        except Exception as e:
-            print(f"[Mistral AI Generation Notice]: {e}")
+        for mistral_model in ["codestral-latest", "ministral-8b-latest"]:
+            payload = {
+                "model": mistral_model,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2
+            }
+            try:
+                print(f"[EduStream AI Engine] Synthesizing SDE notes & interview artifacts via Mistral {mistral_model} for '{title}'...")
+                resp = requests.post(url, headers=headers, json=payload, timeout=75)
+                if resp.status_code == 200:
+                    raw_content = resp.json()["choices"][0]["message"]["content"]
+                    data = json.loads(raw_content)
+                    print(f"[EduStream AI Engine Success] Mistral {mistral_model} generated Algomaster-grade notes, MCQs & interview questions for '{title}'")
+                    break
+                else:
+                    print(f"[Mistral AI Notice] {mistral_model} returned {resp.status_code}: {resp.text[:150]}")
+            except Exception as e:
+                print(f"[Mistral AI Generation Notice ({mistral_model})]: {e}")
 
-    # 2. FALLBACK PROVIDER: Groq Llama-3.1-8b
+    # 2. FALLBACK PROVIDER: Groq (qwen/qwen3.8-27b / openai/gpt-oss-20b)
     if not data and GROQ_API_KEY:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        payload = {
-            "model": "llama-3.1-8b-instant",
-            "response_format": {"type": "json_object"},
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.2
-        }
-        try:
-            print(f"[EduStream AI Engine Fallback] Synthesizing via Groq Llama-3.1-8b for '{title}'...")
-            resp = requests.post(url, headers=headers, json=payload, timeout=35)
-            if resp.status_code == 200:
-                data = json.loads(resp.json()["choices"][0]["message"]["content"])
-                print(f"[EduStream AI Engine Success] Groq fallback generated notes & simulation for '{title}'")
-        except Exception as e:
-            print(f"[Groq AI Fallback Notice]: {e}")
+        for groq_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-20b"]:
+            payload = {
+                "model": groq_model,
+                "response_format": {"type": "json_object"},
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2
+            }
+            try:
+                print(f"[EduStream AI Engine Fallback] Synthesizing via Groq {groq_model} for '{title}'...")
+                resp = requests.post(url, headers=headers, json=payload, timeout=60)
+                if resp.status_code == 200:
+                    raw_content = resp.json()["choices"][0]["message"]["content"]
+                    data = json.loads(raw_content)
+                    print(f"[EduStream AI Engine Success] Groq {groq_model} generated notes & interview artifacts for '{title}'")
+                    break
+                else:
+                    print(f"[Groq AI Notice] {groq_model} returned {resp.status_code}: {resp.text[:150]}")
+            except Exception as e:
+                print(f"[Groq AI Fallback Notice ({groq_model})]: {e}")
 
     if not data:
         data = {
@@ -6570,7 +6616,7 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                             ffmpeg_cmd = [
                                 ffmpeg_exe, "-y",
                                 "-i", temp_vid_path,
-                                "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k",
+                                "-vn", "-ar", "16000", "-ac", "1", "-b:a", "24k",
                                 "-f", "mp3", temp_aud_path
                             ]
                             conv_proc = await asyncio.create_subprocess_exec(
@@ -6595,6 +6641,11 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                         video_mb = bytes_streamed / (1024 * 1024)
                         print(f"[EduStream STT Pipe Complete]: {video_mb:.1f} MB video → {audio_mb:.2f} MB MP3 in memory")
 
+                        # If audio file is larger than Groq's 25MB limit, keep within safe 24MB
+                        if len(audio_bytes) > 24 * 1024 * 1024:
+                            print(f"[EduStream Audio Notice] Audio size {audio_mb:.2f}MB exceeds Groq 24MB safe limit, trimming to 24MB")
+                            audio_bytes = audio_bytes[:24 * 1024 * 1024]
+
                         if len(audio_bytes) > 2000:
                             active_transcription_jobs[cache_key] = {
                                 "status": "processing",
@@ -6613,11 +6664,25 @@ async def process_lecture_pipeline_task(chat_id: str, msg_id: int, clean_title: 
                             groq_data = {
                                 "model": "whisper-large-v3",
                                 "response_format": "verbose_json",
+                                "prompt": "Technical Software Engineering lecture on Data Structures, Algorithms, System Design, SOLID principles, programming in C++, Python, Java.",
+                                "temperature": "0.0",
                             }
                             resp = requests.post(
                                 "https://api.groq.com/openai/v1/audio/transcriptions",
                                 headers=groq_headers, files=groq_files, data=groq_data, timeout=120
                             )
+                            if resp.status_code != 200:
+                                print(f"[Groq Whisper V3 Notice] Status {resp.status_code}: {resp.text[:200]}. Retrying with whisper-large-v3-turbo...")
+                                groq_files = {
+                                    "file": (f"lecture_{msg_id}.mp3", io.BytesIO(audio_bytes), "audio/mpeg"),
+                                }
+                                groq_data["model"] = "whisper-large-v3-turbo"
+                                resp = requests.post(
+                                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                                    headers=groq_headers, files=groq_files, data=groq_data, timeout=120
+                                )
+                            if resp.status_code != 200:
+                                print(f"[Groq Whisper STT Error] Final Status: {resp.status_code}, Body: {resp.text[:300]}")
                             del audio_bytes
 
                             if resp.status_code == 200:

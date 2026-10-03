@@ -46,6 +46,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({
   onAttemptMoreQuestions,
   isGeneratingMoreQuiz
 }) => {
+  const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm|avi|mov)$/i, '').replace(/_/g, ' ').trim();
   // Default to 'quiz' (MCQ Quiz) in all cases so it's always immediately front-and-center
   const [activeTab, setActiveTab] = useState<'quiz' | 'notes' | 'simulation'>('quiz');
   const [currentStep, setCurrentStep] = useState(0);
@@ -54,8 +55,158 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({
   const [isFullscreenNotes, setIsFullscreenNotes] = useState(false);
   const [isFullscreenSim, setIsFullscreenSim] = useState(false);
   const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
-  const cleanTitle = (video.title || 'Lecture').replace(/\.(mp4|mkv|webm)$/i, '');
+  const downloadNotesAsPDF = () => {
+    const notesContent = videoArtifacts?.notes || '';
+    if (!notesContent) return;
+    setIsDownloadingPDF(true);
+
+    // Create a hidden iframe for PDF printing with SDETube watermark
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      setIsDownloadingPDF(false);
+      return;
+    }
+
+    const watermarkDataUrl = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120">
+        <text x="180" y="65" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="900"
+          fill="#4f46e5" opacity="0.10" text-anchor="middle" dominant-baseline="middle"
+          transform="rotate(-20, 180, 60)">SDETube</text>
+      </svg>`
+    );
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${cleanTitle} — SDE Notes | SDETube</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: #fff;
+      color: #1e293b;
+      padding: 40px 50px;
+      line-height: 1.7;
+      font-size: 13px;
+      position: relative;
+    }
+    /* Watermark */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url('${watermarkDataUrl}');
+      background-repeat: repeat;
+      background-size: 360px 120px;
+      opacity: 1;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content { position: relative; z-index: 1; }
+    /* Header */
+    .pdf-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+      border-bottom: 3px solid #6366f1;
+    }
+    .pdf-brand { font-size: 22px; font-weight: 900; color: #6366f1; letter-spacing: -0.5px; }
+    .pdf-brand span { color: #8b5cf6; }
+    .pdf-meta { font-size: 10px; color: #64748b; text-align: right; }
+    /* Footer */
+    .pdf-footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    /* Typography */
+    h1 { font-size: 22px; font-weight: 900; color: #1e293b; margin: 24px 0 12px; }
+    h2 { font-size: 16px; font-weight: 800; color: #4f46e5; margin: 20px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e0e7ff; }
+    h3 { font-size: 13px; font-weight: 700; color: #0369a1; margin: 14px 0 6px; }
+    p { margin: 8px 0; color: #334155; }
+    ul, ol { margin: 8px 0 8px 20px; }
+    li { margin: 4px 0; color: #334155; }
+    code { font-family: 'JetBrains Mono', monospace; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 11px; color: #4338ca; }
+    pre { background: #1e293b; color: #e2e8f0; border-radius: 8px; padding: 16px; margin: 12px 0; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; }
+    pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+    blockquote { background: #eff6ff; border-left: 4px solid #6366f1; padding: 10px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; color: #1e40af; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
+    th { background: #eff6ff; color: #4338ca; font-weight: 700; padding: 8px 12px; text-align: left; border: 1px solid #bfdbfe; }
+    td { padding: 7px 12px; border: 1px solid #e2e8f0; color: #334155; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    strong { font-weight: 700; color: #1e293b; }
+    em { font-style: italic; color: #4f46e5; }
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+    @media print {
+      body { padding: 20px 30px; }
+      pre { page-break-inside: avoid; }
+      h2 { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <div class="pdf-header">
+      <div class="pdf-brand">SDE<span>Tube</span></div>
+      <div class="pdf-meta">
+        <div style="font-weight:700;font-size:12px;color:#1e293b;">${cleanTitle}</div>
+        <div>SDE Mastery Notes &bull; FAANG Interview Prep</div>
+        <div>Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+      </div>
+    </div>
+    <div id="notes-content">${convertMarkdownToHTML(notesContent)}</div>
+    <div class="pdf-footer">
+      <div>🎓 SDETube — FAANG SDE Interview Preparation Platform</div>
+      <div>AI-Generated from Lecture Transcript • sdetube.pages.dev</div>
+    </div>
+  </div>
+  <script>window.onload = function() { window.print(); window.close(); };</script>
+</body>
+</html>`;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setTimeout(() => setIsDownloadingPDF(false), 2000);
+  };
+
+  const convertMarkdownToHTML = (md: string): string => {
+    if (!md) return '';
+    let html = md
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^> \[!NOTE\]\s*$/gm, '')
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/^---+$/gm, '<hr>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+      .replace(/```([\w]*)(\n[\s\S]*?\n)```/gm, (_: string, lang: string, code: string) => `<pre><code class="language-${lang}">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`)
+      .replace(/\|(.+)\|/g, (row) => {
+        const cells = row.split('|').filter((_, i, a) => i > 0 && i < a.length - 1);
+        if (cells.every(c => /^:?-+:?$/.test(c.trim()))) return '';
+        const tag = cells.length > 0 && row.includes('**') ? 'th' : 'td';
+        return `<tr>${cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('')}</tr>`;
+      })
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+      .replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>')
+      .replace(/\n{2,}/g, '</p><p>')
+      .replace(/^(?!<[hua]|<li|<block|<hr|<pre|<table|<tr)(.+)$/gm, '<p>$1</p>');
+    return html;
+  };
 
   const isLldTopic = cleanTitle.toLowerCase().includes('design') || cleanTitle.toLowerCase().includes('srp') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('principle') || cleanTitle.toLowerCase().includes('open closed');
   const isPrimeTopic = cleanTitle.toLowerCase().includes('prime') || cleanTitle.toLowerCase().includes('sieve') || cleanTitle.toLowerCase().includes('math');
@@ -448,14 +599,25 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({
           )}
 
           {activeTab === 'notes' && (
-            <button
-              onClick={() => setIsFullscreenNotes(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-md cursor-pointer"
-              title="Read Notes in Fullscreen Focus Mode"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Fullscreen</span>
-            </button>
+            <>
+              <button
+                onClick={downloadNotesAsPDF}
+                disabled={isDownloadingPDF || !videoArtifacts?.notes}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                title="Download Notes as PDF with SDETube watermark"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span className="hidden sm:inline">{isDownloadingPDF ? 'Opening...' : 'PDF'}</span>
+              </button>
+              <button
+                onClick={() => setIsFullscreenNotes(true)}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-md cursor-pointer"
+                title="Read Notes in Fullscreen Focus Mode"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Fullscreen</span>
+              </button>
+            </>
           )}
 
           {activeTab === 'simulation' && (
@@ -515,6 +677,16 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({
             </div>
 
             <div className="flex items-center space-x-3">
+              <button
+                onClick={downloadNotesAsPDF}
+                disabled={isDownloadingPDF || !videoArtifacts?.notes}
+                className="p-2.5 rounded-2xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 transition-all flex items-center gap-2 text-xs font-bold shadow-lg cursor-pointer disabled:opacity-50"
+                title="Download Notes as PDF with SDETube Watermark"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <span className="hidden sm:inline">{isDownloadingPDF ? 'Generating...' : 'Download PDF'}</span>
+              </button>
+
               {onOpenAskAI && (
                 <button
                   onClick={() => onOpenAskAI('notes')}
