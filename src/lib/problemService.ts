@@ -232,7 +232,8 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
     (slug.includes('open-closed') || slug.includes('ocp') ? SOLID_PREDEFINED_PROBLEMS['2-2-open-closed-principle-ocp-'] : undefined) ||
     (slug.includes('liskov') || slug.includes('lsp') ? SOLID_PREDEFINED_PROBLEMS['2-3-liskov-substitution-principle-lsp-'] : undefined) ||
     (slug.includes('interface-segregation') || slug.includes('isp') ? SOLID_PREDEFINED_PROBLEMS['2-4-interface-segregation-principle-isp-'] : undefined) ||
-    (slug.includes('dependency-inversion') || slug.includes('dip') ? SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-'] : undefined)
+    (slug.includes('dependency-inversion') || slug.includes('dip') ? SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-'] : undefined) ||
+    ((slug.includes('builder') && slug.includes('pattern')) || slug.includes('builder-pattern') || slug.includes('4-4-builder') ? PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'] : undefined)
   ) : undefined;
   if (matchedPredefined && matchedPredefined.starters) {
     return matchedPredefined.starters;
@@ -1567,8 +1568,699 @@ impl Solution {
 }`,
       sql: `-- Not applicable`
     }
+  },
+  '4-4-builder-pattern-': {
+    name: '4.4 Builder Pattern - Desktop Computer Assembly & Configuration System',
+    category: 'Low Level Design',
+    difficulty: 'Medium',
+    description: `Design an object-oriented Desktop Computer configuration and assembly system adhering strictly to the **Builder Pattern** (GoF Creational Design Pattern).
+
+The **Builder Pattern** separates the construction of a complex object from its representation, allowing the same construction process to produce different configurations step-by-step while avoiding "telescoping constructor" anti-patterns and parameter pollution.
+
+### System Specifications & Invariants:
+1. **Required Components**:
+   - \`bool setCPU(string cpu)\`: Sets the processor model. Must be a non-empty string. Returns \`true\` if valid and successfully configured, \`false\` otherwise.
+   - \`bool setRAM(int ramGB)\`: Sets the RAM capacity in GB. Must be \`>= 4\` and a valid power of 2 (e.g. 4, 8, 16, 32, 64, 128, etc.). Returns \`true\` if valid and set, \`false\` otherwise.
+   - \`bool setStorage(int storageGB)\`: Sets the primary SSD storage in GB. Must be an integer \`>= 128\` (e.g. 128, 256, 512, 1024, 2048, etc.). Returns \`true\` if valid and set, \`false\` otherwise.
+2. **Optional Components (Defaults applied if omitted)**:
+   - \`bool setGPU(string gpu)\`: Sets dedicated graphics card. Must be a non-empty string. Defaults to **"Integrated"**. Returns \`true\` if valid and set, \`false\` if empty.
+   - \`bool setBluetooth(bool enabled)\`: Enables or disables onboard Bluetooth. Defaults to \`false\`. Returns \`true\`.
+3. **Lifecycle & Assembly**:
+   - \`string build()\`: Validates all configuration invariants:
+     - If any required component (\`cpu\`, \`ram\`, \`storage\`) is missing, invalid, or was never set, returns \`"INVALID_CONFIG"\`.
+     - Otherwise, builds the computer and returns a formatted specification string:
+       \`"CPU: <cpu> | RAM: <ramGB>GB | Storage: <storageGB>GB | GPU: <gpu> | Bluetooth: <true/false>"\`
+   - \`bool reset()\`: Clears the current builder state back to defaults (no required components set; GPU defaults back to \`"Integrated"\`; Bluetooth defaults to \`false\`). Returns \`true\`.
+
+### Example 1:
+\`\`\`
+Input:
+setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build()
+
+Output:
+true, true, true, true, true, "CPU: Intel i7 | RAM: 16GB | Storage: 512GB | GPU: RTX 4070 | Bluetooth: true"
+\`\`\`
+
+### Example 2:
+\`\`\`
+Input:
+setCPU("AMD Ryzen 5"), setRAM(8), setStorage(256), build()
+
+Output:
+true, true, true, "CPU: AMD Ryzen 5 | RAM: 8GB | Storage: 256GB | GPU: Integrated | Bluetooth: false"
+\`\`\`
+
+### Constraints:
+- \`0 <= ramGB <= 1024\`
+- \`0 <= storageGB <= 100000\`
+- At most \`1000\` method calls across all operations.`,
+    examples: [
+      {
+        input: 'setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build()',
+        output: 'true, true, true, true, true, "CPU: Intel i7 | RAM: 16GB | Storage: 512GB | GPU: RTX 4070 | Bluetooth: true"',
+        explanation: 'Fully custom rig with dedicated RTX 4070 and Bluetooth enabled.'
+      },
+      {
+        input: 'setCPU("AMD Ryzen 5"), setRAM(8), setStorage(256), build()',
+        output: 'true, true, true, "CPU: AMD Ryzen 5 | RAM: 8GB | Storage: 256GB | GPU: Integrated | Bluetooth: false"',
+        explanation: 'Minimal valid build without optional GPU or Bluetooth; default values applied.'
+      }
+    ],
+    constraints: [
+      '0 <= ramGB <= 1024',
+      '0 <= storageGB <= 100000',
+      'At most 1000 method calls across all operations.'
+    ],
+    testCases: [
+      'setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build()',
+      'setCPU("AMD Ryzen 5"), setRAM(8), setStorage(256), build()',
+      'setCPU("Apple M3"), setRAM(10), build()',
+      'setCPU("Intel i9"), setRAM(64), setStorage(2048), reset(), build()',
+      'setCPU("Ryzen 7"), setRAM(32), setStorage(64), build()',
+      'setCPU(""), setRAM(16), setStorage(512), build()',
+      'setCPU("Intel i5"), setRAM(8), setRAM(32), setStorage(1024), build()',
+      'setGPU("RX 7900"), build(), reset(), setCPU("Intel i3"), setRAM(4), setStorage(128), build()',
+      'setCPU("Threadripper 7980X"), setRAM(128), setStorage(4096), setGPU("RTX 4090"), setBluetooth(true), build()',
+      'setCPU("Intel i7"), setRAM(16), setStorage(512), setBluetooth(false), build()',
+      'setCPU("Core i3"), setRAM(2), setRAM(4), setStorage(128), build()',
+      'setCPU("M2 Ultra"), setRAM(64), setStorage(127), setStorage(128), build()'
+    ],
+    expectedOutputs: [
+      'true, true, true, true, true, "CPU: Intel i7 | RAM: 16GB | Storage: 512GB | GPU: RTX 4070 | Bluetooth: true"',
+      'true, true, true, "CPU: AMD Ryzen 5 | RAM: 8GB | Storage: 256GB | GPU: Integrated | Bluetooth: false"',
+      'true, false, "INVALID_CONFIG"',
+      'true, true, true, true, "INVALID_CONFIG"',
+      'true, true, false, "INVALID_CONFIG"',
+      'false, true, true, "INVALID_CONFIG"',
+      'true, true, true, true, "CPU: Intel i5 | RAM: 32GB | Storage: 1024GB | GPU: Integrated | Bluetooth: false"',
+      'true, "INVALID_CONFIG", true, true, true, true, "CPU: Intel i3 | RAM: 4GB | Storage: 128GB | GPU: Integrated | Bluetooth: false"',
+      'true, true, true, true, true, "CPU: Threadripper 7980X | RAM: 128GB | Storage: 4096GB | GPU: RTX 4090 | Bluetooth: true"',
+      'true, true, true, true, "CPU: Intel i7 | RAM: 16GB | Storage: 512GB | GPU: Integrated | Bluetooth: false"',
+      'true, false, true, true, "CPU: Core i3 | RAM: 4GB | Storage: 128GB | GPU: Integrated | Bluetooth: false"',
+      'true, true, false, true, "CPU: M2 Ultra | RAM: 64GB | Storage: 128GB | GPU: Integrated | Bluetooth: false"'
+    ],
+    hints: [
+      'The Builder Pattern separates the construction of a complex object from its representation, preventing constructor pollution.',
+      'Enforce step-by-step validation during setRAM (check >= 4 and power-of-two using (ram & (ram - 1)) == 0) and setStorage (>= 128).',
+      'During build(), ensure all required parameters (cpu, ram, storage) are valid before producing the final specification string.'
+    ],
+    approaches: [
+      {
+        id: 'optimal',
+        name: 'Builder Pattern with Fluent Method Chaining & State Validation',
+        timeComplexity: 'O(1) per operation',
+        spaceComplexity: 'O(1) auxiliary space',
+        description: 'Maintains builder state with default values for optional parameters (Integrated GPU, Bluetooth false) and validates required components (CPU non-empty, RAM >= 4 and power of 2, Storage >= 128) upon build().'
+      }
+    ],
+    starters: {
+      cpp: `class Solution {
+public:
+    bool setCPU(string cpu) {
+        // Return true if valid non-empty CPU set, false otherwise
+        return false;
+    }
+    
+    bool setRAM(int ramGB) {
+        // Return true if ramGB >= 4 and power of 2, false otherwise
+        return false;
+    }
+    
+    bool setStorage(int storageGB) {
+        // Return true if storageGB >= 128, false otherwise
+        return false;
+    }
+    
+    bool setGPU(string gpu) {
+        // Optional GPU (defaults to "Integrated"). Return true if valid
+        return false;
+    }
+    
+    bool setBluetooth(bool enabled) {
+        // Optional Bluetooth (defaults to false). Return true
+        return false;
+    }
+    
+    string build() {
+        // Return "INVALID_CONFIG" if invariants fail, or formatted spec string
+        return "";
+    }
+    
+    bool reset() {
+        // Reset builder state back to defaults
+        return true;
+    }
+};`,
+      python: `class Solution:
+    def __init__(self):
+        self.reset()
+
+    def setCPU(self, cpu: str) -> bool:
+        # Return True if valid non-empty CPU set, False otherwise
+        return False
+
+    def setRAM(self, ram_gb: int) -> bool:
+        # Return True if ram_gb >= 4 and power of 2, False otherwise
+        return False
+
+    def setStorage(self, storage_gb: int) -> bool:
+        # Return True if storage_gb >= 128, False otherwise
+        return False
+
+    def setGPU(self, gpu: str) -> bool:
+        # Optional GPU (defaults to "Integrated"). Return True if valid
+        return False
+
+    def setBluetooth(self, enabled: bool) -> bool:
+        # Optional Bluetooth (defaults to False). Return True
+        return False
+
+    def build(self) -> str:
+        # Return "INVALID_CONFIG" if invariants fail, or formatted spec string
+        return ""
+
+    def reset(self) -> bool:
+        # Reset builder state back to defaults
+        return True`,
+      java: `class Solution {
+    public boolean setCPU(String cpu) {
+        // Return true if valid non-empty CPU set, false otherwise
+        return false;
+    }
+
+    public boolean setRAM(int ramGB) {
+        // Return true if ramGB >= 4 and power of 2, false otherwise
+        return false;
+    }
+
+    public boolean setStorage(int storageGB) {
+        // Return true if storageGB >= 128, false otherwise
+        return false;
+    }
+
+    public boolean setGPU(String gpu) {
+        // Optional GPU (defaults to "Integrated"). Return true if valid
+        return false;
+    }
+
+    public boolean setBluetooth(boolean enabled) {
+        // Optional Bluetooth (defaults to false). Return true
+        return false;
+    }
+
+    public String build() {
+        // Return "INVALID_CONFIG" if invariants fail, or formatted spec string
+        return "";
+    }
+
+    public boolean reset() {
+        // Reset builder state back to defaults
+        return true;
+    }
+}`,
+      javascript: `var Solution = function() {
+    this.reset();
+};
+
+/** 
+ * @param {string} cpu
+ * @return {boolean}
+ */
+Solution.prototype.setCPU = function(cpu) {
+    return false;
+};
+
+/** 
+ * @param {number} ramGB
+ * @return {boolean}
+ */
+Solution.prototype.setRAM = function(ramGB) {
+    return false;
+};
+
+/** 
+ * @param {number} storageGB
+ * @return {boolean}
+ */
+Solution.prototype.setStorage = function(storageGB) {
+    return false;
+};
+
+/** 
+ * @param {string} gpu
+ * @return {boolean}
+ */
+Solution.prototype.setGPU = function(gpu) {
+    return false;
+};
+
+/** 
+ * @param {boolean} enabled
+ * @return {boolean}
+ */
+Solution.prototype.setBluetooth = function(enabled) {
+    return false;
+};
+
+/** 
+ * @return {string}
+ */
+Solution.prototype.build = function() {
+    return "";
+};
+
+/** 
+ * @return {boolean}
+ */
+Solution.prototype.reset = function() {
+    return true;
+};`,
+      go: `type Solution struct {
+    cpu string
+    ram int
+    storage int
+    gpu string
+    bluetooth bool
+}
+
+func Constructor() Solution {
+    return Solution{gpu: "Integrated"}
+}
+
+func (this *Solution) SetCPU(cpu string) bool {
+    return false
+}
+
+func (this *Solution) SetRAM(ramGB int) bool {
+    return false
+}
+
+func (this *Solution) SetStorage(storageGB int) bool {
+    return false
+}
+
+func (this *Solution) SetGPU(gpu string) bool {
+    return false
+}
+
+func (this *Solution) SetBluetooth(enabled bool) bool {
+    return false
+}
+
+func (this *Solution) Build() string {
+    return ""
+}
+
+func (this *Solution) Reset() bool {
+    return true
+}`,
+      rust: `pub struct Solution {
+    cpu: String,
+    ram: i32,
+    storage: i32,
+    gpu: String,
+    bluetooth: bool,
+}
+
+impl Solution {
+    pub fn new() -> Self {
+        Solution {
+            cpu: String::new(),
+            ram: 0,
+            storage: 0,
+            gpu: "Integrated".to_string(),
+            bluetooth: false,
+        }
+    }
+
+    pub fn set_cpu(&mut self, cpu: String) -> bool {
+        false
+    }
+
+    pub fn set_ram(&mut self, ram_gb: i32) -> bool {
+        false
+    }
+
+    pub fn set_storage(&mut self, storage_gb: i32) -> bool {
+        false
+    }
+
+    pub fn set_gpu(&mut self, gpu: String) -> bool {
+        false
+    }
+
+    pub fn set_bluetooth(&mut self, enabled: bool) -> bool {
+        false
+    }
+
+    pub fn build(&self) -> String {
+        String::new()
+    }
+
+    pub fn reset(&mut self) -> bool {
+        true
+    }
+}`,
+      sql: `-- Not applicable for Object-Oriented Builder Pattern`
+    },
+    solutions: {
+      cpp: `class Solution {
+private:
+    string cpu = "";
+    int ram = 0;
+    int storage = 0;
+    string gpu = "Integrated";
+    bool bluetooth = false;
+
+public:
+    Solution() {
+        reset();
+    }
+
+    bool setCPU(string cpuModel) {
+        if (cpuModel.empty()) return false;
+        cpu = cpuModel;
+        return true;
+    }
+
+    bool setRAM(int ramGB) {
+        if (ramGB < 4 || (ramGB & (ramGB - 1)) != 0) return false;
+        ram = ramGB;
+        return true;
+    }
+
+    bool setStorage(int storageGB) {
+        if (storageGB < 128) return false;
+        storage = storageGB;
+        return true;
+    }
+
+    bool setGPU(string gpuModel) {
+        if (gpuModel.empty()) return false;
+        gpu = gpuModel;
+        return true;
+    }
+
+    bool setBluetooth(bool enabled) {
+        bluetooth = enabled;
+        return true;
+    }
+
+    string build() {
+        if (cpu.empty() || ram < 4 || storage < 128) {
+            return "INVALID_CONFIG";
+        }
+        return "CPU: " + cpu + " | RAM: " + to_string(ram) + "GB | Storage: " + to_string(storage) + "GB | GPU: " + gpu + " | Bluetooth: " + (bluetooth ? "true" : "false");
+    }
+
+    bool reset() {
+        cpu = "";
+        ram = 0;
+        storage = 0;
+        gpu = "Integrated";
+        bluetooth = false;
+        return true;
+    }
+};`,
+      python: `class Solution:
+    def __init__(self):
+        self.reset()
+
+    def setCPU(self, cpu: str) -> bool:
+        if not cpu or not cpu.strip():
+            return False
+        self.cpu = cpu.strip()
+        return True
+
+    def setRAM(self, ram_gb: int) -> bool:
+        if ram_gb < 4 or (ram_gb & (ram_gb - 1)) != 0:
+            return False
+        self.ram = ram_gb
+        return True
+
+    def setStorage(self, storage_gb: int) -> bool:
+        if storage_gb < 128:
+            return False
+        self.storage = storage_gb
+        return True
+
+    def setGPU(self, gpu: str) -> bool:
+        if not gpu or not gpu.strip():
+            return False
+        self.gpu = gpu.strip()
+        return True
+
+    def setBluetooth(self, enabled: bool) -> bool:
+        self.bluetooth = bool(enabled)
+        return True
+
+    def build(self) -> str:
+        if not self.cpu or self.ram < 4 or self.storage < 128:
+            return "INVALID_CONFIG"
+        bt_str = "true" if self.bluetooth else "false"
+        return f"CPU: {self.cpu} | RAM: {self.ram}GB | Storage: {self.storage}GB | GPU: {self.gpu} | Bluetooth: {bt_str}"
+
+    def reset(self) -> bool:
+        self.cpu = ""
+        self.ram = 0
+        self.storage = 0
+        self.gpu = "Integrated"
+        self.bluetooth = False
+        return True`,
+      java: `class Solution {
+    private String cpu = "";
+    private int ram = 0;
+    private int storage = 0;
+    private String gpu = "Integrated";
+    private boolean bluetooth = false;
+
+    public Solution() {
+        reset();
+    }
+
+    public boolean setCPU(String cpuModel) {
+        if (cpuModel == null || cpuModel.trim().isEmpty()) return false;
+        this.cpu = cpuModel.trim();
+        return true;
+    }
+
+    public boolean setRAM(int ramGB) {
+        if (ramGB < 4 || (ramGB & (ramGB - 1)) != 0) return false;
+        this.ram = ramGB;
+        return true;
+    }
+
+    public boolean setStorage(int storageGB) {
+        if (storageGB < 128) return false;
+        this.storage = storageGB;
+        return true;
+    }
+
+    public boolean setGPU(String gpuModel) {
+        if (gpuModel == null || gpuModel.trim().isEmpty()) return false;
+        this.gpu = gpuModel.trim();
+        return true;
+    }
+
+    public boolean setBluetooth(boolean enabled) {
+        this.bluetooth = enabled;
+        return true;
+    }
+
+    public String build() {
+        if (this.cpu.isEmpty() || this.ram < 4 || this.storage < 128) {
+            return "INVALID_CONFIG";
+        }
+        return "CPU: " + this.cpu + " | RAM: " + this.ram + "GB | Storage: " + this.storage + "GB | GPU: " + this.gpu + " | Bluetooth: " + (this.bluetooth ? "true" : "false");
+    }
+
+    public boolean reset() {
+        this.cpu = "";
+        this.ram = 0;
+        this.storage = 0;
+        this.gpu = "Integrated";
+        this.bluetooth = false;
+        return true;
+    }
+}`,
+      javascript: `var Solution = function() {
+    this.reset();
+};
+
+Solution.prototype.setCPU = function(cpu) {
+    if (!cpu || typeof cpu !== 'string' || !cpu.trim()) return false;
+    this.cpu = cpu.trim();
+    return true;
+};
+
+Solution.prototype.setRAM = function(ramGB) {
+    if (typeof ramGB !== 'number' || ramGB < 4 || (ramGB & (ramGB - 1)) !== 0) return false;
+    this.ram = ramGB;
+    return true;
+};
+
+Solution.prototype.setStorage = function(storageGB) {
+    if (typeof storageGB !== 'number' || storageGB < 128) return false;
+    this.storage = storageGB;
+    return true;
+};
+
+Solution.prototype.setGPU = function(gpu) {
+    if (!gpu || typeof gpu !== 'string' || !gpu.trim()) return false;
+    this.gpu = gpu.trim();
+    return true;
+};
+
+Solution.prototype.setBluetooth = function(enabled) {
+    this.bluetooth = Boolean(enabled);
+    return true;
+};
+
+Solution.prototype.build = function() {
+    if (!this.cpu || this.ram < 4 || this.storage < 128) {
+        return "INVALID_CONFIG";
+    }
+    return \`CPU: \${this.cpu} | RAM: \${this.ram}GB | Storage: \${this.storage}GB | GPU: \${this.gpu} | Bluetooth: \${this.bluetooth ? 'true' : 'false'}\`;
+};
+
+Solution.prototype.reset = function() {
+    this.cpu = "";
+    this.ram = 0;
+    this.storage = 0;
+    this.gpu = "Integrated";
+    this.bluetooth = false;
+    return true;
+};`,
+      go: `type Solution struct {
+    cpu string
+    ram int
+    storage int
+    gpu string
+    bluetooth bool
+}
+
+func Constructor() Solution {
+    return Solution{gpu: "Integrated"}
+}
+
+func (this *Solution) SetCPU(cpu string) bool {
+    if len(cpu) == 0 { return false }
+    this.cpu = cpu
+    return true
+}
+
+func (this *Solution) SetRAM(ramGB int) bool {
+    if ramGB < 4 || (ramGB & (ramGB - 1)) != 0 { return false }
+    this.ram = ramGB
+    return true
+}
+
+func (this *Solution) SetStorage(storageGB int) bool {
+    if storageGB < 128 { return false }
+    this.storage = storageGB
+    return true
+}
+
+func (this *Solution) SetGPU(gpu string) bool {
+    if len(gpu) == 0 { return false }
+    this.gpu = gpu
+    return true
+}
+
+func (this *Solution) SetBluetooth(enabled bool) bool {
+    this.bluetooth = enabled
+    return true
+}
+
+func (this *Solution) Build() string {
+    if len(this.cpu) == 0 || this.ram < 4 || this.storage < 128 {
+        return "INVALID_CONFIG"
+    }
+    bt := "false"
+    if this.bluetooth { bt = "true" }
+    return fmt.Sprintf("CPU: %s | RAM: %dGB | Storage: %dGB | GPU: %s | Bluetooth: %s", this.cpu, this.ram, this.storage, this.gpu, bt)
+}
+
+func (this *Solution) Reset() bool {
+    this.cpu = ""
+    this.ram = 0
+    this.storage = 0
+    this.gpu = "Integrated"
+    this.bluetooth = false
+    return true
+}`,
+      rust: `pub struct Solution {
+    cpu: String,
+    ram: i32,
+    storage: i32,
+    gpu: String,
+    bluetooth: bool,
+}
+
+impl Solution {
+    pub fn new() -> Self {
+        Solution {
+            cpu: String::new(),
+            ram: 0,
+            storage: 0,
+            gpu: "Integrated".to_string(),
+            bluetooth: false,
+        }
+    }
+
+    pub fn set_cpu(&mut self, cpu: String) -> bool {
+        if cpu.trim().is_empty() { return false; }
+        self.cpu = cpu.trim().to_string();
+        true
+    }
+
+    pub fn set_ram(&mut self, ram_gb: i32) -> bool {
+        if ram_gb < 4 || (ram_gb & (ram_gb - 1)) != 0 { return false; }
+        self.ram = ram_gb;
+        true
+    }
+
+    pub fn set_storage(&mut self, storage_gb: i32) -> bool {
+        if storage_gb < 128 { return false; }
+        self.storage = storage_gb;
+        true
+    }
+
+    pub fn set_gpu(&mut self, gpu: String) -> bool {
+        if gpu.trim().is_empty() { return false; }
+        self.gpu = gpu.trim().to_string();
+        true
+    }
+
+    pub fn set_bluetooth(&mut self, enabled: bool) -> bool {
+        self.bluetooth = enabled;
+        true
+    }
+
+    pub fn build(&self) -> String {
+        if self.cpu.is_empty() || self.ram < 4 || self.storage < 128 {
+            return "INVALID_CONFIG".to_string();
+        }
+        format!("CPU: {} | RAM: {}GB | Storage: {}GB | GPU: {} | Bluetooth: {}",
+            self.cpu, self.ram, self.storage, self.gpu, if self.bluetooth { "true" } else { "false" })
+    }
+
+    pub fn reset(&mut self) -> bool {
+        self.cpu.clear();
+        self.ram = 0;
+        self.storage = 0;
+        self.gpu = "Integrated".to_string();
+        self.bluetooth = false;
+        true
+    }
+}`
+    }
   }
 };
+
+PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern'] = PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'];
+PREDEFINED_SPECIAL_PROBLEMS['builder-pattern'] = PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'];
+PREDEFINED_SPECIAL_PROBLEMS['builder-design-pattern'] = PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'];
 
 /**
  * Extracts parameter names from starter code or examples
@@ -2408,11 +3100,15 @@ Return ONLY valid JSON matching this exact structure:
 
   // Fallback template if network/LLMs fail
   const defaultStarters = generateDefaultStarters(cleanTitle);
+  const isLldOrDesign = category.toLowerCase().includes('design') || category.toLowerCase().includes('low level') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('builder');
+  const fallbackDesc = isLldOrDesign
+    ? `Design an extensible object-oriented architecture for **${cleanTitle}** adhering to clean code and design pattern principles. Implement the Solution facade methods adhering to all specifications and constraints.`
+    : `An optimal algorithm is required to solve the **${cleanTitle}** problem adhering to all input constraints.`;
   const fallbackProblem: ProblemTemplate = {
     name: cleanTitle,
     category,
     difficulty,
-    description: `An optimal algorithm is required to solve the **${cleanTitle}** problem adhering to all input constraints.`,
+    description: fallbackDesc,
     examples: [
       {
         input: 'nums = [1, 2, 3]',
@@ -2692,6 +3388,20 @@ export async function fetchEnrichedProblem(
   ) {
     return applyOverride(SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-']);
   }
+  const isBuilder =
+    slug === '4-4-builder-pattern-' ||
+    slug === '4-4-builder-pattern' ||
+    slug === 'builder-pattern' ||
+    slug === 'builder-design-pattern' ||
+    slug === '44builderpattern' ||
+    slug.includes('4-4-builder-pattern') ||
+    slug.includes('builder-pattern') ||
+    (slug.includes('builder') && slug.includes('pattern')) ||
+    normSlug.includes('44builderpattern') ||
+    normSlug.includes('builderpattern');
+  if (isBuilder) {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-']);
+  }
   if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
@@ -2704,7 +3414,8 @@ export async function fetchEnrichedProblem(
       // Sanity check: purge contaminated cache if name doesn't match slug or if description is low-quality fallback stub
       if (
         (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) ||
-        (parsed?.description && parsed.description.includes('An optimal algorithm is required to solve the'))
+        (parsed?.description && parsed.description.includes('An optimal algorithm is required to solve the')) ||
+        ((slug.includes('builder') || normSlug.includes('builder')) && parsed?.description && parsed.description.includes('nums'))
       ) {
         localStorage.removeItem(cacheKey);
       } else {
@@ -4691,6 +5402,676 @@ function main() {
             const v = args[0] ? stripQuotes(args[0]) : '';
             const res = sol.getAvailableSpots(v);
             results.push(String(res));
+        }
+    }
+
+    console.log(results.join(', '));
+}
+
+main();`;
+    }
+  }
+
+  const isBuilderPattern =
+    slug === '4-4-builder-pattern-' ||
+    slug === '4-4-builder-pattern' ||
+    slug === 'builder-pattern' ||
+    slug === 'builder-design-pattern' ||
+    slug.includes('4-4-builder-pattern') ||
+    slug.includes('builder-pattern') ||
+    (slug.includes('builder') && slug.includes('pattern')) ||
+    slug.replace(/[^a-z0-9]/g, '').includes('builderpattern');
+
+  if (isBuilderPattern) {
+    if (lang === 'cpp') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <cctype>
+
+using namespace std;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static inline string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \\t\\n\\r");
+    if (start == string::npos) return "";
+    size_t end = s.find_last_not_of(" \\t\\n\\r");
+    return s.substr(start, end - start + 1);
+}
+
+static inline string stripQuotes(const string& s) {
+    string t = trim(s);
+    if (t.size() >= 2 && ((t.front() == '"' && t.back() == '"') || (t.front() == 39 && t.back() == 39))) {
+        return t.substr(1, t.size() - 2);
+    }
+    return t;
+}
+
+static vector<string> splitCalls(const string& input) {
+    vector<string> calls;
+    string cur = "";
+    int parenDepth = 0;
+    int bracketDepth = 0;
+    bool inQuotes = false;
+    char qChar = 0;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        char c = input[i];
+        if (inQuotes) {
+            cur += c;
+            if (c == qChar && (i == 0 || input[i - 1] != '\\\\')) {
+                inQuotes = false;
+            }
+        } else {
+            if (c == '"' || c == 39) {
+                inQuotes = true;
+                qChar = c;
+                cur += c;
+            } else if (c == '(') {
+                parenDepth++;
+                cur += c;
+            } else if (c == ')') {
+                parenDepth--;
+                cur += c;
+            } else if (c == '[') {
+                bracketDepth++;
+                cur += c;
+            } else if (c == ']') {
+                bracketDepth--;
+                cur += c;
+            } else if (c == ',' && parenDepth == 0 && bracketDepth == 0) {
+                string trimmed = trim(cur);
+                if (!trimmed.empty()) calls.push_back(trimmed);
+                cur = "";
+            } else {
+                cur += c;
+            }
+        }
+    }
+    string trimmed = trim(cur);
+    if (!trimmed.empty()) calls.push_back(trimmed);
+    return calls;
+}
+
+static vector<string> splitArgs(const string& argsStr) {
+    vector<string> args;
+    string cur = "";
+    bool inQuotes = false;
+    char qChar = 0;
+    int depth = 0;
+
+    for (size_t i = 0; i < argsStr.size(); ++i) {
+        char c = argsStr[i];
+        if (inQuotes) {
+            cur += c;
+            if (c == qChar && (i == 0 || argsStr[i - 1] != '\\\\')) {
+                inQuotes = false;
+            }
+        } else {
+            if (c == '"' || c == 39) {
+                inQuotes = true;
+                qChar = c;
+                cur += c;
+            } else if (c == '(' || c == '[' || c == '{') {
+                depth++;
+                cur += c;
+            } else if (c == ')' || c == ']' || c == '}') {
+                depth--;
+                cur += c;
+            } else if (c == ',' && depth == 0) {
+                args.push_back(trim(cur));
+                cur = "";
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (!trim(cur).empty()) args.push_back(trim(cur));
+    return args;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    string raw_input = R"RAW(setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build())RAW";
+
+    size_t eqPos = raw_input.find('=');
+    if (eqPos != string::npos) {
+        size_t firstParen = raw_input.find('(');
+        if (firstParen != string::npos && eqPos < firstParen) {
+            string beforeEq = trim(raw_input.substr(0, eqPos));
+            if (beforeEq.find('(') == string::npos) {
+                raw_input = trim(raw_input.substr(eqPos + 1));
+            }
+        }
+    }
+
+    vector<string> calls = splitCalls(raw_input);
+    Solution sol;
+    vector<string> results;
+
+    for (const string& call : calls) {
+        size_t openP = call.find('(');
+        size_t closeP = call.rfind(')');
+        if (openP == string::npos || closeP == string::npos || closeP <= openP) {
+            continue;
+        }
+
+        string fnName = trim(call.substr(0, openP));
+        string argsStr = call.substr(openP + 1, closeP - openP - 1);
+        vector<string> args = splitArgs(argsStr);
+
+        size_t innerEq = fnName.rfind('=');
+        if (innerEq != string::npos) {
+            fnName = trim(fnName.substr(innerEq + 1));
+        }
+
+        if (fnName == "setCPU") {
+            string cpu = args.size() > 0 ? stripQuotes(args[0]) : "";
+            bool res = sol.setCPU(cpu);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "setRAM") {
+            int ram = args.size() > 0 ? stoi(args[0]) : 0;
+            bool res = sol.setRAM(ram);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "setStorage") {
+            int storage = args.size() > 0 ? stoi(args[0]) : 0;
+            bool res = sol.setStorage(storage);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "setGPU") {
+            string gpu = args.size() > 0 ? stripQuotes(args[0]) : "";
+            bool res = sol.setGPU(gpu);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "setBluetooth") {
+            string bStr = args.size() > 0 ? trim(args[0]) : "false";
+            bool enabled = (bStr == "true" || bStr == "1");
+            bool res = sol.setBluetooth(enabled);
+            results.push_back(res ? "true" : "false");
+        } else if (fnName == "build") {
+            string res = sol.build();
+            results.push_back("\\"" + res + "\\"");
+        } else if (fnName == "reset") {
+            bool res = sol.reset();
+            results.push_back(res ? "true" : "false");
+        }
+    }
+
+    for (size_t i = 0; i < results.size(); ++i) {
+        cout << results[i];
+        if (i + 1 < results.size()) cout << ", ";
+    }
+    cout << "\\n";
+
+    return 0;
+}
+`;
+    }
+
+    if (lang === 'python') {
+      return `import sys
+import re
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def strip_quotes(s: str) -> str:
+    s = s.strip()
+    if len(s) >= 2 and ((s[0] == '"' and s[-1] == '"') or (s[0] == "'" and s[-1] == "'")):
+        return s[1:-1]
+    return s
+
+def split_calls(s: str):
+    calls = []
+    cur = []
+    p_depth = 0
+    b_depth = 0
+    in_q = False
+    q_char = ''
+    
+    for i, c in enumerate(s):
+        if in_q:
+            cur.append(c)
+            if c == q_char and (i == 0 or s[i - 1] != '\\\\'):
+                in_q = False
+        else:
+            if c in ('"', "'"):
+                in_q = True
+                q_char = c
+                cur.append(c)
+            elif c == '(':
+                p_depth += 1
+                cur.append(c)
+            elif c == ')':
+                p_depth -= 1
+                cur.append(c)
+            elif c == '[':
+                b_depth += 1
+                cur.append(c)
+            elif c == ']':
+                b_depth -= 1
+                cur.append(c)
+            elif c == ',' and p_depth == 0 and b_depth == 0:
+                t = ''.join(cur).strip()
+                if t:
+                    calls.append(t)
+                cur = []
+            else:
+                cur.append(c)
+    t = ''.join(cur).strip()
+    if t:
+        calls.append(t)
+    return calls
+
+def split_args(s: str):
+    args = []
+    cur = []
+    depth = 0
+    in_q = False
+    q_char = ''
+    
+    for i, c in enumerate(s):
+        if in_q:
+            cur.append(c)
+            if c == q_char and (i == 0 or s[i - 1] != '\\\\'):
+                in_q = False
+        else:
+            if c in ('"', "'"):
+                in_q = True
+                q_char = c
+                cur.append(c)
+            elif c in ('(', '[', '{'):
+                depth += 1
+                cur.append(c)
+            elif c in (')', ']', '}'):
+                depth -= 1
+                cur.append(c)
+            elif c == ',' and depth == 0:
+                args.append(''.join(cur).strip())
+                cur = []
+            else:
+                cur.append(c)
+    t = ''.join(cur).strip()
+    if t:
+        args.append(t)
+    return args
+
+def main():
+    raw_input = """setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build()"""
+    raw_input = raw_input.strip()
+
+    eq_pos = raw_input.find('=')
+    open_p = raw_input.find('(')
+    if eq_pos != -1 and open_p != -1 and eq_pos < open_p:
+        before_eq = raw_input[:eq_pos].strip()
+        if '(' not in before_eq:
+            raw_input = raw_input[eq_pos + 1:].strip()
+
+    calls = split_calls(raw_input)
+    sol = Solution()
+    results = []
+
+    for call in calls:
+        op = call.find('(')
+        cp = call.rfind(')')
+        if op == -1 or cp == -1 or cp <= op:
+            continue
+        fn_name = call[:op].strip()
+        if '=' in fn_name:
+            fn_name = fn_name.split('=')[-1].strip()
+        args_str = call[op + 1:cp].strip()
+        args = split_args(args_str)
+
+        if fn_name == "setCPU":
+            cpu = strip_quotes(args[0]) if len(args) > 0 else ""
+            res = sol.setCPU(cpu)
+            results.append("true" if res else "false")
+        elif fn_name == "setRAM":
+            ram = int(args[0]) if len(args) > 0 else 0
+            res = sol.setRAM(ram)
+            results.append("true" if res else "false")
+        elif fn_name == "setStorage":
+            storage = int(args[0]) if len(args) > 0 else 0
+            res = sol.setStorage(storage)
+            results.append("true" if res else "false")
+        elif fn_name == "setGPU":
+            gpu = strip_quotes(args[0]) if len(args) > 0 else ""
+            res = sol.setGPU(gpu)
+            results.append("true" if res else "false")
+        elif fn_name == "setBluetooth":
+            b_str = args[0].strip().lower() if len(args) > 0 else "false"
+            enabled = b_str in ("true", "1")
+            res = sol.setBluetooth(enabled)
+            results.append("true" if res else "false")
+        elif fn_name == "build":
+            res = sol.build()
+            results.append(f'"{res}"')
+        elif fn_name == "reset":
+            res = sol.reset()
+            results.append("true" if res else "false")
+
+    print(", ".join(results))
+
+if __name__ == '__main__':
+    main()`;
+    }
+
+    if (lang === 'java') {
+      return `import java.util.*;
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    private static String trim(String s) {
+        return s == null ? "" : s.trim();
+    }
+
+    private static String stripQuotes(String s) {
+        String t = trim(s);
+        if (t.length() >= 2 && ((t.startsWith("\\"") && t.endsWith("\\"")) || (t.startsWith("'") && t.endsWith("'")))) {
+            return t.substring(1, t.length() - 1);
+        }
+        return t;
+    }
+
+    private static List<String> splitCalls(String s) {
+        List<String> calls = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int pDepth = 0;
+        int bDepth = 0;
+        boolean inQuotes = false;
+        char qChar = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inQuotes) {
+                cur.append(c);
+                if (c == qChar && (i == 0 || s.charAt(i - 1) != '\\\\')) {
+                    inQuotes = false;
+                }
+            } else {
+                if (c == '"' || c == 39) {
+                    inQuotes = true;
+                    qChar = c;
+                    cur.append(c);
+                } else if (c == '(') {
+                    pDepth++;
+                    cur.append(c);
+                } else if (c == ')') {
+                    pDepth--;
+                    cur.append(c);
+                } else if (c == '[') {
+                    bDepth++;
+                    cur.append(c);
+                } else if (c == ']') {
+                    bDepth--;
+                    cur.append(c);
+                } else if (c == ',' && pDepth == 0 && bDepth == 0) {
+                    String t = cur.toString().trim();
+                    if (!t.isEmpty()) calls.add(t);
+                    cur = new StringBuilder();
+                } else {
+                    cur.append(c);
+                }
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) calls.add(t);
+        return calls;
+    }
+
+    private static List<String> splitArgs(String s) {
+        List<String> args = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int depth = 0;
+        boolean inQuotes = false;
+        char qChar = 0;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (inQuotes) {
+                cur.append(c);
+                if (c == qChar && (i == 0 || s.charAt(i - 1) != '\\\\')) {
+                    inQuotes = false;
+                }
+            } else {
+                if (c == '"' || c == 39) {
+                    inQuotes = true;
+                    qChar = c;
+                    cur.append(c);
+                } else if (c == '(' || c == '[' || c == '{') {
+                    depth++;
+                    cur.append(c);
+                } else if (c == ')' || c == ']' || c == '}') {
+                    depth--;
+                    cur.append(c);
+                } else if (c == ',' && depth == 0) {
+                    args.add(cur.toString().trim());
+                    cur = new StringBuilder();
+                } else {
+                    cur.append(c);
+                }
+            }
+        }
+        String t = cur.toString().trim();
+        if (!t.isEmpty()) args.add(t);
+        return args;
+    }
+
+    public static void main(String[] args) {
+        String raw_input = "setCPU(\\"Intel i7\\"), setRAM(16), setStorage(512), setGPU(\\"RTX 4070\\"), setBluetooth(true), build()";
+        raw_input = raw_input.trim();
+
+        int eqPos = raw_input.indexOf('=');
+        int openP = raw_input.indexOf('(');
+        if (eqPos != -1 && openP != -1 && eqPos < openP) {
+            String beforeEq = raw_input.substring(0, eqPos).trim();
+            if (!beforeEq.contains("(")) {
+                raw_input = raw_input.substring(eqPos + 1).trim();
+            }
+        }
+
+        List<String> calls = splitCalls(raw_input);
+        Solution sol = new Solution();
+        List<String> results = new ArrayList<>();
+
+        for (String call : calls) {
+            int op = call.indexOf('(');
+            int cp = call.lastIndexOf(')');
+            if (op == -1 || cp == -1 || cp <= op) continue;
+
+            String fnName = call.substring(0, op).trim();
+            if (fnName.contains("=")) {
+                fnName = fnName.substring(fnName.lastIndexOf('=') + 1).trim();
+            }
+            String argsStr = call.substring(op + 1, cp).trim();
+            List<String> argList = splitArgs(argsStr);
+
+            if (fnName.equals("setCPU")) {
+                String cpu = argList.size() > 0 ? stripQuotes(argList.get(0)) : "";
+                boolean res = sol.setCPU(cpu);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("setRAM")) {
+                int ram = argList.size() > 0 ? Integer.parseInt(argList.get(0)) : 0;
+                boolean res = sol.setRAM(ram);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("setStorage")) {
+                int storage = argList.size() > 0 ? Integer.parseInt(argList.get(0)) : 0;
+                boolean res = sol.setStorage(storage);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("setGPU")) {
+                String gpu = argList.size() > 0 ? stripQuotes(argList.get(0)) : "";
+                boolean res = sol.setGPU(gpu);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("setBluetooth")) {
+                String bStr = argList.size() > 0 ? trim(argList.get(0)).toLowerCase() : "false";
+                boolean enabled = bStr.equals("true") || bStr.equals("1");
+                boolean res = sol.setBluetooth(enabled);
+                results.add(res ? "true" : "false");
+            } else if (fnName.equals("build")) {
+                String res = sol.build();
+                results.add("\\"" + res + "\\"");
+            } else if (fnName.equals("reset")) {
+                boolean res = sol.reset();
+                results.add(res ? "true" : "false");
+            }
+        }
+
+        System.out.println(String.join(", ", results));
+    }
+}`;
+    }
+
+    if (lang === 'javascript') {
+      return `// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function stripQuotes(s) {
+    s = (s || '').trim();
+    if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
+        return s.slice(1, -1);
+    }
+    return s;
+}
+
+function splitCalls(s) {
+    const calls = [];
+    let cur = '';
+    let pDepth = 0;
+    let bDepth = 0;
+    let inQ = false;
+    let qChar = '';
+
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (inQ) {
+            cur += c;
+            if (c === qChar && (i === 0 || s[i - 1] !== '\\\\')) inQ = false;
+        } else {
+            if (c === '"' || c === "'") {
+                inQ = true;
+                qChar = c;
+                cur += c;
+            } else if (c === '(') {
+                pDepth++;
+                cur += c;
+            } else if (c === ')') {
+                pDepth--;
+                cur += c;
+            } else if (c === '[') {
+                bDepth++;
+                cur += c;
+            } else if (c === ']') {
+                bDepth--;
+                cur += c;
+            } else if (c === ',' && pDepth === 0 && bDepth === 0) {
+                if (cur.trim()) calls.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (cur.trim()) calls.push(cur.trim());
+    return calls;
+}
+
+function splitArgs(s) {
+    const args = [];
+    let cur = '';
+    let depth = 0;
+    let inQ = false;
+    let qChar = '';
+
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (inQ) {
+            cur += c;
+            if (c === qChar && (i === 0 || s[i - 1] !== '\\\\')) inQ = false;
+        } else {
+            if (c === '"' || c === "'") {
+                inQ = true;
+                qChar = c;
+                cur += c;
+            } else if (c === '(' || c === '[' || c === '{') {
+                depth++;
+                cur += c;
+            } else if (c === ')' || c === ']' || c === '}') {
+                depth--;
+                cur += c;
+            } else if (c === ',' && depth === 0) {
+                args.push(cur.trim());
+                cur = '';
+            } else {
+                cur += c;
+            }
+        }
+    }
+    if (cur.trim()) args.push(cur.trim());
+    return args;
+}
+
+function main() {
+    let rawInput = \`setCPU("Intel i7"), setRAM(16), setStorage(512), setGPU("RTX 4070"), setBluetooth(true), build()\`;
+    rawInput = rawInput.trim();
+
+    const eqPos = rawInput.indexOf('=');
+    const openP = rawInput.indexOf('(');
+    if (eqPos !== -1 && openP !== -1 && eqPos < openP) {
+        const beforeEq = rawInput.slice(0, eqPos).trim();
+        if (!beforeEq.includes('(')) {
+            rawInput = rawInput.slice(eqPos + 1).trim();
+        }
+    }
+
+    const calls = splitCalls(rawInput);
+    const sol = new Solution();
+    const results = [];
+
+    for (const call of calls) {
+        const op = call.indexOf('(');
+        const cp = call.lastIndexOf(')');
+        if (op === -1 || cp === -1 || cp <= op) continue;
+
+        let fnName = call.slice(0, op).trim();
+        if (fnName.includes('=')) {
+            fnName = fnName.slice(fnName.lastIndexOf('=') + 1).trim();
+        }
+        const argsStr = call.slice(op + 1, cp).trim();
+        const args = splitArgs(argsStr);
+
+        if (fnName === 'setCPU') {
+            const cpu = args[0] ? stripQuotes(args[0]) : '';
+            const res = sol.setCPU(cpu);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'setRAM') {
+            const ram = args[0] !== undefined ? parseInt(args[0], 10) : 0;
+            const res = sol.setRAM(ram);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'setStorage') {
+            const storage = args[0] !== undefined ? parseInt(args[0], 10) : 0;
+            const res = sol.setStorage(storage);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'setGPU') {
+            const gpu = args[0] ? stripQuotes(args[0]) : '';
+            const res = sol.setGPU(gpu);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'setBluetooth') {
+            const bStr = args[0] ? args[0].trim().toLowerCase() : 'false';
+            const enabled = (bStr === 'true' || bStr === '1');
+            const res = sol.setBluetooth(enabled);
+            results.push(res ? 'true' : 'false');
+        } else if (fnName === 'build') {
+            const res = sol.build();
+            results.push(\`"\${res}"\`);
+        } else if (fnName === 'reset') {
+            const res = sol.reset();
+            results.push(res ? 'true' : 'false');
         }
     }
 

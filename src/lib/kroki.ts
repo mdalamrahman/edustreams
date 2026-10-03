@@ -640,6 +640,58 @@ ShapeFactory ..> Rectangle : instantiates
 @enduml`
   },
 
+  // 12b. Design Pattern: Builder Pattern
+  'builder-pattern': {
+    type: 'plantuml',
+    title: 'Builder Pattern — Desktop Computer Assembly & Configuration',
+    code: `@startuml
+\${BASE_PLANTUML_THEME}
+title Builder Pattern — Desktop Computer Assembly & Configuration
+
+class Computer {
+  - cpu: String
+  - ram: int
+  - storage: int
+  - gpu: String
+  - bluetooth: boolean
+  + getSpecs(): String
+}
+
+interface IComputerBuilder {
+  + setCPU(cpu: String): boolean
+  + setRAM(ramGB: int): boolean
+  + setStorage(storageGB: int): boolean
+  + setGPU(gpu: String): boolean
+  + setBluetooth(enabled: boolean): boolean
+  + build(): String
+  + reset(): boolean
+}
+
+class Solution implements IComputerBuilder {
+  - cpu: String
+  - ram: int
+  - storage: int
+  - gpu: String
+  - bluetooth: boolean
+  + setCPU(cpu: String): boolean
+  + setRAM(ramGB: int): boolean
+  + setStorage(storageGB: int): boolean
+  + setGPU(gpu: String): boolean
+  + setBluetooth(enabled: boolean): boolean
+  + build(): String
+  + reset(): boolean
+}
+
+class Director {
+  + constructGamingRig(builder: IComputerBuilder): String
+  + constructWorkstation(builder: IComputerBuilder): String
+}
+
+Solution ..> Computer : constructs
+Director o-- IComputerBuilder
+@enduml`
+  },
+
   // 13. Design Pattern: Observer Pattern
   'observer-pattern': {
     type: 'plantuml',
@@ -828,6 +880,9 @@ export function getLldDiagramForProblem(slugOrTitle: string, category?: string):
   }
   if (norm.includes('factory')) {
     return LLD_DIAGRAM_TEMPLATES['factory-pattern'];
+  }
+  if (norm.includes('builder')) {
+    return LLD_DIAGRAM_TEMPLATES['builder-pattern'];
   }
   if (norm.includes('observer') || norm.includes('pubsub') || norm.includes('pub sub')) {
     return LLD_DIAGRAM_TEMPLATES['observer-pattern'];
