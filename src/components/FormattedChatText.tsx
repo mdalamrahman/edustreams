@@ -8,8 +8,10 @@ interface FormattedChatTextProps {
 
 function decodeHtmlEntities(str: any): string {
   if (str === null || str === undefined) return '';
-  const textStr = typeof str === 'string' ? str : (typeof str === 'object' ? JSON.stringify(str, null, 2) : String(str));
-  return textStr
+  let textStr = typeof str === 'string' ? str : (typeof str === 'object' ? JSON.stringify(str, null, 2) : String(str));
+  
+  // 1. Decode entities
+  textStr = textStr
     .replace(/<sup>([\s\S]*?)<\/sup>/gi, '^$1')
     .replace(/<sub>([\s\S]*?)<\/sub>/gi, '_$1')
     .replace(/&ldquo;/g, '“')
@@ -27,6 +29,28 @@ function decodeHtmlEntities(str: any): string {
     .replace(/&hellip;/g, '...')
     .replace(/&times;/g, '×')
     .replace(/&minus;/g, '-');
+
+  // 2. Fix words sticking to tags (e.g., "Persontable" -> "Person table", "reportnull" -> "report null")
+  textStr = textStr.replace(/([a-zA-Z0-9_])<(code|strong|b|em|i)>/gi, '$1 <$2>');
+  textStr = textStr.replace(/<\/(code|strong|b|em|i)>([a-zA-Z0-9_])/gi, '</$1> $2');
+
+  // 3. Convert inline HTML formatting tags to standard Markdown so they render consistently
+  textStr = textStr.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+  textStr = textStr.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+  textStr = textStr.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+  textStr = textStr.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+  textStr = textStr.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+
+  // 4. HTML block / break tags to newlines
+  textStr = textStr.replace(/<br\s*\/?>/gi, '\n');
+  textStr = textStr.replace(/<p[^>]*>/gi, '\n\n');
+  textStr = textStr.replace(/<\/p>/gi, '\n');
+  textStr = textStr.replace(/<div[^>]*>/gi, '\n');
+  textStr = textStr.replace(/<\/div>/gi, '\n');
+  textStr = textStr.replace(/<span[^>]*>/gi, '');
+  textStr = textStr.replace(/<\/span>/gi, '');
+
+  return textStr;
 }
 
 /**
@@ -132,13 +156,15 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
       .replace(/\*([^*]+)\*\*/g, '**$1**');
 
     const parts: React.ReactNode[] = [];
-    const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*)/g;
+    const regex = /(!\[([^\]]*)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*|<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>|<code[^>]*>([\s\S]*?)<\/code>|<(?:em|i)[^>]*>([\s\S]*?)<\/(?:em|i)>)/gi;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
 
     const sanitizePlainText = (t: string) => {
-      // Remove any leftover stray unclosed asterisks or markdown artifacts
-      return t.replace(/\*{1,3}/g, '');
+      // Remove any leftover stray unclosed asterisks, html tags, or markdown artifacts
+      return t
+        .replace(/\*{1,3}/g, '')
+        .replace(/<\/?(?:strong|b|em|i|code|p|span|div)[^>]*>/gi, '');
     };
 
     while ((match = regex.exec(str)) !== null) {
@@ -179,14 +205,35 @@ export const FormattedChatText: React.FC<FormattedChatTextProps> = ({ text }) =>
             {inner}
           </strong>
         );
+      } else if (/^<(?:strong|b)[^>]*>/i.test(raw)) {
+        const inner = raw.replace(/^<(?:strong|b)[^>]*>/i, '').replace(/<\/(?:strong|b)>$/i, '').trim();
+        parts.push(
+          <strong key={match.index} className="font-bold text-slate-100">
+            {inner}
+          </strong>
+        );
       } else if (raw.startsWith('`') && raw.endsWith('`')) {
         parts.push(
           <code key={match.index} className="lc-code-chip mx-0.5">
             {raw.slice(1, -1)}
           </code>
         );
+      } else if (/^<code[^>]*>/i.test(raw)) {
+        const inner = raw.replace(/^<code[^>]*>/i, '').replace(/<\/code>$/i, '').trim();
+        parts.push(
+          <code key={match.index} className="lc-code-chip mx-0.5">
+            {inner}
+          </code>
+        );
       } else if (raw.startsWith('*') && raw.endsWith('*')) {
         const inner = raw.slice(1, -1).replace(/\*/g, '').trim();
+        parts.push(
+          <em key={match.index} className="italic text-slate-200">
+            {inner}
+          </em>
+        );
+      } else if (/^<(?:em|i)[^>]*>/i.test(raw)) {
+        const inner = raw.replace(/^<(?:em|i)[^>]*>/i, '').replace(/<\/(?:em|i)>$/i, '').trim();
         parts.push(
           <em key={match.index} className="italic text-slate-200">
             {inner}

@@ -108,6 +108,127 @@ export function getSqlProblemMetaBySlug(slugOrTitle: string): LeetCodeSqlMeta | 
 }
 
 /**
+ * Thoroughly sanitizes and cleans raw LeetCode problem markdown from GitHub/LeetCode:
+ * 1. Strips solution blocks (## Solutions, <!-- solution:start -->) so answers are not spoiled in the description tab.
+ * 2. Removes LeetCode metadata, comments, links.
+ * 3. Decodes HTML entities (&nbsp;, &lt;, &gt;, &quot;, &#39;, &amp;, etc.).
+ * 4. Fixes words sticking to tags (e.g. "Persontable" -> "Person table", "the<code>Person</code>table" -> "the `Person` table", "reportnull" -> "report null").
+ * 5. Converts inline tags (<strong>, <b>, <em>, <i>, <code>) to standard Markdown.
+ * 6. Converts table schema blocks (Table: `Name` <pre>+---+...+</pre>) into clean Markdown tables with descriptive commentary below.
+ * 7. Converts Example blocks (<strong class="example">Example 1:</strong>) into clean headings and clean code blocks.
+ * 8. Strips leftover layout tags (<p>, <br>, <div>, <span>) and cleans whitespace.
+ */
+export function cleanSqlProblemMarkdown(raw: string): string {
+  if (!raw) return '';
+
+  let text = raw;
+
+  // 1. Remove Solutions and below from description!
+  text = text.replace(/<!--\s*solution:start\s*-->[\s\S]*$/i, '');
+  text = text.replace(/##\s*Solutions[\s\S]*$/i, '');
+  text = text.replace(/<!--[\s\S]*?-->/g, '');
+  text = text.replace(/^---[\s\S]*?---\s*/m, '');
+  text = text.replace(/#\s*\[\d+\.[^\]]+\]\([^\)]+\)/g, '');
+  text = text.replace(/\[中文文档\]\([^\)]+\)/g, '');
+  text = text.replace(/##\s*Description/gi, '');
+
+  // 2. Decode HTML entities first
+  text = text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/&le;/gi, '<=')
+    .replace(/&ge;/gi, '>=');
+
+  // 3. Fix words sticking to tags (e.g. "the<code>Person</code>table" -> "the `Person` table", "report<code>null</code>" -> "report `null`")
+  text = text.replace(/([a-zA-Z0-9_])<(code|strong|b|em|i)>/gi, '$1 <$2>');
+  text = text.replace(/<\/(code|strong|b|em|i)>([a-zA-Z0-9_])/gi, '</$1> $2');
+
+  // 4. Convert inline tags to standard markdown
+  text = text.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '**$1**');
+  text = text.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '**$1**');
+  text = text.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, '*$1*');
+  text = text.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, '*$1*');
+  text = text.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+
+  // 5. Convert Table Schema blocks:
+  text = text.replace(
+    /(?:<p>)?\s*Table:\s*(?:`|<code>|<strong>)?([A-Za-z0-9_]+)(?:`|<\/code>|<\/strong>)?\s*(?:<\/p>)?\s*<pre>([\s\S]*?)<\/pre>/gi,
+    (_match: string, tableName: string, preContent: string) => {
+      const lines = preContent.split('\n');
+      const tableRows: string[] = [];
+      const commentaryLines: string[] = [];
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('+--') || trimmed.startsWith('+==')) {
+          continue;
+        }
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+          const cells = trimmed.split('|').slice(1, -1).map((c: string) => c.trim());
+          if (cells.length >= 2) {
+            tableRows.push(`| ${cells.join(' | ')} |`);
+          }
+        } else if (trimmed.length > 0) {
+          commentaryLines.push(trimmed);
+        }
+      }
+
+      let res = `\n### Table: \`${tableName}\`\n\n`;
+      if (tableRows.length >= 2) {
+        res += tableRows[0] + '\n';
+        const colsCount = tableRows[0].split('|').length - 2;
+        res += `| ${Array(colsCount).fill(':---').join(' | ')} |\n`;
+        for (let r = 1; r < tableRows.length; r++) {
+          res += tableRows[r] + '\n';
+        }
+      } else {
+        res += '```text\n' + preContent.trim() + '\n```\n';
+      }
+
+      if (commentaryLines.length > 0) {
+        res += '\n' + commentaryLines.join('\n\n') + '\n';
+      }
+
+      return res;
+    }
+  );
+
+  // 6. Convert Example blocks:
+  text = text.replace(/<p><strong class="example">Example (\d+):<\/strong><\/p>/gi, '### Example $1\n');
+  text = text.replace(/<strong class="example">Example (\d+):<\/strong>/gi, '### Example $1\n');
+  text = text.replace(/<p><strong>Example (\d+):<\/strong><\/p>/gi, '### Example $1\n');
+  text = text.replace(/<strong>Example (\d+):<\/strong>/gi, '### Example $1\n');
+
+  // Convert example pre blocks into formatted code blocks
+  text = text.replace(/<pre>([\s\S]*?)<\/pre>/gi, (_match: string, content: string) => {
+    let inner = content
+      .replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, '$1')
+      .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, '$1')
+      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '$1')
+      .trim();
+    return '\n```text\n' + inner + '\n```\n';
+  });
+
+  // 7. Strip any remaining HTML paragraph, break, div, span tags
+  text = text.replace(/<p[^>]*>/gi, '\n\n');
+  text = text.replace(/<\/p>/gi, '\n');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<div[^>]*>/gi, '\n');
+  text = text.replace(/<\/div>/gi, '\n');
+  text = text.replace(/<span[^>]*>/gi, '');
+  text = text.replace(/<\/span>/gi, '');
+
+  // 8. Clean up extra whitespace and newlines
+  text = text.replace(/\n{3,}/g, '\n\n').trim();
+
+  return text;
+}
+
+/**
  * Parses raw LeetCode markdown into an interactive AlaSQL executable SQLProblem.
  */
 export function parseSqlProblemFromMarkdown(
@@ -119,22 +240,8 @@ export function parseSqlProblemFromMarkdown(
   const descMatch = md.match(/<!--\s*description:start\s*-->([\s\S]*?)<!--\s*description:end\s*-->/i);
   let rawDesc = descMatch ? descMatch[1] : md;
 
-  // Clean description HTML to clean markdown
-  const cleanDesc = rawDesc
-    .replace(/<strong class="example">Example (\d+):<\/strong>/gi, '### Example $1')
-    .replace(/<strong>(Input|Output|Explanation):<\/strong>/gi, '**$1:**')
-    .replace(/<p>/gi, '\n\n')
-    .replace(/<\/p>/gi, '')
-    .replace(/<code>(.*?)<\/code>/gi, '`$1`')
-    .replace(/<pre>/gi, '\n```text\n')
-    .replace(/<\/pre>/gi, '\n```\n')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
-    .trim();
+  // Clean description HTML to rich markdown without spoilers or raw HTML tags
+  const cleanDesc = cleanSqlProblemMarkdown(rawDesc);
 
   // 2. Extract Table Schemas
   const tables: Array<{
@@ -143,7 +250,7 @@ export function parseSqlProblemFromMarkdown(
     rows: any[][];
   }> = [];
 
-  const tableDefRegex = /Table:\s*(?:<code>|`)([A-Za-z0-9_]+)(?:<\/code>|`)[\s\S]*?(?:<pre>|```text)([\s\S]*?)(?:<\/pre>|```)/gi;
+  const tableDefRegex = /Table:\s*(?:<code>|`|<strong>)?\s*([A-Za-z0-9_]+)\s*(?:<\/code>|`|<\/strong>)?[\s\S]*?(?:<pre>|```(?:text)?)([\s\S]*?)(?:<\/pre>|```)/gi;
   let tMatch;
   while ((tMatch = tableDefRegex.exec(rawDesc)) !== null) {
     const tableName = tMatch[1];
@@ -299,6 +406,20 @@ export function parseSqlProblemFromMarkdown(
     .replace(/^--\s*Write your .*$/gim, '')
     .trim();
 
+  // If Solution.sql was missing or empty, extract MySQL solution snippet directly from markdown README
+  if (!cleanSolution) {
+    const sqlBlockMatch = md.match(/(?:####?\s*MySQL[\s\S]*?```sql\s*([\s\S]*?)```|```sql\s*([\s\S]*?)```)/i);
+    if (sqlBlockMatch) {
+      const extracted = (sqlBlockMatch[1] || sqlBlockMatch[2] || '')
+        .replace(/^#\s*Write your .*$/gim, '')
+        .replace(/^--\s*Write your .*$/gim, '')
+        .trim();
+      if (extracted) {
+        cleanSolution = extracted;
+      }
+    }
+  }
+
   if (!cleanSolution) {
     cleanSolution = `SELECT * FROM [${tables[0]?.tableName || 'Data'}];`;
   }
@@ -346,14 +467,20 @@ export async function fetchSqlProblemDetails(item: LeetCodeSqlMeta): Promise<SQL
       preset.id === `sql-${item.id}` ||
       preset.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normSlug
     ) {
-      problemCache.set(cacheKey, preset);
-      return preset;
+      const matchedPreset: SQLProblem = {
+        ...preset,
+        id: `sql-${item.id}`,
+        title: `${item.id}. ${preset.title.replace(/^\d+\.\s*/, '')}`,
+        difficulty: item.difficulty || preset.difficulty
+      };
+      problemCache.set(cacheKey, matchedPreset);
+      return matchedPreset;
     }
   }
 
-  // 3. Check localStorage cache
+  // 3. Check localStorage cache (v4 format with cleaned markdown tables & tags)
   try {
-    const stored = localStorage.getItem(`edustream_sql_parsed_${item.slug}`);
+    const stored = localStorage.getItem(`edustream_sql_parsed_v4_${item.slug}`);
     if (stored) {
       const parsed: SQLProblem = JSON.parse(stored);
       if (parsed && parsed.tables && parsed.setupSql) {
@@ -381,7 +508,7 @@ export async function fetchSqlProblemDetails(item: LeetCodeSqlMeta): Promise<SQL
 
         problemCache.set(cacheKey, parsed);
         try {
-          localStorage.setItem(`edustream_sql_parsed_${item.slug}`, JSON.stringify(parsed));
+          localStorage.setItem(`edustream_sql_parsed_v4_${item.slug}`, JSON.stringify(parsed));
         } catch {}
         return parsed;
       }
