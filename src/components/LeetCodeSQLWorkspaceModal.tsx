@@ -24,6 +24,12 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Shuffle,
+  Search,
+  ExternalLink,
+  ListFilter,
   GripVertical,
   Lock,
   Eye,
@@ -33,6 +39,13 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { executeAndJudgeSQL, generateSQLProblem, SQLProblem, SQLJudgeResult } from '../lib/sqlJudge';
+import { 
+  getAllLeetCodeSqlProblems, 
+  syncLeetCodeSqlCatalog, 
+  fetchSqlProblemDetails, 
+  getSqlProblemMetaBySlug,
+  LeetCodeSqlMeta 
+} from '../lib/leetcodeSqlService';
 import { requestContextualAIChatResponse, ChatMessage } from '../lib/mistral';
 import { FormattedChatText } from './FormattedChatText';
 import confetti from 'canvas-confetti';
@@ -63,19 +76,159 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   onClose,
   onCodeExecuted
 }) => {
-  const cleanTitle = useMemo(() => {
-    return (codingProblem?.name || problemTitle || 'DBMS SQL Challenge')
+  // ── LeetCode SQL Problemset Catalog & State ──
+  const [catalog, setCatalog] = useState<LeetCodeSqlMeta[]>(() => getAllLeetCodeSqlProblems());
+  const [currentMeta, setCurrentMeta] = useState<LeetCodeSqlMeta>(() => {
+    const rawTitle = (codingProblem?.name || problemTitle || 'DBMS SQL Challenge')
       .replace(/\.(mp4|mkv|webm)$/i, '')
       .replace(/_/g, ' ');
-  }, [problemTitle, codingProblem]);
+    const slug = toSlug(codingProblem?.slug || codingProblem?.titleSlug || rawTitle);
+    const found = getSqlProblemMetaBySlug(slug) || getSqlProblemMetaBySlug(rawTitle);
+    if (found) return found;
+    const all = getAllLeetCodeSqlProblems();
+    return all.find(p => p.id === 175) || all[0];
+  });
 
-  const sqlProblem: SQLProblem = useMemo(() => {
+  const cleanTitle = useMemo(() => {
+    return currentMeta?.title || (codingProblem?.name || problemTitle || 'DBMS SQL Challenge')
+      .replace(/\.(mp4|mkv|webm)$/i, '')
+      .replace(/_/g, ' ');
+  }, [currentMeta, problemTitle, codingProblem]);
+
+  const [sqlProblem, setSqlProblem] = useState<SQLProblem>(() => {
     return generateSQLProblem(cleanTitle, transcript, notes, codingProblem);
-  }, [cleanTitle, transcript, notes, codingProblem]);
+  });
+
+  const [isLoadingProblem, setIsLoadingProblem] = useState<boolean>(false);
+  const [isProblemDrawerOpen, setIsProblemDrawerOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [difficultyFilter, setDifficultyFilter] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');
+  const [accessFilter, setAccessFilter] = useState<'All' | 'Free' | 'Premium'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Solved'>('All');
+  const [isSyncingCatalog, setIsSyncingCatalog] = useState<boolean>(false);
+  const [syncStatusText, setSyncStatusText] = useState<string | null>(null);
+
+  // Initial fetch of authentic problem details from GitHub/LeetCode
+  useEffect(() => {
+    let isMounted = true;
+    const loadDetails = async () => {
+      try {
+        const details = await fetchSqlProblemDetails(currentMeta);
+        if (isMounted) {
+          setSqlProblem(details);
+          const cached = localStorage.getItem(`edustream_sql_code_${currentMeta.slug}`);
+          if (!cached || cached.trim().length === 0) {
+            setCode(details.starterSql);
+          }
+        }
+      } catch (err) {
+        console.warn('Initial SQL load error:', err);
+      }
+    };
+    loadDetails();
+    return () => { isMounted = false; };
+  }, []);
+
+  const handleSelectProblem = async (meta: LeetCodeSqlMeta) => {
+    setIsProblemDrawerOpen(false);
+    if (meta.id === currentMeta.id && sqlProblem.id === `sql-${meta.id}`) return;
+    setCurrentMeta(meta);
+    setIsLoadingProblem(true);
+    try {
+      const details = await fetchSqlProblemDetails(meta);
+      setSqlProblem(details);
+      const cached = localStorage.getItem(`edustream_sql_code_${meta.slug}`);
+      if (cached !== null && cached.trim().length > 0) {
+        setCode(cached);
+      } else {
+        setCode(details.starterSql);
+      }
+      setJudgeResult(null);
+      setActiveTestCaseIdx(0);
+      setConsoleTab('tables');
+    } catch (err) {
+      console.error('Error switching problem:', err);
+    } finally {
+      setIsLoadingProblem(false);
+    }
+  };
+
+  const handlePrevProblem = () => {
+    const currentIndex = catalog.findIndex(p => p.id === currentMeta.id);
+    if (currentIndex > 0) {
+      handleSelectProblem(catalog[currentIndex - 1]);
+    } else {
+      handleSelectProblem(catalog[catalog.length - 1]);
+    }
+  };
+
+  const handleNextProblem = () => {
+    const currentIndex = catalog.findIndex(p => p.id === currentMeta.id);
+    if (currentIndex >= 0 && currentIndex < catalog.length - 1) {
+      handleSelectProblem(catalog[currentIndex + 1]);
+    } else {
+      handleSelectProblem(catalog[0]);
+    }
+  };
+
+  const handleRandomProblem = () => {
+    const remaining = catalog.filter(p => p.id !== currentMeta.id);
+    if (remaining.length > 0) {
+      const randomIndex = Math.floor(Math.random() * remaining.length);
+      handleSelectProblem(remaining[randomIndex]);
+    }
+  };
+
+  const handleLiveSync = async () => {
+    setIsSyncingCatalog(true);
+    setSyncStatusText('Fetching all SQL questions from LeetCode Database API & GitHub...');
+    try {
+      const updated = await syncLeetCodeSqlCatalog();
+      setCatalog(updated);
+      setSyncStatusText(`✓ Synced ${updated.length} questions from LeetCode API & GitHub!`);
+      setTimeout(() => setSyncStatusText(null), 4000);
+    } catch {
+      setSyncStatusText('Loaded from local catalog (323 questions ready)');
+      setTimeout(() => setSyncStatusText(null), 3000);
+    } finally {
+      setIsSyncingCatalog(false);
+    }
+  };
+
+  const isProblemSolved = (slug: string) => {
+    try {
+      const raw = localStorage.getItem(`edustream_submissions_${slug}`);
+      if (raw) {
+        const subs = JSON.parse(raw);
+        if (Array.isArray(subs)) {
+          return subs.some((s: any) => s.status?.toLowerCase() === 'accepted');
+        }
+      }
+    } catch {}
+    return false;
+  };
+
+  const filteredProblems = useMemo(() => {
+    return catalog.filter(p => {
+      if (difficultyFilter !== 'All' && p.difficulty !== difficultyFilter) return false;
+      if (accessFilter === 'Free' && p.paidOnly) return false;
+      if (accessFilter === 'Premium' && !p.paidOnly) return false;
+      if (statusFilter === 'Solved' && !isProblemSolved(p.slug)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        return (
+          p.id.toString().includes(q) ||
+          p.title.toLowerCase().includes(q) ||
+          p.slug.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [catalog, difficultyFilter, accessFilter, statusFilter, searchQuery]);
 
   const [code, setCode] = useState<string>(() => {
     try {
-      const cached = localStorage.getItem(`edustream_sql_code_${toSlug(cleanTitle)}`);
+      const cached = localStorage.getItem(`edustream_sql_code_${currentMeta.slug}`);
       if (cached !== null && cached.trim().length > 0) return cached;
     } catch {}
     return sqlProblem.starterSql;
@@ -108,18 +261,20 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   const handleCodeChange = (newVal: string | undefined) => {
     const nextCode = newVal ?? '';
     setCode(nextCode);
+    const slug = currentMeta?.slug || toSlug(cleanTitle);
     try {
-      localStorage.setItem(`edustream_sql_code_${toSlug(cleanTitle)}`, nextCode);
+      localStorage.setItem(`edustream_sql_code_${slug}`, nextCode);
       setCodeSaveStatus('saved');
     } catch {}
   };
 
   // Reset to default starter SQL
   const handleResetCode = () => {
-    if (window.confirm('Reset SQL query to default template? Any local edits will be discarded.')) {
+    if (window.confirm(`Reset SQL query for ${currentMeta.title} to default template? Any local edits will be discarded.`)) {
       setCode(sqlProblem.starterSql);
+      const slug = currentMeta?.slug || toSlug(cleanTitle);
       try {
-        localStorage.removeItem(`edustream_sql_code_${toSlug(cleanTitle)}`);
+        localStorage.removeItem(`edustream_sql_code_${slug}`);
         setCodeSaveStatus('idle');
       } catch {}
     }
@@ -128,7 +283,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   // Sync user SQL code directly to Cloudflare R2 as a .txt file (deducts ₹0.05)
   const handleSyncCodeToCloud = async (isAutoSync: boolean = false) => {
     setCodeSaveStatus('idle');
-    const slug = toSlug(cleanTitle);
+    const slug = currentMeta?.slug || toSlug(cleanTitle);
     const student = getCurrentStudent();
 
     if (!canAffordAction(PRICING_CONFIG.CLOUD_CODE_SAVE, student?.email)) {
@@ -208,7 +363,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     code?: string;
   }[]>(() => {
     try {
-      const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+      const slug = currentMeta?.slug || toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
       const stored = localStorage.getItem(`edustream_submissions_${slug}`);
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -219,14 +374,19 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
   });
 
   useEffect(() => {
-    const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+    const slug = currentMeta?.slug || toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
     try {
       const stored = localStorage.getItem(`edustream_submissions_${slug}`);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) setSubmissionsList(parsed);
+        else setSubmissionsList([]);
+      } else {
+        setSubmissionsList([]);
       }
-    } catch {}
+    } catch {
+      setSubmissionsList([]);
+    }
 
     const student = getCurrentStudent();
     const email = student?.email || 'anonymous';
@@ -241,7 +401,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         }
       })
       .catch(() => {});
-  }, [cleanTitle, sqlProblem]);
+  }, [cleanTitle, sqlProblem, currentMeta]);
 
   // Dragging handlers for resizable split pane
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -411,7 +571,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
       const isSuccess = result.status === 'ACCEPTED';
 
       if (isSubmission) {
-        const slug = toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
+        const slug = currentMeta?.slug || toSlug((sqlProblem as any)?.slug || sqlProblem?.title || cleanTitle);
         const newSubItem = {
           id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           timestamp: new Date().toLocaleTimeString(),
@@ -533,42 +693,103 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
     <div className={`fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col font-sans select-none animate-fadeIn overflow-hidden ${isDragging ? 'cursor-col-resize select-none' : ''}`}>
       
       {/* ========================================================================= */}
-      {/* 1. TOP NAVBAR                                                             */}
+      {/* 1. TOP NAVBAR & PROBLEM SWITCHER                                          */}
       {/* ========================================================================= */}
-      <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between flex-shrink-0 z-10">
+      <header className="h-14 bg-slate-900 border-b border-slate-800 px-3 sm:px-4 flex items-center justify-between flex-shrink-0 z-10 gap-2">
         
-        {/* Brand & SQL Problem Title */}
-        <div className="flex items-center space-x-3 truncate">
+        {/* Brand & SQL Problem Selector Controls */}
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           <button
             onClick={onClose}
-            className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer"
+            className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer flex-shrink-0"
             title="Return to Lecture Workspace"
           >
             <div className="p-1.5 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 text-white shadow-md">
               <Database className="w-4 h-4 text-cyan-200" />
             </div>
-            <span className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 group-hover:opacity-90">
-              SDEStream SQL Arena
+            <span className="text-xs sm:text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 group-hover:opacity-90 hidden md:inline">
+              SQL Arena
             </span>
           </button>
 
-          <span className="text-slate-600 font-mono">/</span>
+          <span className="text-slate-600 font-mono hidden sm:inline">/</span>
 
-          <div className="flex items-center space-x-2 truncate">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-100 truncate max-w-xs sm:max-w-md">
-              {cleanTitle}
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border bg-amber-950/80 text-amber-400 border-amber-700/60">
-              {sqlProblem.difficulty}
-            </span>
-            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-950 border border-cyan-800 text-cyan-300">
-              In-Memory WebAssembly DB
-            </span>
+          {/* Problem Stepper & Switcher Trigger */}
+          <div className="flex items-center space-x-1 sm:space-x-1.5 min-w-0">
+            {/* Prev Question Button */}
+            <button
+              onClick={handlePrevProblem}
+              className="p-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors cursor-pointer"
+              title="Previous LeetCode SQL Problem"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Main Problem Trigger Button (opens Drawer) */}
+            <button
+              onClick={() => setIsProblemDrawerOpen(true)}
+              className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 hover:border-cyan-500/60 text-slate-100 transition-all cursor-pointer group shadow-sm max-w-[180px] sm:max-w-xs md:max-w-md truncate"
+              title="Click to browse all 323 LeetCode SQL questions"
+            >
+              <span className="font-mono text-xs font-black text-cyan-400 flex-shrink-0">
+                #{currentMeta.id}
+              </span>
+              <span className="text-xs font-bold truncate text-slate-200 group-hover:text-white">
+                {currentMeta.title}
+              </span>
+              <span className={`hidden sm:inline-block px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono border flex-shrink-0 ${
+                currentMeta.difficulty === 'Easy'
+                  ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
+                  : currentMeta.difficulty === 'Medium'
+                  ? 'bg-amber-950/80 text-amber-400 border-amber-700/60'
+                  : 'bg-rose-950/80 text-rose-400 border-rose-700/60'
+              }`}>
+                {currentMeta.difficulty}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-300 transition-transform group-hover:translate-y-0.5 flex-shrink-0" />
+            </button>
+
+            {/* Next Question Button */}
+            <button
+              onClick={handleNextProblem}
+              className="p-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors cursor-pointer"
+              title="Next LeetCode SQL Problem"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Random Problem Button */}
+            <button
+              onClick={handleRandomProblem}
+              className="hidden lg:flex items-center space-x-1 p-1.5 px-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-amber-300 border border-slate-700/60 transition-colors cursor-pointer text-xs font-bold"
+              title="Pick a random LeetCode SQL problem"
+            >
+              <Shuffle className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[10px]">Random</span>
+            </button>
+
+            {/* Browse All Drawer Button */}
+            <button
+              onClick={() => setIsProblemDrawerOpen(true)}
+              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-cyan-950/70 hover:bg-cyan-900/70 border border-cyan-700/60 text-cyan-300 text-[11px] font-bold transition-all cursor-pointer shadow-sm"
+              title="View all 323 LeetCode SQL questions"
+            >
+              <Database className="w-3 h-3 text-cyan-400" />
+              <span>323 Questions</span>
+            </button>
+
+            {/* Inline Spinner when switching problems */}
+            {isLoadingProblem && (
+              <div className="flex items-center space-x-1 text-cyan-400 text-xs font-semibold animate-pulse pl-1">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span className="hidden xl:inline text-[10px]">Loading...</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
           
           {/* Ask AI Top Button */}
           <button
@@ -584,9 +805,9 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
           {/* Reset Starter Query */}
           <button
-            onClick={() => setCode(sqlProblem.starterSql)}
+            onClick={handleResetCode}
             className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
-            title="Reset Starter Query"
+            title="Reset Starter Query to default"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Reset</span>
@@ -603,6 +824,247 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         </div>
 
       </header>
+
+      {/* ========================================================================= */}
+      {/* 1.1 LEETCODE SQL QUESTION DRAWER / BROWSER (ALL 323 QUESTIONS)           */}
+      {/* ========================================================================= */}
+      {isProblemDrawerOpen && (
+        <div className="fixed inset-0 z-[60] flex items-stretch animate-fadeIn">
+          {/* Backdrop */}
+          <div 
+            onClick={() => setIsProblemDrawerOpen(false)}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+          />
+
+          {/* Slide-over Drawer Panel */}
+          <div className="relative z-10 w-full max-w-2xl bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col h-full overflow-hidden">
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-800 bg-slate-950 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white shadow-md">
+                  <Database className="w-5 h-5 text-cyan-200" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-base font-black text-slate-100 tracking-tight">
+                      LeetCode SQL Problemset
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-mono bg-cyan-950 text-cyan-300 border border-cyan-700/60">
+                      {catalog.length} Questions
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Official LeetCode Database problems with in-browser WebAssembly SQL execution
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleLiveSync}
+                  disabled={isSyncingCatalog}
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                  title="Re-sync all questions with LeetCode API and GitHub"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCatalog ? 'animate-spin text-cyan-400' : ''}`} />
+                  <span>{isSyncingCatalog ? 'Syncing...' : 'Sync LeetCode'}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsProblemDrawerOpen(false)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title="Close Question Drawer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Live Sync Status Alert if any */}
+            {syncStatusText && (
+              <div className="px-4 py-2 bg-cyan-950/80 border-b border-cyan-800/80 text-cyan-300 text-xs font-semibold flex items-center justify-between animate-fadeIn">
+                <span>{syncStatusText}</span>
+                <button onClick={() => setSyncStatusText(null)} className="text-cyan-400 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Search and Filters Bar */}
+            <div className="p-4 border-b border-slate-800/80 bg-slate-900/90 space-y-3 flex-shrink-0">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search 320+ SQL problems by ID (#175), title, or keyword..."
+                  className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-sans"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                {/* Difficulty Filters */}
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800/80">
+                  {(['All', 'Easy', 'Medium', 'Hard'] as const).map(diff => (
+                    <button
+                      key={diff}
+                      onClick={() => setDifficultyFilter(diff)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        difficultyFilter === diff
+                          ? diff === 'Easy'
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : diff === 'Medium'
+                            ? 'bg-amber-600 text-white shadow-sm'
+                            : diff === 'Hard'
+                            ? 'bg-rose-600 text-white shadow-sm'
+                            : 'bg-cyan-600 text-white shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {diff} {diff === 'All' ? `(${catalog.length})` : diff === 'Easy' ? `(${catalog.filter(p => p.difficulty === 'Easy').length})` : diff === 'Medium' ? `(${catalog.filter(p => p.difficulty === 'Medium').length})` : `(${catalog.filter(p => p.difficulty === 'Hard').length})`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Access & Solved Filters */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setStatusFilter(prev => prev === 'Solved' ? 'All' : 'Solved')}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                      statusFilter === 'Solved'
+                        ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <CheckCircle className="w-3 h-3 text-emerald-400" />
+                    <span>Solved ({catalog.filter(p => isProblemSolved(p.slug)).length})</span>
+                  </button>
+
+                  <select
+                    value={accessFilter}
+                    onChange={e => setAccessFilter(e.target.value as any)}
+                    className="bg-slate-950 border border-slate-800 text-slate-300 rounded-xl px-2 py-1 text-[11px] font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="All">All Access ({catalog.length})</option>
+                    <option value="Free">Free Only ({catalog.filter(p => !p.paidOnly).length})</option>
+                    <option value="Premium">Premium 🔒 ({catalog.filter(p => p.paidOnly).length})</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5 select-text">
+              {filteredProblems.length === 0 ? (
+                <div className="py-16 text-center text-slate-400">
+                  <Database className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-slate-300">No SQL problems found</p>
+                  <p className="text-xs text-slate-500 mt-1">Try adjusting your search terms or active filters</p>
+                  <button
+                    onClick={() => { setSearchQuery(''); setDifficultyFilter('All'); setAccessFilter('All'); setStatusFilter('All'); }}
+                    className="mt-3 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              ) : (
+                filteredProblems.map(p => {
+                  const isCurrent = p.id === currentMeta.id;
+                  const isSolved = isProblemSolved(p.slug);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleSelectProblem(p)}
+                      className={`group flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer border ${
+                        isCurrent
+                          ? 'bg-cyan-950/40 border-cyan-500/60 shadow-md'
+                          : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800/60 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0 pr-2">
+                        {/* Solved Status Indicator */}
+                        <div className="flex-shrink-0">
+                          {isSolved ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border border-slate-700 group-hover:border-slate-500" />
+                          )}
+                        </div>
+
+                        {/* ID & Title */}
+                        <div className="min-w-0 truncate">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-xs font-bold text-slate-400">
+                              #{p.id}
+                            </span>
+                            <span className={`text-xs font-bold truncate ${
+                              isCurrent ? 'text-cyan-200' : 'text-slate-200 group-hover:text-white'
+                            }`}>
+                              {p.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-[10px] text-slate-500 mt-0.5">
+                            <span>Acceptance: <strong className="text-slate-400 font-mono">{p.acceptanceRate}</strong></span>
+                            <span>•</span>
+                            <span>{p.tags || 'Database'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Badges */}
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                        {p.paidOnly && (
+                          <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono bg-amber-950/60 text-amber-400 border border-amber-800/60">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>Premium</span>
+                          </span>
+                        )}
+
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
+                          p.difficulty === 'Easy'
+                            ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
+                            : p.difficulty === 'Medium'
+                            ? 'bg-amber-950/80 text-amber-400 border-amber-700/60'
+                            : 'bg-rose-950/80 text-rose-400 border-rose-700/60'
+                        }`}>
+                          {p.difficulty}
+                        </span>
+
+                        {isCurrent && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-cyan-600 text-white shadow-sm">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-3 border-t border-slate-800 bg-slate-950 text-slate-400 text-xs flex items-center justify-between flex-shrink-0 font-sans">
+              <span className="text-[11px]">
+                Showing <strong className="text-slate-200">{filteredProblems.length}</strong> of <strong className="text-slate-200">{catalog.length}</strong> problems
+              </span>
+              <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">
+                AlaSQL WebAssembly Sandbox
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 2. RESIZABLE SPLIT SCREEN WORKSPACE                                       */}
@@ -675,23 +1137,67 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
             
             {/* TAB 1: DESCRIPTION */}
             {leftTab === 'description' && (
-              <div className="space-y-4">
-                
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                  <h2 className="text-xl font-black text-slate-100 tracking-tight">{cleanTitle}</h2>
-                  <button
-                    onClick={handleCopyDesc}
-                    className="flex items-center space-x-1 text-xs text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer"
-                  >
-                    {copiedDesc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedDesc ? 'Copied' : 'Copy Description'}</span>
-                  </button>
+              isLoadingProblem ? (
+                <div className="py-20 flex flex-col items-center justify-center text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
+                  <p className="text-sm font-bold text-slate-200">Loading Problem #{currentMeta.id}...</p>
+                  <p className="text-xs text-slate-400">Fetching schema tables and examples from LeetCode & GitHub...</p>
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  
+                  <div className="flex items-start justify-between pb-3 border-b border-slate-800 gap-3">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-cyan-400 font-bold text-sm">#{currentMeta.id}</span>
+                        <h2 className="text-lg sm:text-xl font-black text-slate-100 tracking-tight truncate">{currentMeta.title}</h2>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
+                          currentMeta.difficulty === 'Easy'
+                            ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
+                            : currentMeta.difficulty === 'Medium'
+                            ? 'bg-amber-950/80 text-amber-400 border-amber-700/60'
+                            : 'bg-rose-950/80 text-rose-400 border-rose-700/60'
+                        }`}>
+                          {currentMeta.difficulty}
+                        </span>
+                        {currentMeta.paidOnly && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-950/60 border border-amber-800/60 text-amber-300">
+                            <Lock className="w-2.5 h-2.5 text-amber-400" />
+                            <span>Premium</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-slate-400 font-sans">
+                        <span>Acceptance: <strong className="text-slate-200 font-mono">{currentMeta.acceptanceRate}</strong></span>
+                        <span>•</span>
+                        <span>Category: <strong className="text-slate-200">{currentMeta.tags || 'Database'}</strong></span>
+                        <span>•</span>
+                        <a
+                          href={`https://leetcode.com/problems/${currentMeta.slug}/`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1 font-bold underline"
+                        >
+                          <span>LeetCode #{currentMeta.id}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
 
-                {/* Problem Statement with Better-Aligned Tables */}
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
-                  <FormattedChatText text={sqlProblem.description} />
-                </div>
+                    <button
+                      onClick={handleCopyDesc}
+                      className="flex-shrink-0 flex items-center space-x-1 text-xs text-cyan-400 hover:text-cyan-300 font-bold cursor-pointer px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-colors"
+                      title="Copy Problem Statement"
+                    >
+                      {copiedDesc ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedDesc ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  {/* Problem Statement with Better-Aligned Tables */}
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800/80 text-slate-200 leading-relaxed font-sans text-xs sm:text-sm">
+                    <FormattedChatText text={sqlProblem.description} />
+                  </div>
 
                 {/* Input Database Tables */}
                 <div className="space-y-3">
@@ -728,7 +1234,8 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                   ))}
                 </div>
 
-              </div>
+                </div>
+              )
             )}
 
             {/* TAB 2: EDITORIAL */}

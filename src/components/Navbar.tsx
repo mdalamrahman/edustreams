@@ -335,6 +335,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* SQL Arena Quick Action Button */}
+            {onOpenSqlWorkspace && (
+              <button
+                onClick={onOpenSqlWorkspace}
+                className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/60 to-blue-950/60 hover:from-cyan-900/60 hover:to-blue-900/60 text-cyan-300 hover:text-cyan-100 text-xs font-bold transition-all shadow-sm cursor-pointer group"
+                title="Open LeetCode SQL Arena (323 Questions)"
+              >
+                <Database className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <span>SQL Arena</span>
+              </button>
+            )}
+
             {/* Profile Page Quick Button */}
             <button
               onClick={() => setActiveTab('profile')}
@@ -537,17 +549,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setIsDrawerOpen(false);
                       onOpenSqlWorkspace();
                     }}
-                    className="w-full p-3 rounded-2xl text-left hover:bg-slate-900/80 text-slate-300 transition-all flex items-center justify-between cursor-pointer group"
+                    className="w-full p-3 rounded-2xl text-left hover:bg-slate-900/80 text-cyan-300 transition-all flex items-center justify-between cursor-pointer group bg-slate-900/50 border border-cyan-500/30 mb-1.5"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-emerald-400">
+                      <div className="p-2 rounded-xl bg-slate-900 border border-cyan-500/40 text-cyan-400">
                         <Database className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold">SQL DBMS Arena</div>
-                        <div className="text-[10px] text-slate-500">In-Browser WebAssembly Engine</div>
+                        <div className="text-xs font-bold text-white">SQL Arena (LeetCode 323)</div>
+                        <div className="text-[10px] text-cyan-400/80">In-Browser WebAssembly Database Engine</div>
                       </div>
                     </div>
+                    <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-cyan-400" />
                   </button>
                 )}
 

@@ -1,4 +1,5 @@
 import alasql from 'alasql';
+import rawSqlCatalog from '../data/leetcodeSqlCatalog.json';
 
 export interface SQLTableSchema {
   column: string;
@@ -761,7 +762,13 @@ export function isSqlProblem(problemOrSlugOrTitle?: any): boolean {
     return true;
   }
 
-  // 2. Canonical LeetCode SQL problem slugs
+  // 2. Canonical LeetCode SQL problem slugs (all 323 problems from catalog)
+  const norm = str.replace(/[^a-z0-9]/g, '');
+  if (rawSqlCatalog.some((p: any) => str.includes(p.slug) || norm.includes(p.slug.replace(/[^a-z0-9]/g, '')))) {
+    return true;
+  }
+
+  // 3. Fallback known slugs
   const knownSqlSlugs = [
     'combine-two-tables',
     'second-highest-salary',
@@ -784,7 +791,6 @@ export function isSqlProblem(problemOrSlugOrTitle?: any): boolean {
     'not-boring-movies'
   ];
 
-  const norm = str.replace(/[^a-z0-9]/g, '');
   return knownSqlSlugs.some(s => str.includes(s) || norm.includes(s.replace(/[^a-z0-9]/g, '')));
 }
 
