@@ -19,7 +19,8 @@ import {
   Award,
   ChevronRight,
   ShieldCheck,
-  FileCheck
+  FileCheck,
+  Coins
 } from 'lucide-react';
 import {
   ResumeAnalysisResult,
@@ -28,6 +29,12 @@ import {
   extractResumeTextFromFile,
   analyzeResumeWithMistral
 } from '../lib/resumeAnalyzerService';
+import {
+  canAffordAction,
+  deductCredits,
+  getUserWallet,
+  PRICING_CONFIG
+} from '../lib/billing';
 import { AnalysisDashboardView } from './resume/AnalysisDashboardView';
 import { FlashCardsView } from './resume/FlashCardsView';
 import { AtsDeepDiveView } from './resume/AtsDeepDiveView';
@@ -46,6 +53,7 @@ export const ResumeAnalyst: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzingStep, setAnalyzingStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(() => getUserWallet().balance);
   const [analysisData, setAnalysisData] = useState<ResumeAnalysisResult | null>(() => {
     try {
       const saved = localStorage.getItem('edustream_last_resume_analysis');
@@ -55,6 +63,17 @@ export const ResumeAnalyst: React.FC = () => {
   });
   const [activeSubTab, setActiveSubTab] = useState<AnalystTab>('dashboard');
   const [isDragging, setIsDragging] = useState<boolean>(false);
+
+  useEffect(() => {
+    const syncWallet = () => {
+      try {
+        setWalletBalance(getUserWallet().balance);
+      } catch {}
+    };
+    syncWallet();
+    window.addEventListener('edustream_wallet_updated', syncWallet);
+    return () => window.removeEventListener('edustream_wallet_updated', syncWallet);
+  }, []);
 
   // File selection
   const handleFileSelect = useCallback(async (file: File) => {
@@ -126,9 +145,25 @@ export const ResumeAnalyst: React.FC = () => {
       return;
     }
 
+    const cost = PRICING_CONFIG.AI_RESUME_ANALYSIS || 1.50;
+    if (!canAffordAction(cost)) {
+      setError(`Insufficient credits. Full Mistral AI Resume Scan + 18 3D Flashcards requires ₹${cost.toFixed(2)}. Please top up your wallet.`);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     setAnalyzingStep(1);
+
+    // Deduct usage fee
+    deductCredits(
+      cost,
+      'AI_RESUME_ANALYSIS',
+      'Mistral AI Resume Analysis + 3D Interview Flashcards'
+    );
+    try {
+      setWalletBalance(getUserWallet().balance);
+    } catch {}
 
     // Animate progress steps
     const stepInterval = setInterval(() => {
@@ -238,9 +273,13 @@ export const ResumeAnalyst: React.FC = () => {
             </p>
           </div>
 
-          {/* Right Action / Reset Button */}
-          {analysisData && (
-            <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+          {/* Right Action: Wallet Balance + Reset Button */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+            <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-amber-300 flex items-center gap-2 shadow-inner">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span>Credits: ₹{walletBalance.toFixed(2)}</span>
+            </div>
+            {analysisData && (
               <button
                 onClick={handleReset}
                 className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
@@ -248,8 +287,8 @@ export const ResumeAnalyst: React.FC = () => {
                 <RotateCcw className="w-4 h-4 text-purple-400" />
                 <span>Analyze New Resume</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Feature Badges Strip */}
@@ -548,6 +587,9 @@ export const ResumeAnalyst: React.FC = () => {
                 <>
                   <Sparkles className="w-5 h-5 text-amber-300" />
                   <span>Analyze Resume with Mistral AI</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-900/80 text-purple-200 text-xs font-mono border border-purple-400/40">
+                    ₹{PRICING_CONFIG.AI_RESUME_ANALYSIS?.toFixed(2) || '1.50'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

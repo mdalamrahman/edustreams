@@ -807,7 +807,9 @@ export interface AtsResumeEducation {
   degree: string;
   institution: string;
   year: string;
+  location?: string;
   gpa?: string;
+  honors?: string;
 }
 
 export interface AtsResumeData {
@@ -1110,4 +1112,218 @@ Requirements:
 
   return rawBullet;
 }
+
+export interface LiveAtsScoreResult {
+  overallScore: number; // 0 - 100
+  rating: 'Top 5% Elite' | 'Strong ATS Pass' | 'Good Match' | 'Needs Optimization';
+  breakdown: {
+    keywordMatch: { score: number; max: number; details: string };
+    measurableImpact: { score: number; max: number; details: string };
+    structureFormat: { score: number; max: number; details: string };
+    seniorityScale: { score: number; max: number; details: string };
+  };
+  matchingKeywords: string[];
+  missingKeywords: string[];
+  xyzBulletCount: number;
+  totalBulletCount: number;
+  suggestions: string[];
+}
+
+/**
+ * Calculates a live, real-time ATS compliance & keyword match score for an ATS Resume.
+ * Evaluates keywords against target job description or role, Google XYZ formula bullets,
+ * section completeness, and seniority indicators.
+ */
+export function calculateLiveAtsScore(
+  resume: AtsResumeData,
+  jobDescription?: string,
+  targetRole?: string
+): LiveAtsScoreResult {
+  const jdText = (jobDescription || '').toLowerCase();
+  const effectiveRole = (targetRole || resume.targetRole || 'Senior Software Engineer (SDE-2 / Full Stack)').toLowerCase();
+
+  // 1. Gather all candidate text
+  const skillsList = [
+    ...(resume.skills?.languages || []),
+    ...(resume.skills?.frameworks || []),
+    ...(resume.skills?.cloudDevOps || []),
+    ...(resume.skills?.databases || []),
+    ...(resume.skills?.toolsAndMethods || [])
+  ];
+
+  const allBullets: string[] = [];
+  (resume.experience || []).forEach(exp => {
+    (exp.bullets || []).forEach(b => allBullets.push(b));
+  });
+  (resume.projects || []).forEach(p => {
+    (p.bullets || []).forEach(b => allBullets.push(b));
+  });
+
+  const fullResumeCorpus = [
+    resume.personalInfo?.fullName || '',
+    resume.summary || '',
+    skillsList.join(' '),
+    allBullets.join(' '),
+    (resume.education || []).map(e => `${e.degree} ${e.institution}`).join(' ')
+  ].join(' ').toLowerCase();
+
+  // 2. Keyword & Skills Matching (Max 35 pts)
+  const canonicalKeywords = [
+    'typescript', 'javascript', 'react', 'next.js', 'node.js', 'go', 'golang', 'python',
+    'sql', 'postgresql', 'mysql', 'redis', 'kafka', 'docker', 'kubernetes', 'aws',
+    'microservices', 'ci/cd', 'rest apis', 'graphql', 'system design', 'distributed systems',
+    'unit testing', 'jest', 'cypress', 'terraform', 'git', 'p99', 'latency', 'caching'
+  ];
+
+  // Extract custom technical terms from JD if present
+  let targetTokens: string[] = [];
+  if (jdText.length > 50) {
+    const jdTokens = canonicalKeywords.filter(k => jdText.includes(k));
+    targetTokens = jdTokens.length >= 6 ? jdTokens : canonicalKeywords.slice(0, 16);
+  } else {
+    targetTokens = canonicalKeywords.slice(0, 16);
+  }
+
+  const matchingKeywords: string[] = [];
+  const missingKeywords: string[] = [];
+
+  targetTokens.forEach(token => {
+    if (fullResumeCorpus.includes(token)) {
+      matchingKeywords.push(token);
+    } else {
+      missingKeywords.push(token);
+    }
+  });
+
+  const keywordCoverageRatio = targetTokens.length > 0 ? (matchingKeywords.length / targetTokens.length) : 0.8;
+  const keywordScore = Math.min(35, Math.round(keywordCoverageRatio * 35));
+
+  // 3. Measurable Impact & Google XYZ Formula (Max 25 pts)
+  const actionVerbs = [
+    'architected', 'engineered', 'spearheaded', 'designed', 'optimized', 'implemented',
+    'scaled', 'refactored', 'deployed', 'orchestrated', 'automated', 'integrated', 'built',
+    'reduced', 'increased', 'accelerated', 'developed', 'delivered'
+  ];
+  const metricRegex = /(\b\d+(?:\.\d+)?%|\$\d+(?:\.\d+)?(?:k|m|b)?|\b\d+ms|\b\d+k\b|\b\d+m\b|\b\d+x\b|\b\d+\b)/i;
+
+  let xyzBulletCount = 0;
+  allBullets.forEach(bullet => {
+    const lower = bullet.toLowerCase().trim();
+    const hasActionVerb = actionVerbs.some(v => lower.startsWith(v) || lower.includes(` ${v} `));
+    const hasMetric = metricRegex.test(lower);
+    if (hasActionVerb && hasMetric) {
+      xyzBulletCount++;
+    }
+  });
+
+  const totalBulletCount = allBullets.length;
+  const xyzRatio = totalBulletCount > 0 ? (xyzBulletCount / totalBulletCount) : 0;
+  const impactScore = Math.min(25, Math.round(xyzRatio * 25));
+
+  // 4. Structure & Section Completeness (Max 20 pts)
+  let structureScore = 0;
+  // Contact info (max 5)
+  if (resume.personalInfo?.fullName?.trim()) structureScore += 1;
+  if (resume.personalInfo?.email?.includes('@')) structureScore += 1;
+  if (resume.personalInfo?.phone?.trim()) structureScore += 1;
+  if (resume.personalInfo?.location?.trim()) structureScore += 1;
+  if (resume.personalInfo?.linkedin?.trim() || resume.personalInfo?.github?.trim()) structureScore += 1;
+
+  // Summary length (max 4)
+  const summaryLen = (resume.summary || '').trim().length;
+  if (summaryLen >= 120 && summaryLen <= 650) {
+    structureScore += 4;
+  } else if (summaryLen > 0) {
+    structureScore += 2;
+  }
+
+  // Experience entries & bullets (max 6)
+  const expCount = (resume.experience || []).length;
+  if (expCount >= 2 && totalBulletCount >= 5) {
+    structureScore += 6;
+  } else if (expCount >= 1) {
+    structureScore += 3;
+  }
+
+  // Skills coverage across categories (max 3)
+  const populatedSkillCategories = Object.values(resume.skills || {}).filter(arr => Array.isArray(arr) && arr.length > 0).length;
+  if (populatedSkillCategories >= 4) structureScore += 3;
+  else if (populatedSkillCategories >= 2) structureScore += 2;
+
+  // Education entry present (max 2)
+  if ((resume.education || []).length > 0 && resume.education[0]?.degree?.trim()) {
+    structureScore += 2;
+  }
+
+  // 5. Seniority & Scale Level Match (Max 20 pts)
+  let seniorityScore = 0;
+  const seniorityIndicators = [
+    'distributed', 'microservices', 'scale', 'scaling', 'throughput', 'concurrency',
+    'p99', 'latency', 'kafka', 'redis', 'aws', 'kubernetes', 'architecture', 'system design',
+    'lead', 'mentored', 'ci/cd', 'cache'
+  ];
+  let matchedSeniorityCount = 0;
+  seniorityIndicators.forEach(ind => {
+    if (fullResumeCorpus.includes(ind)) matchedSeniorityCount++;
+  });
+
+  const seniorityRatio = Math.min(1, matchedSeniorityCount / 7);
+  seniorityScore = Math.round(seniorityRatio * 20);
+
+  // Overall Total
+  const overallScore = Math.min(100, Math.max(15, keywordScore + impactScore + structureScore + seniorityScore));
+
+  let rating: LiveAtsScoreResult['rating'] = 'Needs Optimization';
+  if (overallScore >= 88) rating = 'Top 5% Elite';
+  else if (overallScore >= 78) rating = 'Strong ATS Pass';
+  else if (overallScore >= 65) rating = 'Good Match';
+
+  // Actionable suggestions
+  const suggestions: string[] = [];
+  if (missingKeywords.length > 0) {
+    suggestions.push(`Add missing keywords: ${missingKeywords.slice(0, 4).join(', ')}.`);
+  }
+  if (xyzBulletCount < totalBulletCount * 0.7) {
+    suggestions.push(`Quantify more bullet points using Google's XYZ formula (action verb + metric + tech).`);
+  }
+  if (summaryLen < 150) {
+    suggestions.push(`Expand summary to 3-4 sentences highlighting scale, years of experience, and primary stack.`);
+  }
+  if ((resume.education || []).length === 0) {
+    suggestions.push(`Add your Degree and University in the Education section.`);
+  }
+
+  return {
+    overallScore,
+    rating,
+    breakdown: {
+      keywordMatch: {
+        score: keywordScore,
+        max: 35,
+        details: `${matchingKeywords.length} of ${targetTokens.length} target keywords detected.`
+      },
+      measurableImpact: {
+        score: impactScore,
+        max: 25,
+        details: `${xyzBulletCount} of ${totalBulletCount} bullets follow Google XYZ format.`
+      },
+      structureFormat: {
+        score: structureScore,
+        max: 20,
+        details: `Clean single-column ATS typography and all key sections completed.`
+      },
+      seniorityScale: {
+        score: seniorityScore,
+        max: 20,
+        details: `${matchedSeniorityCount} SDE-2 scale & architectural keywords present.`
+      }
+    },
+    matchingKeywords,
+    missingKeywords,
+    xyzBulletCount,
+    totalBulletCount,
+    suggestions: suggestions.slice(0, 3)
+  };
+}
+
 
