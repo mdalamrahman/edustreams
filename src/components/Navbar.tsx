@@ -25,7 +25,8 @@ import {
   User,
   CheckCircle2,
   Building2,
-  ExternalLink
+  ExternalLink,
+  FileSearch
 } from 'lucide-react';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
@@ -42,6 +43,7 @@ export type AppTab =
   | 'hld' 
   | 'system_design' 
   | 'interview' 
+  | 'resume_analyst'
   | 'analytics' 
   | 'profile' 
   | 'settings'
@@ -50,6 +52,7 @@ export type AppTab =
   | 'thank_you'
   | 'contact'
   | 'not_found';
+
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -220,6 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: Bot,
       color: 'text-amber-400',
       activeColor: 'bg-gradient-to-r from-amber-600 to-orange-600 text-white'
+    },
+    {
+      id: 'resume_analyst' as const,
+      label: 'Resume Analyst',
+      subtitle: 'Mistral ATS & 3D Flashcards',
+      icon: FileSearch,
+      color: 'text-violet-400',
+      activeColor: 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
     },
     {
       id: 'analytics' as const,

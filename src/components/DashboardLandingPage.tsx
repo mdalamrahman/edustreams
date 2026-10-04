@@ -23,7 +23,8 @@ import {
   TrendingUp,
   RefreshCw,
   Play,
-  AlertTriangle
+  AlertTriangle,
+  FileSearch
 } from 'lucide-react';
 import { getRealAnalytics, RealAnalyticsMetrics, isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
 import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
@@ -41,7 +42,7 @@ import {
 
 interface DashboardLandingPageProps {
   user: any;
-  onNavigate: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'analytics') => void;
+  onNavigate: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'resume_analyst' | 'analytics') => void;
   onOpenSdeProblem: (problem: SDEProblem) => void;
   onOpenSqlWorkspace: () => void;
   onOpenAskAI: () => void;
@@ -905,7 +906,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           <span className="text-xs font-mono text-slate-400">Direct Navigation</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
           
           {/* Portal 1: AI Mock Interview (SDE-1, SDE-2, SDE-3) */}
           <div 
@@ -928,6 +929,31 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-amber-400">
               <span>Start Live Round</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Portal 1.5: Resume Analyst (Mistral AI ATS Engine & 3D Flashcards) */}
+          <div 
+            onClick={() => onNavigate('resume_analyst')}
+            className="glass-panel p-6 rounded-3xl border border-violet-500/40 bg-gradient-to-br from-violet-950/30 via-slate-900 to-slate-950 hover:border-violet-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1 relative overflow-hidden"
+          >
+            <div className="p-3 rounded-2xl bg-violet-600/20 text-violet-300 border border-violet-500/30 w-fit mb-4 group-hover:scale-110 transition-transform">
+              <FileSearch className="w-6 h-6" />
+            </div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="px-2 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-mono text-[9px] font-bold border border-violet-500/30">
+                MISTRAL AI ATS
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-100 group-hover:text-violet-300 transition-colors">
+              Resume Analyst
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              ATS compatibility score, keyword gap analysis, and 15–20 tailored 3D interview flashcards.
+            </p>
+            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-violet-400">
+              <span>Scan Resume & JD</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>

@@ -66,6 +66,7 @@ import { WalletTopupModal } from './components/WalletTopupModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { InterviewCompanion } from './components/InterviewCompanion';
+import { ResumeAnalyst } from './components/ResumeAnalyst';
 import { getRealtimeTranscriptStatus } from './lib/redis';
 
 const sanitizeCaption = (cap?: string) => {
@@ -90,7 +91,7 @@ const getInitialTab = (): AppTab => {
 
   const params = new URLSearchParams(search);
   const qTab = params.get('tab');
-  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found'].includes(qTab)) {
+  if (qTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'resume_analyst', 'analytics', 'profile', 'settings', 'privacy', 'terms', 'thank_you', 'contact', 'not_found'].includes(qTab)) {
     return qTab as AppTab;
   }
 
@@ -104,10 +105,12 @@ const getInitialTab = (): AppTab => {
   if (hash.startsWith('#/lld') || pathname.startsWith('/lld')) return 'lld';
   if (hash.startsWith('#/hld') || pathname.startsWith('/hld') || hash.startsWith('#/system-design') || pathname.startsWith('/system-design')) return 'hld';
   if (hash.startsWith('#/interview') || pathname.startsWith('/interview')) return 'interview';
+  if (hash.startsWith('#/resume-analyst') || hash.startsWith('#/resume-analyzer') || pathname.startsWith('/resume-analyst') || pathname.startsWith('/resume-analyzer')) return 'resume_analyst';
   if (hash.startsWith('#/profile') || hash.startsWith('#/user/') || pathname.startsWith('/profile')) return 'profile';
   if (hash.startsWith('#/analytics') || pathname.startsWith('/analytics')) return 'analytics';
   if (hash.startsWith('#/channels') || pathname.startsWith('/channels') || hash.startsWith('#/channel/')) return 'channels';
   if (hash.startsWith('#/lesson') || hash.startsWith('#/video') || pathname.startsWith('/lesson') || pathname.startsWith('/video')) return 'lesson';
+
 
   // Unknown hash route fallback -> 404
   if (hash && hash !== '#/' && hash !== '#/dashboard' && hash !== '#') {
@@ -229,6 +232,7 @@ export function App() {
       tab === 'hld' ? 'hld' :
       tab === 'system_design' ? 'system-design' :
       tab === 'interview' ? 'interview' :
+      tab === 'resume_analyst' ? 'resume-analyst' :
       tab === 'profile' ? 'profile' :
       tab === 'thank_you' ? 'thank-you' :
       tab === 'not_found' ? '404' :
@@ -283,7 +287,7 @@ export function App() {
         }
       }
 
-      if (queryTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'analytics', 'profile', 'settings'].includes(queryTab)) {
+      if (queryTab && ['dashboard', 'channels', 'lesson', 'sde_sheet', 'dsa_problems', 'lld', 'hld', 'system_design', 'interview', 'resume_analyst', 'analytics', 'profile', 'settings'].includes(queryTab)) {
         setActiveTab(queryTab as any);
         return;
       }
@@ -373,6 +377,8 @@ export function App() {
           setActiveTab('hld');
         } else if (hash.startsWith('#/interview') || pathname.startsWith('/interview')) {
           setActiveTab('interview');
+        } else if (hash.startsWith('#/resume-analyst') || hash.startsWith('#/resume-analyzer') || pathname.startsWith('/resume-analyst') || pathname.startsWith('/resume-analyzer')) {
+          setActiveTab('resume_analyst');
         } else if (hash.startsWith('#/profile') || hash.startsWith('#/user/') || pathname.startsWith('/profile')) {
           setActiveTab('profile');
         } else if (hash.startsWith('#/analytics') || pathname.startsWith('/analytics')) {
@@ -1689,6 +1695,11 @@ function getDomainFallbackMCQs(title: string, category: string): QuizQuestion[] 
               onBackToDashboard={() => setActiveTab('dashboard')}
             />
           </div>
+        )}
+
+        {/* VIEW 2.96: RESUME ANALYST (MISTRAL AI ATS SCORING & 3D INTERVIEW FLASHCARDS) */}
+        {activeTab === 'resume_analyst' && (
+          <ResumeAnalyst />
         )}
 
         {/* VIEW 3: DYNAMIC VELOCITY ANALYTICS & MISTRAL DIAGNOSTICS */}
