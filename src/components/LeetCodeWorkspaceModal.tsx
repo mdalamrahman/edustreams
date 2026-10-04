@@ -225,15 +225,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
   const [problemTemplate, setProblemTemplate] = useState<ProblemTemplate>(() => {
+    if (PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug]) {
+      return PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug];
+    }
+    const isLldSlug = currentProblemSlug.includes('pattern') || currentProblemSlug.includes('factory') || currentProblemSlug.includes('builder') || currentProblemSlug.includes('singleton') || currentProblemSlug.includes('strategy');
     return {
       name: cleanTitle,
-      category: codingProblem?.category || 'Algorithms',
+      category: codingProblem?.category || (isLldSlug ? 'Low Level Design' : 'Algorithms'),
       difficulty: (codingProblem?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
       description: `Loading **${cleanTitle}** problem description...`,
       examples: [],
       constraints: [],
-      testCases: ['nums = [1, 2, 3]'],
-      expectedOutputs: ['0'],
+      testCases: isLldSlug ? ['registerChannel("EMAIL")'] : ['nums = [1, 2, 3]'],
+      expectedOutputs: ['true'],
       hints: [],
       approaches: [],
       starters: generateDefaultStarters(currentProblemSlug),
@@ -278,6 +282,22 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             if (overrideObj && Array.isArray(overrideObj.testCases) && overrideObj.testCases.length > 0) {
               if (targetSlug.includes('floor') || targetSlug.includes('closest-binary')) {
                 if (overrideObj.testCases.some((tc: string) => String(tc).includes('args ='))) {
+                  localStorage.removeItem(`edustream_testcase_override_${targetSlug}`);
+                } else {
+                  enriched.testCases = overrideObj.testCases;
+                  if (Array.isArray(overrideObj.expectedOutputs)) {
+                    enriched.expectedOutputs = overrideObj.expectedOutputs;
+                  }
+                }
+              } else if (
+                targetSlug.includes('factory') ||
+                targetSlug.includes('singleton') ||
+                targetSlug.includes('strategy') ||
+                targetSlug.includes('builder') ||
+                targetSlug.includes('pattern') ||
+                targetSlug.includes('solid')
+              ) {
+                if (overrideObj.testCases.some((tc: string) => String(tc).includes('nums ='))) {
                   localStorage.removeItem(`edustream_testcase_override_${targetSlug}`);
                 } else {
                   enriched.testCases = overrideObj.testCases;

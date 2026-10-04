@@ -3,6 +3,7 @@ import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
 import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
 import { SOLID_PREDEFINED_PROBLEMS, getSolidDriver } from './solidProblems';
+import { DESIGN_PATTERN_PREDEFINED_PROBLEMS, getDesignPatternDriver } from './designPatternProblems';
 
 export interface ProblemApproach {
   id: string;
@@ -233,7 +234,10 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
     (slug.includes('liskov') || slug.includes('lsp') ? SOLID_PREDEFINED_PROBLEMS['2-3-liskov-substitution-principle-lsp-'] : undefined) ||
     (slug.includes('interface-segregation') || slug.includes('isp') ? SOLID_PREDEFINED_PROBLEMS['2-4-interface-segregation-principle-isp-'] : undefined) ||
     (slug.includes('dependency-inversion') || slug.includes('dip') ? SOLID_PREDEFINED_PROBLEMS['2-5-dependency-inversion-principle-dip-'] : undefined) ||
-    ((slug.includes('builder') && slug.includes('pattern')) || slug.includes('builder-pattern') || slug.includes('4-4-builder') ? PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'] : undefined)
+    ((slug.includes('builder') && slug.includes('pattern')) || slug.includes('builder-pattern') || slug.includes('4-4-builder') ? PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'] : undefined) ||
+    (slug.includes('factory') ? DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-3-factory-method-'] : undefined) ||
+    (slug.includes('singleton') ? DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-2-singleton-design-pattern-'] : undefined) ||
+    (slug.includes('strategy') ? DESIGN_PATTERN_PREDEFINED_PROBLEMS['6-3-strategy-pattern-'] : undefined)
   ) : undefined;
   if (matchedPredefined && matchedPredefined.starters) {
     return matchedPredefined.starters;
@@ -258,6 +262,7 @@ export function generateDefaultStarters(titleOrSlug: string): Record<SupportedLa
 
 export const PREDEFINED_SPECIAL_PROBLEMS: Record<string, ProblemTemplate> = {
   ...SOLID_PREDEFINED_PROBLEMS,
+  ...DESIGN_PATTERN_PREDEFINED_PROBLEMS,
   'binary-tree-to-double-linkedlist': {
     name: 'Convert Binary Tree to Doubly Linked List',
     category: 'Binary Trees',
@@ -2665,6 +2670,26 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
     return false;
   }
 
+  // Reject LLD / Design Pattern problems that were mistakenly given scalar array placeholders
+  const isLldProblem = (p.category && (p.category.toLowerCase().includes('low level') || p.category.toLowerCase().includes('design'))) ||
+    (p.name && (
+      p.name.toLowerCase().includes('pattern') ||
+      p.name.toLowerCase().includes('solid') ||
+      p.name.toLowerCase().includes('factory') ||
+      p.name.toLowerCase().includes('builder') ||
+      p.name.toLowerCase().includes('singleton') ||
+      p.name.toLowerCase().includes('strategy')
+    ));
+  if (isLldProblem) {
+    if (
+      startersStr.includes('vector<int>& nums') ||
+      startersStr.includes('int[] nums') ||
+      (Array.isArray(p.testCases) && p.testCases.some(tc => typeof tc === 'string' && tc.includes('nums = [')))
+    ) {
+      return false;
+    }
+  }
+
   return Array.isArray(p.testCases) && p.testCases.length >= 1;
 }
 
@@ -2987,7 +3012,132 @@ export async function generateProblemWithMistral(
     console.warn(`[GitHub fetch inside generateProblemWithMistral notice]:`, err);
   }
 
-  const prompt = `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
+  const isLldOrDesign =
+    category.toLowerCase().includes('design') ||
+    category.toLowerCase().includes('low level') ||
+    category.toLowerCase().includes('lld') ||
+    cleanTitle.toLowerCase().includes('pattern') ||
+    cleanTitle.toLowerCase().includes('solid') ||
+    cleanTitle.toLowerCase().includes('factory') ||
+    cleanTitle.toLowerCase().includes('builder') ||
+    cleanTitle.toLowerCase().includes('singleton') ||
+    cleanTitle.toLowerCase().includes('strategy') ||
+    cleanTitle.toLowerCase().includes('observer') ||
+    cleanTitle.toLowerCase().includes('adapter') ||
+    cleanTitle.toLowerCase().includes('decorator') ||
+    cleanTitle.toLowerCase().includes('facade') ||
+    cleanTitle.toLowerCase().includes('proxy') ||
+    cleanTitle.toLowerCase().includes('prototype') ||
+    cleanTitle.toLowerCase().includes('composite') ||
+    cleanTitle.toLowerCase().includes('bridge') ||
+    cleanTitle.toLowerCase().includes('flyweight') ||
+    cleanTitle.toLowerCase().includes('memento') ||
+    cleanTitle.toLowerCase().includes('mediator') ||
+    cleanTitle.toLowerCase().includes('visitor') ||
+    cleanTitle.toLowerCase().includes('command') ||
+    cleanTitle.toLowerCase().includes('state') ||
+    cleanTitle.toLowerCase().includes('template method') ||
+    cleanTitle.toLowerCase().includes('iterator') ||
+    cleanTitle.toLowerCase().includes('chain of responsibility');
+
+  // If matching known gold-standard predefined special problem, return directly
+  if (isLldOrDesign) {
+    if (slug.includes('factory')) {
+      return DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-3-factory-method-'];
+    }
+    if (slug.includes('singleton')) {
+      return DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-2-singleton-design-pattern-'];
+    }
+    if (slug.includes('strategy')) {
+      return DESIGN_PATTERN_PREDEFINED_PROBLEMS['6-3-strategy-pattern-'];
+    }
+    if (slug.includes('builder')) {
+      return PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-'];
+    }
+  }
+
+  const prompt = isLldOrDesign
+    ? `You are a Principal Staff Software Engineer and FAANG Low-Level Design (LLD) & Object-Oriented Architecture Interviewer.
+Generate a rigorous, production-grade Low-Level Design (LLD) machine coding problem in JSON for: "${cleanTitle}".
+Context Category: "Low Level Design", Difficulty: "${difficulty}".
+${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
+${notes ? `Study Notes: ${notes.slice(0, 1500)}` : ''}
+
+CRITICAL LLD & DESIGN PATTERN SPECIFICATIONS:
+1. OBJECT-ORIENTED ARCHITECTURE & REAL-WORLD DOMAIN:
+   - Frame the problem in a realistic real-world engineering domain (e.g. cross-platform notification dispatch, cloud resource provisioning, rate limiting, order lifecycle state machine, pluggable payment/discount engine, database connection pooling).
+   - The problem MUST explicitly practice the requested Design Pattern (or SOLID principle / LLD concept) in depth.
+   - Describe the exact interfaces, abstract base classes, concrete implementations, and caller orchestration.
+2. PUBLIC FACADE / CONTROLLER METHOD SIGNATURES:
+   - Provide a clean facade or controller class named "Solution" with 2-4 clean public methods that encapsulate the system's operations (e.g., register/init, execute/send/process, query/status, and reset).
+   - The method names and parameter types across ALL starter templates (C++, Python, Java, JavaScript, Go, Rust) MUST MATCH EXACTLY.
+3. CONCRETE MULTI-OPERATION TEST CASES:
+   - DO NOT USE algorithmic arrays like "nums = [1, 2, 3]". NEVER output scalar array test cases for LLD!
+   - Every testcase in "testCases" MUST represent a realistic sequence of method invocations on the Solution instance.
+   - Format: "method1(arg1), method2(arg2, arg3), method3()"
+   - The matching item in "expectedOutputs" MUST contain the comma-separated returned values of each method in that sequence.
+   - Example Input: 'registerChannel("EMAIL"), sendAlert("EMAIL", "user@corp.com", "Server down!"), getActiveCount()'
+   - Example Output: 'true, "[EMAIL to user@corp.com]: Server down!", 1'
+4. AT LEAST 10 DIVERSE TEST CASES:
+   - Provide AT LEAST 10 diverse test case sequences testing happy path, validation failures, unsupported types, edge cases (empty strings, boundary limits), duplicate operations, and lifecycle resets.
+5. COMPLETE STARTER & REFERENCE SOLUTIONS:
+   - Starters must define the domain interfaces, abstract base classes, and concrete classes with concise comments, and the public Solution class.
+   - Solutions must contain the full, clean, working object-oriented implementation.
+
+Return ONLY valid JSON matching this exact structure:
+{
+  "name": "${cleanTitle}",
+  "category": "Low Level Design",
+  "difficulty": "${difficulty}",
+  "description": "Comprehensive LLD problem description with markdown formatting, requirements, and class definitions",
+  "examples": [
+    {
+      "input": "methodA(\\"val\\"), methodB(10)",
+      "output": "true, \\"result\\"",
+      "explanation": "Step-by-step trace of how the design pattern entities interact."
+    }
+  ],
+  "constraints": [
+    "At most 1000 method calls across all operations.",
+    "String lengths between 1 and 256 characters."
+  ],
+  "testCases": [
+    "case 1", "case 2", "case 3", "case 4", "case 5",
+    "case 6", "case 7", "case 8", "case 9", "case 10"
+  ],
+  "expectedOutputs": [
+    "out 1", "out 2", "out 3", "out 4", "out 5",
+    "out 6", "out 7", "out 8", "out 9", "out 10"
+  ],
+  "hints": [
+    "Identify the abstract product/strategy/subject interface.",
+    "Decouple creation or algorithm execution from client logic using the specified pattern."
+  ],
+  "approaches": [
+    {
+      "id": "design_pattern",
+      "name": "Object-Oriented Design Pattern Implementation",
+      "timeComplexity": "O(1) per operation",
+      "spaceComplexity": "O(N) for registered handlers / state",
+      "description": "Clean implementation adhering to SOLID principles and the specific design pattern."
+    }
+  ],
+  "starters": {
+    "cpp": "class Solution {\\npublic:\\n    bool registerChannel(string ch) { return false; }\\n    string sendAlert(string ch, string r, string m) { return \\"\\"; }\\n    int getActiveChannelCount() { return 0; }\\n    bool reset() { return true; }\\n};",
+    "python": "class Solution:\\n    def registerChannel(self, ch: str) -> bool:\\n        return False\\n    def sendAlert(self, ch: str, r: str, m: str) -> str:\\n        return \\"\\"\\n    def getActiveChannelCount(self) -> int:\\n        return 0\\n    def reset(self) -> bool:\\n        return True",
+    "java": "class Solution {\\n    public boolean registerChannel(String ch) { return false; }\\n    public String sendAlert(String ch, String r, String m) { return \\"\\"; }\\n    public int getActiveChannelCount() { return 0; }\\n    public boolean reset() { return true; }\\n}",
+    "javascript": "class Solution {\\n    registerChannel(ch) { return false; }\\n    sendAlert(ch, r, m) { return \\"\\"; }\\n    getActiveChannelCount() { return 0; }\\n    reset() { return true; }\\n}",
+    "go": "type Solution struct {}",
+    "rust": "pub struct Solution {}"
+  },
+  "solutions": {
+    "cpp": "class Solution { ... };",
+    "python": "class Solution: ...",
+    "java": "class Solution { ... }",
+    "javascript": "class Solution { ... }"
+  }
+}`
+    : `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
 Generate complete, authentic coding problem details in JSON for: "${cleanTitle}".
 Context Category: "${category}", Difficulty: "${difficulty}".
 ${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
@@ -3099,11 +3249,85 @@ Return ONLY valid JSON matching this exact structure:
   }
 
   // Fallback template if network/LLMs fail
+  if (isLldOrDesign) {
+    const lldFallback: ProblemTemplate = {
+      name: cleanTitle,
+      category: 'Low Level Design',
+      difficulty,
+      description: `Design an extensible object-oriented architecture for **${cleanTitle}** adhering to clean code and design pattern principles.
+
+### Functional Requirements:
+1. Define the core interface and domain entities adhering to the specified design pattern.
+2. Implement the \`Solution\` facade class:
+   - \`bool registerHandler(string handlerType)\`: Registers and initializes the handler for the given type. Returns \`true\` if newly registered, \`false\` if already registered or invalid.
+   - \`string execute(string handlerType, string command, string payload)\`: Executes the command through the registered handler. If unsupported handler, returns \`"ERROR: UNSUPPORTED_HANDLER"\`. If empty command or payload, returns \`"ERROR: INVALID_INPUT"\`. Otherwise returns \`"SUCCESS: " + handlerType + " executed " + command\`.
+   - \`int getActiveHandlerCount()\`: Returns the count of registered active handlers.
+   - \`bool reset()\`: Resets all registered handlers. Returns \`true\`.`,
+      examples: [
+        {
+          input: 'registerHandler("DEFAULT"), execute("DEFAULT", "PROCESS", "DATA_1"), getActiveHandlerCount()',
+          output: 'true, "SUCCESS: DEFAULT executed PROCESS", 1',
+          explanation: `Example execution for ${cleanTitle}.`
+        }
+      ],
+      constraints: [
+        'At most 1000 method invocations across all operations.',
+        '0 <= command.length, payload.length <= 256'
+      ],
+      testCases: [
+        'registerHandler("DEFAULT"), execute("DEFAULT", "PROCESS", "DATA_1"), getActiveHandlerCount()',
+        'registerHandler("CUSTOM"), execute("CUSTOM", "RUN", "PAYLOAD_A"), execute("UNKNOWN", "RUN", "PAYLOAD_B")',
+        'registerHandler("DEFAULT"), registerHandler("DEFAULT"), getActiveHandlerCount()',
+        'registerHandler("SERVICE_A"), registerHandler("SERVICE_B"), getActiveHandlerCount(), reset(), getActiveHandlerCount()',
+        'execute("UNREGISTERED", "CMD", "VAL")',
+        'registerHandler("PRIMARY"), execute("PRIMARY", "", "VAL")',
+        'registerHandler("PRIMARY"), execute("PRIMARY", "CMD", "")',
+        'registerHandler("HANDLER_1"), execute("HANDLER_1", "INIT", "P1"), execute("HANDLER_1", "STOP", "P1")',
+        'registerHandler("H1"), registerHandler("H2"), registerHandler("H3"), getActiveHandlerCount()',
+        'registerHandler("TEMP"), reset(), execute("TEMP", "CMD", "DATA")'
+      ],
+      expectedOutputs: [
+        'true, "SUCCESS: DEFAULT executed PROCESS", 1',
+        'true, "SUCCESS: CUSTOM executed RUN", "ERROR: UNSUPPORTED_HANDLER"',
+        'true, false, 1',
+        'true, true, 2, true, 0',
+        '"ERROR: UNSUPPORTED_HANDLER"',
+        'true, "ERROR: INVALID_INPUT"',
+        'true, "ERROR: INVALID_INPUT"',
+        'true, "SUCCESS: HANDLER_1 executed INIT", "SUCCESS: HANDLER_1 executed STOP"',
+        'true, true, true, 3',
+        'true, true, "ERROR: UNSUPPORTED_HANDLER"'
+      ],
+      hints: [
+        `Identify the core abstraction and apply ${cleanTitle} principles.`,
+        'Decouple client interaction from concrete handler implementations.'
+      ],
+      approaches: [
+        {
+          id: 'optimal',
+          name: 'Object-Oriented Design Pattern Architecture',
+          timeComplexity: 'O(1) per operation',
+          spaceComplexity: 'O(N) for registered handlers',
+          description: `Extensible implementation for ${cleanTitle}.`
+        }
+      ],
+      starters: {
+        cpp: `class Solution {\npublic:\n    bool registerHandler(string handlerType) {\n        return false;\n    }\n    string execute(string handlerType, string command, string payload) {\n        return "";\n    }\n    int getActiveHandlerCount() {\n        return 0;\n    }\n    bool reset() {\n        return true;\n    }\n};`,
+        python: `class Solution:\n    def __init__(self):\n        self.handlers = set()\n    def registerHandler(self, handler_type: str) -> bool:\n        return False\n    def execute(self, handler_type: str, command: str, payload: str) -> str:\n        return ""\n    def getActiveHandlerCount(self) -> int:\n        return 0\n    def reset(self) -> bool:\n        return True`,
+        java: `class Solution {\n    public boolean registerHandler(String handlerType) {\n        return false;\n    }\n    public String execute(String handlerType, String command, String payload) {\n        return "";\n    }\n    public int getActiveHandlerCount() {\n        return 0;\n    }\n    public boolean reset() {\n        return true;\n    }\n}`,
+        javascript: `class Solution {\n    constructor() {\n        this.handlers = new Set();\n    }\n    registerHandler(handlerType) {\n        return false;\n    }\n    execute(handlerType, command, payload) {\n        return "";\n    }\n    getActiveHandlerCount() {\n        return 0;\n    }\n    reset() {\n        return true;\n    }\n}`,
+        go: `type Solution struct {}`,
+        rust: `pub struct Solution {}`
+      },
+      solutions: {
+        cpp: `class Solution {\npublic:\n    bool registerHandler(string handlerType) { return true; }\n    string execute(string handlerType, string command, string payload) { return "SUCCESS: " + handlerType + " executed " + command; }\n    int getActiveHandlerCount() { return 1; }\n    bool reset() { return true; }\n};`
+      }
+    };
+    return lldFallback;
+  }
+
   const defaultStarters = generateDefaultStarters(cleanTitle);
-  const isLldOrDesign = category.toLowerCase().includes('design') || category.toLowerCase().includes('low level') || cleanTitle.toLowerCase().includes('pattern') || cleanTitle.toLowerCase().includes('solid') || cleanTitle.toLowerCase().includes('builder');
-  const fallbackDesc = isLldOrDesign
-    ? `Design an extensible object-oriented architecture for **${cleanTitle}** adhering to clean code and design pattern principles. Implement the Solution facade methods adhering to all specifications and constraints.`
-    : `An optimal algorithm is required to solve the **${cleanTitle}** problem adhering to all input constraints.`;
+  const fallbackDesc = `An optimal algorithm is required to solve the **${cleanTitle}** problem adhering to all input constraints.`;
   const fallbackProblem: ProblemTemplate = {
     name: cleanTitle,
     category,
@@ -3202,6 +3426,13 @@ export function guaranteeAtLeast10TestCases(prob: ProblemTemplate): ProblemTempl
         prob.testCases.push(c.input);
         prob.expectedOutputs.push(c.output);
       }
+    }
+  } else if (sampleCase.includes('(') && sampleCase.includes(')')) {
+    // LLD / OOP method invocation test cases: clone existing valid cases rather than injecting scalar arrays
+    while (prob.testCases.length < 10 && prob.testCases.length > 0) {
+      const idx = prob.testCases.length % Math.min(prob.testCases.length, 5);
+      prob.testCases.push(prob.testCases[idx]);
+      prob.expectedOutputs.push(prob.expectedOutputs[idx] || prob.expectedOutputs[0] || 'true');
     }
   } else {
     // Array, string, or number questions
@@ -3402,6 +3633,50 @@ export async function fetchEnrichedProblem(
   if (isBuilder) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['4-4-builder-pattern-']);
   }
+
+  const isFactory =
+    slug === '4-3-factory-method-' ||
+    slug === '4-3-factory-method' ||
+    slug === 'factory-method' ||
+    slug === 'factory-pattern' ||
+    slug === 'factory-design-pattern' ||
+    slug.includes('4-3-factory-method') ||
+    slug.includes('factory-method') ||
+    slug.includes('factory-pattern') ||
+    (slug.includes('factory') && (slug.includes('pattern') || slug.includes('method'))) ||
+    normSlug.includes('43factorymethod') ||
+    normSlug.includes('factorymethod') ||
+    normSlug.includes('factorypattern');
+  if (isFactory) {
+    return applyOverride(DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-3-factory-method-']);
+  }
+
+  const isSingleton =
+    slug === '4-2-singleton-design-pattern-' ||
+    slug === '4-2-singleton-design-pattern' ||
+    slug === 'singleton-pattern' ||
+    slug === 'singleton-design-pattern' ||
+    slug.includes('4-2-singleton') ||
+    slug.includes('singleton-pattern') ||
+    normSlug.includes('42singleton') ||
+    normSlug.includes('singletonpattern');
+  if (isSingleton) {
+    return applyOverride(DESIGN_PATTERN_PREDEFINED_PROBLEMS['4-2-singleton-design-pattern-']);
+  }
+
+  const isStrategy =
+    slug === '6-3-strategy-pattern-' ||
+    slug === '6-3-strategy-pattern' ||
+    slug === 'strategy-pattern' ||
+    slug === 'strategy-design-pattern' ||
+    slug.includes('6-3-strategy') ||
+    slug.includes('strategy-pattern') ||
+    normSlug.includes('63strategy') ||
+    normSlug.includes('strategypattern');
+  if (isStrategy) {
+    return applyOverride(DESIGN_PATTERN_PREDEFINED_PROBLEMS['6-3-strategy-pattern-']);
+  }
+
   if (PREDEFINED_SPECIAL_PROBLEMS[slug]) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
@@ -3415,7 +3690,10 @@ export async function fetchEnrichedProblem(
       if (
         (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) ||
         (parsed?.description && parsed.description.includes('An optimal algorithm is required to solve the')) ||
-        ((slug.includes('builder') || normSlug.includes('builder')) && parsed?.description && parsed.description.includes('nums'))
+        ((slug.includes('builder') || normSlug.includes('builder')) && parsed?.description && parsed.description.includes('nums')) ||
+        ((slug.includes('factory') || normSlug.includes('factory')) && parsed?.description && (parsed.description.includes('nums') || parsed.description.includes('An optimal algorithm'))) ||
+        ((slug.includes('singleton') || normSlug.includes('singleton')) && parsed?.description && (parsed.description.includes('nums') || parsed.description.includes('An optimal algorithm'))) ||
+        ((slug.includes('strategy') || normSlug.includes('strategy')) && parsed?.description && (parsed.description.includes('nums') || parsed.description.includes('An optimal algorithm')))
       ) {
         localStorage.removeItem(cacheKey);
       } else {
@@ -3529,6 +3807,11 @@ export function getDefaultDriverForProblem(slugOrTitle: string, language: Suppor
   const solidDrv = getSolidDriver(slug, lang);
   if (solidDrv) {
     return solidDrv;
+  }
+
+  const dpDrv = getDesignPatternDriver(slug, lang);
+  if (dpDrv) {
+    return dpDrv;
   }
 
   // === BINARY TREE TO DOUBLE LINKEDLIST ===
