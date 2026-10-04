@@ -147,7 +147,7 @@ export const ResumeAnalyst: React.FC = () => {
 
     const cost = PRICING_CONFIG.AI_RESUME_ANALYSIS || 1.50;
     if (!canAffordAction(cost)) {
-      setError(`Insufficient credits. Full Mistral AI Resume Scan + 18 3D Flashcards requires ₹${cost.toFixed(2)}. Please top up your wallet.`);
+      setError(`Insufficient credits. Full SDETube AI Resume Scan + 18 3D Flashcards requires ₹${cost.toFixed(2)}. Please top up your wallet.`);
       return;
     }
 
@@ -159,7 +159,7 @@ export const ResumeAnalyst: React.FC = () => {
     deductCredits(
       cost,
       'AI_RESUME_ANALYSIS',
-      'Mistral AI Resume Analysis + 3D Interview Flashcards'
+      'SDETube AI Resume Analysis + 3D Interview Flashcards'
     );
     try {
       setWalletBalance(getUserWallet().balance);
@@ -171,7 +171,7 @@ export const ResumeAnalyst: React.FC = () => {
     }, 1800);
 
     try {
-      // Execute Mistral AI Analysis
+      // Execute SDETube AI Analysis
       const result = await analyzeResumeWithMistral(textToAnalyze, jobDescription.trim());
       setAnalysisData(result);
       setActiveSubTab('dashboard');
@@ -257,7 +257,7 @@ export const ResumeAnalyst: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-purple-600/30">
                 <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>Mistral AI Intelligence</span>
+                <span>SDETube AI Intelligence</span>
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-[11px] font-mono">
                 ATS Compatibility &bull; 3D Flashcards
@@ -269,7 +269,7 @@ export const ResumeAnalyst: React.FC = () => {
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Scan your resume against any target Job Description with Mistral AI. Get instant ATS scoring, keyword alignment, career progression gap analysis, and 15–20 tailored 3D interview preparation flashcards.
+              Scan your resume against any target Job Description with SDETube AI. Get instant ATS scoring, keyword alignment, career progression gap analysis, and 15–20 tailored 3D interview preparation flashcards.
             </p>
           </div>
 
@@ -581,12 +581,12 @@ export const ResumeAnalyst: React.FC = () => {
               {isAnalyzing ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Analyzing with Mistral AI...</span>
+                  <span>Analyzing with SDETube AI...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5 text-amber-300" />
-                  <span>Analyze Resume with Mistral AI</span>
+                  <span>Analyze Resume with SDETube AI</span>
                   <span className="px-2 py-0.5 rounded-full bg-purple-900/80 text-purple-200 text-xs font-mono border border-purple-400/40">
                     ₹{PRICING_CONFIG.AI_RESUME_ANALYSIS?.toFixed(2) || '1.50'}
                   </span>
@@ -602,7 +602,7 @@ export const ResumeAnalyst: React.FC = () => {
               <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-300">
                 <span className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping"></span>
-                  <span>Executing Mistral Multi-Pass AI Pipeline</span>
+                  <span>Executing SDETube AI Multi-Pass Pipeline</span>
                 </span>
                 <span className="text-purple-400">Step {analyzingStep || 1} of 4</span>
               </div>
@@ -610,7 +610,7 @@ export const ResumeAnalyst: React.FC = () => {
               <div className="space-y-2">
                 {[
                   { step: 1, label: 'Extracting candidate text & structural tokens' },
-                  { step: 2, label: 'Querying Mistral AI for ATS scoring & keyword alignment' },
+                  { step: 2, label: 'Querying SDETube AI for ATS scoring & keyword alignment' },
                   { step: 3, label: 'Running career progression & gap analysis' },
                   { step: 4, label: 'Generating 15-20 customized 3D interview flashcards' }
                 ].map(item => (
@@ -675,7 +675,7 @@ export const ResumeAnalyst: React.FC = () => {
             {/* AI Engine Status Pill */}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-purple-300">
               <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>{analysisData.ai_engine || 'Mistral AI Engine'}</span>
+              <span>{analysisData.ai_engine || 'SDETube AI Engine'}</span>
             </div>
 
           </div>

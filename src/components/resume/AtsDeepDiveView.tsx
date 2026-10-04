@@ -66,7 +66,7 @@ export const AtsDeepDiveView: React.FC<AtsDeepDiveViewProps> = ({ data }) => {
               <span>ATS Readiness Engine</span>
             </span>
             <span className="text-xs font-mono text-slate-400">
-              Analyzed via Mistral AI
+              Analyzed via SDETube AI
             </span>
           </div>
           <h2 className="text-2xl font-black text-slate-100">

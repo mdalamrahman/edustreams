@@ -179,7 +179,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
         localStorage.setItem('edustream_user_ats_resume', JSON.stringify(merged));
       } catch {}
 
-      setBillingNotice(`✨ Resume successfully tailored with Mistral AI (-₹${cost.toFixed(2)}). You can now edit and customize every section below!`);
+      setBillingNotice(`✨ Resume successfully tailored with SDETube AI (-₹${cost.toFixed(2)}). You can now edit and customize every section below!`);
       setTimeout(() => setBillingNotice(null), 8000);
     } catch (err: any) {
       console.error('Tailor error:', err);
@@ -566,11 +566,11 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
               <span className="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition-colors flex items-center gap-2">
                 <span>Target Job Description Alignment</span>
                 <span className="px-2 py-0.2 rounded-full bg-purple-950 border border-purple-700/60 text-[10px] font-mono text-purple-300">
-                  Mistral AI Engine
+                  SDETube AI Engine
                 </span>
               </span>
               <p className="text-xs text-slate-400">
-                When enabled, Mistral AI modifies your resume against the JD, and calculates your ATS score dynamically with each change.
+                When enabled, SDETube AI modifies your resume against the JD, and calculates your ATS score dynamically with each change.
               </p>
             </div>
           </label>

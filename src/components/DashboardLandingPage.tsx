@@ -933,7 +933,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
           </div>
 
-          {/* Portal 1.5: Resume Analyst (Mistral AI ATS Engine & 3D Flashcards) */}
+          {/* Portal 1.5: Resume Analyst (SDETube AI ATS Engine & 3D Flashcards) */}
           <div 
             onClick={() => onNavigate('resume_analyst')}
             className="glass-panel p-6 rounded-3xl border border-violet-500/40 bg-gradient-to-br from-violet-950/30 via-slate-900 to-slate-950 hover:border-violet-500 shadow-xl cursor-pointer group transition-all transform hover:-translate-y-1 relative overflow-hidden"
@@ -943,7 +943,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
             <div className="flex items-center gap-1.5 mb-1">
               <span className="px-2 py-0.2 rounded-full bg-violet-500/20 text-violet-300 font-mono text-[9px] font-bold border border-violet-500/30">
-                MISTRAL AI ATS
+                SDETUBE AI ATS
               </span>
             </div>
             <h3 className="text-base font-bold text-slate-100 group-hover:text-violet-300 transition-colors">

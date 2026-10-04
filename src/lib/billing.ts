@@ -32,7 +32,7 @@ export const PRICING_CONFIG = {
   HLD_EXCALIDRAW_DRAWING: 0.00,      // Free on Excalidraw
   HLD_STUDIO_PLATFORM_DRAWING: 0.50, // 50 paise (₹0.50) if our Architecture Studio platform is used
   ANALYTICS_AI_REFRESH: 1.00,        // ₹1 for analytics AI diagnostic refresh
-  AI_RESUME_ANALYSIS: 1.50,          // ₹1.50 for full Mistral AI resume scan + ATS scoring + 18 3D flashcards
+  AI_RESUME_ANALYSIS: 1.50,          // ₹1.50 for full SDETube AI resume scan + ATS scoring + 18 3D flashcards
   AI_RESUME_TAILOR: 1.00,            // ₹1.00 for AI resume tailoring/modifying against target JD
   AI_RESUME_BULLET_ENHANCE: 0.20,    // 20 paise (₹0.20) per Google XYZ formula bullet polish
 };

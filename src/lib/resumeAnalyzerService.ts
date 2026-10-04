@@ -684,7 +684,7 @@ Respond STRICTLY in valid JSON array format:
       resume_preview: resumeText,
       job_description_preview: jobDescription,
       analyzed_at: new Date().toISOString(),
-      ai_engine: 'Mistral AI (Codestral / Ministral / Mistral-Small)'
+      ai_engine: 'SDETube AI Engine (Advanced Neural Reasoning)'
     };
 
     // Save to local storage for instant tab switching

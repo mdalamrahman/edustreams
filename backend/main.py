@@ -917,7 +917,7 @@ async def get_client() -> TelegramClient:
 
 app = FastAPI(
     title="EduStream Telethon Video Stream & AI Engine",
-    description="FastAPI + Telethon MTProto Bot Token + Groq Whisper STT + Mistral AI",
+    description="FastAPI + Telethon MTProto Bot Token + Groq Whisper STT + SDETube AI",
     version="2.0.0",
 )
 
@@ -9123,7 +9123,7 @@ Respond STRICTLY in valid JSON matching this schema:
                 "flashcards": res_data.get("flashcards", []),
                 "ats_score": res_data.get("ats_score", {}),
                 "resume_preview": resume_text,
-                "ai_engine": "Mistral AI (Codestral / Ministral)"
+                "ai_engine": "SDETube AI Engine"
             }
         })
     except Exception as e:

@@ -53,7 +53,7 @@ export const ResumePreviewView: React.FC<ResumePreviewViewProps> = ({ data }) =>
           </div>
 
           <div className="text-[11px] font-mono text-slate-500 pt-2 border-t border-slate-800/60">
-            {data.resume_preview?.length || 0} characters &bull; Text extracted for Mistral AI ATS Engine
+            {data.resume_preview?.length || 0} characters &bull; Text extracted for SDETube AI ATS Engine
           </div>
         </div>
 
