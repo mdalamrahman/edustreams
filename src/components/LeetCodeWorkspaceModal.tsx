@@ -59,7 +59,6 @@ import {
   ShieldCheck,
   Flag
 } from 'lucide-react';
-import { ProblemReportModal } from './ProblemReportModal';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
 import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases, PREDEFINED_SPECIAL_PROBLEMS } from '../lib/problemService';
@@ -76,8 +75,8 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
 import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
-import { ReportTestCaseModal } from './ReportTestCaseModal';
-import { ReportDriverCodeModal } from './ReportDriverCodeModal';
+import { UnifiedReportModal } from './UnifiedReportModal';
+import { registerLeetCodeCompletionProviders } from '../lib/monacoEditorSuggestions';
 import { ProblemMultiOptionsModal } from './ProblemMultiOptionsModal';
 import { PipelineVerificationModal } from './PipelineVerificationModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
@@ -587,12 +586,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   } | null>(null);
   const [isSubmissionVisualizerOpen, setIsSubmissionVisualizerOpen] = useState<boolean>(false);
   
-  // AI Test Case Verification and Repair Modal State
-  const [isReportTestCaseOpen, setIsReportTestCaseOpen] = useState<boolean>(false);
   const [reportTestCaseIdx, setReportTestCaseIdx] = useState<number>(0);
   const [isMultiOptionsModalOpen, setIsMultiOptionsModalOpen] = useState<boolean>(false);
-  // AI Driver Code Inspection & Auto-Resolver Modal State
-  const [isReportDriverOpen, setIsReportDriverOpen] = useState<boolean>(false);
   const [driverUpdatedBadge, setDriverUpdatedBadge] = useState<boolean>(false);
   // Platform Pipeline Verification & Automated AI Self-Healing Modal State
   const [isPipelineVerifierOpen, setIsPipelineVerifierOpen] = useState<boolean>(false);
@@ -3389,18 +3384,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               )}
             </div>
 
-            {/* Right: LeetCode Toolbar Actions */}
             <div className="flex items-center space-x-1.5">
-              {/* Boilerplate Code Inspector & R2 Fix Button */}
-              <button
-                onClick={() => setIsReportDriverOpen(true)}
-                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium bg-white/[0.06] hover:bg-cyan-950/60 text-slate-300 hover:text-cyan-200 border border-white/10 hover:border-cyan-500/40 transition-all cursor-pointer"
-                title="Inspect or auto-correct wrong boilerplate code with AI and replace in Cloudflare R2"
-              >
-                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline text-[11px] font-bold text-cyan-300">REPORT BOILER PLATE CODE</span>
-              </button>
-
               {driverUpdatedBadge && (
                 <span className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-950/90 border border-emerald-500/50 shadow-sm animate-fadeIn">
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -3526,15 +3510,40 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               value={code}
               theme="vs-dark"
               onChange={handleCodeChange}
+              onMount={(_, monaco) => registerLeetCodeCompletionProviders(monaco)}
               options={{
                 fontSize: 13,
-                fontFamily: "'Fira Code', 'Courier New', monospace",
+                fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace",
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 padding: { top: 12, bottom: 12 },
                 lineNumbers: 'on',
                 automaticLayout: true,
-                tabSize: 4
+                tabSize: 4,
+                bracketPairColorization: { enabled: true },
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: {
+                  other: true,
+                  comments: false,
+                  strings: true
+                },
+                acceptSuggestionOnEnter: 'on',
+                tabCompletion: 'on',
+                wordBasedSuggestions: 'allDocuments',
+                suggest: {
+                  localityBonus: true,
+                  showWords: true,
+                  showSnippets: true,
+                  showKeywords: true,
+                  showFunctions: true,
+                  showClasses: true,
+                  snippetsPreventQuickSuggestions: false,
+                  preview: true
+                },
+                parameterHints: { enabled: true, cycle: true },
+                formatOnType: true
               }}
             />
           </div>
@@ -3692,22 +3701,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         <button
                           onClick={() => {
                             setReportTestCaseIdx(activeTestCaseIdx);
-                            setIsReportTestCaseOpen(true);
+                            setIsReportModalOpen(true);
                           }}
                           className="px-2.5 py-1 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-600/50 text-amber-300 hover:text-amber-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                          title="Report or fix incorrect testcase with AI"
+                          title="Report and auto-resolve testcase, driver, or problem issues with AI"
                         >
-                          <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Fix Testcase</span>
-                        </button>
-
-                        <button
-                          onClick={() => setIsReportDriverOpen(true)}
-                          className="px-2.5 py-1 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-600/50 text-cyan-300 hover:text-cyan-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                          title="Report wrong boilerplate code, auto-correct with AI, and replace in Cloudflare R2"
-                        >
-                          <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Report Boiler Plate Code</span>
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Report Issue</span>
                         </button>
 
                         <span className="text-[10px] text-emerald-400 font-mono px-2 py-0.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 whitespace-nowrap">
@@ -3850,27 +3850,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                               <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
                               <span className="text-[11px] font-medium">Issue with testcase data or boilerplate code harness?</span>
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <button
-                                onClick={() => {
-                                  setReportTestCaseIdx(submissionResult?.failedCaseIdx ?? activeTestCaseIdx);
-                                  setIsReportTestCaseOpen(true);
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
-                                title="Verify and repair testcase inputs or expected outputs"
-                              >
-                                <Wand2 className="w-3 h-3" />
-                                <span>Fix Testcase</span>
-                              </button>
-                              <button
-                                onClick={() => setIsReportDriverOpen(true)}
-                                className="px-2.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
-                                title="Inspect wrong boilerplate code, auto-correct with AI, and replace in Cloudflare R2"
-                              >
-                                <Cpu className="w-3 h-3 text-cyan-200" />
-                                <span>Report Boiler Plate Code</span>
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => {
+                                setReportTestCaseIdx(submissionResult?.failedCaseIdx ?? activeTestCaseIdx);
+                                setIsReportModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
+                              title="Report and auto-resolve issue with AI"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>Report Issue</span>
+                            </button>
                           </div>
                         )}
 
@@ -4235,7 +4225,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               }}
               onReportTestCase={(caseIdx) => {
                 setReportTestCaseIdx(caseIdx);
-                setIsReportTestCaseOpen(true);
+                setIsReportModalOpen(true);
               }}
               onApplyCode={(codeToApply, langToApply) => {
                 setCode(codeToApply);
@@ -4248,27 +4238,26 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       )}
 
 
-      {/* AI Testcase Inspector & Repair Modal */}
-      <ReportTestCaseModal
-        isOpen={isReportTestCaseOpen}
-        onClose={() => setIsReportTestCaseOpen(false)}
+      {/* Unified AI Issue Inspector & Self-Healing Modal */}
+      <UnifiedReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
         problemTitle={cleanTitle}
         problemSlug={currentProblemSlug}
         problemStatement={problemTemplate.description}
+        language={language}
         methodSignature={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
+        starterCode={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
+        currentDriverCode={problemTemplate.driverCode?.[language]}
+        userCode={code}
         testCaseIndex={reportTestCaseIdx}
         currentInput={problemTemplate.testCases?.[reportTestCaseIdx] || testInput}
         currentExpectedOutput={problemTemplate.expectedOutputs?.[reportTestCaseIdx]}
         userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
-        language={language}
-        userEmail={getCurrentStudent()?.email || 'student@edustream.io'}
+        executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
         allProblemTestCases={problemTemplate.testCases}
         allProblemExpectedOutputs={problemTemplate.expectedOutputs}
-        onResubmit={(updatedTemplate) => {
-          setIsReportTestCaseOpen(false);
-          handleExecute(true, updatedTemplate);
-        }}
-        onApplyCorrection={(correctedInput, correctedExpected) => {
+        onApplyTestCaseCorrection={(correctedInput, correctedExpected) => {
           let finalInput = (correctedInput || '').trim();
           const pNames = extractParamNames(problemTemplate.starters, problemTemplate.examples);
           if (pNames.length === 1 && !finalInput.includes('=')) {
@@ -4285,45 +4274,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             const slug = currentProblemSlug;
             localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
             localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
-            // Invalidate stale driver cache so resilient driver is generated/used
             const langs = ['cpp', 'python', 'javascript', 'java', 'go', 'rust'];
             langs.forEach(l => localStorage.removeItem(`edustream_driver_${slug}_${l}`));
           } catch {}
 
           setProblemTemplate(next);
-
           if (reportTestCaseIdx === activeTestCaseIdx) {
             setTestInput(finalInput);
           }
-
-          // Clear previous failed submission result so that:
-          // 1. currentExpectedOutput immediately evaluates to the new expected output
-          // 2. The failure banner is reset for the fresh re-submission
           setSubmissionResult(null);
           setExecutionResult(null);
-
           return next;
         }}
-        onSwitchToDriverReport={() => {
-          setIsReportTestCaseOpen(false);
-          setIsReportDriverOpen(true);
-        }}
-      />
-
-      {/* AI Boilerplate Code Inspector & Auto-Resolver Modal */}
-      <ReportDriverCodeModal
-        isOpen={isReportDriverOpen}
-        onClose={() => setIsReportDriverOpen(false)}
-        problemTitle={cleanTitle}
-        problemSlug={currentProblemSlug}
-        language={language}
-        starterCode={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
-        currentDriverCode={problemTemplate.driverCode?.[language]}
-        userCode={code}
-        sampleTestInput={problemTemplate.testCases?.[activeTestCaseIdx] || testInput}
-        sampleExpectedOutput={problemTemplate.expectedOutputs?.[activeTestCaseIdx]}
-        executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
-        onApplyCorrection={(correctedDriver) => {
+        onApplyDriverCorrection={(correctedDriver) => {
           setProblemTemplate((prev) => {
             const next = {
               ...prev,
@@ -4333,79 +4296,19 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               } as Record<SupportedLanguage, string>
             };
             try {
-              const slug = currentProblemSlug;
-              const lang = language.toLowerCase();
-              localStorage.setItem(`edustream_driver_${slug}_${lang}`, correctedDriver);
-              localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
-              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
-            } catch (_) {}
-            return next;
-          });
-          setDriverUpdatedBadge(true);
-          setTimeout(() => setDriverUpdatedBadge(false), 4000);
-        }}
-      />
-
-      {/* Platform Pipeline Verification & Automated AI Self-Healing Modal */}
-      <PipelineVerificationModal
-        isOpen={isPipelineVerifierOpen}
-        onClose={() => setIsPipelineVerifierOpen(false)}
-        slug={currentProblemSlug}
-        problemTitle={cleanTitle}
-        problemStatement={problemTemplate.description}
-        language={language}
-        starterCode={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
-        testCases={problemTemplate.testCases && problemTemplate.testCases.length > 0 ? problemTemplate.testCases : [testInput]}
-        expectedOutputs={problemTemplate.expectedOutputs && problemTemplate.expectedOutputs.length > 0 ? problemTemplate.expectedOutputs : [currentExpectedOutput]}
-        existingSolutionCode={problemTemplate.solutions?.[language]}
-        existingDriverCode={problemTemplate.driverCode?.[language]}
-        onApplySolutionToEditor={(verifiedSolution) => {
-          setCode(verifiedSolution);
-          setIsPipelineVerifierOpen(false);
-        }}
-        onPipelineHealed={({ solutionCode, driverCode, expectedOutputs: healedExp }) => {
-          setProblemTemplate((prev) => {
-            const next = {
-              ...prev,
-              solutions: {
-                ...(prev.solutions || {}),
-                [language]: solutionCode
-              } as Record<SupportedLanguage, string>,
-              driverCode: driverCode ? {
-                ...(prev.driverCode || {}),
-                [language]: driverCode
-              } as Record<SupportedLanguage, string> : prev.driverCode,
-              expectedOutputs: (healedExp && healedExp.length > 0) ? healedExp : prev.expectedOutputs
-            };
-            try {
-              localStorage.setItem(`edustream_problem_spec_${currentProblemSlug}`, JSON.stringify(next));
-            } catch (_) {}
-            return next;
-          });
-        }}
-      />
-
-      {/* AI Testcase Multi-Option Inspection Modal */}
-      <ProblemMultiOptionsModal
-        isOpen={isMultiOptionsModalOpen}
-        onClose={() => setIsMultiOptionsModalOpen(false)}
-        problemTitle={cleanTitle}
-        problemSlug={currentProblemSlug}
-        problemStatement={problemTemplate.description}
-        testCases={problemTemplate.testCases || [testInput]}
-        expectedOutputs={problemTemplate.expectedOutputs}
-        onApplyAllOptionsToTemplate={(updatedExpectedOutputs) => {
-          setProblemTemplate(prev => {
-            const next = { ...prev, expectedOutputs: updatedExpectedOutputs };
-            try {
-              const slug = currentProblemSlug;
-              localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
-              localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
+              localStorage.setItem(`edustream_driver_${currentProblemSlug}_${language}`, correctedDriver);
             } catch {}
             return next;
           });
+          setDriverUpdatedBadge(true);
+          setTimeout(() => setDriverUpdatedBadge(false), 5000);
+        }}
+        onResubmit={(updatedTemplate) => {
+          setIsReportModalOpen(false);
+          handleExecute(true, updatedTemplate);
         }}
       />
+
       {/* Problem Diagram Fullscreen Zoom Lightbox */}
       {zoomedDiagram && (
         <div 
@@ -4524,31 +4427,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         </div>
       )}
 
-      {/* Student Problem Report Modal with AI Auto-Healing */}
-      <ProblemReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        problemTitle={cleanTitle}
-        problemSlug={currentProblemSlug}
-        language={language}
-        currentInput={testInput}
-        expectedOutput={currentExpectedOutput}
-        actualOutput={executionResult?.stdout}
-        studentCode={code}
-        onAutoHealComplete={(healedType) => {
-          if (healedType === 'driver') {
-            const drv = getDefaultDriverForProblem(currentProblemSlug, language);
-            if (drv) {
-              setProblemTemplate(prev => ({
-                ...prev,
-                driverCode: { ...(prev.driverCode || {}), [language]: drv } as Record<SupportedLanguage, string>
-              }));
-            }
-          }
-        }}
-      />
-
-    </div>
+      </div>
   );
 };
 

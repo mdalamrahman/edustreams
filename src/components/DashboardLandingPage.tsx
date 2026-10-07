@@ -37,7 +37,8 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgProblemSolvedToday,
-  checkLeetCodeProfilePrivacy
+  checkLeetCodeProfilePrivacy,
+  verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
 
 interface DashboardLandingPageProps {
@@ -169,6 +170,28 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
+
+  // Proactive background auto-verification for LeetCode POTD
+  useEffect(() => {
+    if (lcPotd && linkedConfig.leetcodeUsername?.trim()) {
+      const alreadySolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
+      if (!alreadySolved) {
+        verifyLeetCodePotdSubmission(
+          linkedConfig.leetcodeUsername.trim(),
+          lcPotd.titleSlug,
+          lcPotd.title,
+          lcPotd.date || today
+        ).then(res => {
+          if (res.verified) {
+            localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+            localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+            window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+            setSolveEventCount(c => c + 1);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [lcPotd, linkedConfig.leetcodeUsername, today]);
 
   // Check Card A: SDETube SDE POTD solved status TODAY
   const isSdePotdSolved = useMemo(() => {

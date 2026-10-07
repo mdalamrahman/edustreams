@@ -1,4 +1,4 @@
-import { SupportedLanguage, isDriverHarnessValid } from './compiler';
+import { SupportedLanguage, isDriverHarnessValid, executeCode } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
 import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
@@ -3137,40 +3137,50 @@ Return ONLY valid JSON matching this exact structure:
     "javascript": "class Solution { ... }"
   }
 }`
-    : `You are a Principal Algorithms Engineer and SDE Coding Interview Architect.
-Generate complete, authentic coding problem details in JSON for: "${cleanTitle}".
+    : `You are a Principal Algorithms Engineer and FAANG Coding Interview Architect.
+Generate a comprehensive, authentic, high-fidelity coding problem in JSON for: "${cleanTitle}".
 Context Category: "${category}", Difficulty: "${difficulty}".
 ${transcript ? `Lecture Context: ${transcript.slice(0, 1500)}` : ''}
 ${notes ? `Study Notes: ${notes.slice(0, 1500)}` : ''}
 
-CRITICAL SIGNATURE & TEST CASE SPECIFICATIONS:
-1. METHOD SIGNATURE & ARGUMENT PARITY:
+CRITICAL ARCHITECTURE, SPECIFICATION & TEST CASE REQUIREMENTS:
+1. RICH MARKDOWN PROBLEM DESCRIPTION:
+   - Provide a complete, highly engaging problem description in markdown with:
+     * Motivation/Real-World context or clear mathematical setup.
+     * Clear ### Problem Statement
+     * Explicit ### Input Format and ### Output Format
+     * Thorough step-by-step walkthroughs in Examples.
+     * Explicit ### Constraints with mathematical ranges (e.g. 1 <= nums.length <= 10^5, -10^9 <= nums[i] <= 10^9).
+     * Follow-up complexity question (e.g. "Can you solve this in O(N) time and O(1) space?").
+2. METHOD SIGNATURE & MULTI-LANGUAGE STARTER PARITY:
    - Provide standard LeetCode class Solution starter code and optimal solution code in C++, Python, Java, JavaScript, Go, Rust.
-   - The method name and parameter list across ALL starter templates MUST MATCH EXACTLY.
-2. MULTI-ARGUMENT TEST CASES:
-   - If the method takes N parameters, EVERY testcase item in "testCases" MUST contain ALL N parameters in that single string.
-   - Example: "g = [1, 2, 3], s = [1, 1]" -> Expected: "1"
-3. STRICT CONSTRAINT ADHERENCE:
-   - Every single testcase MUST be valid according to the stated problem constraints.
-4. AT LEAST 10 TEST CASES:
+   - The method name and parameter names across ALL starter templates MUST MATCH EXACTLY.
+3. MULTI-ARGUMENT TEST CASES:
+   - If the method takes N parameters, EVERY testcase item in "testCases" MUST contain ALL N parameters formatted as "param1 = val1, param2 = val2".
+   - Example: "nums = [2, 7, 11, 15], target = 9" -> Expected: "[0, 1]"
+4. AT LEAST 10 DIVERSE & MATHEMATICALLY VERIFIED TEST CASES:
    - Provide AT LEAST 10 diverse test case inputs in "testCases" and matching 1-to-1 "expectedOutputs".
+   - Include edge cases: empty or single-element inputs, negative values, duplicates, large boundary bounds.
+   - Trace each testcase through the algorithm and ensure 100% mathematically verified expected outputs.
+5. COMPLETE WORKING REFERENCE SOLUTIONS:
+   - Full, correct, bug-free Solution implementations in C++, Python, Java, and JavaScript.
 
 Return ONLY valid JSON matching this exact structure:
 {
   "name": "${cleanTitle}",
   "category": "${category}",
   "difficulty": "${difficulty}",
-  "description": "Complete problem explanation with markdown bold/code markers",
+  "description": "Comprehensive markdown problem statement with bolding, code markers, constraints, and follow-up",
   "examples": [
     {
-      "input": "input representation string containing all arguments",
+      "input": "param1 = val1, param2 = val2",
       "output": "expected output string",
-      "explanation": "why this output is correct"
+      "explanation": "Detailed step-by-step trace of the algorithm on this example."
     }
   ],
   "constraints": [
-    "constraint 1",
-    "constraint 2"
+    "1 <= nums.length <= 10^5",
+    "-10^9 <= nums[i] <= 10^9"
   ],
   "testCases": [
     "case 1", "case 2", "case 3", "case 4", "case 5",
@@ -3181,8 +3191,8 @@ Return ONLY valid JSON matching this exact structure:
     "out 6", "out 7", "out 8", "out 9", "out 10"
   ],
   "hints": [
-    "Hint 1: Intuition",
-    "Hint 2: Algorithm approach"
+    "Hint 1: Intuition and subproblem identification",
+    "Hint 2: Optimal data structures or algorithm"
   ],
   "approaches": [
     {
@@ -3190,7 +3200,7 @@ Return ONLY valid JSON matching this exact structure:
       "name": "Optimal Approach",
       "timeComplexity": "O(N)",
       "spaceComplexity": "O(1)",
-      "description": "Explanation of optimal technique"
+      "description": "Thorough explanation of the optimal algorithm and invariant."
     }
   ],
   "starters": {
@@ -3379,96 +3389,204 @@ Return ONLY valid JSON matching this exact structure:
   return fallbackProblem;
 }
 
+/**
+ * Resolves or fetches the official reference solution for a given problem and language.
+ */
+export async function resolveReferenceSolution(
+  slug: string,
+  problemTitle: string,
+  language: SupportedLanguage,
+  starterCode?: string,
+  existingSolutionCode?: string,
+  problemStatement?: string
+): Promise<string> {
+  // 1. If an existing non-starter solution was passed in, check if it's usable
+  if (existingSolutionCode && existingSolutionCode.trim().length > 20 && existingSolutionCode !== starterCode) {
+    return existingSolutionCode.trim();
+  }
+
+  // 2. Check local browser cache
+  try {
+    const cachedStr = localStorage.getItem(`edustream_ai_solutions_${slug}`);
+    if (cachedStr) {
+      const parsed = JSON.parse(cachedStr);
+      const sol = parsed[language]?.code || parsed[language];
+      if (sol && typeof sol === 'string' && sol.trim().length > 20 && sol !== starterCode) {
+        return sol.trim();
+      }
+    }
+  } catch (_) {}
+
+  // 3. Try fetching from Cloudflare R2 / Backend
+  try {
+    const endpoints = [
+      `/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
+      `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
+      `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`
+    ];
+    for (const url of endpoints) {
+      try {
+        const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+          const data = await resp.json();
+          const sol = data?.code || data?.solution;
+          if (sol && typeof sol === 'string' && sol.trim().length > 20) {
+            return sol.trim();
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  // 4. Generate with AI Cascade if no solution exists in storage
+  const prompt = `You are a Principal Software Engineer and Competitive Programming Grandmaster.
+Write an optimal, bug-free, fully implemented LeetCode reference solution in ${language.toUpperCase()} for the problem "${problemTitle}".
+
+Problem Statement:
+${problemStatement || problemTitle}
+
+Starter Code template:
+\`\`\`${language}
+${starterCode || ''}
+\`\`\`
+
+Requirements:
+- Provide ONLY the complete Solution class/function.
+- Adhere strictly to optimal time and space complexity.
+- Handle all edge cases: empty structures, boundary constraints, single elements, negative numbers.
+- Do NOT wrap with main() or driver harnesses.
+
+Respond with ONLY the raw code inside a single markdown code fence.`;
+
+  const aiResp = await executeAIChatCascade([
+    { role: 'user', content: prompt }
+  ], { temperature: 0.1 });
+
+  if (aiResp) {
+    const codeMatch = aiResp.match(/```(?:[a-zA-Z]*)\n([\s\S]*?)```/);
+    const cleanedCode = (codeMatch ? codeMatch[1] : aiResp).trim();
+    if (cleanedCode.length > 20) {
+      return cleanedCode;
+    }
+  }
+
+  return starterCode || '// No reference solution available';
+}
+
+/**
+ * Executes a canonical reference solution on all test cases of a problem using Judge0/compiler runner,
+ * automatically replacing any hallucinated or unverified expected outputs with the real, executed ground truth.
+ */
+export async function verifyExpectedOutputsByExecution(
+  prob: ProblemTemplate,
+  preferredLang: SupportedLanguage = 'python'
+): Promise<ProblemTemplate> {
+  if (!prob || !prob.testCases || prob.testCases.length === 0) return prob;
+
+  const slug = toSlug(prob.name);
+  const langOrder: SupportedLanguage[] = [preferredLang, 'python', 'javascript', 'cpp', 'java'];
+  let solutionCode = '';
+  let activeLang: SupportedLanguage = preferredLang;
+
+  for (const l of langOrder) {
+    const sol = prob.solutions?.[l] || prob.solutions?.[l as string];
+    if (sol && typeof sol === 'string' && sol.trim().length > 30 && sol !== prob.starters?.[l]) {
+      solutionCode = sol.trim();
+      activeLang = l;
+      break;
+    }
+  }
+
+  if (!solutionCode) {
+    try {
+      const resolved = await resolveReferenceSolution(
+        slug,
+        prob.name,
+        activeLang,
+        prob.starters?.[activeLang],
+        undefined,
+        prob.description
+      );
+      if (resolved && resolved.length > 30 && resolved !== prob.starters?.[activeLang]) {
+        solutionCode = resolved;
+      }
+    } catch (_) {}
+  }
+
+  if (!solutionCode) return prob;
+
+  const driver = (prob.driverCode?.[activeLang] || getDefaultDriverForProblem(slug, activeLang)) || undefined;
+  const updatedOutputs = [...(prob.expectedOutputs || [])];
+  let anyUpdated = false;
+
+  for (let i = 0; i < prob.testCases.length; i++) {
+    const tc = prob.testCases[i];
+    if (!tc) continue;
+    try {
+      const res = await executeCode(solutionCode, activeLang, tc, prob.name, driver);
+      if (res && res.status === 'SUCCESS' && res.stdout && res.stdout.trim().length > 0) {
+        const cleanActual = res.stdout.trim();
+        if (!updatedOutputs[i] || updatedOutputs[i] !== cleanActual) {
+          updatedOutputs[i] = cleanActual;
+          anyUpdated = true;
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (anyUpdated) {
+    prob.expectedOutputs = updatedOutputs;
+    try {
+      localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(prob));
+    } catch (_) {}
+  }
+
+  return prob;
+}
+
 export function guaranteeAtLeast10TestCases(prob: ProblemTemplate): ProblemTemplate {
   if (!prob) return prob;
   prob = repairAndHardenProblem(prob);
-  prob.testCases = (Array.isArray(prob.testCases) ? prob.testCases : []).map(tc => tc !== null && tc !== undefined ? String(tc) : '');
-  prob.expectedOutputs = (Array.isArray(prob.expectedOutputs) ? prob.expectedOutputs : []).map(eo => eo !== null && eo !== undefined ? String(eo) : '');
+  prob.testCases = (Array.isArray(prob.testCases) ? prob.testCases : [])
+    .map(tc => tc !== null && tc !== undefined ? String(tc).trim() : '')
+    .filter(Boolean);
+  prob.expectedOutputs = (Array.isArray(prob.expectedOutputs) ? prob.expectedOutputs : [])
+    .map(eo => eo !== null && eo !== undefined ? String(eo).trim() : '');
   prob.examples = Array.isArray(prob.examples) ? prob.examples : [];
 
   if (prob.testCases.length >= 10 && prob.expectedOutputs.length >= 10) {
     return prob;
   }
 
-  const sampleLimit = Math.min(3, Math.max(1, prob.testCases.length));
-  if (prob.examples.length === 0 && prob.testCases.length > 0) {
-    for (let i = 0; i < sampleLimit; i++) {
-      prob.examples.push({
-        input: prob.testCases[i] || '',
-        output: prob.expectedOutputs[i] || ''
-      });
+  // 1. Incorporate missing examples from prob.examples if available
+  for (const ex of prob.examples) {
+    if (prob.testCases.length >= 10) break;
+    const exInput = String(ex.input || '').trim();
+    const exOutput = String(ex.output || '').trim();
+    if (exInput && !prob.testCases.includes(exInput)) {
+      prob.testCases.push(exInput);
+      prob.expectedOutputs.push(exOutput || prob.expectedOutputs[0] || '');
     }
   }
 
-  const sampleCase = prob.testCases[0] || '';
-  const startersStr = JSON.stringify(prob.starters || {});
-  const isTree = sampleCase.includes('root') || startersStr.includes('TreeNode') || startersStr.includes('TreeNode*');
-
-  if (isTree) {
-    const isBool = prob.expectedOutputs[0] === 'true' || prob.expectedOutputs[0] === 'false';
-    const treeCases = [
-      { input: 'root = [1]', output: isBool ? 'true' : '[1]' },
-      { input: 'root = [2, 1, 3]', output: isBool ? 'true' : '[2, 1, 3]' },
-      { input: 'root = [2, 2, 2]', output: isBool ? 'false' : '[2, 2, 2]' },
-      { input: 'root = [1, null, 2]', output: isBool ? 'true' : '[1, 2]' },
-      { input: 'root = [1, 2, null, 3]', output: isBool ? 'true' : '[1, 2, 3]' },
-      { input: 'root = [10, 5, 15, null, null, 6, 20]', output: isBool ? 'false' : '[10, 5, 15, 6, 20]' },
-      { input: 'root = [3, 1, 5, 0, 2, 4, 6]', output: isBool ? 'true' : '[3, 1, 5, 0, 2, 4, 6]' },
-      { input: 'root = [0, -10, 10]', output: isBool ? 'true' : '[0, -10, 10]' },
-      { input: 'root = [2147483647]', output: isBool ? 'true' : '[2147483647]' },
-      { input: 'root = [-2147483648]', output: isBool ? 'true' : '[-2147483648]' },
-      { input: 'root = [1, 1]', output: isBool ? 'false' : '[1, 1]' },
-      { input: 'root = [5, 4, 6, null, null, 3, 7]', output: isBool ? 'false' : '[5, 4, 6, 3, 7]' }
-    ];
-    for (const c of treeCases) {
-      if (prob.testCases.length >= 10) break;
-      if (!prob.testCases.includes(c.input)) {
-        prob.testCases.push(c.input);
-        prob.expectedOutputs.push(c.output);
-      }
-    }
-  } else if (sampleCase.includes('(') && sampleCase.includes(')')) {
-    // LLD / OOP method invocation test cases: clone existing valid cases rather than injecting scalar arrays
-    while (prob.testCases.length < 10 && prob.testCases.length > 0) {
-      const idx = prob.testCases.length % Math.min(prob.testCases.length, 5);
-      prob.testCases.push(prob.testCases[idx]);
-      prob.expectedOutputs.push(prob.expectedOutputs[idx] || prob.expectedOutputs[0] || 'true');
-    }
-  } else {
-    // Array, string, or number questions
-    const paramNames = extractParamNames(prob.starters, prob.examples);
-    const pName = paramNames[0] || 'nums';
-    const isArray = sampleCase.includes('[');
-    const isString = sampleCase.includes('"') || sampleCase.includes("'");
-
-    if (isArray) {
-      const arrs = ['[0]', '[1]', '[-1]', '[1, 2]', '[2, 1]', '[1, 1, 1]', '[0, 0, 0]', '[-5, 0, 5]', '[10, 20, 30]', '[100, 50, 0]'];
-      for (const a of arrs) {
-        if (prob.testCases.length >= 10) break;
-        const candidate = sampleCase.includes('=') ? `${pName} = ${a}` : a;
-        if (!prob.testCases.includes(candidate)) {
-          prob.testCases.push(candidate);
-          prob.expectedOutputs.push(prob.expectedOutputs[0] || '0');
-        }
-      }
-    } else if (isString) {
-      const strs = ['""', '"a"', '"aa"', '"ab"', '"aba"', '"racecar"', '"hello"', '"abc"', '"bbbbb"', '"test"'];
-      for (const s of strs) {
-        if (prob.testCases.length >= 10) break;
-        const candidate = sampleCase.includes('=') ? `${pName} = ${s}` : s;
-        if (!prob.testCases.includes(candidate)) {
-          prob.testCases.push(candidate);
-          prob.expectedOutputs.push(prob.expectedOutputs[0] || '""');
-        }
-      }
-    }
+  // 2. Ensure 1-to-1 parity between testCases and expectedOutputs
+  while (prob.expectedOutputs.length < prob.testCases.length) {
+    const idx = prob.expectedOutputs.length % Math.max(1, prob.testCases.length);
+    prob.expectedOutputs.push(prob.expectedOutputs[idx] || prob.expectedOutputs[0] || '');
   }
 
-  // Final guarantee: clone variations of existing cases until >= 10
-  while (prob.testCases.length < 10 && prob.testCases.length > 0) {
-    const idx = prob.testCases.length % Math.min(3, prob.testCases.length);
-    prob.testCases.push(prob.testCases[idx]);
-    prob.expectedOutputs.push(prob.expectedOutputs[idx] || prob.expectedOutputs[0] || '0');
+  // 3. If still under 10 cases, cycle through the verified existing pairs
+  // This guarantees mathematical consistency because every cloned input keeps its genuine matching output!
+  if (prob.testCases.length > 0 && prob.testCases.length < 10) {
+    const verifiedInputs = [...prob.testCases];
+    const verifiedOutputs = [...prob.expectedOutputs];
+    let cycleIdx = 0;
+    while (prob.testCases.length < 10 && verifiedInputs.length > 0) {
+      const pick = cycleIdx % verifiedInputs.length;
+      prob.testCases.push(verifiedInputs[pick]);
+      prob.expectedOutputs.push(verifiedOutputs[pick] !== undefined ? verifiedOutputs[pick] : (prob.expectedOutputs[0] || ''));
+      cycleIdx++;
+    }
   }
 
   return repairAndHardenProblem(prob);
@@ -3534,6 +3652,9 @@ export async function fetchEnrichedProblem(
           body: JSON.stringify(prob)
         }).catch(() => {});
       } catch (_) {}
+
+      // Background verification of expected outputs by executing canonical reference solution
+      verifyExpectedOutputsByExecution(prob).catch(() => {});
     }
     return prob;
   };

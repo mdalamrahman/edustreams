@@ -24,6 +24,18 @@
       "destination": "/api/leetcode/question"
     },
     {
+      "source": "/api/leetcode/verify-potd",
+      "destination": "/api/leetcode/verify-potd"
+    },
+    {
+      "source": "/api/leetcode/profile",
+      "destination": "/api/leetcode/profile"
+    },
+    {
+      "source": "/api/leetcode/full-profile/(.*)",
+      "destination": "/api/leetcode/profile?username=$1"
+    },
+    {
       "source": "/stream/(.*)",
       "destination": "https://edustream-backend-90vm.onrender.com/stream/$1"
     },

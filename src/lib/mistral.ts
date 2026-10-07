@@ -1,6 +1,6 @@
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
-import { executeCode, compareOutputs, SupportedLanguage } from './compiler';
+import { executeCode, compareOutputs, SupportedLanguage, isDriverHarnessValid } from './compiler';
 
 export const MISTRAL_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_API_KEY) || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
 export const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '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';
@@ -1069,14 +1069,45 @@ Return ONLY raw executable code containing '// === USER SOLUTION ===' and '// ==
   if (code) {
     let cleanCode = code.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
     if (cleanCode && cleanCode.length > 50) {
-      try {
-        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/driver/${encodeURIComponent(normLang)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ driverCode: cleanCode })
-        }).catch(() => {});
-      } catch (_) {}
-      return cleanCode;
+      // Validate driver structure before storage
+      let isValid = isDriverHarnessValid(cleanCode, normLang as SupportedLanguage, starterCode);
+
+      // If invalid, attempt a targeted 1-shot self-healing repair
+      if (!isValid) {
+        console.warn(`[requestAIDriverGeneration] Driver failed validation for ${cleanSlug}. Attempting 1-shot repair...`);
+        const repairPrompt = `${prompt}
+
+CRITICAL FIX REQUIRED: Your previous generated driver failed validation.
+Ensure:
+1. Place '// === USER SOLUTION ===' on its own line before any Solution instantiation.
+2. If the problem uses TreeNode, ListNode, or Node, define the struct/class AT THE VERY TOP before '// === USER SOLUTION ==='.
+3. DO NOT use 'cin >>' or 'getline(cin'.
+4. Include <iostream> and 'using namespace std;'.
+Output ONLY the corrected driver code.`;
+
+        const retryCode = await executeAIChatCascade([
+          { role: 'user', content: repairPrompt }
+        ], { temperature: 0.1 });
+
+        if (retryCode) {
+          const cleanRetry = retryCode.replace(/^```[a-zA-Z]*\n/, '').replace(/\n```$/, '').trim();
+          if (cleanRetry && isDriverHarnessValid(cleanRetry, normLang as SupportedLanguage, starterCode)) {
+            cleanCode = cleanRetry;
+            isValid = true;
+          }
+        }
+      }
+
+      if (isValid) {
+        try {
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/driver/${encodeURIComponent(normLang)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverCode: cleanCode })
+          }).catch(() => {});
+        } catch (_) {}
+        return cleanCode;
+      }
     }
   }
 
@@ -1802,11 +1833,18 @@ ${JSON.stringify(existingCases)}
 Existing Sample Expected Outputs:
 ${JSON.stringify(existingOutputs)}
 
-CRITICAL FORMAT REQUIREMENTS:
+CRITICAL FORMAT & MATHEMATICAL ACCURACY REQUIREMENTS:
 1. Preserve all existing sample testcases at indices 0 to ${Math.max(0, existingCases.length - 1)} so they remain the public sample cases.
-2. Every testcase input string MUST follow the exact parameter syntax of existing cases (e.g. if existing cases use '${sampleFormat.slice(0, 40)}', all new cases MUST follow this exact same syntax). DO NOT use raw JSON objects or raw unassigned values.
-3. Generate AT LEAST 10 total test cases (add diverse edge cases: n=0, n=1, empty, single element, negative numbers, duplicates, boundary bounds, deep subtrees).
-4. Calculate 100% mathematically verified expected outputs matching each testcase.
+2. Every testcase input string MUST follow the exact parameter syntax of existing cases (e.g. if existing cases use '${sampleFormat.slice(0, 40)}', all new cases MUST follow this exact same syntax with parameter assignment, e.g. "param1 = val1, param2 = val2"). DO NOT use raw unassigned JSON objects.
+3. Generate AT LEAST 10 total test cases with diverse algorithmic coverage:
+   - Boundary & minimal inputs: n=0, n=1, empty structures, single elements.
+   - Extreme values: negative numbers, zero, INT_MAX/INT_MIN bounds if applicable.
+   - Redundancy & ordering: duplicates, all elements equal, sorted vs reverse-sorted.
+   - Scale & depth edge cases.
+4. Calculate 100% mathematically verified expected outputs matching each testcase:
+   - TRACE each testcase step-by-step through the optimal algorithm.
+   - Ensure format consistency: lowercase booleans ('true', 'false'), array brackets ('[1, 2]'), clean strings ('"result"').
+   - NEVER guess or output dummy strings.
 5. Return ONLY a valid JSON object matching:
 {
   "testCases": ["... minimum 10 input strings ..."],
@@ -1830,7 +1868,7 @@ CRITICAL FORMAT REQUIREMENTS:
           const eo = String(parsed.expectedOutputs?.[i] ?? '').trim();
           if (tc && !mergedCases.includes(tc)) {
             mergedCases.push(tc);
-            mergedOutputs.push(eo);
+            mergedOutputs.push(eo || mergedOutputs[0] || '');
           }
         }
         if (mergedCases.length >= 10) {

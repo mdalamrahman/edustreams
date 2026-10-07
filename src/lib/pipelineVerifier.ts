@@ -1,5 +1,5 @@
 import { executeCode, SupportedLanguage, compareOutputs, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from './compiler';
-import { getDefaultDriverForProblem, fetchOrGenerateDriverCode, toSlug } from './problemService';
+import { getDefaultDriverForProblem, fetchOrGenerateDriverCode, toSlug, resolveReferenceSolution } from './problemService';
 import { executeAIChatCascade } from './mistral';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 
@@ -98,90 +98,6 @@ export function isOutputValidForTestCase(
   const expStr = String(expectedOutput ?? '').trim();
   if (!expStr) return stdout.trim().length > 0;
   return compareOutputs(stdout, expStr);
-}
-
-/**
- * Resolves or fetches the backend reference solution for a given problem and language.
- */
-async function resolveReferenceSolution(
-  slug: string,
-  problemTitle: string,
-  language: SupportedLanguage,
-  starterCode?: string,
-  existingSolutionCode?: string,
-  problemStatement?: string
-): Promise<string> {
-  // 1. If an existing non-starter solution was passed in, check if it's usable
-  if (existingSolutionCode && existingSolutionCode.trim().length > 20 && existingSolutionCode !== starterCode) {
-    return existingSolutionCode.trim();
-  }
-
-  // 2. Check local browser cache
-  try {
-    const cachedStr = localStorage.getItem(`edustream_ai_solutions_${slug}`);
-    if (cachedStr) {
-      const parsed = JSON.parse(cachedStr);
-      const sol = parsed[language]?.code || parsed[language];
-      if (sol && typeof sol === 'string' && sol.trim().length > 20 && sol !== starterCode) {
-        return sol.trim();
-      }
-    }
-  } catch (_) {}
-
-  // 3. Try fetching from Cloudflare R2 / Backend
-  try {
-    const endpoints = [
-      `/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
-      `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
-      `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`
-    ];
-    for (const url of endpoints) {
-      try {
-        const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
-        if (resp.ok) {
-          const data = await resp.json();
-          const sol = data?.code || data?.solution;
-          if (sol && typeof sol === 'string' && sol.trim().length > 20) {
-            return sol.trim();
-          }
-        }
-      } catch (_) {}
-    }
-  } catch (_) {}
-
-  // 4. Generate with AI Cascade if no solution exists in storage
-  const prompt = `You are a Principal Software Engineer and Competitive Programming Grandmaster.
-Write an optimal, bug-free, fully implemented LeetCode reference solution in ${language.toUpperCase()} for the problem "${problemTitle}".
-
-Problem Statement:
-${problemStatement || problemTitle}
-
-Starter Code template:
-\`\`\`${language}
-${starterCode || ''}
-\`\`\`
-
-Requirements:
-- Provide ONLY the complete Solution class/function.
-- Adhere strictly to optimal time and space complexity.
-- Handle all edge cases: empty structures, boundary constraints, single elements, negative numbers.
-- Do NOT wrap with main() or driver harnesses.
-
-Respond with ONLY the raw code inside a single markdown code fence.`;
-
-  const aiResp = await executeAIChatCascade([
-    { role: 'user', content: prompt }
-  ], { temperature: 0.1 });
-
-  if (aiResp) {
-    const codeMatch = aiResp.match(/```(?:[a-zA-Z]*)\n([\s\S]*?)```/);
-    const cleanedCode = (codeMatch ? codeMatch[1] : aiResp).trim();
-    if (cleanedCode.length > 20) {
-      return cleanedCode;
-    }
-  }
-
-  return starterCode || '// No reference solution available';
 }
 
 /**

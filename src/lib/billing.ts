@@ -864,6 +864,48 @@ export function creditUserReward(
 }
 
 /**
+ * Consolidated idempotent bug bounty claim for problem / testcase / driver repairs.
+ * Ensures reward is credited only once per problem per user across all report channels.
+ */
+export function claimReportBounty(
+  problemSlug: string,
+  problemTitle: string,
+  issueType: 'testcase' | 'driver' | 'problem' = 'testcase',
+  email?: string
+): { success: boolean; rewardedAmount: number; newBalance?: number; alreadyClaimed: boolean } {
+  const activeEmail = getActiveEmail(email);
+  const bountyClaimKey = `edustream_bounty_claimed_${problemSlug}_${activeEmail}`;
+  const legacyTestcaseKey = `edustream_bounty_claimed_testcase_${problemSlug}_${activeEmail}`;
+  const legacyDriverKey = `edustream_bounty_claimed_driver_${problemSlug}_${activeEmail}`;
+
+  try {
+    if (
+      localStorage.getItem(bountyClaimKey) ||
+      localStorage.getItem(legacyTestcaseKey) ||
+      localStorage.getItem(legacyDriverKey)
+    ) {
+      return { success: true, rewardedAmount: 0, alreadyClaimed: true };
+    }
+  } catch {}
+
+  const description = `🎉 Bug Bounty: ₹1.00 credited for finding and auto-resolving ${issueType} issue in ${problemTitle}`;
+  const credit = creditUserReward(1.00, description, activeEmail);
+
+  try {
+    localStorage.setItem(bountyClaimKey, '1');
+    localStorage.setItem(legacyTestcaseKey, '1');
+    localStorage.setItem(legacyDriverKey, '1');
+  } catch {}
+
+  return {
+    success: true,
+    rewardedAmount: 1.00,
+    newBalance: credit.newBalance,
+    alreadyClaimed: false
+  };
+}
+
+/**
  * Submits a new UPI recharge top-up request to Database.
  */
 export function submitTopupRequest(payload: {

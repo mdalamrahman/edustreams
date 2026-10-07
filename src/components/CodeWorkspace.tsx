@@ -26,6 +26,7 @@ import { WalletTopupModal } from './WalletTopupModal';
 import { LeetCodeWorkspaceModal } from './LeetCodeWorkspaceModal';
 
 import { AIProcessingStatusCard } from './AIProcessingStatusCard';
+import { registerLeetCodeCompletionProviders } from '../lib/monacoEditorSuggestions';
 
 interface CodeWorkspaceProps {
   question?: QuizQuestion;
@@ -216,6 +217,7 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
   };
 
   const handleEditorMount: OnMount = (editor, monaco) => {
+    registerLeetCodeCompletionProviders(monaco);
     editor.addAction({
       id: 'run-code',
       label: 'Run Code',

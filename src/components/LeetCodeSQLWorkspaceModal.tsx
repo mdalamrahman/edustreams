@@ -53,7 +53,7 @@ import { deductCredits, canAffordAction, PRICING_CONFIG } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { WalletTopupModal } from './WalletTopupModal';
-import { ReportTestCaseModal } from './ReportTestCaseModal';
+import { UnifiedReportModal } from './UnifiedReportModal';
 import { toSlug } from '../lib/problemService';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
@@ -1939,8 +1939,8 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         initialAmount={50}
       />
 
-      {/* AI Testcase Inspector & Repair Modal */}
-      <ReportTestCaseModal
+      {/* Unified AI Issue Inspector & Repair Modal */}
+      <UnifiedReportModal
         isOpen={isReportTestCaseOpen}
         onClose={() => setIsReportTestCaseOpen(false)}
         problemTitle={sqlProblem.title || cleanTitle}
@@ -1952,7 +1952,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         currentExpectedOutput={judgeResult ? JSON.stringify(judgeResult.expectedRows || []) : ''}
         userActualOutput={judgeResult ? JSON.stringify(judgeResult.rows || judgeResult.errorMessage || '') : undefined}
         language="sql"
-        onApplyCorrection={(correctedInput, correctedExpected) => {
+        onApplyTestCaseCorrection={(correctedInput, correctedExpected) => {
           // SQL testcase correction handled
         }}
       />

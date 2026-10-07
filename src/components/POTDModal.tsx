@@ -11,7 +11,8 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgProblemSolvedToday,
-  checkLeetCodeProfilePrivacy
+  checkLeetCodeProfilePrivacy,
+  verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
 
 interface POTDModalProps {
@@ -225,21 +226,37 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     setIsVerifyingLc(true);
     setLcVerifyMessage(`Querying LeetCode for @${username}...`);
     try {
-      const profile = await fetchLeetCodeFullProfile(username, true);
-      if (profile) {
-        setLeetcodeProfile(profile);
-        const solved = lcPotd ? isLeetCodeProblemSolvedToday(profile, lcPotd.titleSlug, lcPotd.title, lcPotd.date) : false;
-        if (solved) {
-          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
-          setIsSolvedEventTriggered(prev => prev + 1);
-          setLcVerifyMessage('Verified! Solved today on LeetCode ✓');
-        } else {
-          setLcVerifyMessage(`No accepted submission for today found yet on @${username}. If you just submitted, please wait ~30s or use "Mark as Solved" below.`);
-        }
+      const verifyRes = await verifyLeetCodePotdSubmission(
+        username,
+        lcPotd?.titleSlug,
+        lcPotd?.title,
+        lcPotd?.date || today
+      );
+
+      if (verifyRes.verified) {
+        localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+        localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+        window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+        setIsSolvedEventTriggered(prev => prev + 1);
+        setLcVerifyMessage('Verified! Solved today on LeetCode ✓');
       } else {
-        setLcVerifyMessage(`Could not fetch profile for @${username}. You can mark it as solved manually below.`);
+        // Also try fetching profile to refresh profile stats
+        const profile = await fetchLeetCodeFullProfile(username, true);
+        if (profile) {
+          setLeetcodeProfile(profile);
+          const solved = lcPotd ? isLeetCodeProblemSolvedToday(profile, lcPotd.titleSlug, lcPotd.title, lcPotd.date) : false;
+          if (solved) {
+            localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+            localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+            window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+            setIsSolvedEventTriggered(prev => prev + 1);
+            setLcVerifyMessage('Verified! Solved today on LeetCode ✓');
+          } else {
+            setLcVerifyMessage(`No accepted submission for today found yet on @${username}. If you just submitted, please wait ~30s or use "Mark as Solved" below.`);
+          }
+        } else {
+          setLcVerifyMessage(`Could not reach LeetCode for @${username}. You can mark it as solved manually below.`);
+        }
       }
     } catch {
       setLcVerifyMessage('Network check failed. You can mark it as solved manually below.');
@@ -375,6 +392,25 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     loadLeetCodePOTD();
     loadGfgPOTD();
   }, []);
+
+  // Proactive background auto-verification when POTD details are resolved
+  useEffect(() => {
+    if (lcPotd && linkedConfig.leetcodeUsername?.trim() && !isLcPotdSolved) {
+      verifyLeetCodePotdSubmission(
+        linkedConfig.leetcodeUsername.trim(),
+        lcPotd.titleSlug,
+        lcPotd.title,
+        lcPotd.date || today
+      ).then(res => {
+        if (res.verified) {
+          localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'leetcode', date: today } }));
+          setIsSolvedEventTriggered(prev => prev + 1);
+        }
+      }).catch(() => {});
+    }
+  }, [lcPotd, linkedConfig.leetcodeUsername, isLcPotdSolved, today]);
 
   const isRefreshingAny = isLoadingLc || isLoadingGfg;
 

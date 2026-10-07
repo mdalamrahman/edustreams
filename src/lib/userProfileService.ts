@@ -314,7 +314,22 @@ export async function fetchLeetCodeFullProfile(username: string, forceRefresh = 
     return data;
   };
 
-  // 1. Try Backend FastAPI GraphQL Proxy
+  // 1. Try local Serverless Edge Proxy (Zero CORS & Instant response)
+  try {
+    const localRes = await fetch(`/api/leetcode/profile?username=${encodeURIComponent(clean)}`, {
+      signal: AbortSignal.timeout(6000)
+    });
+    if (localRes.ok) {
+      const data = await localRes.json();
+      if (data && (data.matchedUser || data.allQuestionsCount || data.recentSubmissionList || data.recentAcSubmissionList)) {
+        return normalizeLeetCodeData(data);
+      }
+    }
+  } catch (err) {
+    // Ignore local edge failure in non-Vercel dev environment
+  }
+
+  // 2. Try Backend FastAPI GraphQL Proxy
   try {
     const res = await fetch(`${TELEGRAM_BACKEND_URL}/api/leetcode/full-profile/${encodeURIComponent(clean)}${queryParam}`, {
       signal: AbortSignal.timeout(8000)
@@ -1660,3 +1675,65 @@ export function checkLeetCodeProfilePrivacy(profile: LeetCodeFullProfileData | n
     settingsUrl
   };
 }
+
+/**
+ * High-reliability POTD verification query:
+ * Tries the zero-CORS serverless edge function /api/leetcode/verify-potd first,
+ * then falls back to full profile analysis.
+ */
+export async function verifyLeetCodePotdSubmission(
+  username: string,
+  targetSlug?: string,
+  targetTitle?: string,
+  date?: string
+): Promise<{ verified: boolean; message?: string; method?: string }> {
+  const clean = (username || '').trim();
+  if (!clean) return { verified: false, message: 'No LeetCode username provided' };
+
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+
+  // 1. Direct Edge Serverless Endpoint (Zero Browser CORS)
+  try {
+    const params = new URLSearchParams({
+      username: clean,
+      slug: targetSlug || '',
+      title: targetTitle || '',
+      date: targetDate
+    });
+    const res = await fetch(`/api/leetcode/verify-potd?${params.toString()}`, {
+      signal: AbortSignal.timeout(7000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.verified) {
+        return {
+          verified: true,
+          method: data.matchedBy || 'serverless_edge',
+          message: data.message || 'Verified via LeetCode'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[verifyLeetCodePotdSubmission] Serverless edge query notice:', err);
+  }
+
+  // 2. Full Profile Analysis Fallback
+  try {
+    const profile = await fetchLeetCodeFullProfile(clean, true);
+    if (profile) {
+      const isSolved = isLeetCodeProblemSolvedToday(profile, targetSlug, targetTitle, targetDate);
+      if (isSolved) {
+        return {
+          verified: true,
+          method: 'profile_fallback',
+          message: 'Verified via LeetCode profile'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[verifyLeetCodePotdSubmission] Profile check fallback failed:', err);
+  }
+
+  return { verified: false, message: 'No accepted submission found for today on LeetCode' };
+}
+
