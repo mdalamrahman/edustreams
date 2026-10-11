@@ -44,7 +44,8 @@ c:\Users\User\Desktop\edustream\
 ├── scratch/                 # Ad-hoc migration, verification, and inspection scripts
 ├── vercel.json              # Vercel deployment & rewrite configuration
 ├── package.json             # NPM project manifest & build scripts
-└── context.md               # Master system documentation (this file)
+├── context.md               # Codebase context & deployment runbook
+└── ARCHITECTURE_AND_FUNCTIONALITY.md # Complete architectural & functional deep dive
 ```
 
 ### Technology Matrix
