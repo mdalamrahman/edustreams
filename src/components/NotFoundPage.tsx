@@ -10,16 +10,32 @@ import {
   Sparkles,
   AlertOctagon
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface NotFoundPageProps {
-  onNavigateHome: () => void;
-  onNavigateTab: (tab: any) => void;
+  onNavigateHome?: () => void;
+  onNavigateTab?: (tab: any) => void;
 }
 
 export const NotFoundPage: React.FC<NotFoundPageProps> = ({
   onNavigateHome,
   onNavigateTab,
 }) => {
+  const navigate = useNavigate();
+  const handleHome = onNavigateHome || (() => navigate('/'));
+  const handleTab = (tab: any) => {
+    if (onNavigateTab) onNavigateTab(tab);
+    if (tab === 'sde_sheet') navigate('/dsa-sheets');
+    else if (tab === 'dsa_problems') navigate('/dsa-problems');
+    else if (tab === 'lld') navigate('/lld');
+    else if (tab === 'hld' || tab === 'system_design') navigate('/hld');
+    else if (tab === 'interview') navigate('/interview');
+    else if (tab === 'resume_analyst') navigate('/resume-analyst');
+    else if (tab === 'channels') navigate('/channels');
+    else if (tab === 'analytics') navigate('/analytics');
+    else navigate(`/${tab}`);
+  };
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center py-12 px-4 animate-fadeIn">
       <div className="w-full max-w-2xl text-center space-y-8 relative">
@@ -51,7 +67,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
         {/* Primary Action Button */}
         <div className="flex flex-wrap items-center justify-center gap-3 relative z-10">
           <button
-            onClick={onNavigateHome}
+            onClick={handleHome}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
           >
             <Home className="w-4 h-4" />
@@ -59,7 +75,8 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
           </button>
 
           <button
-            onClick={() => onNavigateTab('sde_sheet')}
+            onClick={() => handleTab('sde_sheet')}
+
             className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-bold text-sm flex items-center gap-2 transition-all hover:border-slate-700 cursor-pointer"
           >
             <Code2 className="w-4 h-4 text-indigo-400" />
@@ -74,7 +91,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <button
-              onClick={() => onNavigateTab('dsa_problems')}
+              onClick={() => { onNavigateTab?.('dsa_problems'); navigate('/dsa-problems'); }}
               className="p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/40 text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center justify-between text-indigo-400 mb-1">
@@ -86,7 +103,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
             </button>
 
             <button
-              onClick={() => onNavigateTab('lld')}
+              onClick={() => { onNavigateTab?.('lld'); navigate('/lld'); }}
               className="p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-pink-500/40 text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center justify-between text-pink-400 mb-1">
@@ -98,7 +115,7 @@ export const NotFoundPage: React.FC<NotFoundPageProps> = ({
             </button>
 
             <button
-              onClick={() => onNavigateTab('hld')}
+              onClick={() => { onNavigateTab?.('hld'); navigate('/hld'); }}
               className="p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800/80 hover:border-teal-500/40 text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center justify-between text-teal-400 mb-1">

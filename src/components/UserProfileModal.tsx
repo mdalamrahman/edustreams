@@ -282,6 +282,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [ghInput, setGhInput] = useState(linkedConfig.githubUsername || '');
   const [bioInput, setBioInput] = useState(linkedConfig.bio || '');
   const [autoSyncInput, setAutoSyncInput] = useState<boolean>(() => isCloudAutoSyncEnabled(user?.email));
+  const [designTierInput, setDesignTierInput] = useState<'standard' | 'ai_studio'>(() => linkedConfig.designTierPreference || 'standard');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const wallet = useMemo(() => getUserWallet(user?.email), [user?.email]);
@@ -391,6 +392,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       setCfInput(cfg.codeforcesHandle || '');
       setGhInput(cfg.githubUsername || '');
       setBioInput(cfg.bio || '');
+      setDesignTierInput(cfg.designTierPreference || 'standard');
 
       if (cfg.leetcodeUsername) loadLeetcode(cfg.leetcodeUsername);
       if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
@@ -408,7 +410,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       codeforcesHandle: cfInput.trim(),
       githubUsername: ghInput.trim(),
       bio: bioInput.trim(),
-      autoSyncCloud: autoSyncInput
+      autoSyncCloud: autoSyncInput,
+      designTierPreference: designTierInput
     };
     setLinkedConfig(updated);
     saveLinkedProfiles(updated, user?.email);
@@ -1932,6 +1935,86 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     <span className={autoSyncInput ? "text-cyan-400 font-bold" : "text-slate-500"}>
                       Status: {autoSyncInput ? 'ENABLED' : 'DISABLED'}
                     </span>
+                  </div>
+                </div>
+
+                {/* System Design & UML Diagram Tier Preference */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-teal-950/40 via-slate-950/60 to-purple-950/40 border border-teal-700/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="p-2 rounded-xl bg-teal-950/80 border border-teal-700/60 text-teal-400">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-200">System Design Diagram Engine Tier</span>
+                          <span className="px-2 py-0.5 rounded-md bg-teal-950/80 border border-teal-700/50 text-[10px] font-mono font-bold text-teal-300">
+                            {designTierInput === 'standard' ? '₹0.20 / render' : '₹0.60 / render (3x cost)'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Choose your default diagram engine preference. Standard tier saves cost; AI Studio provides interactive node synthesis.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <label
+                      onClick={() => setDesignTierInput('standard')}
+                      className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                        designTierInput === 'standard'
+                          ? 'bg-teal-950/70 border-teal-500 text-white shadow-md shadow-teal-950/50'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="designTier"
+                        checked={designTierInput === 'standard'}
+                        onChange={() => setDesignTierInput('standard')}
+                        className="mt-0.5 text-teal-500 focus:ring-0"
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold">Standard Diagrams</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono font-bold">
+                            Lowest Cost (₹0.20)
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                          Clean high-res vector UML & architecture rendering. Ultra fast and budget-friendly.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      onClick={() => setDesignTierInput('ai_studio')}
+                      className={`p-3 rounded-xl border flex items-start gap-2.5 cursor-pointer transition-all ${
+                        designTierInput === 'ai_studio'
+                          ? 'bg-purple-950/70 border-purple-500 text-white shadow-md shadow-purple-950/50'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="designTier"
+                        checked={designTierInput === 'ai_studio'}
+                        onChange={() => setDesignTierInput('ai_studio')}
+                        className="mt-0.5 text-purple-500 focus:ring-0"
+                      />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold">AI-Powered Studio</span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800 font-mono font-bold">
+                            Interactive (₹0.60, 3x)
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                          Full interactive canvas with node auto-generation, AI design critiques, and multi-tier topologies.
+                        </p>
+                      </div>
+                    </label>
                   </div>
                 </div>
 

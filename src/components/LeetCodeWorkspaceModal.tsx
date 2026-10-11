@@ -82,7 +82,13 @@ import { PipelineVerificationModal } from './PipelineVerificationModal';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { markProblemSolved } from '../lib/analytics';
 import { KrokiDiagramViewer } from './KrokiDiagramViewer';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+
+import { SDE_SHEET_191_DATA, A2Z_DSA_SHEET_474_DATA, SDETUBE_79_SHEET_DATA, BLIND_75_SHEET_DATA, CODESTORYWITHMIK_SHEET_DATA } from '../lib/dsaSheetsData';
+import { isSqlProblem } from '../lib/sqlJudge';
+import { LeetCodeSQLWorkspaceModal } from './LeetCodeSQLWorkspaceModal';
 import { startSpeechRecognition, stopSpeechRecognition, speakText, stopSpeaking, isSpeaking, isSpeechRecognitionSupported, isSpeechSynthesisSupported } from '../lib/speechVoice';
+
 
 
 export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): string {
@@ -161,14 +167,14 @@ export function formatCodeForDisplay(raw: string, lang: SupportedLanguage): stri
 
 interface LeetCodeWorkspaceModalProps {
   question?: QuizQuestion;
-  problemTitle: string;
+  problemTitle?: string;
   initialLanguage?: SupportedLanguage;
   initialCode?: string;
   codingProblem?: any;
   matchingVideo?: Video;
   transcript?: string;
   notes?: string;
-  onClose: () => void;
+  onClose?: () => void;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
@@ -184,6 +190,66 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   onClose,
   onCodeExecuted
 }) => {
+  const { slug } = useParams<{ slug?: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSqlType = searchParams.get('type') === 'sql';
+
+  const resolvedCodingProblem = useMemo(() => {
+    if (codingProblem) return codingProblem;
+    if (!slug) return null;
+    const allProbs: DSAProblem[] = [
+      ...SDE_SHEET_191_DATA,
+      ...A2Z_DSA_SHEET_474_DATA,
+      ...SDETUBE_79_SHEET_DATA,
+      ...BLIND_75_SHEET_DATA,
+      ...CODESTORYWITHMIK_SHEET_DATA
+    ];
+    let found = allProbs.find((p) => 
+      p.id?.toString() === slug || 
+      p.slug === slug ||
+      (p.slug && slug.toLowerCase() === p.slug.toLowerCase()) ||
+      p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === slug.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    if (!found && slug) {
+      const cleanName = slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const predefined = PREDEFINED_SPECIAL_PROBLEMS[slug] ||
+        PREDEFINED_SPECIAL_PROBLEMS[slug + '-'] ||
+        PREDEFINED_SPECIAL_PROBLEMS[slug.replace(/-+$/, '')];
+
+      found = {
+        id: 9999,
+        sheetType: 'sde',
+        category: predefined?.category || 'Algorithms',
+        name: predefined?.name || cleanName,
+        difficulty: (predefined?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
+        rating: '5.0 / 5',
+        leetcode: `https://leetcode.com/problems/${slug}/`,
+        gfg: `https://www.geeksforgeeks.org/problems/${slug}/1`,
+        companies: ['Google', 'Amazon', 'Microsoft', 'Meta'],
+        slug: slug
+      };
+    }
+    return found;
+  }, [codingProblem, slug]);
+
+  const handleClose = onClose || (() => navigate(-1));
+  const effectiveCodingProblem = codingProblem || resolvedCodingProblem;
+  const effectiveProblemTitle = problemTitle || effectiveCodingProblem?.name || slug || 'Algorithm Challenge';
+
+  if (isSqlType || (effectiveCodingProblem && isSqlProblem(effectiveCodingProblem))) {
+    return (
+      <LeetCodeSQLWorkspaceModal
+        problemTitle={effectiveProblemTitle}
+        transcript={transcript}
+        notes={notes}
+        codingProblem={effectiveCodingProblem}
+        onClose={handleClose}
+        onCodeExecuted={onCodeExecuted}
+      />
+    );
+  }
+
   const [language, setLanguage] = useState<SupportedLanguage>(() => {
     if (initialLanguage && initialLanguage !== 'cpp') return initialLanguage;
     try {
@@ -197,8 +263,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   // Clean title & problem template
   const cleanTitle = useMemo(() => {
-    return getCleanTitle(codingProblem?.name || codingProblem?.title || problemTitle || codingProblem?.leetcode || 'Algorithm Challenge');
-  }, [problemTitle, codingProblem]);
+    return getCleanTitle(effectiveCodingProblem?.name || effectiveCodingProblem?.title || effectiveProblemTitle || effectiveCodingProblem?.leetcode || 'Algorithm Challenge');
+  }, [effectiveProblemTitle, effectiveCodingProblem]);
+
 
   const currentProblemSlug = useMemo(() => {
     const rawName = (codingProblem?.name || codingProblem?.title || cleanTitle || '').toLowerCase();
@@ -2019,7 +2086,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           
           {/* Top Close Button so user can easily cancel and exit */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-5 right-5 p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer z-20 shadow-lg"
             title="Close and return"
           >
@@ -2117,7 +2184,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         {/* Brand & Problem Title */}
         <div className="flex items-center space-x-3 truncate">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer"
             title="Return to SDE Sheet"
           >
@@ -2125,7 +2192,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <Tv className="w-4 h-4 text-purple-200" />
             </div>
             <span className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-300 group-hover:opacity-90">
-              SDEStream
+              SDETube
             </span>
           </button>
 
@@ -2196,12 +2263,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </a>
           )}
 
-          {/* Telegram DSA Channel Video Button (ONLY IF MATCHING VIDEO EXISTS) */}
+          {/* Video Button (ONLY IF MATCHING VIDEO EXISTS) */}
           {matchingVideo && (
             <button
               onClick={() => setLeftTab('video')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-purple-300 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
-              title={`Watch Telegram DSA Channel Lecture: ${matchingVideo.title}`}
+              title={`Watch Video Lecture: ${matchingVideo.title}`}
             >
               <Play className="w-3.5 h-3.5 fill-current text-purple-400" />
               <span className="hidden sm:inline">Watch Video</span>
@@ -2221,13 +2288,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
           {/* Close Modal */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 cursor-pointer"
             title="Exit Fullscreen Workspace"
           >
             <Minimize2 className="w-4 h-4" />
           </button>
         </div>
+
 
       </header>
 
@@ -3492,7 +3560,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               <button
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('sdetube_open_sql_arena', { detail: { problem: codingProblem || { name: cleanTitle, slug: currentProblemSlug } } }));
-                  onClose();
+                  handleClose();
                 }}
                 className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer transition-all shadow text-xs flex items-center gap-1.5"
               >

@@ -58,7 +58,7 @@ export const KrokiDiagramModal: React.FC<KrokiDiagramModalProps> = ({
         setSvgContent(res.svg);
       }
     } catch (err: any) {
-      setRenderError('Could not connect to Kroki Diagram engine.');
+      setRenderError('Could not connect to SDETube Diagram engine.');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +103,7 @@ export const KrokiDiagramModal: React.FC<KrokiDiagramModalProps> = ({
                 <span className="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700/60 text-[10px] font-black uppercase tracking-wider font-mono">
                   Visual LLD Architecture
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">Kroki PlantUML</span>
+                <span className="text-[10px] text-slate-400 font-mono">SDETube PlantUML</span>
               </div>
               <h3 className="text-base sm:text-lg font-bold text-slate-100 truncate mt-0.5">
                 {initialTemplate.title}
@@ -266,7 +266,7 @@ export const KrokiDiagramModal: React.FC<KrokiDiagramModalProps> = ({
         <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-slate-500 flex-shrink-0 font-mono text-[11px]">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span>Kroki Unified Vector Architecture Active (20p)</span>
+            <span>SDETube Architecture Engine Active (₹0.20)</span>
           </span>
           <span className="hidden sm:inline">Use mouse scroll & zoom stepper for detailed inspection</span>
         </div>

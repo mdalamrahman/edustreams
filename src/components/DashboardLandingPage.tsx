@@ -40,22 +40,52 @@ import {
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
+import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../lib/AppContext';
 
 interface DashboardLandingPageProps {
-  user: any;
-  onNavigate: (tab: 'channels' | 'lesson' | 'sde_sheet' | 'lld' | 'hld' | 'system_design' | 'interview' | 'resume_analyst' | 'analytics') => void;
-  onOpenSdeProblem: (problem: SDEProblem) => void;
-  onOpenSqlWorkspace: () => void;
-  onOpenAskAI: () => void;
+  user?: any;
+  onNavigate?: (tab: any) => void;
+  onOpenSdeProblem?: (problem: SDEProblem) => void;
+  onOpenSqlWorkspace?: () => void;
+  onOpenAskAI?: () => void;
 }
 
 export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
-  user,
-  onNavigate,
-  onOpenSdeProblem,
-  onOpenSqlWorkspace,
-  onOpenAskAI
+  user: propUser,
+  onNavigate: propNavigate,
+  onOpenSdeProblem: propOpenSdeProblem,
+  onOpenSqlWorkspace: propOpenSql,
+  onOpenAskAI: propOpenAskAI
 }) => {
+  const appCtx = useAppContext();
+  const routerNavigate = useNavigate();
+  const user = propUser !== undefined ? propUser : appCtx.user;
+
+  const onNavigate = (tab: any) => {
+    if (propNavigate) propNavigate(tab);
+    if (tab === 'sde_sheet') routerNavigate('/dsa-sheets');
+    else if (tab === 'dsa_problems') routerNavigate('/dsa-problems');
+    else if (tab === 'lld') routerNavigate('/lld');
+    else if (tab === 'hld' || tab === 'system_design') routerNavigate('/hld');
+    else if (tab === 'interview') routerNavigate('/interview');
+    else if (tab === 'resume_analyst') routerNavigate('/resume-analyst');
+    else if (tab === 'channels') routerNavigate('/channels');
+    else if (tab === 'analytics') routerNavigate('/analytics');
+    else routerNavigate(`/${tab}`);
+  };
+
+  const onOpenSdeProblem = (prob: SDEProblem) => {
+    if (propOpenSdeProblem) propOpenSdeProblem(prob);
+    else {
+      const slug = (prob as any).slug || prob.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      routerNavigate(`/problem/${slug}`);
+    }
+  };
+
+  const onOpenSqlWorkspace = propOpenSql || (() => routerNavigate('/problem/sql-arena?type=sql'));
+  const onOpenAskAI = propOpenAskAI || (() => appCtx.openAskAIWithMode());
+
   // Query 100% real computed student analytics (reactive on problem solve)
   const [metrics, setMetrics] = useState<RealAnalyticsMetrics>(() => getRealAnalytics(user?.email));
   const [solveEventCount, setSolveEventCount] = useState<number>(0);

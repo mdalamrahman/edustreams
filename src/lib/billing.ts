@@ -28,9 +28,12 @@ export const PRICING_CONFIG = {
   CODE_SUBMIT_DSA_LLD: 0.50,         // 50 paise (₹0.50) per submission / judge
   SQL_RUN_JUDGE: 0.10,               // 10 paise (₹0.10) per SQL run
   CLOUD_CODE_SAVE: 0.05,             // 5 paise (₹0.05) per cloud code sync
-  LLD_DIAGRAM_VIEW: 0.20,            // 20 paise (₹0.20) per Kroki LLD architecture diagram render
+  LLD_DIAGRAM_VIEW: 0.20,            // 20 paise (₹0.20) per SDETube LLD architecture diagram render
   HLD_EXCALIDRAW_DRAWING: 0.00,      // Free on Excalidraw
   HLD_STUDIO_PLATFORM_DRAWING: 0.50, // 50 paise (₹0.50) if our Architecture Studio platform is used
+  DESIGN_DIAGRAM_RENDER: 0.20,       // 20 paise (₹0.20) Standard Diagram Render
+  AI_DESIGN_STUDIO: 0.60,            // 60 paise (₹0.60, 3x cost) AI-Powered Interactive Studio Diagram
+  NODE_AI_GUIDE_QUERY: 0.10,         // 10 paise (₹0.10) per node AI contextual query
   ANALYTICS_AI_REFRESH: 1.00,        // ₹1 for analytics AI diagnostic refresh
   AI_RESUME_ANALYSIS: 1.50,          // ₹1.50 for full SDETube AI resume scan + ATS scoring + 18 3D flashcards
   AI_RESUME_TAILOR: 1.00,            // ₹1.00 for AI resume tailoring/modifying against target JD
@@ -134,7 +137,11 @@ export type BillingActionType =
   | 'AI_RESUME_BULLET_ENHANCE'
   | 'UPI_TOPUP'
   | 'ADMIN_MANUAL_GRANT'
-  | 'BUG_BOUNTY';
+  | 'BUG_BOUNTY'
+  | 'STANDARD_DIAGRAM'
+  | 'AI_DESIGN_STUDIO'
+  | 'AI_ARCH_CRITIQUE'
+  | 'STUDIO_COMPILER_RUN';
 
 export interface BillingTransaction {
   id: string;

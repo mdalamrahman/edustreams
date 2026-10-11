@@ -10,11 +10,12 @@ import {
   ShieldCheck,
   Award
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 
 interface ThankYouPageProps {
-  onNavigateHome: () => void;
-  onNavigateTab: (tab: any) => void;
+  onNavigateHome?: () => void;
+  onNavigateTab?: (tab: any) => void;
   conversionType?: 'wallet' | 'problem' | 'interview' | 'feedback' | 'welcome';
   detailMessage?: string;
 }
@@ -25,6 +26,21 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({
   conversionType = 'welcome',
   detailMessage,
 }) => {
+  const navigate = useNavigate();
+  const handleHome = onNavigateHome || (() => navigate('/'));
+  const handleTab = (tab: any) => {
+    if (onNavigateTab) onNavigateTab(tab);
+    if (tab === 'sde_sheet') navigate('/dsa-sheets');
+    else if (tab === 'dsa_problems') navigate('/dsa-problems');
+    else if (tab === 'lld') navigate('/lld');
+    else if (tab === 'hld' || tab === 'system_design') navigate('/hld');
+    else if (tab === 'interview') navigate('/interview');
+    else if (tab === 'resume_analyst') navigate('/resume-analyst');
+    else if (tab === 'channels') navigate('/channels');
+    else if (tab === 'analytics') navigate('/analytics');
+    else navigate(`/${tab}`);
+  };
+
   useEffect(() => {
     // Trigger celebratory confetti burst on mount
     try {
@@ -120,7 +136,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3 relative z-10">
           <button
-            onClick={() => onNavigateTab(current.actionTab)}
+            onClick={() => handleTab(current.actionTab)}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center gap-2 transition-all hover:scale-105 cursor-pointer"
           >
             <span>{current.actionText}</span>
@@ -128,7 +144,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({
           </button>
 
           <button
-            onClick={onNavigateHome}
+            onClick={handleHome}
             className="px-6 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 font-bold text-sm flex items-center gap-2 transition-all cursor-pointer"
           >
             <Home className="w-4 h-4 text-indigo-400" />

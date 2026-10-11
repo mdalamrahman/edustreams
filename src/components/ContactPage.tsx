@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { Mail, MapPin, Send, MessageSquare, CheckCircle2, ArrowLeft, Clock, Github } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { FormField } from './FormField';
 import { LoadingButton } from './LoadingButton';
 
 interface ContactPageProps {
-  onBackToHome: () => void;
-  onNavigateToThankYou: () => void;
+  onBackToHome?: () => void;
+  onNavigateToThankYou?: () => void;
 }
 
 export const ContactPage: React.FC<ContactPageProps> = ({
   onBackToHome,
   onNavigateToThankYou,
 }) => {
+  const navigate = useNavigate();
+  const handleBack = onBackToHome || (() => (window.history.length > 1 ? window.history.back() : navigate('/')));
+  const handleThankYou = onNavigateToThankYou || (() => navigate('/thank-you'));
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('General Inquiry');
@@ -43,7 +48,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
     await new Promise((res) => setTimeout(res, 800));
     setLoading(false);
 
-    onNavigateToThankYou();
+    handleThankYou();
   };
 
   return (
@@ -52,7 +57,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
       {/* Header */}
       <div className="space-y-3 pb-6 border-b border-slate-800">
         <button
-          onClick={onBackToHome}
+          onClick={handleBack}
           className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer mb-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -192,7 +197,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                 >
                   <option value="General Inquiry">General Inquiry</option>
                   <option value="Problem / Testcase Bug Report">Problem / Testcase Bug Report</option>
-                  <option value="Code Execution / Judge0 Sandbox">Code Execution / Judge0 Sandbox</option>
+                  <option value="Code Execution / SDETube Sandbox">Code Execution / SDETube Sandbox</option>
                   <option value="Virtual Credits / Billing Inquiry">Virtual Credits / Billing Inquiry</option>
                   <option value="Curriculum Collaboration">Curriculum Collaboration</option>
                 </select>

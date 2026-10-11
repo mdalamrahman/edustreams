@@ -26,12 +26,16 @@ import {
   CheckCircle2,
   Building2,
   ExternalLink,
-  FileSearch
+  FileSearch,
+  PanelsTopLeft
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
 import { addPasskeyToSupabase } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
+import { useAppContext } from '../lib/AppContext';
+
 
 export type AppTab = 
   | 'dashboard' 
@@ -55,32 +59,45 @@ export type AppTab =
 
 
 interface NavbarProps {
-  activeTab: AppTab;
-  setActiveTab: (tab: AppTab) => void;
-  selectedChannel: string;
-  setSelectedChannel: (channelId: string) => void;
-  user: any;
+  activeTab?: AppTab;
+  setActiveTab?: (tab: AppTab) => void;
+  selectedChannel?: string;
+  setSelectedChannel?: (channelId: string) => void;
+  user?: any;
   onOpenAuthModal?: () => void;
   onOpenPotd?: () => void;
   onOpenSqlWorkspace?: () => void;
   onOpenAskAI?: () => void;
   onOpenWallet?: () => void;
   onOpenProfile?: () => void;
-  onSignOut: () => void;
+  onSignOut?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  user,
-  onOpenAuthModal,
-  onOpenPotd,
-  onOpenSqlWorkspace,
-  onOpenAskAI,
-  onOpenWallet,
-  onOpenProfile,
-  onSignOut,
+  user: propUser,
+  onOpenAuthModal: propAuthModal,
+  onOpenPotd: propPotd,
+  onOpenSqlWorkspace: propSqlWorkspace,
+  onOpenAskAI: propAskAI,
+  onOpenWallet: propWallet,
+  onOpenProfile: propProfile,
+  onSignOut: propSignOut,
 }) => {
+  const appCtx = useAppContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const user = propUser !== undefined ? propUser : appCtx.user;
+  const onOpenAuthModal = propAuthModal || (() => appCtx.setIsAuthModalOpen(true));
+  const onOpenPotd = propPotd || (() => appCtx.setIsPotdModalOpen(true));
+  const onOpenSqlWorkspace = propSqlWorkspace || (() => navigate('/problem/sql-arena?type=sql'));
+  const onOpenAskAI = propAskAI || (() => appCtx.openAskAIWithMode());
+  const onOpenWallet = propWallet || (() => appCtx.setIsWalletModalOpen(true));
+  const onOpenProfile = propProfile || (() => appCtx.setIsProfileModalOpen(true));
+  const onSignOut = propSignOut || (() => appCtx.signOut());
+
   const { isMobile } = useDevice();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -99,6 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('sdetube_wallet_updated', updateBal);
     return () => window.removeEventListener('sdetube_wallet_updated', updateBal);
   }, [user?.email]);
+
 
 
   const handleAddPasskey = async () => {
@@ -170,6 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navLinks = [
     {
       id: 'dashboard' as const,
+      path: '/',
       label: 'Dashboard',
       subtitle: 'Command Center & Daily POTD',
       icon: LayoutDashboard,
@@ -177,7 +196,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       activeColor: 'bg-indigo-600 text-white'
     },
     {
+      id: 'studio' as const,
+      path: '/studio',
+      label: 'Universal Studio',
+      subtitle: '3-Pane Coding & Architecture Arena',
+      icon: PanelsTopLeft,
+      color: 'text-amber-400',
+      activeColor: 'bg-gradient-to-r from-amber-600 to-indigo-600 text-white'
+    },
+    {
       id: 'sde_sheet' as const,
+      path: '/dsa-sheets',
       label: 'DSA Sheets',
       subtitle: 'SDE, A2Z & 79 Curricula (743 Qs)',
       icon: Code2,
@@ -186,6 +215,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'dsa_problems' as const,
+      path: '/dsa-problems',
       label: 'DSA Problems',
       subtitle: 'Company & Timeframe Filtered (3.4k+ Qs)',
       icon: Building2,
@@ -194,6 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'lld' as const,
+      path: '/lld',
       label: 'LLD Design',
       subtitle: 'OOP Studio & SDE-1 Notes',
       icon: Layers,
@@ -202,6 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'hld' as const,
+      path: '/hld',
       label: 'HLD Architecture',
       subtitle: 'Boss Sheet & Visual Canvas',
       icon: Cpu,
@@ -210,6 +242,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'channels' as const,
+      path: '/channels',
       label: 'Video Channels',
       subtitle: 'Cloud HD Video Lectures',
       icon: BookOpen,
@@ -218,6 +251,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'interview' as const,
+      path: '/interview',
       label: 'AI Mock Interview',
       subtitle: 'SDE-1/2/3 Multi-Round Companion',
       icon: Bot,
@@ -226,14 +260,16 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'resume_analyst' as const,
+      path: '/resume-analyst',
       label: 'Resume Analyst',
-      subtitle: 'Mistral ATS & 3D Flashcards',
+      subtitle: 'SDETube AI ATS & 3D Flashcards',
       icon: FileSearch,
       color: 'text-violet-400',
       activeColor: 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
     },
     {
       id: 'analytics' as const,
+      path: '/analytics',
       label: 'Velocity Analytics',
       subtitle: '7-Day Trajectory & Real Stats',
       icon: BarChart3,
@@ -241,6 +277,19 @@ export const Navbar: React.FC<NavbarProps> = ({
       activeColor: 'bg-emerald-600 text-white'
     }
   ];
+
+  const isLinkActive = (path: string, id: string) => {
+    if (activeTab) return activeTab === id;
+    if (path === '/') return location.pathname === '/' || location.pathname === '/dashboard';
+    return location.pathname.startsWith(path);
+  };
+
+  const handleNavigate = (path: string, id?: string) => {
+    if (id && setActiveTab) setActiveTab(id as any);
+    navigate(path);
+    setIsDrawerOpen(false);
+  };
+
 
   return (
     <>
@@ -279,7 +328,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Brand Logo */}
             <div 
               className="flex items-center space-x-2.5 cursor-pointer flex-shrink-0" 
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleNavigate('/', 'dashboard')}
             >
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 p-0.5 shadow-lg shadow-purple-500/20 flex-shrink-0">
                 <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -349,13 +398,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Profile Page Quick Button */}
             <button
-              onClick={() => setActiveTab('profile')}
+              onClick={() => {
+                setActiveTab?.('profile');
+                navigate('/profile');
+              }}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group ${
                 activeTab === 'profile'
                   ? 'bg-purple-600 text-white border-purple-500 shadow-purple-600/30'
                   : 'bg-slate-900 hover:bg-slate-850 border-slate-800 text-purple-300 hover:text-white'
               }`}
-              title="Open LeetCode-style Developer Profile, Heatmap & Certificates"
+              title="Open Developer Profile, Heatmap & Certificates"
             >
               <User className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
               <span className="hidden sm:inline">Profile</span>
@@ -384,12 +436,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setIsDropdownOpen(false);
-                        setActiveTab('profile');
+                        handleNavigate('/profile', 'profile');
                       }}
                       className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-purple-300 hover:bg-purple-950/50 flex items-center gap-2 transition-all cursor-pointer"
                     >
                       <User className="w-4 h-4 text-purple-400" />
-                      <span>LeetCode Profile & Heatmap</span>
+                      <span>Developer Profile & Heatmap</span>
                     </button>
 
 
@@ -489,14 +541,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {navLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = activeTab === link.id;
+                const isActive = isLinkActive(link.path, link.id);
                 return (
                   <button
                     key={link.id}
-                    onClick={() => {
-                      setActiveTab(link.id);
-                      setIsDrawerOpen(false);
-                    }}
+                    onClick={() => handleNavigate(link.path, link.id)}
                     className={`w-full p-3 rounded-2xl text-left transition-all flex items-center justify-between cursor-pointer group ${
                       isActive
                         ? link.activeColor + ' shadow-lg'
@@ -556,7 +605,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <Database className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-white">SQL Arena (LeetCode 323)</div>
+                        <div className="text-xs font-bold text-white">SQL Arena (Database 323)</div>
                         <div className="text-[10px] text-cyan-400/80">In-Browser WebAssembly Database Engine</div>
                       </div>
                     </div>

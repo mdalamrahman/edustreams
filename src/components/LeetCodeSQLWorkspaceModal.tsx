@@ -59,25 +59,30 @@ import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProf
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
 
 
+import { useNavigate } from 'react-router-dom';
+
 interface LeetCodeSQLWorkspaceModalProps {
-  problemTitle: string;
+  problemTitle?: string;
   transcript?: string;
   notes?: string;
   codingProblem?: any;
-  onClose: () => void;
+  onClose?: () => void;
   onCodeExecuted?: (timeTakenSeconds: number, isCorrect: boolean) => void;
 }
 
 export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps> = ({
-  problemTitle,
+  problemTitle = 'DBMS SQL Challenge',
   transcript = '',
   notes = '',
   codingProblem,
   onClose,
   onCodeExecuted
 }) => {
+  const navigate = useNavigate();
+  const handleClose = onClose || (() => navigate(-1));
   // ── LeetCode SQL Problemset Catalog & State ──
   const [catalog, setCatalog] = useState<LeetCodeSqlMeta[]>(() => getAllLeetCodeSqlProblems());
+
   const [currentMeta, setCurrentMeta] = useState<LeetCodeSqlMeta>(() => {
     const rawTitle = (codingProblem?.name || problemTitle || 'DBMS SQL Challenge')
       .replace(/\.(mp4|mkv|webm)$/i, '')
@@ -700,7 +705,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         {/* Brand & SQL Problem Selector Controls */}
         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-800 transition-colors group cursor-pointer flex-shrink-0"
             title="Return to Lecture Workspace"
           >
@@ -815,7 +820,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
 
           {/* Close Modal */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 cursor-pointer"
             title="Exit SQL Arena"
           >
@@ -1059,7 +1064,7 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
                 Showing <strong className="text-slate-200">{filteredProblems.length}</strong> of <strong className="text-slate-200">{catalog.length}</strong> problems
               </span>
               <span className="text-[11px] text-slate-500 font-mono hidden sm:inline">
-                AlaSQL WebAssembly Sandbox
+                SDETube SQL Engine Sandbox
               </span>
             </div>
           </div>

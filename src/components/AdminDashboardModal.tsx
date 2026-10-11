@@ -623,7 +623,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                   <div className="p-3 rounded-xl bg-slate-900 border border-slate-800/80 flex items-center justify-between">
                     <div className="space-y-0.5">
                       <div className="text-[11px] font-bold text-slate-400">Primary AI Inference</div>
-                      <div className="text-xs font-mono font-bold text-indigo-300">Active (Mistral-Large-Latest)</div>
+                      <div className="text-xs font-mono font-bold text-indigo-300">Active (SDETube AI Engine)</div>
                     </div>
                     <Cpu className="w-4 h-4 text-indigo-400" />
                   </div>

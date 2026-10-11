@@ -338,7 +338,7 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
               )}
             </div>
             <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-              LeetCode Daily Coding Challenge
+              SDETube Daily Coding Challenge
             </div>
           </div>
 
@@ -470,20 +470,20 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
             </div>
 
             <h4 className="text-xs font-bold text-white truncate" title={activeDay?.challenge?.question?.title || "Daily Coding Challenge"}>
-              {activeDay?.challenge?.question?.title || (activeDay?.isFuture ? "Challenge Not Yet Available" : "LeetCode Daily Challenge")}
+              {activeDay?.challenge?.question?.title || (activeDay?.isFuture ? "Challenge Not Yet Available" : "SDETube Daily Challenge")}
             </h4>
           </div>
 
-          {/* Direct Link to LeetCode */}
+          {/* Direct Link to Problem Source */}
           {activeDay?.challenge?.question?.titleSlug && (
             <a
               href={`https://leetcode.com/problems/${activeDay.challenge.question.titleSlug}/`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-400 hover:border-amber-500/40 text-[11px] font-mono transition-all flex-shrink-0 cursor-pointer"
-              title="View Directly on LeetCode"
+              title="View Problem Source"
             >
-              <span>LeetCode</span>
+              <span>Problem Source</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           )}

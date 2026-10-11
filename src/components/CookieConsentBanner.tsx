@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Cookie, Settings, Check, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { CONSENT_STORAGE_KEY, CookieConsentPreferences } from '../lib/analyticsTracker';
 
 interface CookieConsentBannerProps {
@@ -9,7 +10,9 @@ interface CookieConsentBannerProps {
 export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
   onNavigateToPrivacy,
 }) => {
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
+
   const [showDetails, setShowDetails] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
@@ -155,7 +158,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
           <button
             onClick={() => {
               if (onNavigateToPrivacy) onNavigateToPrivacy();
-              else window.location.hash = '#/privacy';
+              navigate('/privacy');
             }}
             className="text-indigo-400 hover:underline cursor-pointer"
           >

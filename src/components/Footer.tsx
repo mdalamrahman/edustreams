@@ -16,16 +16,25 @@ import {
   HelpCircle
 } from 'lucide-react';
 
+import { useNavigate } from 'react-router-dom';
+
 interface FooterProps {
-  onNavigate: (tab: any) => void;
+  onNavigate?: (tab: any) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+
+  const handleNav = (path: string, legacyTab: string) => {
+    navigate(path);
+    if (onNavigate) onNavigate(legacyTab);
+  };
 
   const handleOpenCookiePreferences = () => {
     window.dispatchEvent(new CustomEvent('sdetube_open_cookie_preferences'));
   };
+
 
   return (
     <footer className="w-full mt-20 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl text-slate-400">
@@ -84,7 +93,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <ul className="space-y-2 text-xs">
               <li>
                 <button
-                  onClick={() => onNavigate('sde_sheet')}
+                  onClick={() => handleNav('/dsa-sheets', 'sde_sheet')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Code2 className="w-3.5 h-3.5 text-indigo-400" />
@@ -93,16 +102,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('sde_sheet')}
+                  onClick={() => handleNav('/dsa-sheets', 'sde_sheet')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Code2 className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Striver A2Z (474 Qs)</span>
+                  <span>Curated DSA (474 Qs)</span>
                 </button>
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('dsa_problems')}
+                  onClick={() => handleNav('/dsa-problems', 'dsa_problems')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Code2 className="w-3.5 h-3.5 text-cyan-400" />
@@ -111,7 +120,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('lld')}
+                  onClick={() => handleNav('/lld', 'lld')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Layers className="w-3.5 h-3.5 text-pink-400" />
@@ -120,7 +129,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('hld')}
+                  onClick={() => handleNav('/hld', 'hld')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Cpu className="w-3.5 h-3.5 text-teal-400" />
@@ -138,7 +147,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <ul className="space-y-2 text-xs">
               <li>
                 <button
-                  onClick={() => onNavigate('interview')}
+                  onClick={() => handleNav('/interview', 'interview')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Bot className="w-3.5 h-3.5 text-amber-400" />
@@ -147,7 +156,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('channels')}
+                  onClick={() => handleNav('/channels', 'channels')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-sky-400" />
@@ -156,7 +165,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('analytics')}
+                  onClick={() => handleNav('/analytics', 'analytics')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-400" />
@@ -165,11 +174,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onNavigate('profile')}
+                  onClick={() => handleNav('/profile', 'profile')}
                   className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                  <span>LeetCode Sync Profile</span>
+                  <span>Developer Profile & Stats</span>
                 </button>
               </li>
             </ul>
@@ -205,7 +214,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
               <div className="pt-1">
                 <button
-                  onClick={() => onNavigate('contact')}
+                  onClick={() => handleNav('/contact', 'contact')}
                   className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
                 >
                   <span>Contact Form & FAQ</span>
@@ -227,17 +236,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
           <div className="flex flex-wrap items-center gap-5">
             <button
-              onClick={() => onNavigate('privacy')}
+              onClick={() => handleNav('/privacy', 'privacy')}
               className="hover:text-slate-300 transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
-              onClick={() => onNavigate('terms')}
+              onClick={() => handleNav('/terms', 'terms')}
               className="hover:text-slate-300 transition-colors cursor-pointer"
             >
               Terms of Service
             </button>
+
             <button
               onClick={handleOpenCookiePreferences}
               className="hover:text-slate-300 transition-colors flex items-center gap-1 cursor-pointer"

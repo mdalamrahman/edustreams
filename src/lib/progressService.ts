@@ -16,6 +16,7 @@ export interface LinkedProfilesConfig {
   bio?: string;
   customAvatar?: string;
   autoSyncCloud?: boolean;
+  designTierPreference?: 'standard' | 'ai_studio'; // 'standard' = ₹0.20 (Standard Diagram), 'ai_studio' = ₹0.60 (AI-Powered Studio)
 }
 
 export interface UserDSAProgress {
@@ -40,7 +41,8 @@ const DEFAULT_LINKED_PROFILES: LinkedProfilesConfig = {
   gfgUsername: '',
   codeforcesHandle: '',
   bio: 'Software Development Engineer & DSA Enthusiast on SDETube.',
-  autoSyncCloud: false
+  autoSyncCloud: false,
+  designTierPreference: 'standard'
 };
 
 // In-Memory Progress Cache for instant 0ms synchronous UI reads

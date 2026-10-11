@@ -34,29 +34,43 @@ import {
 import { toggleProblemSolvedGlobally } from '../lib/analytics';
 import { SDEProblem } from '../lib/dsaSheetsData';
 import { LeetCodePOTDCalendarWidget } from './LeetCodePOTDCalendarWidget';
+import { useNavigate, useParams } from 'react-router-dom';
 
 interface CompanyDSAProblemsProps {
-  onOpenCodingWorkspace: (problem: SDEProblem) => void;
+  onOpenCodingWorkspace?: (problem: SDEProblem) => void;
   onOpenNotes?: (problem: SDEProblem) => void;
   initialCompany?: string;
 }
 
 export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
-  onOpenCodingWorkspace,
+  onOpenCodingWorkspace: propOpenCodingWorkspace,
   onOpenNotes,
   initialCompany = 'all_companies'
 }) => {
+  const { name: paramCompany } = useParams<{ name?: string }>();
+  const navigate = useNavigate();
+
+  const onOpenCodingWorkspace = (problem: SDEProblem) => {
+    if (propOpenCodingWorkspace) propOpenCodingWorkspace(problem);
+    else {
+      const slug = problem.slug || problem.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      navigate(`/problem/${slug}`);
+    }
+  };
+
   const [dataset, setDataset] = useState<CompanyProblemsDataset | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Filters State
   const [selectedCompany, setSelectedCompany] = useState<string>(() => {
+    if (paramCompany) return paramCompany;
     try {
       return localStorage.getItem('sdetube_last_selected_company') || initialCompany;
     } catch {
       return initialCompany;
     }
   });
+
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeKey>('all');
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');

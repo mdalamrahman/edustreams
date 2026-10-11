@@ -181,7 +181,7 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
             verdict: 'INCORRECT_EXPECTED',
             correctedInput: currentInput,
             correctedExpectedOutput: referenceExecutionOutput,
-            analysis: `Verified by Execution: Canonical reference solution executed on Judge0 and produced "${referenceExecutionOutput}".`,
+            analysis: `Verified by Execution: Canonical reference solution executed on SDETube Sandbox and produced "${referenceExecutionOutput}".`,
             explanation: `Execution Verification Passed: The official platform reference solution was executed and produced "${referenceExecutionOutput}", which exactly matches your actual output. The testcase expected output ("${currentExpectedOutput}") is verified to be incorrect and has been corrected.`,
             suggestedAction: 'Apply verified reference output & claim bounty'
           });

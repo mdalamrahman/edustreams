@@ -11,3 +11,10 @@ if os.path.exists(src):
     print(f"[copy_dist_assets] Copied {src} -> {dst} ({os.path.getsize(dst)} bytes)")
 else:
     print(f"[copy_dist_assets] Warning: {src} not found")
+
+redir_src = os.path.join(os.path.dirname(__file__), '..', 'public', '_redirects')
+redir_dst = os.path.join(os.path.dirname(__file__), '..', 'dist', '_redirects')
+if os.path.exists(redir_src):
+    shutil.copyfile(redir_src, redir_dst)
+    print(f"[copy_dist_assets] Copied {redir_src} -> {redir_dst}")
+

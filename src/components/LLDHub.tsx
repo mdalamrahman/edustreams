@@ -711,7 +711,7 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
               {isGeneratingDiagram ? (
                 <div className="text-center space-y-3">
                   <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
-                  <p className="text-xs text-slate-400 font-mono">Generating Kroki UML Architecture diagram...</p>
+                  <p className="text-xs text-slate-400 font-mono">Generating SDETube UML Architecture diagram...</p>
                 </div>
               ) : diagramError ? (
                 <div className="text-center text-rose-400 text-xs font-mono max-w-md">

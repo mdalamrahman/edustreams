@@ -1,21 +1,38 @@
 import React from 'react';
 import { Flame, Code2, Bot, BarChart3, Sparkles } from 'lucide-react';
 
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAppContext } from '../lib/AppContext';
+
 interface StickyMobileCTAProps {
-  onOpenPotd: () => void;
-  onNavigateToSdeSheet: () => void;
-  onOpenAskAI: () => void;
-  onNavigateToAnalytics: () => void;
-  activeTab: string;
+  onOpenPotd?: () => void;
+  onNavigateToSdeSheet?: () => void;
+  onOpenAskAI?: () => void;
+  onNavigateToAnalytics?: () => void;
+  activeTab?: string;
 }
 
 export const StickyMobileCTA: React.FC<StickyMobileCTAProps> = ({
-  onOpenPotd,
-  onNavigateToSdeSheet,
-  onOpenAskAI,
-  onNavigateToAnalytics,
-  activeTab,
+  onOpenPotd: propPotd,
+  onNavigateToSdeSheet: propSdeSheet,
+  onOpenAskAI: propAskAI,
+  onNavigateToAnalytics: propAnalytics,
+  activeTab: propActiveTab,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const appCtx = useAppContext();
+
+  const activeTab = propActiveTab || (
+    location.pathname.startsWith('/dsa-sheets') ? 'sde_sheet' :
+    location.pathname.startsWith('/analytics') ? 'analytics' : ''
+  );
+
+  const onOpenPotd = propPotd || (() => appCtx.setIsPotdModalOpen(true));
+  const onNavigateToSdeSheet = propSdeSheet || (() => navigate('/dsa-sheets'));
+  const onOpenAskAI = propAskAI || (() => appCtx.openAskAIWithMode());
+  const onNavigateToAnalytics = propAnalytics || (() => navigate('/analytics'));
+
   return (
     <div
       role="toolbar"

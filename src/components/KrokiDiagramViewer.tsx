@@ -57,7 +57,7 @@ export const KrokiDiagramViewer: React.FC<KrokiDiagramViewerProps> = ({
         setSvgContent(res.svg);
       }
     } catch (err: any) {
-      setRenderError('Could not connect to Kroki Diagram engine.');
+      setRenderError('Could not connect to SDETube Diagram engine.');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +103,7 @@ export const KrokiDiagramViewer: React.FC<KrokiDiagramViewerProps> = ({
             </h4>
             <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono">
               <span className="px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
-                Kroki Unified UML
+                SDETube Unified UML
               </span>
               <span>{diagramType.toUpperCase()} Engine</span>
             </div>
@@ -202,7 +202,7 @@ export const KrokiDiagramViewer: React.FC<KrokiDiagramViewerProps> = ({
             {isLoading ? (
               <div className="flex flex-col items-center justify-center space-y-3 py-16 text-slate-400">
                 <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-                <p className="text-xs font-mono">Rendering high-resolution UML with Kroki engine...</p>
+                <p className="text-xs font-mono">Rendering high-resolution UML with SDETube engine...</p>
               </div>
             ) : renderError ? (
               <div className="max-w-md p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-start space-x-3 text-xs">

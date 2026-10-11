@@ -1,18 +1,23 @@
 import React from 'react';
 import { ShieldCheck, Lock, Eye, Database, Server, RefreshCw, Mail, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface PrivacyPolicyPageProps {
-  onBackToHome: () => void;
+  onBackToHome?: () => void;
 }
 
 export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBackToHome }) => {
+  const navigate = useNavigate();
+  const handleBack = onBackToHome || (() => (window.history.length > 1 ? window.history.back() : navigate('/')));
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 space-y-8 animate-fadeIn text-slate-300">
       
       {/* Header */}
       <div className="space-y-3 pb-6 border-b border-slate-800">
         <button
-          onClick={onBackToHome}
+          onClick={handleBack}
+
           className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer mb-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -90,11 +95,11 @@ export const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = ({ onBackToHo
               <p className="text-[11px] text-slate-400 mt-0.5">Encrypted authentication and user session storage.</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="font-bold text-slate-200 text-xs">Mistral AI</span>
+              <span className="font-bold text-slate-200 text-xs">SDETube AI Engine</span>
               <p className="text-[11px] text-slate-400 mt-0.5">Contextual coding diagnostic questions and SDE simulations.</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
-              <span className="font-bold text-slate-200 text-xs">Judge0 Execution Sandbox</span>
+              <span className="font-bold text-slate-200 text-xs">SDETube Execution Sandbox</span>
               <p className="text-[11px] text-slate-400 mt-0.5">Isolated containerized code execution for C++, Java, and Python.</p>
             </div>
           </div>

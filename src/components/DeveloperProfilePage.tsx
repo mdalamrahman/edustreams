@@ -73,13 +73,16 @@ import {
 } from '../lib/billing';
 import { getUserProgressSync } from '../lib/progressService';
 import { CertificateModal, CertificateData } from './CertificateModal';
+import { useNavigate } from 'react-router-dom';
+import { useAppContext } from '../lib/AppContext';
 
 interface DeveloperProfilePageProps {
-  user: any;
+  user?: any;
   onOpenProblem?: (problemIdOrName: string) => void;
   onOpenWallet?: () => void;
   onNavigateToTab?: (tab: any) => void;
 }
+
 
 export type ProfileSectionMode = 'combined' | 'sdetube' | 'leetcode' | 'github' | 'gfg' | 'codeforces';
 
@@ -276,13 +279,40 @@ const PlatformHeatmap: React.FC<PlatformHeatmapProps> = ({
 
 
 export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
-  user,
-  onOpenProblem,
-  onOpenWallet,
-  onNavigateToTab
+  user: propUser,
+  onOpenProblem: propOpenProblem,
+  onOpenWallet: propOpenWallet,
+  onNavigateToTab: propNavigateToTab
 }) => {
+  const appCtx = useAppContext();
+  const routerNavigate = useNavigate();
+  const user = propUser !== undefined ? propUser : appCtx.user;
+
+  const onOpenWallet = propOpenWallet || (() => appCtx.setIsWalletModalOpen(true));
+  const onOpenProblem = (pNameOrSlug: string) => {
+    if (propOpenProblem) propOpenProblem(pNameOrSlug);
+    else {
+      const slug = pNameOrSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      routerNavigate(`/problem/${slug}`);
+    }
+  };
+
+  const onNavigateToTab = (tab: any) => {
+    if (propNavigateToTab) propNavigateToTab(tab);
+    if (tab === 'sde_sheet') routerNavigate('/dsa-sheets');
+    else if (tab === 'dsa_problems') routerNavigate('/dsa-problems');
+    else if (tab === 'lld') routerNavigate('/lld');
+    else if (tab === 'hld' || tab === 'system_design') routerNavigate('/hld');
+    else if (tab === 'interview') routerNavigate('/interview');
+    else if (tab === 'resume_analyst') routerNavigate('/resume-analyst');
+    else if (tab === 'channels') routerNavigate('/channels');
+    else if (tab === 'analytics') routerNavigate('/analytics');
+    else routerNavigate(`/${tab}`);
+  };
+
   const [profileMode, setProfileMode] = useState<ProfileSectionMode>('combined');
   const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(user?.email));
+
   const [leetcodeData, setLeetcodeData] = useState<LeetCodeFullProfileData | null>(null);
   const [gfgData, setGfgData] = useState<GFGProfileData | null>(null);
   const [codeforcesData, setCodeforcesData] = useState<CodeforcesProfileData | null>(null);
@@ -305,6 +335,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
   const [formGfgUsername, setFormGfgUsername] = useState(linkedConfig.gfgUsername || '');
   const [formCfHandle, setFormCfHandle] = useState(linkedConfig.codeforcesHandle || '');
   const [formGhUsername, setFormGhUsername] = useState(linkedConfig.githubUsername || '');
+  const [formDesignTier, setFormDesignTier] = useState<'standard' | 'ai_studio'>(() => linkedConfig.designTierPreference || 'standard');
   const [formBio, setFormBio] = useState(linkedConfig.bio || 'Computer Science Student & SDE Aspirant. Solving DSA and building distributed systems.');
   const [formLocation, setFormLocation] = useState('India');
   const [formSavedNotice, setFormSavedNotice] = useState(false);
@@ -368,6 +399,7 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
     setFormGfgUsername(cfg.gfgUsername || '');
     setFormCfHandle(cfg.codeforcesHandle || '');
     setFormGhUsername(cfg.githubUsername || '');
+    setFormDesignTier(cfg.designTierPreference || 'standard');
     if (cfg.leetcodeUsername) loadLeetcode(cfg.leetcodeUsername);
     if (cfg.gfgUsername) loadGFG(cfg.gfgUsername);
     if (cfg.codeforcesHandle) loadCodeforces(cfg.codeforcesHandle);
@@ -381,7 +413,8 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
       gfgUsername: formGfgUsername.trim(),
       codeforcesHandle: formCfHandle.trim(),
       githubUsername: formGhUsername.trim(),
-      bio: formBio.trim()
+      bio: formBio.trim(),
+      designTierPreference: formDesignTier
     };
     setLinkedConfig(updated);
     saveLinkedProfiles(updated, user?.email);
@@ -1868,6 +1901,47 @@ export const DeveloperProfilePage: React.FC<DeveloperProfilePageProps> = ({
                   placeholder="e.g. mudit2904"
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white focus:border-cyan-500 focus:outline-none"
                 />
+              </div>
+
+              {/* System Design & UML Diagram Tier Preference */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-teal-400" />
+                    <span className="text-xs font-bold text-slate-200">System Design Diagram Engine</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                    {formDesignTier === 'standard' ? '₹0.20' : '₹0.60 (3x)'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormDesignTier('standard')}
+                    className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                      formDesignTier === 'standard'
+                        ? 'bg-teal-950/70 border-teal-500 text-white'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold text-teal-300">Standard Tier</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Lowest Cost (₹0.20)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormDesignTier('ai_studio')}
+                    className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                      formDesignTier === 'ai_studio'
+                        ? 'bg-purple-950/70 border-purple-500 text-white'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold text-purple-300">AI Studio (3x)</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">Interactive Canvas (₹0.60)</div>
+                  </button>
+                </div>
               </div>
 
               <div>

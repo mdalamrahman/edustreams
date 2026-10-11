@@ -207,7 +207,7 @@ export const PipelineVerificationModal: React.FC<PipelineVerificationModalProps>
 
               <div className="space-y-1">
                 <p className="text-sm font-bold text-slate-200">
-                  {progress?.message || 'Testing pipeline health against Judge0...'}
+                  {progress?.message || 'Testing pipeline health against SDETube Sandbox...'}
                 </p>
                 <p className="text-xs text-slate-500 font-mono">
                   Submitting backend reference solution against {testCases.length} test cases
@@ -228,7 +228,7 @@ export const PipelineVerificationModal: React.FC<PipelineVerificationModalProps>
                     ? 'bg-cyan-950/60 border-cyan-500/60 text-cyan-300 font-bold'
                     : 'bg-slate-900/60 border-slate-800 text-slate-400'
                 }`}>
-                  2. Judge0 Execution
+                  2. Sandbox Execution
                 </div>
                 <div className={`p-2 rounded-xl border text-center transition-all ${
                   progress?.stage === 'ai_healing'
