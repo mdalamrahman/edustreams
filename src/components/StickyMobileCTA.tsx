@@ -60,7 +60,7 @@ export const StickyMobileCTA: React.FC<StickyMobileCTAProps> = ({
           className={`flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all min-h-[44px] cursor-pointer ${
             activeTab === 'sde_sheet'
               ? 'text-indigo-300 bg-indigo-950/60 border border-indigo-700/50'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              : 'text-slate-300 hover:text-white hover:bg-slate-900'
           }`}
           title="SDE Curricula (743 Problems)"
         >
@@ -87,7 +87,7 @@ export const StickyMobileCTA: React.FC<StickyMobileCTAProps> = ({
           className={`flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all min-h-[44px] cursor-pointer ${
             activeTab === 'analytics'
               ? 'text-emerald-300 bg-emerald-950/60 border border-emerald-700/50'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+              : 'text-slate-300 hover:text-white hover:bg-slate-900'
           }`}
           title="Progress & Velocity Analytics"
         >

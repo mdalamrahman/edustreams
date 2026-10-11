@@ -37,7 +37,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
 
   return (
-    <footer className="w-full mt-20 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl text-slate-400">
+    <footer className="w-full mt-20 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl text-slate-300">
       {/* Top Banner Accent */}
       <div className="h-0.5 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 opacity-60" />
 
@@ -60,7 +60,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed max-w-sm">
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm">
               An open, production-grade learning operating system for software engineering candidates. Master Data Structures, Algorithms, Low-Level Design, and Distributed Systems with in-workspace video streams and WebAssembly execution.
             </p>
 
@@ -70,14 +70,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 href="https://github.com/mdalamrahman/edustreams"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105"
+                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 title="View GitHub Repository"
               >
                 <Github className="w-4 h-4" />
               </a>
               <a
                 href="mailto:support@sdetube.pages.dev"
-                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105"
+                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all hover:scale-105 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 title="Email Support"
               >
                 <Mail className="w-4 h-4" />
@@ -94,7 +94,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/dsa-sheets', 'sde_sheet')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Code2 className="w-3.5 h-3.5 text-indigo-400" />
                   <span>SDE Sheet 191</span>
@@ -103,7 +103,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/dsa-sheets', 'sde_sheet')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Code2 className="w-3.5 h-3.5 text-purple-400" />
                   <span>Curated DSA (474 Qs)</span>
@@ -112,7 +112,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/dsa-problems', 'dsa_problems')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Code2 className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Company DSA (3.4k+)</span>
@@ -121,7 +121,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/lld', 'lld')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Layers className="w-3.5 h-3.5 text-pink-400" />
                   <span>LLD Studio & SOLID</span>
@@ -130,7 +130,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/hld', 'hld')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Cpu className="w-3.5 h-3.5 text-teal-400" />
                   <span>HLD Boss Architecture</span>
@@ -148,7 +148,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/interview', 'interview')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Bot className="w-3.5 h-3.5 text-amber-400" />
                   <span>AI Mock Interview</span>
@@ -157,7 +157,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/channels', 'channels')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-sky-400" />
                   <span>Cloud Video Lectures</span>
@@ -166,7 +166,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/analytics', 'analytics')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <FileText className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Velocity Analytics</span>
@@ -175,7 +175,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   onClick={() => handleNav('/profile', 'profile')}
-                  className="hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
                   <span>Developer Profile & Stats</span>
@@ -189,7 +189,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             <h4 className="text-xs font-bold text-slate-200 uppercase font-mono tracking-wider">
               Contact & Support
             </h4>
-            <div className="space-y-2.5 text-xs text-slate-400">
+            <div className="space-y-2.5 text-xs text-slate-300">
               <div className="flex items-start gap-2">
                 <Mail className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
                 <div>
@@ -204,7 +204,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 <MapPin className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                 <div>
                   <div className="text-slate-200 font-medium">Headquarters:</div>
-                  <address className="not-italic text-slate-400">
+                  <address className="not-italic text-slate-300">
                     SDETube Open Learning<br />
                     Bengaluru Tech Corridor<br />
                     Karnataka, India 560103
@@ -215,7 +215,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <div className="pt-1">
                 <button
                   onClick={() => handleNav('/contact', 'contact')}
-                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <span>Contact Form & FAQ</span>
                   <ExternalLink className="w-3 h-3" />
@@ -227,7 +227,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         </div>
 
         {/* Bottom Bar: Legal Links & Copyright */}
-        <div className="mt-12 pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div className="mt-12 pt-8 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
           <div className="flex items-center gap-1">
             <span>&copy; {currentYear} SDETube Open Learning Initiative. Built with</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 inline" />
@@ -237,20 +237,20 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           <div className="flex flex-wrap items-center gap-5">
             <button
               onClick={() => handleNav('/privacy', 'privacy')}
-              className="hover:text-slate-300 transition-colors cursor-pointer"
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
             >
               Privacy Policy
             </button>
             <button
               onClick={() => handleNav('/terms', 'terms')}
-              className="hover:text-slate-300 transition-colors cursor-pointer"
+              className="text-slate-300 hover:text-white transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
             >
               Terms of Service
             </button>
 
             <button
               onClick={handleOpenCookiePreferences}
-              className="hover:text-slate-300 transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-slate-300 hover:text-white transition-colors flex items-center gap-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
             >
               <Cookie className="w-3 h-3 text-indigo-400" />
               <span>Cookie Preferences</span>

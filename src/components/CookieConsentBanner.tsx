@@ -78,14 +78,14 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
                   GDPR Ready
                 </span>
               </h4>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-300 mt-0.5">
                 We use strictly essential local storage to save your code submissions and learning streaks.
               </p>
             </div>
           </div>
           <button
             onClick={() => saveConsent(false)}
-            className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
             title="Reject non-essential and close"
             aria-label="Reject non-essential and close"
           >
@@ -100,7 +100,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
               <div>
                 <span className="font-bold text-slate-200">Essential Data (Required)</span>
-                <p className="text-[11px] text-slate-400">Session authentication, passkey telemetry, and solved problem tracking.</p>
+                <p className="text-[11px] text-slate-300">Session authentication, passkey telemetry, and solved problem tracking.</p>
               </div>
               <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 font-mono text-[10px] font-bold">
                 Always On
@@ -111,7 +111,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 border border-slate-800">
               <div>
                 <span className="font-bold text-slate-200">Performance Telemetry</span>
-                <p className="text-[11px] text-slate-400">Anonymous page view metrics and crash logs to improve code compilers.</p>
+                <p className="text-[11px] text-slate-300">Anonymous page view metrics and crash logs to improve code compilers.</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -153,7 +153,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
         </div>
 
         {/* Legal Link */}
-        <div className="text-[10px] text-slate-500 text-center">
+        <div className="text-[10px] text-slate-300 text-center">
           Read our{' '}
           <button
             onClick={() => {
@@ -167,7 +167,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({
           and{' '}
           <button
             onClick={() => {
-              window.location.hash = '#/terms';
+              navigate('/terms');
             }}
             className="text-indigo-400 hover:underline cursor-pointer"
           >

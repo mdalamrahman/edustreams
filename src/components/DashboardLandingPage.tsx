@@ -449,7 +449,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             </div>
 
             {/* Hero Social Proof Tag */}
-            <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-400 font-mono">
+            <div className="flex items-center gap-3 pt-1 text-[11px] text-slate-300 font-mono">
               <span className="flex items-center gap-1 text-emerald-400 font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 100% Free & Open Access
@@ -465,7 +465,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           <div className="lg:col-span-5 flex flex-col items-center sm:items-end justify-center">
             <div className="w-full max-w-xs p-5 rounded-2xl bg-slate-950/90 border border-indigo-500/30 shadow-xl space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">Interview Readiness</span>
+                <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">Interview Readiness</span>
                 <span className="text-xs font-bold text-amber-300 font-mono">{sdeReadinessScore}/100</span>
               </div>
 
@@ -490,7 +490,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 </span>
                 <button
                   onClick={() => onNavigate('analytics')}
-                  className="text-slate-400 hover:text-slate-200 font-bold flex items-center gap-1 cursor-pointer"
+                  className="text-slate-300 hover:text-white font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <span>Analytics</span>
                   <ArrowRight className="w-3 h-3" />
@@ -511,7 +511,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h2 className="text-lg font-extrabold text-slate-100">Today's Daily Coding Challenges (POTD)</h2>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-xs font-mono text-slate-400">Solve daily on SDETube IDE or official platforms</span>
+            <span className="hidden sm:inline text-xs font-mono text-slate-300">Solve daily on SDETube IDE or official platforms</span>
             <button
               onClick={handleSyncPlatformPotd}
               disabled={isSyncingProfiles}
@@ -561,11 +561,11 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 }`}>
                   {sdePotd.name}
                 </h3>
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                <p className="text-xs text-slate-300 mt-1 line-clamp-2">
                   High-frequency interview challenge curated from the 191 SDE Sheet with in-browser Monaco IDE and test runner.
                 </p>
 
-                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-3">
+                <div className="flex items-center gap-2 text-[11px] text-slate-300 font-mono mt-3">
                   <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
                     {sdePotd.category}
                   </span>
@@ -608,7 +608,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     href={sdePotd.leetcode}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
                   >
                     <ExternalLink className="w-3 h-3" />
                     <span>LeetCode</span>
@@ -619,7 +619,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     href={sdePotd.gfg}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
                   >
                     <ExternalLink className="w-3 h-3" />
                     <span>GFG</span>
@@ -661,7 +661,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               </div>
 
               {isLoadingLc ? (
-                <div className="py-6 text-center text-slate-400 font-mono text-xs animate-pulse">
+                <div className="py-6 text-center text-slate-300 font-mono text-xs animate-pulse">
                   Querying live Daily Coding Problem...
                 </div>
               ) : lcPotd ? (
@@ -672,7 +672,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     }`}>
                       {lcPotd.title}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                    <p className="text-xs text-slate-300 mt-1 font-mono">
                       Official Problem of the Day &bull; {lcPotd.date}
                     </p>
                   </div>
@@ -705,7 +705,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   )}
                 </>
               ) : (
-                <div className="text-xs text-slate-500 font-mono py-4">
+                <div className="text-xs text-slate-300 font-mono py-4">
                   Daily problem available online.
                 </div>
               )}
@@ -754,14 +754,14 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     href={lcPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-amber-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
                   >
                     <span>↗ Solve on LeetCode</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
 
                   {/* LeetCode Account Status & Manual Solved Toggle */}
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-slate-800/60">
                     <span className="truncate max-w-[150px]">
                       {linkedConfig.leetcodeUsername ? `@${linkedConfig.leetcodeUsername}` : 'LC not linked'}
                     </span>
@@ -825,7 +825,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               </div>
 
               {isLoadingGfg ? (
-                <div className="py-6 text-center text-slate-400 font-mono text-xs animate-pulse">
+                <div className="py-6 text-center text-slate-300 font-mono text-xs animate-pulse">
                   Querying live GFG Problem of the Day...
                 </div>
               ) : gfgPotd ? (
@@ -836,7 +836,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     }`}>
                       {gfgPotd.title}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1 font-mono">
+                    <p className="text-xs text-slate-300 mt-1 font-mono">
                       GFG Problem of the Day &bull; {gfgPotd.date}
                     </p>
                   </div>
@@ -855,7 +855,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   </div>
                 </>
               ) : (
-                <div className="text-xs text-slate-500 font-mono py-4">
+                <div className="text-xs text-slate-300 font-mono py-4">
                   Daily GFG challenge available.
                 </div>
               )}
@@ -904,14 +904,14 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     href={gfgPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    className="w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
                   >
                     <span>↗ Solve on GeeksforGeeks</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
 
                   {/* GFG Account Status & Manual Solved Toggle */}
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/60">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-slate-800/60">
                     <span className="truncate max-w-[150px]">
                       {linkedConfig.gfgUsername ? `@${linkedConfig.gfgUsername}` : 'GFG not linked'}
                     </span>
@@ -956,7 +956,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <Layers className="w-5 h-5 text-purple-400" />
             <h2 className="text-lg font-extrabold text-slate-100">Learning Portals</h2>
           </div>
-          <span className="text-xs font-mono text-slate-400">Direct Navigation</span>
+          <span className="text-xs font-mono text-slate-300">Direct Navigation</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
@@ -977,7 +977,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
               AI Mock Interview
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               Live SDE-1/2/3 multi-round simulator with voice companion, Monaco IDE & Bar Raiser scorecards.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-amber-400">
@@ -1002,7 +1002,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-violet-300 transition-colors">
               Resume Analyst
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               ATS compatibility score, keyword gap analysis, and 15–20 tailored 3D interview flashcards.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-violet-400">
@@ -1022,7 +1022,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-purple-300 transition-colors">
               DSA Sheets Hub
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               SDE (191 Qs), A2Z (473 Qs) & 79 Sheets (743 Qs total), Monaco IDE, and test runners.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-purple-400">
@@ -1042,7 +1042,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
               System Design & LLD
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               Auto visual UML diagrams, Monaco OOP studio, and Principal Architect AI evaluation.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-400">
@@ -1062,7 +1062,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-sky-300 transition-colors">
               Video Channels
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               Cloud HD video player with synced AI transcripts, smart notes, and interactive quizzes.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-sky-400">
@@ -1082,7 +1082,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <h3 className="text-base font-bold text-slate-100 group-hover:text-emerald-300 transition-colors">
               Velocity Analytics
             </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
               Real 7-day velocity trajectory, solving speed, accuracy, and topic coverage breakdown.
             </p>
             <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-400">
@@ -1101,38 +1101,38 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
         
         {/* Total Solved */}
         <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+          <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
             <span>Overall Problems</span>
             <Target className="w-4 h-4 text-indigo-400" />
           </div>
           <div className="text-2xl font-black text-slate-100 font-mono">
-            {totalSolved} <span className="text-xs text-slate-500 font-normal">/ {totalAvailableProblems}</span>
+            {totalSolved} <span className="text-xs text-slate-300 font-normal">/ {totalAvailableProblems}</span>
           </div>
           <div className="text-[11px] text-indigo-300 font-mono">DSA: {dsaSolved} | LLD: {lldSolved}</div>
         </div>
 
         {/* Study Hours */}
         <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+          <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
             <span>Dedicated Time</span>
             <Clock className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl font-black text-slate-100 font-mono">
             {totalDedicatedHours} <span className="text-xs text-purple-300 font-normal">Hours</span>
           </div>
-          <div className="text-[11px] text-slate-400">Logged across active sessions</div>
+          <div className="text-[11px] text-slate-300">Logged across active sessions</div>
         </div>
 
         {/* Velocity */}
         <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+          <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
             <span>Solving Pace</span>
             <Zap className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-black text-slate-100 font-mono">
             {speedIndex} <span className="text-xs text-amber-300 font-normal">q/min</span>
           </div>
-          <div className="text-[11px] text-slate-400">Questions per active minute</div>
+          <div className="text-[11px] text-slate-300">Questions per active minute</div>
         </div>
 
         {/* Bonus Points */}
@@ -1144,7 +1144,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           <div className="text-2xl font-black text-emerald-400 font-mono">
             +{bonusPoints} <span className="text-xs text-emerald-300 font-normal">Pts</span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono">DBMS: {dbmsQueriesExecuted} | CN: {cnModulesCompleted}</div>
+          <div className="text-[11px] text-slate-300 font-mono">DBMS: {dbmsQueriesExecuted} | CN: {cnModulesCompleted}</div>
         </div>
 
       </div>
@@ -1158,7 +1158,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
             <Terminal className="w-4 h-4 text-purple-400" />
             <span>Quick Studio Launchers</span>
           </h4>
-          <p className="text-xs text-slate-400">Instant access to in-browser developer tooling</p>
+          <p className="text-xs text-slate-300">Instant access to in-browser developer tooling</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
