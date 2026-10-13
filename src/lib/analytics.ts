@@ -481,8 +481,7 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
       strId === potdSlug ||
       cleanSlug === potdSlug ||
       (typeof identifier === 'number' && identifier === sdePotd?.id) ||
-      matchedProblems.some(p => p.id === sdePotd?.id || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === potdName) ||
-      (potdSlug === 'floorinbst' && (strId === 'closestbinarysearchtreevalue' || cleanSlug === 'closest-binary-search-tree-value'))
+      matchedProblems.some(p => p.id === sdePotd?.id || p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === potdName)
     );
 
     let isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');

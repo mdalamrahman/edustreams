@@ -382,23 +382,24 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             setSelectedTopic('ALL');
             setSelectedDifficulty('All');
           }}
-          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#0b0f19] border border-slate-800 hover:border-cyan-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer"
+          className="group relative overflow-hidden rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-cyan-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer"
         >
-          <div className="flex items-start justify-between">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-cyan-500/10 blur-2xl transition-opacity group-hover:opacity-100" />
+          <div className="flex items-start justify-between relative z-10">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-              Most Popular
+              ● Most Popular
             </span>
             <Globe className="w-4 h-4 text-cyan-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
           </div>
-          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-cyan-300 transition-colors">
+          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-cyan-300 transition-colors relative z-10">
             Complete LeetCode 3,400+
           </h3>
-          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 font-mono relative z-10">
             Entire authentic LeetCode problemset with official testcases
           </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="font-mono text-cyan-400 font-bold">{dataset?.total_problems.toLocaleString() || '3,399'} Qs</span>
-            <span className="group-hover:translate-x-0.5 transition-transform text-slate-400">View All &rarr;</span>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 font-mono relative z-10">
+            <span className="text-cyan-400 font-bold">{dataset?.total_problems.toLocaleString() || '3,399'} Qs</span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-slate-300">View All &rarr;</span>
           </div>
         </div>
 
@@ -408,23 +409,24 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             setSelectedTimeframe('6_months');
             setSelectedTopic('ALL');
           }}
-          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#0b0f19] border border-slate-800 hover:border-rose-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/10 cursor-pointer"
+          className="group relative overflow-hidden rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-rose-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/10 cursor-pointer"
         >
-          <div className="flex items-start justify-between">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-rose-500/10 blur-2xl transition-opacity group-hover:opacity-100" />
+          <div className="flex items-start justify-between relative z-10">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/20">
-              FAANG Target
+              ● FAANG Target
             </span>
             <Flame className="w-4 h-4 text-rose-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
           </div>
-          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-rose-300 transition-colors">
+          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-rose-300 transition-colors relative z-10">
             Google High Frequency
           </h3>
-          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 font-mono relative z-10">
             Top algorithms & dynamic graphs asked in recent interview rounds
           </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="font-mono text-rose-400 font-bold">Past 6 Months</span>
-            <span className="group-hover:translate-x-0.5 transition-transform text-slate-400">Explore &rarr;</span>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 font-mono relative z-10">
+            <span className="text-rose-400 font-bold">Past 6 Months</span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-slate-300">Explore &rarr;</span>
           </div>
         </div>
 
@@ -434,23 +436,24 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             setSelectedTimeframe('all');
             setSelectedTopic('ALL');
           }}
-          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#0b0f19] border border-slate-800 hover:border-amber-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 cursor-pointer"
+          className="group relative overflow-hidden rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-amber-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10 cursor-pointer"
         >
-          <div className="flex items-start justify-between">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-500/10 blur-2xl transition-opacity group-hover:opacity-100" />
+          <div className="flex items-start justify-between relative z-10">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
-              High Probability
+              ● High Yield
             </span>
             <Building2 className="w-4 h-4 text-amber-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
           </div>
-          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-amber-300 transition-colors">
+          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-amber-300 transition-colors relative z-10">
             Amazon Interview Set
           </h3>
-          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 font-mono relative z-10">
             Trees, heaps, sliding window & BFS/DFS high-yield patterns
           </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="font-mono text-amber-400 font-bold">1,200+ Questions</span>
-            <span className="group-hover:translate-x-0.5 transition-transform text-slate-400">Explore &rarr;</span>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 font-mono relative z-10">
+            <span className="text-amber-400 font-bold">1,200+ Questions</span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-slate-300">Explore &rarr;</span>
           </div>
         </div>
 
@@ -460,32 +463,33 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
             setSelectedTimeframe('all');
             setSelectedTopic('ALL');
           }}
-          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#111827] via-[#0f172a] to-[#0b0f19] border border-slate-800 hover:border-indigo-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer"
+          className="group relative overflow-hidden rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-indigo-500/50 p-4 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer"
         >
-          <div className="flex items-start justify-between">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-indigo-500/10 blur-2xl transition-opacity group-hover:opacity-100" />
+          <div className="flex items-start justify-between relative z-10">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-              Top Rated
+              ● Top Rated
             </span>
             <Sparkles className="w-4 h-4 text-indigo-400 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all" />
           </div>
-          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-indigo-300 transition-colors">
+          <h3 className="text-sm font-bold text-white mt-2 group-hover:text-indigo-300 transition-colors relative z-10">
             Meta Interview Set
           </h3>
-          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
+          <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 font-mono relative z-10">
             Fast trees, binary search, intervals & dynamic recursion
           </p>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="font-mono text-indigo-400 font-bold">850+ Questions</span>
-            <span className="group-hover:translate-x-0.5 transition-transform text-slate-400">Explore &rarr;</span>
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 font-mono relative z-10">
+            <span className="text-indigo-400 font-bold">850+ Questions</span>
+            <span className="group-hover:translate-x-0.5 transition-transform text-slate-300">Explore &rarr;</span>
           </div>
         </div>
       </div>
 
       {/* 2. TOPICS HORIZONTAL CAROUSEL BAR (EXACT LEETCODE STYLE) */}
-      <div className="relative flex items-center bg-[#0d121f] rounded-2xl border border-slate-800/80 p-2 shadow-sm">
+      <div className="relative flex items-center bg-[#090d16] rounded-2xl border border-white/[0.08] p-2 shadow-sm">
         <button
           onClick={() => scrollTopics('left')}
-          className="p-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer mr-1 hidden sm:flex items-center justify-center flex-shrink-0"
+          className="p-1.5 rounded-xl bg-[#0c101a] hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer mr-1 hidden sm:flex items-center justify-center flex-shrink-0 border border-white/[0.08]"
           title="Scroll Left"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -499,14 +503,14 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
           {/* All Topics Pill */}
           <button
             onClick={() => setSelectedTopic('ALL')}
-            className={`flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer ${
               selectedTopic === 'ALL'
-                ? 'bg-slate-100 text-slate-900 font-bold shadow-md shadow-white/10'
-                : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-lg shadow-cyan-500/20'
+                : 'bg-[#0c101a] text-slate-300 hover:bg-white/[0.06] hover:text-white border border-white/[0.08]'
             }`}
           >
             <span>All Topics</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${selectedTopic === 'ALL' ? 'bg-slate-300 text-slate-900' : 'text-slate-500'}`}>
+            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${selectedTopic === 'ALL' ? 'bg-black/30 text-white' : 'text-slate-500'}`}>
               {rawCompanyProblems.length}
             </span>
           </button>
@@ -519,15 +523,15 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
               <button
                 key={topName}
                 onClick={() => setSelectedTopic(isSel ? 'ALL' : topName)}
-                className={`flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex-shrink-0 flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer ${
                   isSel
-                    ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                    : 'bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-800'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-md shadow-purple-600/30'
+                    : 'bg-[#0c101a] text-slate-300 hover:bg-white/[0.06] hover:text-white border border-white/[0.08]'
                 }`}
               >
                 <span>{topName}</span>
                 {count > 0 && (
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${isSel ? 'bg-indigo-800 text-indigo-100' : 'text-slate-500'}`}>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${isSel ? 'bg-black/30 text-white' : 'text-slate-500'}`}>
                     {count}
                   </span>
                 )}
@@ -859,7 +863,7 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                     <th className="py-3 px-3 w-24 text-center">Acceptance</th>
                     <th className="py-3 px-3 w-24 text-center">Difficulty</th>
                     <th className="py-3 px-4 w-32">Frequency</th>
-                    <th className="py-3 px-4 w-24 text-right">Practice</th>
+                    <th className="py-3 px-4 w-44 text-right">Practice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/40 text-xs">
@@ -1005,16 +1009,29 @@ export const CompanyDSAProblems: React.FC<CompanyDSAProblemsProps> = ({
                             </div>
                           </td>
 
-                          {/* Solve Button */}
+                          {/* Practice Buttons: SDETube IDE Solve + LeetCode Direct Solve */}
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleSolveInWorkspace(item)}
-                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500 font-semibold text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
-                              title="Solve in SDETube IDE"
-                            >
-                              <Code2 className="w-3 h-3" />
-                              <span>Solve</span>
-                            </button>
+                            <div className="inline-flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleSolveInWorkspace(item)}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-800 hover:border-indigo-500 font-semibold text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+                                title="Solve in SDETube IDE"
+                              >
+                                <Code2 className="w-3 h-3" />
+                                <span>Solve</span>
+                              </button>
+
+                              <a
+                                href={item.url || (item.slug ? `https://leetcode.com/problems/${item.slug}/` : 'https://leetcode.com/problemset/all/')}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50 font-semibold text-xs transition-all shadow-sm active:scale-95 cursor-pointer"
+                                title="Solve directly on LeetCode"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>LeetCode</span>
+                              </a>
+                            </div>
                           </td>
                         </tr>
                       );

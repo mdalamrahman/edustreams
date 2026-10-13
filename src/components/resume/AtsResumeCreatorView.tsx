@@ -388,16 +388,17 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & METRICS BAR (TARGET ROLE + LIVE ATS SCORE + CONTROLS)      */}
       {/* ========================================================================= */}
-      <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/70 via-slate-900 to-purple-950/70 shadow-2xl space-y-4">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-5 sm:p-6 shadow-2xl space-y-4 group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
         
         {/* Row 1: Target Role & Live ATS Score Meter */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           
           {/* Target Role Editor */}
-          <div className="space-y-1.5 flex-1">
+          <div className="space-y-2 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-600/30 border border-purple-500/40 text-[11px] font-mono font-bold text-purple-300 flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-amber-300" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-bold tracking-wide uppercase">
+                <Target className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Modifiable Target Role</span>
               </span>
               <span className="text-[11px] font-mono text-slate-400">
@@ -411,7 +412,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                 value={resumeData.targetRole || ''}
                 onChange={(e) => updateResumeData(prev => ({ ...prev, targetRole: e.target.value }))}
                 placeholder="Target Role (e.g. Senior Software Engineer (SDE-2 / Full Stack))"
-                className="w-full max-w-xl px-3.5 py-2 rounded-xl bg-slate-950/90 border border-indigo-500/50 text-sm font-bold text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-inner"
+                className="w-full max-w-xl px-4 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-sm font-bold text-white font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 shadow-inner"
               />
             </div>
 
@@ -427,10 +428,10 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                   key={role}
                   type="button"
                   onClick={() => handleSelectRolePreset(role)}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer ${
                     resumeData.targetRole === role
-                      ? 'bg-purple-900/80 text-purple-200 border border-purple-600 font-bold'
-                      : 'bg-slate-950/70 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/50 font-bold shadow-sm shadow-cyan-500/20'
+                      : 'bg-[#090d16] text-slate-400 hover:text-white border border-white/[0.08] hover:border-white/20'
                   }`}
                 >
                   {role}
@@ -443,7 +444,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
           <div className="flex items-center gap-3 flex-shrink-0 self-start lg:self-center">
             
             {/* Live ATS Score Badge */}
-            <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-xl flex items-center gap-3">
+            <div className="p-3.5 rounded-2xl bg-[#090d16] border border-white/[0.08] shadow-xl flex items-center gap-3.5">
               <div className="relative w-12 h-12 flex items-center justify-center">
                 <svg className="w-12 h-12 transform -rotate-90" viewBox="0 0 36 36">
                   <path
@@ -456,7 +457,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                   <path
                     className={
                       liveAts.overallScore >= 85 ? 'text-emerald-400' :
-                      liveAts.overallScore >= 70 ? 'text-purple-400' : 'text-amber-400'
+                      liveAts.overallScore >= 70 ? 'text-cyan-400' : 'text-amber-400'
                     }
                     strokeDasharray={`${liveAts.overallScore}, 100`}
                     strokeWidth="3.5"
@@ -466,7 +467,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
                 </svg>
-                <span className="absolute font-mono font-black text-xs text-slate-100">
+                <span className="absolute font-mono font-black text-xs text-white">
                   {liveAts.overallScore}%
                 </span>
               </div>
@@ -477,7 +478,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                 </div>
                 <div className={`text-xs font-bold font-mono ${
                   liveAts.overallScore >= 85 ? 'text-emerald-400' :
-                  liveAts.overallScore >= 70 ? 'text-purple-300' : 'text-amber-300'
+                  liveAts.overallScore >= 70 ? 'text-cyan-400' : 'text-amber-300'
                 }`}>
                   {liveAts.rating}
                 </div>
@@ -488,7 +489,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
             </div>
 
             {/* Wallet Balance Pill */}
-            <div className="px-3.5 py-2.5 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-xl flex items-center gap-2">
+            <div className="px-3.5 py-3 rounded-2xl bg-[#090d16] border border-white/[0.08] shadow-xl flex items-center gap-2.5">
               <Coins className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <div>
                 <div className="text-[10px] font-mono text-slate-400">Your Credits</div>
@@ -503,9 +504,9 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
         </div>
 
         {/* Row 2: Action Buttons Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-white/[0.08] relative z-10">
           
-          <div className="flex items-center gap-2 text-xs text-slate-300">
+          <div className="flex items-center gap-2 text-xs text-slate-300 font-mono">
             <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             <span>Single-column FAANG ATS typography &bull; Free instant live preview</span>
           </div>
@@ -515,7 +516,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
             {/* Print PDF Button */}
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold font-mono transition-all shadow-md cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#090d16] hover:bg-[#121826] border border-white/10 hover:border-cyan-500/40 text-slate-200 hover:text-white text-xs font-bold font-mono transition-all shadow-md cursor-pointer"
               title="Print clean 1-page/2-page ATS PDF via browser"
             >
               <Printer className="w-3.5 h-3.5 text-cyan-400" />
@@ -525,7 +526,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
             {/* Copy Plaintext Button */}
             <button
               onClick={handleCopyPlainText}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold font-mono transition-all shadow-md cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#090d16] hover:bg-[#121826] border border-white/10 hover:border-purple-500/40 text-slate-200 hover:text-white text-xs font-bold font-mono transition-all shadow-md cursor-pointer"
               title="Copy plain text formatted for online job application textareas"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-purple-400" />}
@@ -535,10 +536,10 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
             {/* Download Markdown */}
             <button
               onClick={handleDownloadMarkdown}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs font-bold font-mono transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#090d16] hover:bg-[#121826] border border-white/10 hover:border-cyan-500/40 text-slate-300 hover:text-white text-xs font-bold font-mono transition-all cursor-pointer"
               title="Export formatted Markdown .md"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
               <span>Export .md</span>
             </button>
 
@@ -551,25 +552,26 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
       {/* ========================================================================= */}
       {/* 2. TARGET JOB DESCRIPTION ALIGNMENT PANEL (CHECKBOX + AI MODIFY BUTTON)   */}
       {/* ========================================================================= */}
-      <div className="glass-panel p-5 rounded-3xl border border-purple-500/30 bg-slate-900/90 shadow-xl space-y-4">
-        
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-5 sm:p-6 shadow-xl space-y-4 group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+
         {/* Toggle Checkbox Row */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <label className="flex items-center gap-3 cursor-pointer group">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <label className="flex items-center gap-3 cursor-pointer group/label">
             <input
               type="checkbox"
               checked={alignWithJd}
               onChange={(e) => setAlignWithJd(e.target.checked)}
-              className="w-5 h-5 rounded-lg border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+              className="w-5 h-5 rounded-lg border-white/20 bg-[#090d16] text-cyan-500 focus:ring-cyan-500 focus:ring-offset-0 cursor-pointer"
             />
             <div>
-              <span className="text-sm font-bold text-slate-100 group-hover:text-purple-300 transition-colors flex items-center gap-2">
+              <span className="text-sm font-bold text-white group-hover/label:text-cyan-300 transition-colors flex items-center gap-2">
                 <span>Target Job Description Alignment</span>
-                <span className="px-2 py-0.2 rounded-full bg-purple-950 border border-purple-700/60 text-[10px] font-mono text-purple-300">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono text-cyan-400 font-bold">
                   SDETube AI Engine
                 </span>
               </span>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
                 When enabled, SDETube AI modifies your resume against the JD, and calculates your ATS score dynamically with each change.
               </p>
             </div>
@@ -581,7 +583,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setCustomJd(SAMPLE_JOB_DESCRIPTIONS[0]?.text || '')}
-                className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 hover:text-purple-300 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#090d16] border border-white/10 hover:border-cyan-500/40 text-[11px] font-mono text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm"
               >
                 Load Senior SDE-2 JD
               </button>
@@ -591,22 +593,22 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
 
         {/* Expandable JD Input & AI Tailor Trigger */}
         {alignWithJd && (
-          <div className="space-y-3 pt-3 border-t border-slate-800">
+          <div className="space-y-3 pt-3 border-t border-white/[0.08] relative z-10">
             <div className="relative">
               <textarea
                 value={customJd}
                 onChange={(e) => setCustomJd(e.target.value)}
                 placeholder="Paste the target Job Description here (requirements, responsibilities, tech stack)..."
-                className="w-full h-28 p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-purple-500"
+                className="w-full h-28 p-3.5 rounded-xl bg-[#090d16] border border-white/10 text-xs text-slate-200 font-mono leading-relaxed resize-none focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
               />
-              <span className="absolute bottom-2 right-3 text-[10px] font-mono text-slate-500">
+              <span className="absolute bottom-2.5 right-3 text-[10px] font-mono text-slate-500">
                 {customJd.length} chars
               </span>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
                 <span>AI will rewrite bullets to Google XYZ, align keywords, and show the modified resume for you to edit.</span>
               </div>
 
@@ -614,15 +616,15 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                 type="button"
                 onClick={handleAiTailorWithJd}
                 disabled={isGenerating || !customJd.trim()}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-mono text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer disabled:opacity-50"
               >
                 {isGenerating ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <Sparkles className="w-4 h-4 text-cyan-200" />
                 )}
                 <span>AI Modify & Tailor Resume to JD</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-purple-900/80 text-purple-200 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded-md bg-black/40 text-cyan-200 text-[10px] font-mono border border-cyan-400/30">
                   ₹{PRICING_CONFIG.AI_RESUME_TAILOR?.toFixed(2) || '1.00'}
                 </span>
               </button>
@@ -632,9 +634,9 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
 
         {/* Notice/Alert Banner */}
         {billingNotice && (
-          <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-600/50 text-xs font-mono text-purple-200 flex items-center justify-between gap-2">
+          <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-xs font-mono text-cyan-200 flex items-center justify-between gap-2 relative z-10">
             <div className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <Info className="w-4 h-4 text-cyan-400 flex-shrink-0" />
               <span>{billingNotice}</span>
             </div>
             <button onClick={() => setBillingNotice(null)} className="text-slate-400 hover:text-white">✕</button>
@@ -652,7 +654,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
         <div className="lg:col-span-5 space-y-4">
           
           {/* Section Navigation Tabs */}
-          <div className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-slate-950 border border-slate-800 shadow-md">
+          <div className="flex flex-wrap gap-1.5 p-1.5 rounded-2xl bg-[#090d16] border border-white/[0.08] shadow-md">
             {[
               { id: 'personal' as const, label: 'Contact', icon: FileText },
               { id: 'summary' as const, label: 'Summary', icon: Briefcase },
@@ -667,17 +669,17 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
                 <button
                   key={sec.id}
                   onClick={() => setActiveSection(sec.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{sec.label}</span>
                   {sec.count !== undefined && (
                     <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                      isActive ? 'bg-purple-800 text-purple-200' : 'bg-slate-800 text-slate-400'
+                      isActive ? 'bg-black/30 text-white' : 'bg-white/[0.08] text-slate-400'
                     }`}>
                       {sec.count}
                     </span>
@@ -688,12 +690,12 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
           </div>
 
           {/* Section Editor Card */}
-          <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-800 bg-slate-900/90 shadow-2xl space-y-5 max-h-[780px] overflow-y-auto pr-1">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-5 sm:p-6 shadow-xl space-y-5 max-h-[780px] overflow-y-auto pr-2 custom-scrollbar">
             
             {/* ---------------- 1. PERSONAL INFO ---------------- */}
             {activeSection === 'personal' && (
               <div className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-purple-400 font-mono">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">
                   Personal Contact Details
                 </h3>
 
@@ -1226,29 +1228,29 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
           {/* Zoom and Document Controls Toolbar */}
           <div className="flex items-center justify-between px-2 text-xs">
             <span className="font-mono text-slate-400 flex items-center gap-1.5">
-              <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
               <span>Real-Time Machine ATS Document Preview</span>
             </span>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-[#090d16] p-1 rounded-xl border border-white/[0.08]">
               <button
                 type="button"
                 onClick={() => setPreviewZoom('100')}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono ${previewZoom === '100' ? 'bg-purple-900 text-purple-200 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${previewZoom === '100' ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' : 'text-slate-400 hover:text-white'}`}
               >
                 100%
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewZoom('90')}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono ${previewZoom === '90' ? 'bg-purple-900 text-purple-200 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${previewZoom === '90' ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' : 'text-slate-400 hover:text-white'}`}
               >
                 90%
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewZoom('80')}
-                className={`px-2 py-0.5 rounded text-[11px] font-mono ${previewZoom === '80' ? 'bg-purple-900 text-purple-200 font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-0.5 rounded-lg text-[11px] font-mono transition-all cursor-pointer ${previewZoom === '80' ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' : 'text-slate-400 hover:text-white'}`}
               >
                 Fit
               </button>
@@ -1256,7 +1258,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
           </div>
 
           {/* Paper Sheet Wrapper */}
-          <div className="overflow-x-auto p-2 sm:p-4 rounded-3xl bg-slate-950/80 border border-slate-800/80 shadow-2xl flex justify-center">
+          <div className="overflow-x-auto p-2 sm:p-6 rounded-2xl bg-[#090d16] border border-white/[0.08] shadow-2xl flex justify-center">
             
             <div
               ref={previewRef}

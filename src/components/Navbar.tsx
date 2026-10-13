@@ -27,7 +27,8 @@ import {
   Building2,
   ExternalLink,
   FileSearch,
-  PanelsTopLeft
+  PanelsTopLeft,
+  Terminal
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
@@ -196,15 +197,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       activeColor: 'bg-indigo-600 text-white'
     },
     {
-      id: 'studio' as const,
-      path: '/studio',
-      label: 'Universal Studio',
-      subtitle: '3-Pane Coding & Architecture Arena',
-      icon: PanelsTopLeft,
-      color: 'text-amber-400',
-      activeColor: 'bg-gradient-to-r from-amber-600 to-indigo-600 text-white'
-    },
-    {
       id: 'sde_sheet' as const,
       path: '/dsa-sheets',
       label: 'DSA Sheets',
@@ -226,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       id: 'lld' as const,
       path: '/lld',
       label: 'LLD Design',
-      subtitle: 'OOP Studio & SDE-1 Notes',
+      subtitle: 'OOP & SDE-1 Notes',
       icon: Layers,
       color: 'text-pink-400',
       activeColor: 'bg-pink-600 text-white'
@@ -309,20 +301,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      {/* Main Sticky Navbar */}
-      <header className="sticky top-0 z-40 w-full glass-panel border-b border-slate-800 bg-slate-950/90 backdrop-blur-xl">
+      {/* Main Sticky Navbar (Google Stitch Obsidian Command) */}
+      <header className="sticky top-0 z-40 w-full border-b border-stitch-variant/50 bg-stitch-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]">
         <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
           
-          {/* Left: Hamburger Menu Button + Logo */}
-          <div className="flex items-center space-x-3">
+          {/* Left: Hamburger Button + Stitch Brand Logo + Quick Desktop Links */}
+          <div className="flex items-center space-x-3 lg:space-x-4">
             {/* Hamburger Trigger Button */}
             <button
               onClick={() => setIsDrawerOpen(true)}
-              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 shadow-sm transition-all cursor-pointer group flex items-center gap-1.5"
+              className="p-2 rounded-xl bg-stitch-low hover:bg-stitch-high text-slate-300 hover:text-white border border-stitch-variant shadow-sm transition-all cursor-pointer group flex items-center gap-1.5"
               title="Open Navigation Menu"
               aria-label="Navigation Menu"
             >
-              <Menu className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+              <Menu className="w-5 h-5 text-stitch-cyan group-hover:scale-110 transition-transform" />
             </button>
 
             {/* Brand Logo */}
@@ -330,23 +322,51 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center space-x-2.5 cursor-pointer flex-shrink-0" 
               onClick={() => handleNavigate('/', 'dashboard')}
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-sky-500 p-0.5 shadow-lg shadow-purple-500/20 flex-shrink-0">
-                <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                  <Tv className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                </div>
+              <div className="w-9 h-9 rounded-xl bg-stitch-high border border-stitch-variant/80 flex items-center justify-center text-stitch-cyan shadow-md">
+                <Terminal className="w-5 h-5 text-stitch-cyan" />
               </div>
               <div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-purple-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
-                    SDETube
+                <div className="flex items-baseline space-x-0.5">
+                  <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-100 font-sans">
+                    SDET
                   </span>
-                  <span className="text-[9px] sm:text-[10px] font-bold uppercase px-1.5 sm:px-2 py-0.2 rounded-full bg-purple-950 text-purple-300 border border-purple-700/60">
-                    SDE Arena
+                  <span className="font-extrabold text-base sm:text-lg tracking-tight text-stitch-cyan font-sans">
+                    ube
+                  </span>
+                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-cyan-500/10 text-stitch-cyan border border-cyan-400/20 ml-1 hidden sm:inline">
+                    Cockpit
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 hidden sm:block">AI-Powered Video Lectures & SDE Preparation</p>
               </div>
             </div>
+
+            {/* Desktop Quick Nav Links (Google Stitch Navigation) */}
+            <nav className="hidden xl:flex items-center space-x-1 pl-2">
+              {[
+                { label: 'Dashboard', path: '/', id: 'dashboard' },
+                { label: 'DSA Sheets', path: '/dsa-sheets', id: 'sde_sheet' },
+                { label: 'HLD Architecture', path: '/hld', id: 'hld' },
+                { label: 'LLD Design', path: '/lld', id: 'lld' },
+                { label: 'AI Interviewer', path: '/interview', id: 'interview' },
+                { label: 'Video Lectures', path: '/channels', id: 'channels' },
+                { label: 'Resume ATS', path: '/resume-analyst', id: 'resume_analyst' },
+              ].map((link) => {
+                const active = isLinkActive(link.path, link.id);
+                return (
+                  <button
+                    key={link.id}
+                    onClick={() => handleNavigate(link.path, link.id)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      active
+                        ? 'bg-stitch-high text-stitch-cyan border border-stitch-variant/80'
+                        : 'text-stitch-dim hover:text-slate-100 hover:bg-stitch-low'
+                    }`}
+                  >
+                    {link.label}
+                  </button>
+                );
+              })}
+            </nav>
           </div>
 
           {/* Right Section: Wallet Balance + POTD Quick Action + User Avatar & Menu */}

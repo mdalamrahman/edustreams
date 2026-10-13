@@ -195,6 +195,65 @@
   --accent-hld: #14b8a6;
   --accent-lld: #ec4899;
   --accent-ai: #a855f7;
+
+  /* Google Stitch Obsidian Command Palette */
+  --stitch-lowest: #0a0e17;
+  --stitch-surface: #0f131c;
+  --stitch-low: #181b25;
+  --stitch-container: #1c1f29;
+  --stitch-high: #262a34;
+  --stitch-highest: #31353f;
+  --stitch-bright: #353943;
+
+  --stitch-cyan: #4cd7f6;
+  --stitch-cyan-container: #06b6d4;
+  --stitch-lavender: #c0c1ff;
+  --stitch-lavender-container: #3131c0;
+  --stitch-mint: #4edea3;
+  --stitch-mint-container: #1bbd85;
+
+  --stitch-outline: #869397;
+  --stitch-outline-variant: #3d494c;
+  --stitch-on-surface: #dfe2ef;
+  --stitch-on-surface-variant: #bcc9cd;
+}
+
+/* Google Stitch Surface Utility Classes */
+.bg-stitch-lowest { background-color: var(--stitch-lowest); }
+.bg-stitch-surface { background-color: var(--stitch-surface); }
+.bg-stitch-low { background-color: var(--stitch-low); }
+.bg-stitch-container { background-color: var(--stitch-container); }
+.bg-stitch-high { background-color: var(--stitch-high); }
+.bg-stitch-highest { background-color: var(--stitch-highest); }
+.bg-stitch-bright { background-color: var(--stitch-bright); }
+
+.border-stitch-outline { border-color: rgba(134, 147, 151, 0.3); }
+.border-stitch-variant { border-color: rgba(61, 73, 76, 0.4); }
+
+.text-stitch-cyan { color: var(--stitch-cyan); }
+.text-stitch-lavender { color: var(--stitch-lavender); }
+.text-stitch-mint { color: var(--stitch-mint); }
+.text-stitch-muted { color: var(--stitch-outline); }
+.text-stitch-dim { color: var(--stitch-on-surface-variant); }
+
+.glow-stitch-cyan {
+  box-shadow: 0 0 25px -4px rgba(76, 215, 246, 0.22);
+}
+.glow-stitch-lavender {
+  box-shadow: 0 0 25px -4px rgba(192, 193, 255, 0.2);
+}
+.glow-stitch-mint {
+  box-shadow: 0 0 25px -4px rgba(78, 222, 163, 0.22);
+}
+.neon-glow-cyan {
+  box-shadow: 0 0 20px -4px rgba(0, 240, 255, 0.4);
+}
+.neon-glow-subtle {
+  box-shadow: 0 0 25px -5px rgba(0, 240, 255, 0.15);
+}
+.code-line-active {
+  background: rgba(0, 240, 255, 0.08);
+  border-left: 2px solid #00f0ff;
 }
 
 /* Universal Studio Workbench Panels */

@@ -461,24 +461,27 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
     <div className="space-y-6 animate-fadeIn font-sans">
 
       {/* COMPANY-WISE QUESTIONS CALLOUT BANNER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 border border-cyan-500/30 shadow-lg">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+        <div className="flex items-center space-x-3.5 relative z-10">
+          <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex-shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs sm:text-sm font-bold text-slate-100">Targeting Specific Tech Companies?</span>
-              <span className="px-2 py-0.2 rounded-full bg-cyan-950 border border-cyan-700/60 text-[10px] font-mono font-bold text-cyan-300">3,400+ Curated Problems</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-white">Targeting Specific Tech Companies?</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-wide">
+                ● 3,400+ Curated Problems
+              </span>
             </div>
-            <p className="text-xs text-slate-400">Filter by Google, BrowserStack, Amazon, Meta, Microsoft across 30 Days, 6 Months, and All Time with single submission tracking.</p>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">Filter by Google, BrowserStack, Amazon, Meta, Microsoft across 30 Days, 6 Months, and All Time with single submission tracking.</p>
           </div>
         </div>
         <button
           onClick={() => {
             window.location.hash = '#/dsa-problems';
           }}
-          className="flex items-center justify-center space-x-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs transition-all shadow-md shadow-cyan-600/20 cursor-pointer flex-shrink-0"
+          className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-mono text-xs font-bold transition-all shadow-lg shadow-cyan-500/20 cursor-pointer flex-shrink-0 relative z-10"
         >
           <Building2 className="w-4 h-4" />
           <span>Explore Company DSA Problems</span>
@@ -487,21 +490,21 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       </div>
 
       {/* TOP 5-WAY SHEET SWITCHER TABS */}
-      <div className="p-2 sm:p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-md flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 w-full">
+      <div className="p-1.5 sm:p-2 rounded-2xl bg-[#090d16] border border-white/[0.08] shadow-2xl backdrop-blur-md">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 w-full">
           
           {/* TAB 1: SDE Sheet */}
           <button
             onClick={() => handleSwitchSheet('sde')}
-            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeSheet === 'sde'
-                ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 text-white shadow-lg shadow-emerald-500/20 scale-[1.02] border border-emerald-400/40'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-600 text-white shadow-lg shadow-cyan-500/20 border border-cyan-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <Rocket className={`w-4 h-4 ${activeSheet === 'sde' ? 'text-white animate-bounce' : 'text-emerald-400'}`} />
+            <Rocket className={`w-3.5 h-3.5 ${activeSheet === 'sde' ? 'text-white' : 'text-cyan-400'}`} />
             <span>SDE Sheet</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'sde' ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-400/30' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeSheet === 'sde' ? 'bg-black/30 text-white' : 'bg-white/[0.08] text-slate-400'}`}>
               191 Qs
             </span>
           </button>
@@ -509,15 +512,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 2: A2Z DSA Roadmap */}
           <button
             onClick={() => handleSwitchSheet('a2z')}
-            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeSheet === 'a2z'
-                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-[1.02] border border-indigo-400/40'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-lg shadow-purple-500/20 border border-purple-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <BookOpen className={`w-4 h-4 ${activeSheet === 'a2z' ? 'text-white animate-pulse' : 'text-indigo-400'}`} />
+            <BookOpen className={`w-3.5 h-3.5 ${activeSheet === 'a2z' ? 'text-white' : 'text-purple-400'}`} />
             <span>A2Z Roadmap</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'a2z' ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-400/30' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeSheet === 'a2z' ? 'bg-black/30 text-white' : 'bg-white/[0.08] text-slate-400'}`}>
               474 Qs
             </span>
           </button>
@@ -525,15 +528,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 3: 79 Sheet */}
           <button
             onClick={() => handleSwitchSheet('79')}
-            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeSheet === '79'
-                ? 'bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 text-white shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-400/40'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-slate-950 font-black shadow-lg shadow-amber-500/20 border border-amber-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <Zap className={`w-4 h-4 ${activeSheet === '79' ? 'text-white animate-pulse' : 'text-amber-400'}`} />
+            <Zap className={`w-3.5 h-3.5 ${activeSheet === '79' ? 'text-slate-950' : 'text-amber-400'}`} />
             <span>79 Fast-Track</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === '79' ? 'bg-amber-950/80 text-amber-200 border border-amber-400/30' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeSheet === '79' ? 'bg-black/20 text-slate-950' : 'bg-white/[0.08] text-slate-400'}`}>
               79 Qs
             </span>
           </button>
@@ -541,15 +544,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 4: Blind 75 Sheet */}
           <button
             onClick={() => handleSwitchSheet('blind75')}
-            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeSheet === 'blind75'
-                ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/20 scale-[1.02] border border-orange-400/40'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                ? 'bg-gradient-to-r from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/20 border border-orange-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <Award className={`w-4 h-4 ${activeSheet === 'blind75' ? 'text-amber-200 animate-bounce' : 'text-orange-400'}`} />
+            <Award className={`w-3.5 h-3.5 ${activeSheet === 'blind75' ? 'text-white' : 'text-orange-400'}`} />
             <span>Blind 75</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'blind75' ? 'bg-orange-950/80 text-orange-200 border border-orange-400/30' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeSheet === 'blind75' ? 'bg-black/30 text-white' : 'bg-white/[0.08] text-slate-400'}`}>
               76 Qs
             </span>
           </button>
@@ -557,15 +560,15 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           {/* TAB 5: CodeStoryWithMIK Premium */}
           <button
             onClick={() => handleSwitchSheet('mik')}
-            className={`flex items-center justify-center space-x-2 px-3 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+            className={`flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl font-mono text-xs font-bold transition-all duration-200 cursor-pointer ${
               activeSheet === 'mik'
-                ? 'bg-gradient-to-r from-fuchsia-600 via-pink-600 to-rose-600 text-white shadow-lg shadow-pink-500/20 scale-[1.02] border border-pink-400/40'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                ? 'bg-gradient-to-r from-pink-500 via-rose-600 to-purple-600 text-white shadow-lg shadow-pink-500/20 border border-pink-400/40'
+                : 'text-slate-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
             }`}
           >
-            <Crown className={`w-4 h-4 ${activeSheet === 'mik' ? 'text-amber-300 animate-bounce' : 'text-pink-400'}`} />
+            <Crown className={`w-3.5 h-3.5 ${activeSheet === 'mik' ? 'text-white' : 'text-pink-400'}`} />
             <span>CodeStoryWithMIK</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-mono font-black ${activeSheet === 'mik' ? 'bg-pink-950/80 text-pink-200 border border-pink-400/30' : 'bg-slate-800 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${activeSheet === 'mik' ? 'bg-black/30 text-white' : 'bg-white/[0.08] text-slate-400'}`}>
               174 Qs
             </span>
           </button>
@@ -574,41 +577,42 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       </div>
 
       {/* SINGLE UNIVERSAL POTD (ALWAYS FROM SDE SHEET 191) */}
-      <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/30 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start space-x-4">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-5 sm:p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-amber-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+        <div className="flex items-start space-x-4 relative z-10">
           <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0">
             <Flame className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700/60 text-[10px] font-black uppercase tracking-wider">
-                SDETube Problem of the Day (SDE Sheet)
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold uppercase tracking-wider">
+                ● PROBLEM OF THE DAY // SDE 191 MATRIX
               </span>
               <span className="text-xs text-slate-400 font-mono">
                 {potdProblem.category}
               </span>
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-slate-100 hover:text-amber-300 transition-colors">
+            <h3 className="text-base sm:text-lg font-bold text-white hover:text-amber-300 transition-colors">
               {potdProblem.name}
             </h3>
             <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-400">
-              <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+              <span className={`px-2.5 py-0.5 rounded-full font-mono text-[11px] font-bold ${
                 potdProblem.difficulty === 'Easy' 
-                  ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' 
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
                   : potdProblem.difficulty === 'Medium' 
-                    ? 'bg-amber-950 text-amber-400 border border-amber-800/60' 
-                    : 'bg-rose-950 text-rose-400 border border-rose-800/60'
+                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' 
+                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
               }`}>
                 {potdProblem.difficulty}
               </span>
               {potdProblem.companies && potdProblem.companies.length > 0 && (
                 <>
-                  <span>&bull;</span>
-                  <span>{potdProblem.companies.slice(0, 3).join(', ')}</span>
+                  <span className="text-slate-600">&bull;</span>
+                  <span className="font-mono text-slate-400">{potdProblem.companies.slice(0, 3).join(', ')}</span>
                 </>
               )}
               {isPotdSolved && (
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold ml-2">
+                <span className="inline-flex items-center gap-1 text-emerald-400 font-mono font-bold ml-2">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Solved Today
                 </span>
@@ -617,10 +621,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 relative z-10">
           <button
             onClick={() => handleOpenProblem(potdProblem)}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 text-xs sm:text-sm font-mono font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
           >
             <Terminal className="w-4 h-4" />
             <span>Solve SDE POTD</span>
@@ -629,9 +633,8 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
       </div>
       
       {/* HERO SHOWCASE & PROGRESS BANNER */}
-      <div className={`p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border shadow-2xl relative overflow-hidden ${
-        activeSheet === 'sde' ? 'border-emerald-500/30' : activeSheet === 'a2z' ? 'border-indigo-500/30' : activeSheet === 'mik' ? 'border-pink-500/30' : 'border-amber-500/30'
-      }`}>
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 sm:p-8 shadow-2xl group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
         <div className="absolute -right-10 -bottom-10 opacity-5 pointer-events-none">
           <Code className="w-80 h-80 text-white" />
         </div>
@@ -640,35 +643,27 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
           
           {/* Left Title & Description */}
           <div className="space-y-3">
-            <div className="flex items-center space-x-2.5">
-              <span className={`px-3 py-1 rounded-full text-xs font-mono font-extrabold flex items-center space-x-1.5 shadow-sm ${
-                activeSheet === 'sde' 
-                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
-                  : activeSheet === 'a2z'
-                    ? 'bg-indigo-950 text-indigo-300 border border-indigo-700/60'
-                    : activeSheet === 'mik'
-                      ? 'bg-pink-950 text-pink-300 border border-pink-700/60'
-                      : 'bg-amber-950 text-amber-300 border border-amber-700/60'
-              }`}>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>OFFICIAL CURRICULUM &bull; {activeSheetConfig.totalQuestions} PROBLEMS</span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-bold tracking-wide uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>OFFICIAL CURRICULUM // {activeSheetConfig.totalQuestions} PROBLEMS</span>
               </span>
               <span className="text-xs text-slate-400 font-mono">
                 {allCategories.length} Steps / Topics
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-100 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
               {activeSheetConfig.name}
             </h2>
 
-            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed font-mono">
               {activeSheetConfig.description}. Categorized by step-by-step topics & subcategories, equipped with video lectures, articles, personal cloud notes (.txt), and Monaco Code Arena.
             </p>
           </div>
 
           {/* Right Live Overall Progress Ring */}
-          <div className="flex items-center gap-4 sm:gap-6 bg-slate-950/70 p-4 sm:p-5 rounded-3xl border border-slate-800/80 backdrop-blur-md">
+          <div className="flex items-center gap-4 sm:gap-6 bg-[#090d16] p-4 sm:p-5 rounded-2xl border border-white/[0.08] shadow-inner">
             
             {/* Circular Progress Gauge */}
             <div className="relative w-20 h-20 flex-shrink-0 flex items-center justify-center">
@@ -681,7 +676,7 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className={activeSheet === 'sde' ? 'text-emerald-400' : activeSheet === 'a2z' ? 'text-indigo-400' : 'text-amber-400'}
+                  className={activeSheet === 'sde' ? 'text-cyan-400' : activeSheet === 'a2z' ? 'text-purple-400' : 'text-amber-400'}
                   strokeDasharray={`${solvedPercent}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
@@ -691,18 +686,18 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-base font-black font-mono text-slate-100">{solvedPercent}%</span>
-                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Done</span>
+                <span className="text-base font-black font-mono text-white">{solvedPercent}%</span>
+                <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider font-mono">Done</span>
               </div>
             </div>
 
             {/* Metrics Breakdown */}
             <div className="space-y-1">
-              <div className="text-xs text-slate-400 font-medium">Sheet Solved Status</div>
-              <div className="text-2xl font-black font-mono text-slate-100">
+              <div className="text-xs text-slate-400 font-mono font-medium">Sheet Solved Status</div>
+              <div className="text-2xl font-black font-mono text-white">
                 {solvedCount} <span className="text-xs text-slate-500 font-normal">/ {totalCount} Solved</span>
               </div>
-              <div className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+              <div className="text-[11px] text-amber-400 font-mono font-medium flex items-center gap-1">
                 <Star className="w-3 h-3 fill-current" />
                 <span>{mustDoSolved} / {mustDoCount} Must Do Problems</span>
               </div>
@@ -713,10 +708,10 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
         </div>
 
         {/* Difficulty Breakdown Progress Bars */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/[0.08] relative z-10">
           
           {/* Easy Bar */}
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-[#090d16] border border-white/[0.08] flex items-center justify-between gap-3">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-emerald-400">Easy</span>
@@ -1374,9 +1369,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-[10px] flex items-center gap-1 cursor-pointer"
-                                                title="Open Problem Source"
+                                                title="Solve on LeetCode"
                                               >
-                                                <span>Ref</span>
+                                                <span>LeetCode</span>
                                                 <ExternalLink className="w-2.5 h-2.5" />
                                               </a>
                                             )}
@@ -1633,9 +1628,9 @@ export const SDESheetExplorer: React.FC<SDESheetExplorerProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 transition-all font-mono font-bold text-xs flex items-center gap-1 cursor-pointer"
-                                title="Open Problem Source"
+                                title="Solve on LeetCode"
                               >
-                                <span>Ref</span>
+                                <span>LeetCode</span>
                                 <ExternalLink className="w-3 h-3" />
                               </a>
                             )}

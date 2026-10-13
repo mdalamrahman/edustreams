@@ -585,6 +585,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const handleSignOut = async () => {
     await signOutStudent();
     setUser(null);
+    setRevokedSessionMessage('');
   };
 
   const value: AppContextValue = {

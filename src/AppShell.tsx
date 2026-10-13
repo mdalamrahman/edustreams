@@ -14,11 +14,22 @@ import { MobileGatedOverlay } from './components/MobileGatedOverlay';
 import { useAppContext } from './lib/AppContext';
 import { trackPageView } from './lib/analyticsTracker';
 import { useSEO } from './lib/useSEO';
+import { LoadingScreen } from './components/LoadingScreen';
+
+const PUBLIC_ROUTES = [
+  '/privacy',
+  '/terms',
+  '/contact',
+  '/thank-you',
+  '/thank_you',
+  '/conversion',
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const {
     user,
     setUser,
+    authChecking,
     isAuthModalOpen,
     setIsAuthModalOpen,
     revokedSessionMessage,
@@ -83,10 +94,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [setIsWalletModalOpen, setIsAuthModalOpen, setIsPotdModalOpen]);
 
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => location.pathname === route || location.pathname.startsWith(`${route}/`)
+  );
+
+  // 1. Initial auth initialization state
+  if (authChecking) {
+    return <LoadingScreen />;
+  }
+
+  // 2. Strict Route Protection: gate unauthenticated access to all non-public pages
+  if (!user && !isPublicRoute) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <AuthModal
+          isOpen={true}
+          isFullPage={true}
+          revokedMessage={revokedSessionMessage}
+          onSuccess={(loggedUser) => {
+            setRevokedSessionMessage('');
+            setUser(loggedUser);
+            setIsAuthModalOpen(false);
+          }}
+        />
+        <CookieConsentBanner />
+      </div>
+    );
+  }
+
   const isFullscreenWorkspace = location.pathname.startsWith('/problem/') || location.pathname.startsWith('/studio');
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-purple-600/30 selection:text-purple-200">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       <Navbar />
 
       <main className="flex-1 max-w-[98%] mx-auto w-full px-2 sm:px-4 lg:px-6 py-4">

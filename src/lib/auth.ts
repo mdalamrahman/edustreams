@@ -700,13 +700,17 @@ export function getAllRegisteredUsers(): Array<{ id: string; email: string; name
   return Array.from(map.values());
 }
 
-export function signOutStudent() {
+export async function signOutStudent() {
   const current = getCurrentStudent();
   if (current?.email) {
     terminateDeviceSession(current.email).catch(() => {});
   }
   localStorage.removeItem(AUTH_STORAGE_KEY);
-  supabase.auth.signOut().catch(() => {});
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+    console.warn('[SDETube Auth] supabase signOut error:', err);
+  }
 }
 
 /**

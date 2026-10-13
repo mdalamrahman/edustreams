@@ -37,9 +37,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
 
 
   return (
-    <footer className="w-full mt-20 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl text-slate-300">
+    <footer className="w-full mt-20 border-t border-stitch-variant/50 bg-stitch-lowest text-slate-300">
       {/* Top Banner Accent */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 opacity-60" />
+      <div className="h-0.5 w-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-emerald-400 opacity-60" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
@@ -47,22 +47,28 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Column 1: Brand & Mission */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 p-0.5 shadow-lg shadow-indigo-600/30 flex items-center justify-center">
-                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                  <span className="font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 text-lg">
-                    &lt;/&gt;
-                  </span>
-                </div>
+              <div className="w-10 h-10 rounded-2xl bg-stitch-high border border-stitch-variant flex items-center justify-center text-stitch-cyan shadow-md">
+                <span className="font-mono font-bold text-stitch-cyan text-sm">
+                  &lt;/&gt;
+                </span>
               </div>
               <div>
-                <span className="text-lg font-black text-slate-100 tracking-tight">SDETube</span>
-                <p className="text-[11px] font-mono text-indigo-400">AI-Powered SDE Arena</p>
+                <div className="flex items-baseline space-x-0.5">
+                  <span className="text-lg font-black text-slate-100 tracking-tight font-sans">SDET</span>
+                  <span className="text-lg font-black text-stitch-cyan tracking-tight font-sans">ube</span>
+                </div>
+                <p className="text-[11px] font-mono text-stitch-dim">Elite Engineering &amp; SDE Matrix</p>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm">
-              An open, production-grade learning operating system for software engineering candidates. Master Data Structures, Algorithms, Low-Level Design, and Distributed Systems with in-workspace video streams and WebAssembly execution.
+              The mission-control interview engine for elite SDETs, Distributed Systems Engineers, and Principal QA Architects. Built for zero-defect engineering teams.
             </p>
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stitch-low border border-stitch-variant font-mono text-[10px] text-stitch-mint">
+              <span className="w-1.5 h-1.5 rounded-full bg-stitch-mint animate-pulse"></span>
+              <span>COMPILER CLUSTERS HEALTHY (US-EAST)</span>
+            </div>
 
             {/* Social & Code Repository Links */}
             <div className="flex items-center gap-3 pt-2">
@@ -124,7 +130,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   className="text-slate-300 hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-400 rounded"
                 >
                   <Layers className="w-3.5 h-3.5 text-pink-400" />
-                  <span>LLD Studio & SOLID</span>
+                  <span>LLD & SOLID Patterns</span>
                 </button>
               </li>
               <li>

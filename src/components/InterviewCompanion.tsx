@@ -1526,34 +1526,35 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           )}
 
           {/* Header Banner */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-purple-950/80 border border-indigo-500/40 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-[11px] font-bold w-fit">
-                <Bot className="w-3.5 h-3.5 text-indigo-400" />
-                <span>FAANG BAR RAISER SIMULATOR &bull; R2 & SUPABASE PERSISTED</span>
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 sm:p-8 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 group">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+            <div className="space-y-2 relative z-10">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-bold w-fit tracking-wide uppercase">
+                <Bot className="w-3.5 h-3.5 text-cyan-400" />
+                <span>● FAANG BAR RAISER SIMULATOR // R2 & SUPABASE PERSISTED</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                 Candidate Profile & Interview Setup
               </h2>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed font-mono">
                 Provide your background, grant mic permissions upfront, choose your test style, or upload your resume PDF. The AI Principal Interviewer locks its voice, customizes questions for your exact profile, and records all transcripts and scorecards.
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="flex items-center space-x-2 flex-shrink-0 relative z-10">
               <button
                 onClick={loadPastHistory}
-                className="px-4 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/50 text-indigo-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-[#090d16] hover:bg-[#121826] border border-white/10 hover:border-cyan-500/40 text-cyan-300 hover:text-white text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
                 title="View Past Mock Interviews, Scorecards & Transcripts"
               >
-                <History className="w-3.5 h-3.5 text-indigo-400" />
+                <History className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Past Interviews</span>
               </button>
 
               {onBackToDashboard && (
                 <button
                   onClick={onBackToDashboard}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-all cursor-pointer flex-shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-[#090d16] hover:bg-[#121826] border border-white/10 hover:border-white/20 text-slate-300 hover:text-white text-xs font-mono font-bold transition-all cursor-pointer flex-shrink-0"
                 >
                   Back
                 </button>
@@ -1562,34 +1563,35 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           </div>
 
           {/* SECTION 1: CANDIDATE PROFILE & RESUME UPLOAD */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 sm:p-8 shadow-xl space-y-6 group">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-purple-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+            <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center space-x-2">
-                <User className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                <User className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                   1. Candidate Profile & Experience
                 </h3>
               </div>
-              <span className="text-xs font-mono text-slate-400">Contextual Ingestion</span>
+              <span className="text-xs font-mono text-cyan-400/80">● Contextual Ingestion</span>
             </div>
 
             {/* Resume Upload Dropzone */}
-            <div className="p-5 rounded-2xl bg-slate-950 border border-dashed border-indigo-500/40 hover:border-indigo-500 transition-colors flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="p-5 rounded-xl bg-[#090d16] border border-dashed border-cyan-500/30 hover:border-cyan-400 transition-colors flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
               <div className="flex items-center space-x-4">
-                <div className="p-3 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                   <Upload className="w-6 h-6" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                     <span>Upload Resume PDF / Text</span>
                     {resumeFileName && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1 border border-emerald-500/40">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1 border border-emerald-500/30">
                         <FileCheck2 className="w-3 h-3" />
                         <span>Parsed</span>
                       </span>
                     )}
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5 font-mono">
                     {isParsingResume
                       ? 'Extracting tech stack, projects & experience with AI...'
                       : resumeFileName
@@ -1610,7 +1612,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isParsingResume}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-900/30 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-mono font-bold transition-all shadow-md shadow-cyan-500/20 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>{resumeFileName ? 'Replace Resume' : 'Select Resume PDF'}</span>
@@ -1621,7 +1623,7 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                       setResumeFileName('');
                       setResumeText('');
                     }}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                    className="p-2 rounded-xl bg-[#090d16] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/10"
                     title="Remove Resume"
                   >
                     <X className="w-4 h-4" />
@@ -1631,27 +1633,27 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
             </div>
 
             {/* Candidate Details Form Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 relative z-10">
               
               {/* Candidate Full Name */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Your Full Name:</label>
+                <label className="text-xs font-mono font-bold text-slate-300">Your Full Name:</label>
                 <input
                   type="text"
                   value={candidateName}
                   onChange={(e) => setCandidateName(e.target.value)}
                   placeholder="e.g. Alex Morgan"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
               </div>
 
               {/* Experience Range */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Years of Experience (YOE):</label>
+                <label className="text-xs font-mono font-bold text-slate-300">Years of Experience (YOE):</label>
                 <select
                   value={candidateExpYears}
                   onChange={(e) => setCandidateExpYears(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 cursor-pointer"
                 >
                   <option value="0-1">0-1 Years (Fresher / College Graduate)</option>
                   <option value="2-4">2-4 Years (Mid-Level SDE-2)</option>
@@ -1662,39 +1664,39 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
 
               {/* Current Role / College */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Current Role / Organization:</label>
+                <label className="text-xs font-mono font-bold text-slate-300">Current Role / Organization:</label>
                 <input
                   type="text"
                   value={candidateRole}
                   onChange={(e) => setCandidateRole(e.target.value)}
                   placeholder="e.g. Backend SDE @ FinTech Startup"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
               </div>
 
             </div>
 
             {/* Tech Stack & Weakness / Goal Input */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Primary Tech Stack & Tools:</label>
+                <label className="text-xs font-mono font-bold text-slate-300">Primary Tech Stack & Tools:</label>
                 <input
                   type="text"
                   value={candidateTechStack}
                   onChange={(e) => setCandidateTechStack(e.target.value)}
                   placeholder="e.g. C++, Go, React, PostgreSQL, Redis, Kafka, AWS"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Custom Focus / Weakness to Test (Optional):</label>
+                <label className="text-xs font-mono font-bold text-slate-300">Custom Focus / Weakness to Test (Optional):</label>
                 <input
                   type="text"
                   value={candidateGoals}
                   onChange={(e) => setCandidateGoals(e.target.value)}
                   placeholder="e.g. Test my distributed concurrency, graph DP & caching tradeoffs"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d16] border border-white/10 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
               </div>
             </div>
@@ -1702,15 +1704,15 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
           </div>
 
           {/* INTERVIEW EXECUTION MODE: SINGLE ROUND vs FULL VIRTUAL ONSITE LOOP */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 sm:p-8 shadow-xl space-y-4 group">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                   2. Select Interview Format
                 </h3>
               </div>
-              <span className="text-xs font-mono text-slate-400">Simulation Depth</span>
+              <span className="text-xs font-mono text-cyan-400/80">● Simulation Depth</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1719,19 +1721,19 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 onClick={() => setInterviewMode('single')}
                 className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                   interviewMode === 'single'
-                    ? 'bg-indigo-950/70 border-indigo-500 shadow-xl shadow-indigo-500/20 ring-1 ring-indigo-500'
-                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                    ? 'bg-[#090d16] border-cyan-500 shadow-xl shadow-cyan-500/10 ring-1 ring-cyan-500'
+                    : 'bg-[#090d16]/70 border-white/[0.08] hover:border-white/20'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-white">Single Round Deep-Dive</span>
-                    {interviewMode === 'single' && <Check className="w-4 h-4 text-indigo-400" />}
+                    <span className="font-black text-sm text-white font-mono">Single Round Deep-Dive</span>
+                    {interviewMode === 'single' && <Check className="w-4 h-4 text-cyan-400" />}
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-indigo-300 font-mono text-[10px] font-bold inline-block mt-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-mono text-[10px] font-bold inline-block mt-1">
                     Focused Practice • 45 Mins
                   </span>
-                  <p className="text-xs text-slate-300 mt-2.5 leading-relaxed">
+                  <p className="text-xs text-slate-300 mt-2.5 leading-relaxed font-mono">
                     Drill specifically on one round of your choice: DSA Coding, LLD Machine Coding, HLD Distributed Systems, or STAR Behavioral.
                   </p>
                 </div>
@@ -1742,8 +1744,8 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                 onClick={() => setInterviewMode('full_loop')}
                 className={`p-5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                   interviewMode === 'full_loop'
-                    ? 'bg-gradient-to-br from-amber-950/80 via-slate-900 to-indigo-950/80 border-amber-500 shadow-xl shadow-amber-500/20 ring-1 ring-amber-500'
-                    : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                    ? 'bg-[#090d16] border-amber-500 shadow-xl shadow-amber-500/10 ring-1 ring-amber-500'
+                    : 'bg-[#090d16]/70 border-white/[0.08] hover:border-white/20'
                 }`}
               >
                 <div>

@@ -157,20 +157,26 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
       if (dayNum > 0) challengeMap.set(dayNum, c);
     });
 
-    // Check today's POTD fallback
-    if (isCurrentMonth && todayPotd && !challengeMap.has(todayDateNum)) {
-      challengeMap.set(todayDateNum, {
-        date: todayYMD,
-        day: todayDateNum,
-        link: todayPotd.url,
-        question: {
-          questionFrontendId: todayPotd.questionFrontendId || todayPotd.questionId,
-          title: todayPotd.title,
-          titleSlug: todayPotd.titleSlug,
-          difficulty: todayPotd.difficulty,
-          topicTags: todayPotd.topicTags
-        }
-      });
+    // Ensure today's verified official POTD is always prioritized
+    if (isCurrentMonth && todayPotd?.titleSlug) {
+      const existing = challengeMap.get(todayDateNum);
+      const isPlaceholder = !existing?.question?.titleSlug || 
+                            existing.question.titleSlug === 'leetcode-potd-today' || 
+                            existing.question.titleSlug.startsWith('daily-');
+      if (!challengeMap.has(todayDateNum) || isPlaceholder) {
+        challengeMap.set(todayDateNum, {
+          date: todayYMD,
+          day: todayDateNum,
+          link: todayPotd.url,
+          question: {
+            questionFrontendId: todayPotd.questionFrontendId || todayPotd.questionId,
+            title: todayPotd.title,
+            titleSlug: todayPotd.titleSlug,
+            difficulty: todayPotd.difficulty,
+            topicTags: todayPotd.topicTags
+          }
+        });
+      }
     }
 
     const days: Array<{
@@ -451,70 +457,85 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
 
       {/* 3. SELECTED DAY / TODAY'S POTD DETAILS CARD */}
       <div className="p-4 border-t border-slate-800/80 bg-slate-950/60 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1 min-w-0 flex-1">
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-bold font-mono text-cyan-400 uppercase tracking-wider">
-                {activeDay?.isToday ? "Today's POTD" : `${calendarData.monthName} ${activeDay?.day} Challenge`}
-              </span>
-              {activeDay?.challenge?.question?.difficulty && (
-                <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${diffColor(activeDay.challenge.question.difficulty)}`}>
-                  {activeDay.challenge.question.difficulty}
-                </span>
-              )}
-              {activeDay?.isSolved && (
-                <span className="flex items-center gap-1 text-[10px] font-bold text-sky-400 font-mono">
-                  <CheckCircle2 className="w-3 h-3" /> Solved
-                </span>
-              )}
-            </div>
+        {(() => {
+          const activeQ = activeDay?.challenge?.question;
+          const activeSlug = activeQ?.titleSlug && !activeQ.titleSlug.startsWith('daily-') && activeQ.titleSlug !== 'leetcode-potd-today' 
+            ? activeQ.titleSlug 
+            : (activeDay?.isToday && todayPotd?.titleSlug ? todayPotd.titleSlug : '');
+          const activeTitle = (activeDay?.isToday && todayPotd?.title)
+            ? todayPotd.title
+            : (activeQ?.title && activeQ.title !== "Today's Daily Challenge" ? activeQ.title : (activeDay?.isFuture ? "Challenge Not Yet Available" : "SDETube Daily Challenge"));
+          const activeDiff = (activeDay?.isToday && todayPotd?.difficulty) ? todayPotd.difficulty : (activeQ?.difficulty || 'Medium');
 
-            <h4 className="text-xs font-bold text-white truncate" title={activeDay?.challenge?.question?.title || "Daily Coding Challenge"}>
-              {activeDay?.challenge?.question?.title || (activeDay?.isFuture ? "Challenge Not Yet Available" : "SDETube Daily Challenge")}
-            </h4>
-          </div>
+          return (
+            <>
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1 min-w-0 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-bold font-mono text-cyan-400 uppercase tracking-wider">
+                      {activeDay?.isToday ? "Today's POTD" : `${calendarData.monthName} ${activeDay?.day} Challenge`}
+                    </span>
+                    {activeDiff && (
+                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${diffColor(activeDiff)}`}>
+                        {activeDiff}
+                      </span>
+                    )}
+                    {activeDay?.isSolved && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-sky-400 font-mono">
+                        <CheckCircle2 className="w-3 h-3" /> Solved
+                      </span>
+                    )}
+                  </div>
 
-          {/* Direct Link to Problem Source */}
-          {activeDay?.challenge?.question?.titleSlug && (
-            <a
-              href={`https://leetcode.com/problems/${activeDay.challenge.question.titleSlug}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-amber-400 hover:border-amber-500/40 text-[11px] font-mono transition-all flex-shrink-0 cursor-pointer"
-              title="View Problem Source"
-            >
-              <span>Problem Source</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-        </div>
+                  <h4 className="text-xs font-bold text-white truncate" title={activeTitle}>
+                    {activeTitle}
+                  </h4>
+                </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 pt-1">
-          {onOpenCodingWorkspace && activeDay?.challenge?.question?.titleSlug && (
-            <button
-              onClick={() => handleSolveInWorkspace(activeDay)}
-              className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span>Solve in SDETube IDE</span>
-            </button>
-          )}
+                {/* Direct Link to Problem Source - only rendered if authentic LeetCode problem slug exists */}
+                {activeSlug && (
+                  <a
+                    href={`https://leetcode.com/problems/${activeSlug}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-1 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 text-[11px] font-mono transition-all flex-shrink-0 cursor-pointer"
+                    title="Solve on LeetCode"
+                  >
+                    <span>Solve on LeetCode</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
 
-          {/* Mark as Solved Toggle */}
-          {!activeDay?.isFuture && (
-            <button
-              onClick={() => handleToggleSolved(activeDay)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
-                activeDay?.isSolved
-                  ? 'bg-sky-950/40 border-sky-500/40 text-sky-300 hover:bg-sky-900/50'
-                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
-              }`}
-            >
-              {activeDay?.isSolved ? 'Unmark Solved' : 'Mark Solved ✓'}
-            </button>
-          )}
-        </div>
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2 pt-1">
+                {onOpenCodingWorkspace && activeSlug && (
+                  <button
+                    onClick={() => handleSolveInWorkspace(activeDay)}
+                    className="flex-1 flex items-center justify-center space-x-1.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>Solve in SDETube IDE</span>
+                  </button>
+                )}
+
+                {/* Mark as Solved Toggle */}
+                {!activeDay?.isFuture && (
+                  <button
+                    onClick={() => handleToggleSolved(activeDay)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer whitespace-nowrap ${
+                      activeDay?.isSolved
+                        ? 'bg-sky-950/40 border-sky-500/40 text-sky-300 hover:bg-sky-900/50'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    {activeDay?.isSolved ? 'Unmark Solved' : 'Mark Solved ✓'}
+                  </button>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
     </div>

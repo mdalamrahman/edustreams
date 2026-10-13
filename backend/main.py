@@ -6121,6 +6121,74 @@ async def get_leetcode_potd_endpoint(force_refresh: bool = False):
     raise HTTPException(status_code=502, detail="Failed to fetch LeetCode POTD")
 
 
+@app.get("/api/potd/leetcode-month")
+async def get_leetcode_month_potd_endpoint(year: int = None, month: int = None):
+    """
+    Fetches monthly LeetCode Daily Challenge records.
+    """
+    now = datetime.now(timezone.utc)
+    y = year or now.year
+    m = month or now.month
+    
+    # 1. Fetch from Cloudflare edge proxy first
+    try:
+        resp = requests.get(f"https://sdetube.pages.dev/api/potd/leetcode-month?year={y}&month={m}", timeout=8)
+        if resp.ok:
+            return JSONResponse(resp.json(), headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+    except Exception as e:
+        print(f"[LeetCode Monthly Proxy Error]: {e}")
+
+    # 2. Direct LeetCode GraphQL query
+    query = """query dailyCodingQuestionRecords($year: Int!, $month: Int!) {
+      dailyCodingChallengeV2(year: $year, month: $month) {
+        challenges {
+          date
+          userStatus
+          link
+          question {
+            questionFrontendId
+            title
+            titleSlug
+            difficulty
+            topicTags { name }
+          }
+        }
+      }
+    }"""
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://leetcode.com/"
+    }
+    try:
+        lc_res = requests.post("https://leetcode.com/graphql", json={"query": query, "variables": {"year": y, "month": m}}, headers=headers, timeout=10)
+        if lc_res.ok:
+            json_data = lc_res.json()
+            raw_challenges = json_data.get("data", {}).get("dailyCodingChallengeV2", {}).get("challenges") or []
+            challenges = []
+            for c in raw_challenges:
+                q = c.get("question") or {}
+                day_num = int(c.get("date", "").split("-")[2]) if len(c.get("date", "").split("-")) > 2 else 1
+                challenges.append({
+                    "date": c.get("date"),
+                    "day": day_num,
+                    "link": c.get("link"),
+                    "userStatus": c.get("userStatus"),
+                    "question": {
+                        "questionFrontendId": q.get("questionFrontendId", "1"),
+                        "title": q.get("title", "Daily Problem"),
+                        "titleSlug": q.get("titleSlug", ""),
+                        "difficulty": q.get("difficulty", "Medium"),
+                        "topicTags": [t.get("name") for t in q.get("topicTags", []) if t.get("name")]
+                    }
+                })
+            return JSONResponse({"year": y, "month": m, "challenges": challenges}, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"})
+    except Exception as e:
+        print(f"[LeetCode Monthly GraphQL Error]: {e}")
+
+    return JSONResponse({"year": y, "month": m, "challenges": []}, headers={"Access-Control-Allow-Origin": "*"})
+
+
 _GFG_POTD_CACHE = {"date": "", "data": None}
 
 @app.get("/api/potd/gfg")

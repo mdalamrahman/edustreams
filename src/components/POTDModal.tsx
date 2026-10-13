@@ -82,9 +82,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
     try {
       const slugsToCheck = [
-        sdePotd?.slug,
-        'floor-in-bst',
-        'closest-binary-search-tree-value'
+        sdePotd?.slug
       ].filter(Boolean) as string[];
       for (const s of slugsToCheck) {
         const sub = localStorage.getItem(`edustream_submissions_${s}`);

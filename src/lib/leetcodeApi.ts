@@ -347,6 +347,8 @@ export async function fetchLeetCodeMonthlyPOTD(
   // 1. Try internal edge proxy endpoints
   const endpoints = [
     `/api/potd/leetcode-month?year=${y}&month=${m}`,
+    `https://sdetube.pages.dev/api/potd/leetcode-month?year=${y}&month=${m}`,
+    `https://edustream-backend-90vm.onrender.com/api/potd/leetcode-month?year=${y}&month=${m}`,
     `/api/potd/leetcode?month=${m}&year=${y}`
   ];
 
@@ -426,10 +428,19 @@ export async function fetchLeetCodeMonthlyPOTD(
     console.warn('[LeetCode Monthly Challenges Fallback]:', err);
   }
 
-  // Fallback: build basic calendar up to today using today's POTD if cached
+  // Fallback: build calendar using authentic cached POTDs (never generate fake dummy slugs)
   const fallbackList: LeetCodeMonthlyChallengeItem[] = [];
   const daysInMonth = new Date(y, m, 0).getDate();
   const today = now.toISOString().slice(0, 10);
+
+  // Try to retrieve cached today's POTD if available
+  let cachedTodayPotd: LeetCodeDailyQuestion | null = null;
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(`sdetube_leetcode_potd_${today}`) || localStorage.getItem('edustream_potd_cache_leetcode');
+      if (raw) cachedTodayPotd = JSON.parse(raw);
+    } catch {}
+  }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const mm = String(m).padStart(2, '0');
@@ -439,15 +450,32 @@ export async function fetchLeetCodeMonthlyPOTD(
       // Future day: not published yet
       continue;
     }
-    fallbackList.push({
-      date: dateStr,
-      day: d,
-      question: {
-        title: dateStr === today ? 'Today\'s Daily Challenge' : `Challenge Day ${d}`,
-        titleSlug: dateStr === today ? 'leetcode-potd-today' : `daily-${dateStr}`,
-        difficulty: 'Medium'
-      }
-    });
+
+    if (dateStr === today && cachedTodayPotd?.titleSlug) {
+      fallbackList.push({
+        date: dateStr,
+        day: d,
+        link: cachedTodayPotd.url,
+        question: {
+          questionFrontendId: cachedTodayPotd.questionFrontendId || cachedTodayPotd.questionId || '1',
+          title: cachedTodayPotd.title,
+          titleSlug: cachedTodayPotd.titleSlug,
+          difficulty: cachedTodayPotd.difficulty || 'Medium',
+          topicTags: cachedTodayPotd.topicTags || ['Algorithms']
+        }
+      });
+    } else {
+      // For past days without fetched challenges, record placeholder without broken external link
+      fallbackList.push({
+        date: dateStr,
+        day: d,
+        question: {
+          title: dateStr === today ? "Today's Daily Challenge" : `Day ${d} Challenge`,
+          titleSlug: '',
+          difficulty: 'Medium'
+        }
+      });
+    }
   }
 
   return fallbackList;
@@ -495,7 +523,9 @@ export async function fetchLeetCodeQuestionData(titleSlug: string): Promise<Leet
 
   const endpoints = [
     `/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
-    `/api/leetcode/${encodeURIComponent(cleanSlug)}`
+    `/api/leetcode/${encodeURIComponent(cleanSlug)}`,
+    `https://sdetube.pages.dev/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
+    `https://sdetube.pages.dev/api/leetcode/${encodeURIComponent(cleanSlug)}`
   ];
 
   for (const ep of endpoints) {

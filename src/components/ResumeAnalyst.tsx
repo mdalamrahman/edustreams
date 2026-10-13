@@ -210,31 +210,31 @@ export const ResumeAnalyst: React.FC = () => {
       {/* 0. TOP MODE SELECTOR (SCANNER vs AI RESUME CREATOR)                       */}
       {/* ========================================================================= */}
       <div className="flex items-center justify-center">
-        <div className="p-1 rounded-2xl bg-slate-900/95 border border-slate-800 flex items-center shadow-xl backdrop-blur-md">
+        <div className="p-1 rounded-2xl bg-[#090d16]/95 border border-white/[0.08] flex items-center shadow-2xl backdrop-blur-xl">
           <button
             type="button"
             onClick={() => setMainMode('analyst')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
               mainMode === 'analyst'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>Resume Scanner & Match Insights</span>
+            <BarChart3 className="w-4 h-4 text-cyan-300" />
+            <span>ATS Resume Scanner &amp; Match Matrix</span>
           </button>
           <button
             type="button"
             onClick={() => setMainMode('creator')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
               mainMode === 'creator'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-stitch-dim hover:text-white'
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-300" />
             <span>AI ATS Resume Creator</span>
-            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-purple-900/80 text-purple-200 text-[10px] font-mono">
+            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-purple-950/80 text-purple-300 text-[10px] font-mono border border-purple-500/30">
               Live Paper Preview
             </span>
           </button>
@@ -248,437 +248,440 @@ export const ResumeAnalyst: React.FC = () => {
       ) : (
         <>
           {/* ========================================================================= */}
-          {/* 1. TOP HERO SECTION                                                       */}
+          {/* 1. TOP HERO COMMAND DECK (OBSIDIAN TELEMETRY)                             */}
           {/* ========================================================================= */}
-          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/60 via-slate-900 to-purple-950/60 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-purple-600/30">
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                <span>SDETube AI Intelligence</span>
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-slate-300 text-[11px] font-mono">
-                ATS Compatibility &bull; 3D Flashcards
-              </span>
-            </div>
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#090d16]/95 p-6 sm:p-8 shadow-2xl backdrop-blur-xl group">
+            {/* Ambient Background Glows */}
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+            <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-100 tracking-tight">
-              Resume Analyst & ATS Match Engine
-            </h1>
-
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Scan your resume against any target Job Description with SDETube AI. Get instant ATS scoring, keyword alignment, career progression gap analysis, and 15–20 tailored 3D interview preparation flashcards.
-            </p>
-          </div>
-
-          {/* Right Action: Wallet Balance + Reset Button */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
-            <div className="px-3.5 py-2 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs font-mono text-amber-300 flex items-center gap-2 shadow-inner">
-              <Coins className="w-4 h-4 text-amber-400" />
-              <span>Credits: ₹{walletBalance.toFixed(2)}</span>
-            </div>
-            {analysisData && (
-              <button
-                onClick={handleReset}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4 text-purple-400" />
-                <span>Analyze New Resume</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Feature Badges Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-800/80">
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-            <span>ATS Pass Scoring</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <Brain className="w-4 h-4 text-purple-400 flex-shrink-0" />
-            <span>15-20 3D Flashcards</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <Layers className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-            <span>Skills & Keyword Gap</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <Target className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-            <span>Google XYZ Rewrites</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. MAIN WORKSPACE: UPLOAD STATE vs ANALYSIS RESULTS                       */}
-      {/* ========================================================================= */}
-      {!analysisData ? (
-        
-        /* ---------------- UPLOAD & INPUT FORM ---------------- */
-        <div className="space-y-6">
-          
-          {/* Quick 1-Click Preset Demos */}
-          <div className="glass-panel p-5 rounded-3xl border border-slate-800 bg-slate-900/60 shadow-xl space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span>1-Click Fast Demo Presets:</span>
-              </span>
-              <span className="text-[11px] font-mono text-slate-500">
-                Load authentic sample resumes & job descriptions instantly
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => handleLoadSample('sde2-fullstack', 'google-sde2')}
-                className="p-3.5 rounded-2xl bg-slate-950 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/60 transition-all text-left group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-indigo-300">
-                    Google SDE-II (Full Stack)
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-[11px] font-bold tracking-wide uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>● ATS TELEMETRY MATRIX // MULTI-PASS PARSING ENGINE</span>
                   </span>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all" />
-                </div>
-                <p className="text-[11px] text-slate-400">3.5 Yrs Exp &bull; React, Node.js, Go, Kafka</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleLoadSample('backend-systems', 'amazon-backend')}
-                className="p-3.5 rounded-2xl bg-slate-950 hover:bg-purple-950/40 border border-slate-800 hover:border-purple-500/60 transition-all text-left group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-purple-300">
-                    Amazon Backend (AWS / Java)
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#111622] border border-white/[0.08] text-stitch-dim text-[11px] font-mono">
+                    ATS COMPATIBILITY &bull; 18 3D FLASHCARDS
                   </span>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
-                </div>
-                <p className="text-[11px] text-slate-400">4 Yrs Exp &bull; Java, Distributed Systems, Cassandra</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleLoadSample('sde2-fullstack', 'meta-fullstack')}
-                className="p-3.5 rounded-2xl bg-slate-950 hover:bg-cyan-950/40 border border-slate-800 hover:border-cyan-500/60 transition-all text-left group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-200 group-hover:text-cyan-300">
-                    Meta Full Stack (React / TS)
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
-                </div>
-                <p className="text-[11px] text-slate-400">Web Performance &bull; TypeScript, GraphQL, Next.js</p>
-              </button>
-            </div>
-          </div>
-
-          {/* Direct CTA to ATS Resume Creator */}
-          <div className="p-4 rounded-2xl border border-purple-500/30 bg-purple-950/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 text-slate-300">
-              <Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" />
-              <span>Looking to craft an ATS-compliant resume from scratch with AI bullet rewriting & live PDF preview?</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setMainMode('creator')}
-              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-md shadow-purple-600/20"
-            >
-              <span>Open ATS Resume Creator</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Form Grid: Left Resume Upload/Paste, Right Job Description */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* LEFT COLUMN: RESUME INPUT */}
-            <div className="glass-panel p-6 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl space-y-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-purple-400" />
-                    <span>Candidate Resume</span>
-                  </label>
-
-                  {/* Toggle Mode */}
-                  <div className="flex items-center p-1 rounded-xl bg-slate-950 border border-slate-800">
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('upload')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        inputMode === 'upload'
-                          ? 'bg-purple-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Upload File
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputMode('paste')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        inputMode === 'paste'
-                          ? 'bg-purple-600 text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      Paste Text
-                    </button>
-                  </div>
                 </div>
 
-                {inputMode === 'upload' ? (
-                  /* Drag & Drop Zone */
-                  <div
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[260px] ${
-                      isDragging
-                        ? 'border-purple-400 bg-purple-950/30'
-                        : selectedFile
-                        ? 'border-emerald-500/60 bg-emerald-950/20'
-                        : 'border-slate-700 hover:border-purple-500/60 bg-slate-950/40 hover:bg-slate-950/80'
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      id="resume-file-input"
-                      accept=".pdf,.txt,.md"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileSelect(e.target.files[0]);
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <label htmlFor="resume-file-input" className="cursor-pointer w-full flex flex-col items-center">
-                      <div className={`p-4 rounded-2xl mb-3 transition-transform ${
-                        selectedFile ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-900 text-slate-400 border border-slate-800'
-                      }`}>
-                        {selectedFile ? <FileCheck className="w-8 h-8" /> : <Upload className="w-8 h-8" />}
-                      </div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
+                  Resume Analyst &amp; ATS Match Engine
+                </h1>
 
-                      {selectedFile ? (
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-emerald-300 font-mono">
-                            {selectedFile.name}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {(selectedFile.size / 1024).toFixed(1)} KB &bull; Click or drop another file to change
-                          </p>
-                          {resumeText && (
-                            <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-700 text-[10px] font-mono text-emerald-300">
-                              ✓ Text Extracted ({resumeText.length} chars)
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-slate-200">
-                            Drag & drop your resume here
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            Supports PDF (.pdf) and Plain Text (.txt, .md)
-                          </p>
-                          <span className="inline-block mt-3 px-3 py-1 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-purple-400">
-                            Browse Files
-                          </span>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-                ) : (
-                  /* Plain Textarea */
-                  <textarea
-                    value={resumeText}
-                    onChange={(e) => setResumeText(e.target.value)}
-                    placeholder="Paste your raw resume text here (Summary, Skills, Work Experience, Education, Projects)..."
-                    className="w-full h-64 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-mono leading-relaxed resize-none shadow-inner"
-                  />
-                )}
+                <p className="text-xs sm:text-sm text-stitch-dim max-w-2xl leading-relaxed">
+                  Scan candidate resumes against FAANG &amp; Tier-1 job descriptions. Inspect ATS pass-probability, keyword density gaps, seniority compatibility, and trigger 15–20 tailored 3D interview flashcards.
+                </p>
               </div>
 
-              {resumeText && (
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/80">
-                  <span>Resume parsed: {resumeText.length} chars</span>
-                  <button
-                    onClick={() => { setResumeText(''); setSelectedFile(null); }}
-                    className="text-slate-500 hover:text-rose-400 underline cursor-pointer"
-                  >
-                    Clear
-                  </button>
+              {/* Right Action: Wallet Balance + Reset Button */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+                <div className="px-3.5 py-2 rounded-xl bg-[#0e1320] border border-white/[0.08] text-xs font-mono text-amber-300 flex items-center gap-2 shadow-inner">
+                  <Coins className="w-4 h-4 text-amber-400" />
+                  <span>Credits: ₹{walletBalance.toFixed(2)}</span>
                 </div>
-              )}
+                {analysisData && (
+                  <button
+                    onClick={handleReset}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stitch-surface hover:bg-stitch-card text-slate-200 border border-white/[0.08] hover:border-cyan-400/40 text-xs font-mono font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4 text-cyan-400" />
+                    <span>Analyze New Resume</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* RIGHT COLUMN: JOB DESCRIPTION INPUT */}
-            <div className="glass-panel p-6 rounded-3xl border border-slate-800 bg-slate-900/80 shadow-xl space-y-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-indigo-400" />
-                    <span>Target Job Description (JD)</span>
-                  </label>
+            {/* Feature Badges Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/[0.06]">
+              <div className="flex items-center gap-2 text-xs font-mono text-stitch-dim">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>ATS Pass Scoring</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-stitch-dim">
+                <Brain className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                <span>15-20 3D Flashcards</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-stitch-dim">
+                <Layers className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span>Skills &amp; Keyword Gap</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-stitch-dim">
+                <Target className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>Google XYZ Rewrites</span>
+              </div>
+            </div>
+          </div>
 
-                  <div className="flex items-center gap-1">
-                    {SAMPLE_JOB_DESCRIPTIONS.map(s => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setJobDescription(s.text)}
-                        className="px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500 text-[10px] font-mono text-slate-400 hover:text-indigo-300 transition-all cursor-pointer"
+          {/* ========================================================================= */}
+          {/* 2. MAIN WORKSPACE: UPLOAD STATE vs ANALYSIS RESULTS                       */}
+          {/* ========================================================================= */}
+          {!analysisData ? (
+            
+            /* ---------------- UPLOAD & INPUT FORM ---------------- */
+            <div className="space-y-6">
+              
+              {/* Quick 1-Click Preset Demos */}
+              <div className="rounded-2xl border border-white/[0.08] bg-[#0c101a] p-5 shadow-xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-stitch-dim flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <span>1-Click Fast Demo Presets:</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-500">
+                    Load authentic benchmark resumes &amp; job descriptions instantly
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleLoadSample('sde2-fullstack', 'google-sde2')}
+                    className="p-4 rounded-xl bg-[#0e1422] hover:bg-[#12192b] border border-white/[0.08] hover:border-cyan-400/50 transition-all text-left group cursor-pointer shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white group-hover:text-cyan-300">
+                        Google SDE-II (Full Stack)
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <p className="text-[11px] font-mono text-stitch-dim">3.5 Yrs Exp &bull; React, Node.js, Go, Kafka</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleLoadSample('backend-systems', 'amazon-backend')}
+                    className="p-4 rounded-xl bg-[#0e1422] hover:bg-[#12192b] border border-white/[0.08] hover:border-purple-400/50 transition-all text-left group cursor-pointer shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white group-hover:text-purple-300">
+                        Amazon Backend (AWS / Java)
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <p className="text-[11px] font-mono text-stitch-dim">4 Yrs Exp &bull; Java, Distributed Systems, DynamoDB</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleLoadSample('sde2-fullstack', 'meta-fullstack')}
+                    className="p-4 rounded-xl bg-[#0e1422] hover:bg-[#12192b] border border-white/[0.08] hover:border-emerald-400/50 transition-all text-left group cursor-pointer shadow-md"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-white group-hover:text-emerald-300">
+                        Meta Full Stack (React / TS)
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <p className="text-[11px] font-mono text-stitch-dim">Web Performance &bull; TypeScript, GraphQL, Next.js</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Direct CTA to ATS Resume Creator */}
+              <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 text-stitch-dim font-mono">
+                  <Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span>Looking to craft an ATS-compliant resume from scratch with AI bullet rewriting &amp; live PDF preview?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMainMode('creator')}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shadow-md shadow-purple-600/20"
+                >
+                  <span>Open ATS Resume Creator</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Form Grid: Left Resume Upload/Paste, Right Job Description */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* LEFT COLUMN: RESUME INPUT */}
+                <div className="rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 shadow-xl space-y-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-bold text-white flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-cyan-400" />
+                        <span>Candidate Resume</span>
+                      </label>
+
+                      {/* Toggle Mode */}
+                      <div className="flex items-center p-1 rounded-xl bg-[#070a12] border border-white/[0.08]">
+                        <button
+                          type="button"
+                          onClick={() => setInputMode('upload')}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                            inputMode === 'upload'
+                              ? 'bg-cyan-500 text-white shadow-sm'
+                              : 'text-stitch-dim hover:text-white'
+                          }`}
+                        >
+                          Upload File
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInputMode('paste')}
+                          className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                            inputMode === 'paste'
+                              ? 'bg-cyan-500 text-white shadow-sm'
+                              : 'text-stitch-dim hover:text-white'
+                          }`}
+                        >
+                          Paste Text
+                        </button>
+                      </div>
+                    </div>
+
+                    {inputMode === 'upload' ? (
+                      /* Drag & Drop Zone */
+                      <div
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[260px] ${
+                          isDragging
+                            ? 'border-cyan-400 bg-cyan-950/20'
+                            : selectedFile
+                            ? 'border-emerald-500/60 bg-emerald-950/20'
+                            : 'border-white/10 hover:border-cyan-400/50 bg-[#070a12]/70 hover:bg-[#070a12]'
+                        }`}
                       >
-                        {s.id.split('-')[0].toUpperCase()}
+                        <input
+                          type="file"
+                          id="resume-file-input"
+                          accept=".pdf,.txt,.md"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileSelect(e.target.files[0]);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <label htmlFor="resume-file-input" className="cursor-pointer w-full flex flex-col items-center">
+                          <div className={`p-4 rounded-xl mb-3 transition-transform ${
+                            selectedFile ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/40' : 'bg-stitch-surface text-cyan-400 border border-white/[0.08]'
+                          }`}>
+                            {selectedFile ? <FileCheck className="w-8 h-8" /> : <Upload className="w-8 h-8" />}
+                          </div>
+
+                          {selectedFile ? (
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-emerald-300 font-mono">
+                                {selectedFile.name}
+                              </p>
+                              <p className="text-xs text-stitch-dim font-mono">
+                                {(selectedFile.size / 1024).toFixed(1)} KB &bull; Click or drop another file to replace
+                              </p>
+                              {resumeText && (
+                                <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-[10px] font-mono text-emerald-300">
+                                  ✓ Text Extracted ({resumeText.length} chars)
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-white">
+                                Drag &amp; drop your resume here
+                              </p>
+                              <p className="text-xs text-stitch-dim">
+                                Supports PDF (.pdf) and Plain Text (.txt, .md)
+                              </p>
+                              <span className="inline-block mt-3 px-3 py-1.5 rounded-xl bg-stitch-surface border border-white/[0.08] text-xs font-mono font-bold text-cyan-400">
+                                Browse Files
+                              </span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    ) : (
+                      /* Plain Textarea */
+                      <textarea
+                        value={resumeText}
+                        onChange={(e) => setResumeText(e.target.value)}
+                        placeholder="Paste your raw resume text here (Summary, Skills, Work Experience, Education, Projects)..."
+                        className="w-full h-64 p-4 rounded-xl bg-[#070a12] border border-white/[0.08] text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono leading-relaxed resize-none shadow-inner"
+                      />
+                    )}
+                  </div>
+
+                  {resumeText && (
+                    <div className="flex items-center justify-between text-[11px] font-mono text-stitch-dim pt-2 border-t border-white/[0.06]">
+                      <span>Resume parsed: {resumeText.length} chars</span>
+                      <button
+                        onClick={() => { setResumeText(''); setSelectedFile(null); }}
+                        className="text-stitch-dim hover:text-rose-400 underline cursor-pointer"
+                      >
+                        Clear
                       </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT COLUMN: JOB DESCRIPTION INPUT */}
+                <div className="rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 shadow-xl space-y-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-bold text-white flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-purple-400" />
+                        <span>Target Job Description (JD)</span>
+                      </label>
+
+                      <div className="flex items-center gap-1">
+                        {SAMPLE_JOB_DESCRIPTIONS.map(s => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setJobDescription(s.text)}
+                            className="px-2.5 py-0.5 rounded-lg bg-[#070a12] border border-white/[0.08] hover:border-cyan-400 text-[10px] font-mono text-stitch-dim hover:text-cyan-300 transition-all cursor-pointer"
+                          >
+                            {s.id.split('-')[0].toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.target.value)}
+                      placeholder="Paste the job description you're applying for (Job Title, Responsibilities, Minimum & Preferred Qualifications)..."
+                      className="w-full h-64 p-4 rounded-xl bg-[#070a12] border border-white/[0.08] text-xs text-slate-200 focus:outline-none focus:border-purple-400 font-mono leading-relaxed resize-none shadow-inner"
+                    />
+                  </div>
+
+                  {jobDescription && (
+                    <div className="flex items-center justify-between text-[11px] font-mono text-stitch-dim pt-2 border-t border-white/[0.06]">
+                      <span>JD length: {jobDescription.length} chars</span>
+                      <button
+                        onClick={() => setJobDescription('')}
+                        className="text-stitch-dim hover:text-rose-400 underline cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Error Notice */}
+              {error && (
+                <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Analyze CTA Button */}
+              <div className="text-center pt-2">
+                <button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing}
+                  className="px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-cyan-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 mx-auto min-w-[280px]"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span className="font-mono">Analyzing with SDETube AI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5 text-cyan-200" />
+                      <span>Analyze Resume with SDETube AI</span>
+                      <span className="px-2 py-0.5 rounded-full bg-black/40 text-cyan-200 text-xs font-mono border border-cyan-400/40">
+                        ₹{PRICING_CONFIG.AI_RESUME_ANALYSIS?.toFixed(2) || '1.50'}
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Animated Progress Steps when Analyzing */}
+              {isAnalyzing && (
+                <div className="rounded-2xl border border-cyan-500/30 bg-[#090d16]/95 p-6 shadow-2xl max-w-xl mx-auto space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-white">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+                      <span>Executing SDETube AI Multi-Pass Pipeline</span>
+                    </span>
+                    <span className="text-cyan-400">Step {analyzingStep || 1} of 4</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {[
+                      { step: 1, label: 'Extracting candidate text & structural tokens' },
+                      { step: 2, label: 'Querying SDETube AI for ATS scoring & keyword alignment' },
+                      { step: 3, label: 'Running career progression & gap analysis' },
+                      { step: 4, label: 'Generating 15-20 customized 3D interview flashcards' }
+                    ].map(item => (
+                      <div key={item.step} className="flex items-center gap-3 text-xs font-mono">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
+                          analyzingStep > item.step
+                            ? 'bg-emerald-600 text-white'
+                            : analyzingStep === item.step
+                            ? 'bg-cyan-500 text-white animate-pulse'
+                            : 'bg-stitch-surface text-slate-500'
+                        }`}>
+                          {analyzingStep > item.step ? '✓' : item.step}
+                        </div>
+                        <span className={analyzingStep >= item.step ? 'text-slate-200 font-medium' : 'text-slate-500'}>
+                          {item.label}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </div>
+              )}
 
-                <textarea
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the job description you're applying for (Job Title, Responsibilities, Minimum & Preferred Qualifications)..."
-                  className="w-full h-64 p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono leading-relaxed resize-none shadow-inner"
-                />
-              </div>
+            </div>
 
-              {jobDescription && (
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/80">
-                  <span>JD length: {jobDescription.length} chars</span>
-                  <button
-                    onClick={() => setJobDescription('')}
-                    className="text-slate-500 hover:text-rose-400 underline cursor-pointer"
-                  >
-                    Clear
-                  </button>
+          ) : (
+
+            /* ---------------- ANALYSIS RESULTS TABS & VIEWS ---------------- */
+            <div className="space-y-6 animate-fadeIn">
+              
+              {/* Sub-Tabs Navigation Bar */}
+              <div className="p-1.5 rounded-xl border border-white/[0.08] bg-[#090d16]/95 shadow-xl flex flex-wrap items-center justify-between gap-2">
+                
+                <div className="flex flex-wrap items-center gap-1">
+                  {subTabs.map(tab => {
+                    const Icon = tab.icon;
+                    const isActive = activeSubTab === tab.id;
+
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveSubTab(tab.id)}
+                        className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                            : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                        {tab.badge && (
+                          <span className={`px-2 py-0.2 rounded-full text-[10px] font-mono ${
+                            isActive ? 'bg-black/40 text-cyan-200' : 'bg-stitch-surface text-slate-400'
+                          }`}>
+                            {tab.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
 
-          </div>
+                {/* AI Engine Status Pill */}
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#070a12] border border-white/[0.08] text-[11px] font-mono text-cyan-300">
+                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  <span>{analysisData.ai_engine || 'SDETube AI Engine'}</span>
+                </div>
 
-          {/* Error Notice */}
-          {error && (
-            <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Analyze CTA Button */}
-          <div className="text-center pt-2">
-            <button
-              onClick={handleAnalyze}
-              disabled={isAnalyzing}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:from-purple-500 hover:to-sky-500 text-white font-extrabold text-sm sm:text-base shadow-xl shadow-purple-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 mx-auto min-w-[280px]"
-            >
-              {isAnalyzing ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Analyzing with SDETube AI...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 text-amber-300" />
-                  <span>Analyze Resume with SDETube AI</span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-900/80 text-purple-200 text-xs font-mono border border-purple-400/40">
-                    ₹{PRICING_CONFIG.AI_RESUME_ANALYSIS?.toFixed(2) || '1.50'}
-                  </span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Animated Progress Steps when Analyzing */}
-          {isAnalyzing && (
-            <div className="glass-panel p-6 rounded-3xl border border-indigo-500/40 bg-slate-900/90 shadow-2xl max-w-xl mx-auto space-y-4 animate-fadeIn">
-              <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-300">
-                <span className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-ping"></span>
-                  <span>Executing SDETube AI Multi-Pass Pipeline</span>
-                </span>
-                <span className="text-purple-400">Step {analyzingStep || 1} of 4</span>
               </div>
-
-              <div className="space-y-2">
-                {[
-                  { step: 1, label: 'Extracting candidate text & structural tokens' },
-                  { step: 2, label: 'Querying SDETube AI for ATS scoring & keyword alignment' },
-                  { step: 3, label: 'Running career progression & gap analysis' },
-                  { step: 4, label: 'Generating 15-20 customized 3D interview flashcards' }
-                ].map(item => (
-                  <div key={item.step} className="flex items-center gap-3 text-xs">
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
-                      analyzingStep > item.step
-                        ? 'bg-emerald-600 text-white'
-                        : analyzingStep === item.step
-                        ? 'bg-purple-600 text-white animate-pulse'
-                        : 'bg-slate-800 text-slate-500'
-                    }`}>
-                      {analyzingStep > item.step ? '✓' : item.step}
-                    </div>
-                    <span className={analyzingStep >= item.step ? 'text-slate-200 font-medium' : 'text-slate-500'}>
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-        </div>
-
-      ) : (
-
-        /* ---------------- ANALYSIS RESULTS TABS & VIEWS ---------------- */
-        <div className="space-y-6 animate-fadeIn">
-          
-          {/* Sub-Tabs Navigation Bar */}
-          <div className="glass-panel p-2 rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl flex flex-wrap items-center justify-between gap-2">
-            
-            <div className="flex flex-wrap items-center gap-1">
-              {subTabs.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeSubTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveSubTab(tab.id)}
-                    className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/25'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
-                    {tab.badge && (
-                      <span className={`px-2 py-0.2 rounded-full text-[10px] font-mono ${
-                        isActive ? 'bg-purple-900 text-purple-200' : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        {tab.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* AI Engine Status Pill */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-purple-300">
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>{analysisData.ai_engine || 'SDETube AI Engine'}</span>
-            </div>
-
-          </div>
 
           {/* Render Active View */}
           <div>

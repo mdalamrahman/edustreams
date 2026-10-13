@@ -75,35 +75,37 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
   return (
     <div className="space-y-6">
       
-      {/* Top Header & Sub-Navigation Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-teal-950/60 via-slate-900 to-slate-950 border border-teal-500/30 shadow-2xl">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-2xl bg-teal-600/30 text-teal-300 border border-teal-500/40">
+      {/* Top Header & Sub-Navigation Tabs (Obsidian Telemetry) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl border border-white/[0.08] bg-[#0c101a] shadow-2xl relative overflow-hidden group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+
+        <div className="flex items-center space-x-3 relative z-10">
+          <div className="p-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
             <Cpu className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
               <span>High-Level Design (HLD)</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-teal-950 border border-teal-700/60 text-[10px] font-mono text-teal-300 font-bold">
-                System Design Boss Hub
+              <span className="px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[10px] font-mono text-cyan-300 font-bold">
+                System Design Hub
               </span>
             </h1>
-            <p className="text-xs text-slate-400">Scalable Architectures, Caching, CDN, Sharding, Kafka & Fullscreen Drag-and-Drop Canvas</p>
+            <p className="text-xs text-stitch-dim">Scalable Architectures, Caching, CDN, Sharding, Kafka &amp; Interactive Topology Canvas</p>
           </div>
         </div>
 
         {/* Sub-Tabs Selector */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#070a12] p-1.5 rounded-xl border border-white/[0.08] relative z-10">
           <button
             onClick={() => {
               setHldSubTab('boss_sheet');
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(false);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'boss_sheet'
-                ? 'bg-teal-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -117,14 +119,14 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(true);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'freeform_canvas'
-                ? 'bg-teal-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <LayoutTemplate className="w-4 h-4" />
-            <span>HLD Canvas</span>
+            <span>Architecture Canvas</span>
           </button>
 
           <button
@@ -133,10 +135,10 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(false);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'practice_canvas'
-                ? 'bg-teal-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -149,10 +151,10 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(false);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'github_reader'
-                ? 'bg-teal-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <BookOpenText className="w-4 h-4" />
@@ -166,15 +168,15 @@ export const HLDHub: React.FC<HLDHubProps> = () => {
               setActiveHldProblem(null);
               setIsFreeformHldCanvas(false);
             }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               hldSubTab === 'books'
-                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg ring-1 ring-teal-400'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-cyan-500 to-teal-600 text-white shadow-lg shadow-cyan-500/20'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
-            <BookMarked className="w-4 h-4 text-teal-300" />
+            <BookMarked className="w-4 h-4 text-cyan-300" />
             <span>DDIA Animated E-Book</span>
-            <span className="px-1.5 py-0.5 rounded bg-teal-950 text-[9px] font-mono text-teal-300 font-bold border border-teal-600/40">BOOK</span>
+            <span className="px-1.5 py-0.5 rounded bg-black/40 text-[9px] font-mono text-cyan-200 font-bold border border-cyan-500/40">BOOK</span>
           </button>
         </div>
       </div>

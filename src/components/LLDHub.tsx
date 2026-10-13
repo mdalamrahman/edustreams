@@ -329,34 +329,36 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
         onClose={() => setIsWalletTopupOpen(false)}
       />
 
-      {/* Top Header & Sub-Navigation Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-slate-950 border border-purple-500/30 shadow-2xl">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-2xl bg-purple-600/30 text-purple-300 border border-purple-500/40">
+      {/* Top Header & Sub-Navigation Tabs (Obsidian Telemetry) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl border border-white/[0.08] bg-[#0c101a] shadow-2xl relative overflow-hidden group">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+
+        <div className="flex items-center space-x-3 relative z-10">
+          <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30">
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-100 tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
               <span>Low-Level Design (LLD)</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-950 border border-purple-700/60 text-[10px] font-mono text-purple-300 font-bold">
-                SDE-1 OOP Studio
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-950/80 border border-purple-500/40 text-[10px] font-mono text-purple-300 font-bold">
+                SDE-1 OOP Suite
               </span>
             </h1>
-            <p className="text-xs text-slate-400">SOLID Principles, GoF Design Patterns, SDE-1 Notes & Machine Coding Studio</p>
+            <p className="text-xs text-stitch-dim">SOLID Principles, GoF Design Patterns, SDE-1 Notes &amp; Machine Coding Suite</p>
           </div>
         </div>
 
         {/* Sub-Tabs Selector */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#070a12] p-1.5 rounded-xl border border-white/[0.08] relative z-10">
           <button
             onClick={() => {
               setLldSubTab('boss_sheet');
               setActiveProblem(null);
             }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               lldSubTab === 'boss_sheet'
-                ? 'bg-purple-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <BookOpen className="w-4 h-4" />
@@ -365,10 +367,10 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
 
           <button
             onClick={() => setLldSubTab('coding_arena')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               lldSubTab === 'coding_arena'
-                ? 'bg-purple-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Code2 className="w-4 h-4" />
@@ -377,10 +379,10 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
 
           <button
             onClick={() => setLldSubTab('github_reader')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer ${
               lldSubTab === 'github_reader'
-                ? 'bg-purple-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
+                : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
             }`}
           >
             <Github className="w-4 h-4" />

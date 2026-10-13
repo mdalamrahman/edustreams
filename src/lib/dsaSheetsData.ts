@@ -2825,7 +2825,7 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "name": "Floor in BST",
     "difficulty": "Medium",
     "rating": "4.2 / 5",
-    "leetcode": "https://leetcode.com/problems/closest-binary-search-tree-value/",
+    "leetcode": "https://leetcode.com/problems/search-in-a-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/floor-in-bst/1",
     "companies": [
       "Google",
@@ -2845,14 +2845,14 @@ export const SDE_SHEET_191_DATA: DSAProblem[] = [
     "name": "Ceil in BST",
     "difficulty": "Medium",
     "rating": "4.2 / 5",
-    "leetcode": "https://leetcode.com/problems/closest-binary-search-tree-value-ii/",
+    "leetcode": "https://leetcode.com/problems/search-in-a-binary-search-tree/",
     "gfg": "https://www.geeksforgeeks.org/problems/ceil-in-bst/1",
     "companies": [
       "Google",
       "Amazon",
       "LinkedIn"
     ],
-    "slug": "closest-binary-search-tree-value-ii"
+    "slug": "ceil-in-bst"
   },
   {
     "id": 140,
@@ -15184,6 +15184,26 @@ export function getSheetData(sheetType: DSASheetType): DSAProblem[] {
   return ALL_SHEETS_MAP[sheetType] || SDE_SHEET_191_DATA;
 }
 
+// Known LeetCode Premium problems or problems lacking public free LeetCode problem links
+const EXCLUDED_PREMIUM_OR_NO_LC = new Set([
+  'floor-in-bst',
+  'ceil-in-bst',
+  'closest-binary-search-tree-value',
+  'closest-binary-search-tree-value-ii',
+  'max-heap-min-heap-implementation',
+  'implement-stack-using-array',
+  'implement-queue-using-array',
+  'sort-a-stack',
+  'maximum-of-minimum-for-every-window-size',
+  'left-view-of-binary-tree',
+  'bottom-view-of-binary-tree',
+  'top-view-of-binary-tree',
+  'preorder-inorder-postorder-in-single-traversal',
+  'check-for-children-sum-property',
+  'binary-tree-to-double-linkedlist',
+  'distinct-numbers-in-window'
+]);
+
 export function getUniversalSdePotd(): DSAProblem {
   const today = new Date().toISOString().slice(0, 10);
   // 1. Check if admin has set a custom POTD override for today
@@ -15193,24 +15213,37 @@ export function getUniversalSdePotd(): DSAProblem {
       if (customRaw) {
         const parsed = JSON.parse(customRaw);
         if (parsed && (parsed.name || parsed.title) && parsed.slug) {
-          return {
-            id: parsed.id || 9999,
-            name: parsed.name || parsed.title,
-            title: parsed.title || parsed.name,
-            slug: parsed.slug,
-            difficulty: parsed.difficulty || 'Medium',
-            category: parsed.category || parsed.topic || 'DSA',
-            leetcode: parsed.leetcode || parsed.url || `https://leetcode.com/problems/${parsed.slug}/`,
-            sheet: parsed.sheet || 'Curated POTD',
-            companies: Array.isArray(parsed.companies) && parsed.companies.length > 0 ? parsed.companies : ['FAANG', 'Top Product Companies']
-          } as unknown as DSAProblem;
+          const lcUrl = parsed.leetcode || parsed.url || `https://leetcode.com/problems/${parsed.slug}/`;
+          if (!lcUrl.includes('closest-binary-search-tree')) {
+            return {
+              id: parsed.id || 9999,
+              name: parsed.name || parsed.title,
+              title: parsed.title || parsed.name,
+              slug: parsed.slug,
+              difficulty: parsed.difficulty || 'Medium',
+              category: parsed.category || parsed.topic || 'DSA',
+              leetcode: lcUrl,
+              sheet: parsed.sheet || 'Curated POTD',
+              companies: Array.isArray(parsed.companies) && parsed.companies.length > 0 ? parsed.companies : ['FAANG', 'Top Product Companies']
+            } as unknown as DSAProblem;
+          }
         }
       }
     } catch {}
   }
 
-  // 2. Default rotational seed based on date
+  // 2. Filter SDE Sheet problems to only high-yield questions with verified free, active LeetCode URLs
+  const eligibleProblems = SDE_SHEET_191_DATA.filter((p) => {
+    if (!p.leetcode || !p.leetcode.startsWith('http') || p.leetcode === '$undefined') return false;
+    const slug = (p.slug || '').toLowerCase();
+    const lc = p.leetcode.toLowerCase();
+    if (EXCLUDED_PREMIUM_OR_NO_LC.has(slug)) return false;
+    if (lc.includes('closest-binary-search-tree')) return false;
+    return true;
+  });
+
+  const pool = eligibleProblems.length > 0 ? eligibleProblems : SDE_SHEET_191_DATA;
   const daySeed = Math.abs(today.split('-').reduce((acc, p) => acc + parseInt(p, 10), 0));
-  return SDE_SHEET_191_DATA[daySeed % SDE_SHEET_191_DATA.length] || SDE_SHEET_191_DATA[0];
+  return pool[daySeed % pool.length] || pool[0];
 }
 
