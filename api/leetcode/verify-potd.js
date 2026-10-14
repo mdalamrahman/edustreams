@@ -124,12 +124,20 @@ export default async function handler(req, res) {
         }
       }
 
+      // Exact UTC midnight epoch calculation for LeetCode's submissionCalendar keys
+      const nowDate = new Date();
+      const todayUtcEpochSec = Math.floor(
+        Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate()) / 1000
+      );
+      const yesterdayUtcEpochSec = todayUtcEpochSec - 86400;
+
       // Check submission calendar if recent submissions were private / empty
       const calRaw = matchedUser?.userCalendar?.submissionCalendar || matchedUser?.submissionCalendar;
       if (calRaw) {
         try {
           const cal = typeof calRaw === 'string' ? JSON.parse(calRaw) : calRaw;
-          const hasTodayActivity = Object.entries(cal).some(([epochSec, count]) => {
+          const todayCount = Number(cal[String(todayUtcEpochSec)] || 0);
+          const hasTodayActivity = todayCount > 0 || Object.entries(cal).some(([epochSec, count]) => {
             if (Number(count) <= 0) return false;
             const ms = parseInt(epochSec, 10) * 1000;
             const diffHours = (now - ms) / (1000 * 60 * 60);
@@ -143,6 +151,7 @@ export default async function handler(req, res) {
               verified: true,
               matchedBy: 'calendar_privacy_mode',
               username,
+              todayUtcEpochSec,
               message: 'Verified via LeetCode daily activity calendar (private submissions mode)'
             });
           }

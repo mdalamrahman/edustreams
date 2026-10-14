@@ -667,7 +667,7 @@ This executes:
 
 Set the Render authentication token:
 ```powershell
-$env:RENDER_TOKEN = "rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY"
+$env:RENDER_TOKEN = "<YOUR_RENDER_TOKEN>"
 ```
 
 1. **Verify Services with Render CLI**:
@@ -685,7 +685,7 @@ $env:RENDER_TOKEN = "rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY"
 
 3. **Verify Deployment Status via Render REST API**:
    ```powershell
-   python -c "import urllib.request, json, os; token = os.getenv('RENDER_TOKEN', 'rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY'); req = urllib.request.Request('https://api.render.com/v1/services/srv-d9nn8qm417fc73doitrg/deploys?limit=1', headers={'Authorization': 'Bearer ' + token}); res = urllib.request.urlopen(req); d = json.loads(res.read())[0]['deploy']; print(f'Deploy ID: {d[\"id\"]} | Status: {d[\"status\"]} | Commit: {d[\"commit\"][\"id\"][:8]} - {d[\"commit\"][\"message\"]}')"
+   python -c "import urllib.request, json, os, sys; token = os.environ.get('RENDER_TOKEN'); srv = os.environ.get('RENDER_SERVICE_ID', 'srv-d9nn8qm417fc73doitrg'); sys.exit('RENDER_TOKEN required') if not token else None; req = urllib.request.Request(f'https://api.render.com/v1/services/{srv}/deploys?limit=1', headers={'Authorization': 'Bearer ' + token}); res = urllib.request.urlopen(req); d = json.loads(res.read())[0]['deploy']; print(f'Deploy ID: {d[\"id\"]} | Status: {d[\"status\"]} | Commit: {d[\"commit\"][\"id\"][:8]} - {d[\"commit\"][\"message\"]}')"
    ```
    *Expected output: `Status: live`*
 

@@ -904,12 +904,74 @@ export function claimReportBounty(
     localStorage.setItem(legacyDriverKey, '1');
   } catch {}
 
+  // Sync claim with server ledger in background
+  try {
+    fetch(`${BACKEND_URL}/api/bounty/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        problem_slug: problemSlug,
+        category: issueType,
+        email: activeEmail,
+        problem_title: problemTitle
+      })
+    }).catch(() => {});
+  } catch {}
+
   return {
     success: true,
     rewardedAmount: 1.00,
     newBalance: credit.newBalance,
     alreadyClaimed: false
   };
+}
+
+/**
+ * Server-authenticated bug bounty claim with dual-scope defect and rate locks.
+ */
+export async function claimReportBountyServer(
+  problemSlug: string,
+  problemTitle: string,
+  issueType: 'testcase' | 'driver' | 'problem' = 'testcase',
+  testInput: string = '',
+  proposedOutput: string = '',
+  email?: string
+): Promise<{ success: boolean; rewardedAmount: number; newBalance?: number; alreadyClaimed: boolean }> {
+  const activeEmail = getActiveEmail(email);
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/bounty/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        problem_slug: problemSlug,
+        category: issueType,
+        test_input: testInput,
+        proposed_expected_output: proposedOutput,
+        problem_title: problemTitle,
+        email: activeEmail
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.newBalance !== undefined) {
+        const wallets = getAllWallets();
+        if (wallets[activeEmail]) {
+          wallets[activeEmail].balance = data.newBalance;
+          saveAllWallets(wallets);
+        }
+      }
+      return {
+        success: true,
+        rewardedAmount: data.rewardedAmount !== undefined ? data.rewardedAmount : 1.0,
+        newBalance: data.newBalance,
+        alreadyClaimed: Boolean(data.alreadyClaimed)
+      };
+    } else if (res.status === 409) {
+      return { success: true, rewardedAmount: 0, alreadyClaimed: true };
+    }
+  } catch {}
+
+  return claimReportBounty(problemSlug, problemTitle, issueType, email);
 }
 
 /**

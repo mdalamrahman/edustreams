@@ -230,6 +230,9 @@ export interface GFGProfileData {
     medium?: number;
     hard?: number;
   };
+  solved_today_verified?: boolean;
+  checked_date_ist?: string;
+  today_submission_count?: number;
 }
 
 export interface CodeforcesProfileData {
@@ -1529,7 +1532,10 @@ export function isLeetCodeProblemSolvedToday(
     if (calRaw) {
       try {
         const cal = typeof calRaw === 'string' ? JSON.parse(calRaw) : calRaw;
-        const hasTodayActivity = Object.entries(cal).some(([epochSec, count]) => {
+        const nowDate = new Date();
+        const todayUtcEpochSec = Math.floor(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate()) / 1000);
+        const hasDirectUtcActivity = Number(cal[String(todayUtcEpochSec)] || 0) > 0;
+        const hasTodayActivity = hasDirectUtcActivity || Object.entries(cal).some(([epochSec, count]) => {
           if (Number(count) <= 0) return false;
           const ms = parseInt(epochSec, 10) * 1000;
           const diffHours = (now - ms) / (1000 * 60 * 60);
@@ -1617,8 +1623,25 @@ export function isGfgProblemSolvedToday(
     }
   }
 
-  // GFG public profile does not provide timestamped problem solves or today's specific POTD status.
-  // We do not assume current_streak >= 1 means today's POTD was solved, as active streaks carry over from yesterday.
+  // 2. GFG public profile streak & date-verified check
+  if (gfgData) {
+    // If backend verified today's submission date via GFG submissions heatmap, trust it explicitly
+    if (gfgData.solved_today_verified === true) {
+      return true;
+    }
+    // If explicitly marked as not submitted today, do not carry over yesterday's streak
+    if (gfgData.solved_today_verified === false) {
+      return false;
+    }
+
+    // Fallback if older backend didn't return solved_today_verified
+    const rawStreak = gfgData.current_streak ?? (gfgData as any).pod_solved_current_streak ?? (gfgData as any).streak ?? 0;
+    const streak = typeof rawStreak === 'number' ? rawStreak : parseInt(String(rawStreak), 10);
+    if (!isNaN(streak) && streak >= 1) {
+      return true;
+    }
+  }
+
   return false;
 }
 

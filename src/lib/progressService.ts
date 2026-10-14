@@ -128,8 +128,34 @@ function scanLegacyLocalStorage(email: string): UserDSAProgress {
       result.active_sheet = sheet as any;
     }
 
-    const profiles = localStorage.getItem(`sdetube_linked_dev_profiles_${email}`) || localStorage.getItem('sdetube_linked_dev_profiles');
-    if (profiles) result.linked_profiles = JSON.parse(profiles);
+    const profiles = localStorage.getItem(`sdetube_linked_dev_profiles_${email}`) || 
+      localStorage.getItem('sdetube_linked_dev_profiles') ||
+      localStorage.getItem(`edustream_linked_profiles_${email}`) ||
+      localStorage.getItem('edustream_linked_profiles');
+    if (profiles) {
+      try {
+        result.linked_profiles = { ...DEFAULT_LINKED_PROFILES, ...JSON.parse(profiles) };
+      } catch {}
+    }
+
+    // Direct fallback handles in case config was stored under individual keys
+    if (!result.linked_profiles.leetcodeUsername) {
+      const directLc = localStorage.getItem('sdetube_leetcode_username') || 
+        localStorage.getItem('leetcode_username') || 
+        localStorage.getItem('edustream_lc_user');
+      if (directLc) result.linked_profiles.leetcodeUsername = directLc.trim();
+    }
+    if (!result.linked_profiles.gfgUsername) {
+      const directGfg = localStorage.getItem('sdetube_gfg_username') || 
+        localStorage.getItem('gfg_username') || 
+        localStorage.getItem('edustream_gfg_user');
+      if (directGfg) result.linked_profiles.gfgUsername = directGfg.trim();
+    }
+    if (!result.linked_profiles.githubUsername) {
+      const directGh = localStorage.getItem('sdetube_github_username') || 
+        localStorage.getItem('github_username');
+      if (directGh) result.linked_profiles.githubUsername = directGh.trim();
+    }
 
     const mins = localStorage.getItem('edustream_active_mins');
     if (mins) result.active_mins = parseFloat(mins);
@@ -259,7 +285,25 @@ export async function saveUserProgress(patch: Partial<UserDSAProgress>, targetEm
 
   // Broadcast event to refresh all listening UI components
   if (typeof window !== 'undefined') {
+    if (updated.linked_profiles) {
+      try {
+        const str = JSON.stringify(updated.linked_profiles);
+        localStorage.setItem(`sdetube_linked_dev_profiles_${email}`, str);
+        localStorage.setItem('sdetube_linked_dev_profiles', str);
+        localStorage.setItem(`edustream_linked_profiles_${email}`, str);
+        localStorage.setItem('edustream_linked_profiles', str);
+        if (updated.linked_profiles.leetcodeUsername) {
+          localStorage.setItem('sdetube_leetcode_username', updated.linked_profiles.leetcodeUsername);
+          localStorage.setItem('leetcode_username', updated.linked_profiles.leetcodeUsername);
+        }
+        if (updated.linked_profiles.gfgUsername) {
+          localStorage.setItem('sdetube_gfg_username', updated.linked_profiles.gfgUsername);
+          localStorage.setItem('gfg_username', updated.linked_profiles.gfgUsername);
+        }
+      } catch {}
+    }
     window.dispatchEvent(new CustomEvent('sdetube_progress_updated', { detail: updated }));
+    window.dispatchEvent(new CustomEvent('sdetube_linked_profiles_updated', { detail: updated.linked_profiles }));
     window.dispatchEvent(new CustomEvent('sdetube_problem_solved', { detail: updated }));
   }
 

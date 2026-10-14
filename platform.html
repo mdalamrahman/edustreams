@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDETube — Production SDE Interview Preparation & Competitive Coding Cockpit</title>
+  <meta name="description" content="Enterprise EdTech & Technical Interview Preparation platform: 743+ curated DSA problems, in-browser Monaco IDE with Judge0 compiler, multi-platform POTD sync, and AI mock interviewer.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN with Custom Color Palette -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            stitch: {
+              lowest: '#080b11',
+              low: '#0e131d',
+              container: '#111622',
+              high: '#161f30',
+              highest: '#1a263d',
+              variant: 'rgba(255, 255, 255, 0.1)',
+              cyan: '#00f0ff',
+              mint: '#10b981',
+              lavender: '#c084fc',
+              dim: '#94a3b8',
+              muted: '#64748b'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #080b11;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080b11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Ambient Glows */
+    .neon-glow-cyan {
+      box-shadow: 0 0 25px -5px rgba(0, 240, 255, 0.25);
+    }
+    .neon-glow-mint {
+      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+    }
+    .neon-glow-amber {
+      box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.25);
+    }
+
+    /* Code line active marker */
+    .code-line-active {
+      background: rgba(0, 240, 255, 0.08);
+      border-left: 2px solid #00f0ff;
+      padding-left: 6px;
+    }
+
+    /* Autocomplete suggestion popup */
+    .autocomplete-box {
+      background: #0e131d;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.15);
+      backdrop-filter: blur(12px);
+    }
+
+    /* Heatmap cell */
+    .heatmap-cell {
+      width: 11px;
+      height: 11px;
+      border-radius: 2px;
+      transition: transform 0.15s ease;
+    }
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- ========================================================================= -->
+  <!-- TOP STICKY NAVBAR                                                        -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 w-full border-b border-stitch-variant/50 bg-[#080b11]/90 backdrop-blur-xl shadow-[0_1px_12px_rgba(0,0,0,0.6)]">
+    <div class="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Left: Logo & Navigation Tabs -->
+      <div class="flex items-center space-x-3 lg:space-x-4">
+        <!-- Logo -->
+        <div class="flex items-center space-x-2.5 cursor-pointer flex-shrink-0">
+          <div class="w-9 h-9 rounded-xl bg-stitch-high border border-stitch-variant/80 flex items-center justify-center text-stitch-cyan shadow-md">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-baseline space-x-0.5">
+              <span class="font-extrabold text-base sm:text-lg tracking-tight text-slate-100 font-sans">SDET</span>
+              <span class="font-extrabold text-base sm:text-lg tracking-tight text-cyan-400 font-sans">ube</span>
+              <span class="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-400/20 ml-1 hidden sm:inline">
+                Cockpit v4.8
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Nav Links -->
+        <nav class="hidden xl:flex items-center space-x-1 pl-2">
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 font-mono">
+            Dashboard
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            DSA Sheets (743+)
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            SQL 323 Arena
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            HLD Topology
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            LLD Machine Coding
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            AI Bar-Raiser
+          </button>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-stitch-high transition-all">
+            Video Lectures
+          </button>
+        </nav>
+      </div>
+
+      <!-- Right: User Quick Controls & POTD Button -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- POTD Quick Trigger -->
+        <button onclick="togglePotdModal()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-amber-300 font-mono text-xs font-bold transition-all cursor-pointer shadow-sm">
+          <svg class="w-4 h-4 text-amber-400 fill-amber-400 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.72v1.56c2.8 1.15 4.5 4.08 4 7.22-.55 3.42-3.4 6-6.85 6-3.87 0-7-3.13-7-7 0-3.32 2.31-6.11 5.44-6.85.29-.07.56-.22.75-.44l1.32-1.56c.4-.48.97-.75 1.58-.75z"/>
+          </svg>
+          <span class="hidden sm:inline">POTD Trifecta</span>
+          <span class="px-1.5 py-0.2 rounded bg-amber-950 border border-amber-600 text-[10px] text-amber-300 font-extrabold">3 / 3</span>
+        </button>
+
+        <!-- Wallet Coins -->
+        <div class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stitch-container border border-stitch-variant font-mono text-xs">
+          <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span class="text-slate-200 font-bold">₹12.00</span>
+          <span class="text-stitch-mint text-[10px] font-semibold">+Bounty</span>
+        </div>
+
+        <!-- User Profile Pill -->
+        <div class="flex items-center gap-2 pl-2 border-l border-stitch-variant/60">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-indigo-600 p-[1.5px] cursor-pointer">
+            <div class="w-full h-full rounded-full bg-stitch-lowest flex items-center justify-center text-cyan-300 font-mono text-xs font-bold">
+              MA
+            </div>
+          </div>
+          <div class="hidden sm:flex flex-col text-left">
+            <span class="text-xs font-bold text-slate-200 font-mono">@mdalamrahman4</span>
+            <span class="text-[10px] text-stitch-mint font-mono flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-stitch-mint animate-ping"></span>
+              FAANG Tier-1 Cohort
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN COCKPIT VIEWPORT                                                    -->
+  <!-- ========================================================================= -->
+  <main class="max-w-[98%] 2xl:max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+
+    <!-- ======================================================================= -->
+    <!-- 1. HERO COMMAND DECK & SYSTEM TELEMETRY                                 -->
+    <!-- ======================================================================= -->
+    <section class="relative rounded-2xl overflow-hidden bg-gradient-to-b from-[#111622] via-[#0e131d] to-[#080b11] border border-white/[0.08] p-6 sm:p-10 neon-glow-cyan shadow-2xl">
+      <!-- Ambient Top Glow -->
+      <div class="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(ellipse_at_50%_-20%,_rgba(0,240,255,0.25),_transparent_70%)]"></div>
+
+      <div class="relative z-10 flex flex-col gap-6 max-w-4xl">
+        <!-- Status Indicator Pill -->
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stitch-lowest/80 border border-cyan-400/40 w-fit backdrop-blur-md shadow-[0_0_15px_rgba(0,240,255,0.15)]">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span class="font-mono text-[11px] text-cyan-300 tracking-wider font-semibold uppercase">
+            ● SYSTEM ONLINE // TARGET: FAANG &amp; TIER-1 ARCHITECTURES
+          </span>
+        </div>
+
+        <!-- Main Headline -->
+        <h1 class="text-3xl sm:text-5xl font-extrabold text-slate-100 tracking-tight font-sans leading-tight">
+          Master SDE Interviews with{' '}
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-300 to-purple-400">
+            Production Precision
+          </span>.
+        </h1>
+
+        <!-- Subtitle -->
+        <p class="text-sm sm:text-base text-slate-300 max-w-3xl leading-relaxed">
+          A unified engineering war-room: 743+ curated DSA problems, live interactive HLD topology designers, LLD machine coding sandboxes, and AI-powered bar-raiser mock interviews. Engineered for Staff, Principal, and L5/E5 aspirations.
+        </p>
+
+        <!-- Command Deck Action Buttons -->
+        <div class="flex flex-wrap items-center gap-3 pt-2">
+          <button onclick="simulateRunCode()" class="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-lg shadow-cyan-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer font-mono">
+            <svg class="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+            </svg>
+            <span>Solve Daily Challenge (POTD)</span>
+          </button>
+
+          <button class="flex items-center gap-2 px-5 py-3 rounded-xl bg-stitch-low hover:bg-stitch-high border border-stitch-variant/80 text-slate-200 hover:text-cyan-300 font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer font-mono">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+            </svg>
+            <span>Explore 743+ DSA Curricula</span>
+          </button>
+
+          <button class="flex items-center gap-2 px-5 py-3 rounded-xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/50 text-purple-300 hover:text-white font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer font-mono">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
+            </svg>
+            <span>Launch AI Bar-Raiser Mock</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Telemetry Grid (4 Floating Cards) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-8 border-t border-stitch-variant/40">
+        
+        <!-- Card 1: Total Solved -->
+        <div class="bg-stitch-lowest/80 border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-mono text-[11px] text-stitch-dim font-medium uppercase">TOTAL SOLVED</span>
+            <span class="font-mono text-[11px] text-stitch-mint font-semibold">+18 pts</span>
+          </div>
+          <div class="flex items-baseline gap-2 mb-2">
+            <span class="text-2xl font-bold text-slate-100 font-sans">142</span>
+            <span class="font-mono text-xs text-stitch-muted">/ 743 Qs</span>
+          </div>
+          <div class="w-full bg-stitch-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-cyan-400 h-full rounded-full transition-all duration-700" style="width: 19.1%;"></div>
+          </div>
+          <span class="font-mono text-[10px] text-stitch-muted mt-1.5">Progress: 19.1% Total</span>
+        </div>
+
+        <!-- Card 2: Readiness Score -->
+        <div class="bg-stitch-lowest/80 border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-mono text-[11px] text-stitch-dim font-medium uppercase">READINESS SCORE</span>
+            <svg class="w-4 h-4 text-stitch-mint" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="flex items-baseline gap-2 mb-2">
+            <span class="text-2xl font-bold text-stitch-mint font-sans">84%</span>
+            <span class="font-mono text-xs text-stitch-mint font-medium">FAANG Ready</span>
+          </div>
+          <div class="w-full bg-stitch-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-stitch-mint h-full rounded-full transition-all duration-700" style="width: 84%;"></div>
+          </div>
+          <span class="font-mono text-[10px] text-stitch-muted mt-1.5">Benchmark: Top 9.4% Cohort</span>
+        </div>
+
+        <!-- Card 3: Coding Hours -->
+        <div class="bg-stitch-lowest/80 border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-mono text-[11px] text-stitch-dim font-medium uppercase">CODING HOURS</span>
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="flex items-baseline gap-2 mb-2">
+            <span class="text-2xl font-bold text-slate-100 font-sans">68.4</span>
+            <span class="font-mono text-xs text-stitch-muted">hrs</span>
+          </div>
+          <div class="w-full bg-stitch-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-cyan-400 h-full rounded-full" style="width: 68%;"></div>
+          </div>
+          <span class="font-mono text-[10px] text-stitch-muted mt-1.5">Live Monaco &amp; Terminal session</span>
+        </div>
+
+        <!-- Card 4: Solving Velocity -->
+        <div class="bg-stitch-lowest/80 border border-white/[0.08] rounded-xl p-4 flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-mono text-[11px] text-stitch-dim font-medium uppercase">SOLVING PACE</span>
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <div class="flex items-baseline gap-2 mb-2">
+            <span class="text-2xl font-bold text-purple-300 font-sans">1.4</span>
+            <span class="font-mono text-xs text-stitch-muted">q/min avg</span>
+          </div>
+          <div class="w-full bg-stitch-high h-1.5 rounded-full overflow-hidden">
+            <div class="bg-purple-500 h-full rounded-full" style="width: 76%;"></div>
+          </div>
+          <span class="font-mono text-[10px] text-stitch-muted mt-1.5">Monaco Execution telemetry</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 2. LIVE COHORT MILESTONE TICKER                                         -->
+    <!-- ======================================================================= -->
+    <div class="w-full bg-stitch-lowest border border-stitch-variant/40 rounded-xl py-3 px-4 flex items-center gap-3 overflow-hidden shadow-sm">
+      <div class="flex items-center gap-1.5 text-cyan-400 font-mono text-xs font-bold shrink-0">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span>LIVE COHORT MILESTONES:</span>
+      </div>
+      <div class="flex items-center gap-8 font-mono text-xs text-stitch-dim overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
+        <div class="flex items-center gap-2">
+          <span>🎉</span>
+          <span class="text-slate-100 font-semibold">Rahul K.</span>
+          <span>received</span>
+          <span class="text-stitch-mint font-bold">L5 Offer from Google Bangalore</span>
+        </div>
+        <span class="text-stitch-muted">•</span>
+        <div class="flex items-center gap-2">
+          <span>⚡</span>
+          <span class="text-slate-100 font-semibold">Priya M.</span>
+          <span>completed</span>
+          <span class="text-cyan-400 font-bold">Meta E6 System Design Track</span>
+        </div>
+        <span class="text-stitch-muted">•</span>
+        <div class="flex items-center gap-2">
+          <span>🚀</span>
+          <span class="text-slate-100 font-semibold">Arjun S.</span>
+          <span>cracked</span>
+          <span class="text-purple-300 font-bold">Stripe L4 (100% Mock Score)</span>
+        </div>
+        <span class="text-stitch-muted">•</span>
+        <div class="flex items-center gap-2">
+          <span>💎</span>
+          <span class="text-slate-100 font-semibold">Ananya V.</span>
+          <span>submitted</span>
+          <span class="text-stitch-mint font-bold">Distributed Cache LLD (0ms Concurrency)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- 3. TODAY'S DAILY CODING CHALLENGES (POTD TRIFECTA)                      -->
+    <!-- ======================================================================= -->
+    <section class="flex flex-col gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stitch-variant/40 pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-400 fill-amber-400" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.72v1.56c2.8 1.15 4.5 4.08 4 7.22-.55 3.42-3.4 6-6.85 6-3.87 0-7-3.13-7-7 0-3.32 2.31-6.11 5.44-6.85.29-.07.56-.22.75-.44l1.32-1.56c.4-.48.97-.75 1.58-.75z"/>
+            </svg>
+            <h2 class="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight font-sans">
+              Today's Problem of the Day (POTD Trifecta)
+            </h2>
+          </div>
+          <p class="text-xs text-stitch-dim mt-0.5">
+            Daily synchronized engineering challenges across SDETube, LeetCode, and GeeksforGeeks.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stitch-container border border-stitch-variant font-mono text-xs text-slate-200">
+            <svg class="w-3.5 h-3.5 text-stitch-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="text-stitch-muted">Resets in:</span>
+            <span class="text-cyan-400 font-bold" id="reset-countdown">04h : 18m : 32s</span>
+          </div>
+          <button onclick="simulateSyncAll()" class="p-1.5 rounded-lg bg-stitch-low hover:bg-stitch-high border border-stitch-variant text-stitch-dim hover:text-cyan-300 transition-colors cursor-pointer" title="Sync External Profiles">
+            <svg id="sync-all-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 POTD Cards Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        <!-- CARD 1: SDETUBE CURATED POTD -->
+        <div class="relative bg-stitch-low rounded-2xl border border-cyan-400/30 p-5 sm:p-6 flex flex-col justify-between hover:border-cyan-400 transition-all shadow-[0_0_20px_-8px_rgba(0,240,255,0.25)]">
+          <div class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full bg-cyan-400 text-slate-950 font-mono text-[10px] font-bold flex items-center gap-1 shadow-sm">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+            <span>SDETube Curated</span>
+          </div>
+          
+          <div>
+            <div class="flex justify-between items-start mt-2 mb-2">
+              <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-rose-950 border-rose-700 text-rose-300">
+                Hard
+              </span>
+              <span class="font-mono text-[10px] text-stitch-muted">
+                SDE 191 Sheet
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 mb-2">Morris Preorder Traversal</h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              High-frequency interview challenge selected from the SDE Sheet • Practice in Monaco IDE with automated testbench &amp; Judge0 compiler.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-6">
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Binary Tree</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Google</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Meta</span>
+            </div>
+          </div>
+
+          <button onclick="simulateRunCode()" class="w-full py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-mono text-xs font-bold flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all cursor-pointer mt-auto">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+            <span>Solve in Monaco IDE</span>
+          </button>
+        </div>
+
+        <!-- CARD 2: LEETCODE LIVE SYNC POTD (SOLVED ON LEETCODE ONLY) -->
+        <div class="relative bg-stitch-low rounded-2xl border border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between hover:border-stitch-variant transition-all">
+          <div class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-[10px] font-semibold flex items-center gap-1">
+            <svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            <span>LeetCode Live Sync</span>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-start mt-2 mb-2">
+              <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-amber-950 border-amber-700 text-amber-300">
+                Medium
+              </span>
+              <span class="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Solved on LeetCode
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 mb-2">
+              Maximum Alternating Sum of Squares
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Official LeetCode Daily Challenge focusing on Array, Greedy, Sorting.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-6">
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Array</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Greedy</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Sorting</span>
+            </div>
+          </div>
+
+          <div class="space-y-2 mt-auto">
+            <!-- Top Button: Still allows solving in SDETube Monaco IDE, not falsely claiming it was solved here -->
+            <button onclick="simulateRunCode()" class="w-full py-2.5 px-3 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-slate-200 hover:text-cyan-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer" title="Solve in SDETube Monaco IDE with testcases">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+              <span class="truncate">Solve on SDETube</span>
+            </button>
+
+            <!-- Bottom Button: Solved on LeetCode with emerald badge -->
+            <div class="flex gap-2">
+              <a href="https://leetcode.com/problemset/all/" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 px-3 rounded-xl font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 shadow-sm" title="Solved on LeetCode ✓ Click to review on LeetCode">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>✓ Solved on LeetCode</span>
+              </a>
+              <button onclick="triggerSync('lc')" class="px-3 py-2 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-stitch-dim hover:text-amber-300 transition-all cursor-pointer" title="Auto-sync &amp; verify LeetCode POTD solve">
+                <svg id="sync-lc-icon" class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+            </div>
+            <p id="lc-status-msg" class="text-[10px] font-mono text-center text-emerald-400">✓ Verified via @mdalamrahman4 profile!</p>
+          </div>
+        </div>
+
+        <!-- CARD 3: GEEKSFORGEEKS POTD (SOLVED ON GFG ONLY) -->
+        <div class="relative bg-stitch-low rounded-2xl border border-white/[0.08] p-5 sm:p-6 flex flex-col justify-between hover:border-stitch-variant transition-all">
+          <div class="absolute -top-3 left-4 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-stitch-mint font-mono text-[10px] font-semibold flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            <span>GFG Official Sync</span>
+          </div>
+
+          <div>
+            <div class="flex justify-between items-start mt-2 mb-2">
+              <span class="px-2 py-0.5 rounded font-mono text-[10px] font-bold border bg-emerald-950 border-emerald-700 text-emerald-300">
+                Easy
+              </span>
+              <span class="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Solved on GFG
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 mb-2">
+              Adding Ones
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Find the total number of paths in an N x M character matrix matching target sequence S using memoized DP transitions modulo 1e9+7.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-6">
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Arrays</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">Dynamic Programming</span>
+            </div>
+          </div>
+
+          <div class="space-y-2 mt-auto">
+            <!-- Top Button: Solve on SDETube -->
+            <button onclick="simulateRunCode()" class="w-full py-2.5 px-3 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-slate-200 hover:text-stitch-mint font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer" title="Solve in SDETube Monaco IDE">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+              <span class="truncate">Solve on SDETube</span>
+            </button>
+
+            <!-- Bottom Button: Solved on GFG -->
+            <div class="flex gap-2">
+              <a href="https://www.geeksforgeeks.org/problem-of-the-day" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 px-3 rounded-xl font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-sm" title="Solved on GFG ✓ Click to review on GeeksforGeeks">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>✓ Solved on GFG</span>
+              </a>
+              <button onclick="triggerSync('gfg')" class="px-3 py-2 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-stitch-dim hover:text-emerald-300 transition-all cursor-pointer" title="Auto-sync &amp; verify GFG POTD solve">
+                <svg id="sync-gfg-icon" class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              </button>
+            </div>
+            <p id="gfg-status-msg" class="text-[10px] font-mono text-center text-emerald-400">✓ Verified 3-Day POTD Streak on GFG!</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 4. LIVE INTERACTIVE MONACO & TELEMETRY SANDBOX PREVIEW                  -->
+    <!-- ======================================================================= -->
+    <section class="flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight font-sans">
+            Interactive Production Sandbox &amp; Test Telemetry
+          </h2>
+        </div>
+        <span class="font-mono text-xs text-stitch-muted hidden md:inline">
+          Clustered Kernel: v2.48.0-arm64 • Judge0 CE Ready
+        </span>
+      </div>
+
+      <!-- Split Terminal Container -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 rounded-2xl overflow-hidden border border-stitch-variant/60 bg-stitch-lowest shadow-2xl">
+        
+        <!-- Left Side: Monaco Editor Canvas (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col border-b lg:border-b-0 lg:border-r border-stitch-variant/40 bg-[#0c0f17] relative">
+          <!-- Editor Tabs Header -->
+          <div class="flex items-center justify-between bg-stitch-low px-4 py-2 border-b border-stitch-variant/30">
+            <div class="flex items-center gap-2 font-mono text-xs">
+              <button onclick="switchLanguage('cpp')" id="tab-cpp" class="flex items-center gap-1.5 px-3 py-1 rounded bg-[#0c0f17] text-cyan-300 border-b-2 border-cyan-400 font-semibold cursor-pointer">
+                <span>solution.cpp</span>
+              </button>
+              <button onclick="switchLanguage('py')" id="tab-py" class="flex items-center gap-1.5 px-2.5 py-1 rounded text-stitch-muted hover:text-slate-200 text-[11px] cursor-pointer">
+                <span>solution.py</span>
+              </button>
+              <button onclick="switchLanguage('java')" id="tab-java" class="flex items-center gap-1.5 px-2.5 py-1 rounded text-stitch-muted hover:text-slate-200 text-[11px] cursor-pointer">
+                <span>Solution.java</span>
+              </button>
+            </div>
+            <span id="compiler-badge" class="font-mono text-[11px] text-stitch-mint flex items-center gap-1 font-semibold">
+              <span class="w-1.5 h-1.5 rounded-full bg-stitch-mint"></span>
+              C++20 Clang
+            </span>
+          </div>
+
+          <!-- Code Canvas with Line Numbers -->
+          <div class="p-4 sm:p-5 font-mono text-xs overflow-x-auto leading-relaxed select-none relative" style="min-height: 320px;">
+            <div class="flex gap-4">
+              <div class="text-slate-600 text-right pr-2 select-none font-mono">
+                <div>01</div><div>02</div><div>03</div><div>04</div><div>05</div><div>06</div><div>07</div><div>08</div><div>09</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div>
+              </div>
+              <div id="code-content" class="text-slate-200 flex-grow font-normal leading-6">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+
+            <!-- Simulated Autocomplete Popup -->
+            <div class="autocomplete-box absolute top-28 left-48 rounded-xl p-2 z-20 w-64 text-xs font-mono border border-cyan-400/30">
+              <div class="text-[10px] text-stitch-muted uppercase pb-1 mb-1 border-b border-stitch-variant/30 flex justify-between">
+                <span>LeetCode AutoSuggest</span>
+                <span class="text-cyan-400 font-bold">tab ⇥</span>
+              </div>
+              <div class="space-y-1">
+                <div class="px-2 py-1 rounded bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-between">
+                  <span>vector&lt;int&gt;&amp; nums</span>
+                  <span class="text-[9px] text-stitch-muted">param</span>
+                </div>
+                <div class="px-2 py-1 rounded hover:bg-stitch-high text-slate-300 flex items-center justify-between">
+                  <span>TreeNode* root</span>
+                  <span class="text-[9px] text-stitch-muted">class</span>
+                </div>
+                <div class="px-2 py-1 rounded hover:bg-stitch-high text-slate-300 flex items-center justify-between">
+                  <span>ListNode* next</span>
+                  <span class="text-[9px] text-stitch-muted">prop</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Test Runner Telemetry Drawer (5 Cols) -->
+        <div class="lg:col-span-5 bg-stitch-low p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-stitch-variant/40 pb-3 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full bg-stitch-mint flex items-center justify-center text-slate-950 font-bold text-[10px]">
+                  ✓
+                </span>
+                <span class="text-sm font-bold text-stitch-mint font-mono" id="test-summary">All 28 Testcases Passed</span>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-stitch-mint font-mono text-[10px] font-bold border border-emerald-500/30">
+                ACCEPTED
+              </span>
+            </div>
+
+            <!-- Realtime Telemetry Counter HUD -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="bg-stitch-lowest p-3 rounded-xl border border-stitch-variant/30">
+                <span class="font-mono text-[10px] text-stitch-muted block mb-1">Execution Time</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-base font-bold text-slate-100 font-mono" id="exec-time">12 ms</span>
+                  <span class="font-mono text-[10px] text-stitch-mint font-semibold">Beats 98.4%</span>
+                </div>
+              </div>
+
+              <div class="bg-stitch-lowest p-3 rounded-xl border border-stitch-variant/30">
+                <span class="font-mono text-[10px] text-stitch-muted block mb-1">Memory Allocation</span>
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-base font-bold text-slate-100 font-mono" id="mem-alloc">44.1 MB</span>
+                  <span class="font-mono text-[10px] text-stitch-mint font-semibold">Beats 91.2%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Verification Stream Console -->
+            <div class="bg-stitch-lowest rounded-xl border border-stitch-variant/30 p-3 font-mono text-[11px] flex flex-col gap-1.5" id="telemetry-log">
+              <div class="flex justify-between text-slate-400">
+                <span>[Test 01..12] Unit Boundary Conditions</span>
+                <span class="text-stitch-mint">PASSED (0.4ms)</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>[Test 13..24] 10k Concurrent Goroutines</span>
+                <span class="text-stitch-mint">PASSED (6.8ms)</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>[Test 25..28] Millisecond TTL Expire Sweep</span>
+                <span class="text-stitch-mint">PASSED (4.8ms)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 pt-4 border-t border-stitch-variant/40 mt-4">
+            <button onclick="simulateRunCode()" class="flex-1 py-2 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-slate-200 font-mono text-xs transition-colors cursor-pointer">
+              Custom Tests (JSON)
+            </button>
+            <button onclick="simulateRunCode()" class="flex-1 py-2 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-mono text-xs font-bold hover:shadow-[0_0_15px_rgba(0,240,255,0.4)] transition-all cursor-pointer flex items-center justify-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>Submit to Production</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 5. CORE LEARNING TRACKS (6 BENTO CARDS)                                 -->
+    <!-- ======================================================================= -->
+    <section class="flex flex-col gap-4">
+      <div class="border-b border-stitch-variant/40 pb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-100 tracking-tight font-sans">
+            Core Engineering Learning Tracks
+          </h2>
+        </div>
+        <p class="text-xs text-stitch-dim mt-0.5">
+          Comprehensive, battle-tested curricula designed specifically for Principal &amp; FAANG level bars.
+        </p>
+      </div>
+
+      <!-- Bento Grid (6 tracks) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        <!-- Track 1: DSA Curated Curricula -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-400/20">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-stitch-mint bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                743+ Problems
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              DSA Curated Curricula
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Master foundational algorithms: Includes the complete 191 SDE Sheet, Striver A2Z 474 Qs, and Blind 75 with optimal pattern classifications.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Google</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Meta</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Amazon</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Explore Curricula</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+        <!-- Track 2: High-Level System Design (HLD) Hub -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/30 font-bold">
+                Live Visualizer
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              High-Level System Design Hub
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Drag-and-drop interactive architecture canvas: Build Leaky Bucket Rate Limiters, Distributed Cache clusters, and explore dynamic CAP trade-off matrices.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Rate Limiter</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Consistent Hash</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Launch Canvas</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+        <!-- Track 3: Low-Level Design & Machine Coding -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-emerald-500/15 text-stitch-mint border border-emerald-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-stitch-mint bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                SOLID Certified
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              LLD &amp; Machine Coding Suite
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Production-ready object-oriented design: Build Kafka Lite message queues, smart multi-elevator controllers, and inspect UML class relationships.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Kafka Lite</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Elevator</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Enter LLD Sandbox</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+        <!-- Track 4: AI Mock Interview Bar-Raiser -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-400/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-400/30 font-bold">
+                AI Bar-Raiser
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              AI Bar-Raiser Mock Interviews
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Rigorous live interrogation with Marcus Vance (Principal Architect AI). Real-time Web Speech latency (&lt;250ms) and STAR behavioral rubrics.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">FAANG Rubric</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Offer Letter</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Start Simulation</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+        <!-- Track 5: Telegram Video Streaming CDN -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 font-bold">
+                Telegram MTProto
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              Telegram-Backed Video CDN
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Multi-gigabyte ultra-HD video lecture streaming with instant HTTP 206 byte-range scrubbing. Categorized by Striver, NeetCode, and MIT OpenCourseWare.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Zero Buffering</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Range Seeking</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Watch Lectures</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+        <!-- Track 6: Resume ATS & 3D Flashcards -->
+        <div class="bg-stitch-low rounded-2xl border border-white/[0.08] p-6 flex flex-col justify-between hover:border-cyan-400/40 transition-all group cursor-pointer shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="p-2.5 rounded-xl bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              </span>
+              <span class="font-mono text-[10px] text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30 font-bold">
+                ATS Score: 94%
+              </span>
+            </div>
+            <h3 class="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors mb-2">
+              Resume Analyst &amp; Flashcards
+            </h3>
+            <p class="text-xs text-stitch-dim mb-4 leading-relaxed">
+              Automated ATS keyword density scanner, action-verb enhancer, and 3D spatial flashcards for spaced-repetition memory retention.
+            </p>
+            <div class="flex flex-wrap gap-1.5 mb-5">
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Keywords</span>
+              <span class="px-2 py-0.5 rounded bg-stitch-container font-mono text-[10px] text-stitch-muted border border-stitch-variant/40">Spaced Rep</span>
+            </div>
+          </div>
+          <div class="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 font-semibold group-hover:gap-3 transition-all">
+            <span>Analyze Resume</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 6. DEVELOPER PROFILE & 365-DAY ACTIVITY HEATMAP                         -->
+    <!-- ======================================================================= -->
+    <section class="rounded-2xl border border-white/[0.08] bg-stitch-low p-6 sm:p-8 flex flex-col gap-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stitch-variant/40 pb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-400 to-indigo-600 flex items-center justify-center text-slate-950 font-black text-lg">
+            MA
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-bold text-slate-100 font-sans">Mohammad Alam Rahman</h3>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-bold">
+                ✓ Verified Candidate
+              </span>
+            </div>
+            <p class="text-xs text-stitch-dim font-mono mt-0.5">@mdalamrahman4 • Staff SDE Candidate • Bangalore, IN</p>
+          </div>
+        </div>
+
+        <!-- External Linked Badges -->
+        <div class="flex flex-wrap items-center gap-2 font-mono text-xs">
+          <div class="px-3 py-1.5 rounded-xl bg-[#111622] border border-amber-500/30 text-amber-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>LeetCode: 820+ (Top 4.1%)</span>
+          </div>
+          <div class="px-3 py-1.5 rounded-xl bg-[#111622] border border-emerald-500/30 text-emerald-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>GFG: 1,150+ (Streak: 3)</span>
+          </div>
+          <div class="px-3 py-1.5 rounded-xl bg-[#111622] border border-cyan-500/30 text-cyan-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <span>Codeforces: 1420 Specialist</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Heatmap Calendar (52 Weeks) -->
+      <div>
+        <div class="flex items-center justify-between mb-3 text-xs font-mono text-slate-400">
+          <span>784 Contributions in 2026</span>
+          <div class="flex items-center gap-1.5 text-[10px]">
+            <span>Less</span>
+            <div class="w-2.5 h-2.5 rounded-[2px] bg-slate-800"></div>
+            <div class="w-2.5 h-2.5 rounded-[2px] bg-emerald-950"></div>
+            <div class="w-2.5 h-2.5 rounded-[2px] bg-emerald-700"></div>
+            <div class="w-2.5 h-2.5 rounded-[2px] bg-emerald-500"></div>
+            <div class="w-2.5 h-2.5 rounded-[2px] bg-emerald-300"></div>
+            <span>More</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto pb-2">
+          <div class="flex gap-[3px]" id="heatmap-container">
+            <!-- 52 Columns generated via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: POTD TRIFECTA MODAL PREVIEW                                       -->
+  <!-- ========================================================================= -->
+  <div id="potd-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="bg-[#0e131d] border border-stitch-variant/60 rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative">
+      <button onclick="togglePotdModal()" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-white">
+        ✕
+      </button>
+
+      <div class="flex items-center gap-2 mb-4">
+        <svg class="w-5 h-5 text-amber-400 fill-amber-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.72v1.56c2.8 1.15 4.5 4.08 4 7.22-.55 3.42-3.4 6-6.85 6-3.87 0-7-3.13-7-7 0-3.32 2.31-6.11 5.44-6.85.29-.07.56-.22.75-.44l1.32-1.56c.4-.48.97-.75 1.58-.75z"/>
+        </svg>
+        <h3 class="text-lg font-bold text-slate-100">Daily Coding Challenge (POTD Trifecta)</h3>
+      </div>
+
+      <div class="space-y-4 font-mono text-xs">
+        <div class="p-4 rounded-xl bg-stitch-lowest border border-stitch-variant/40 flex justify-between items-center">
+          <div>
+            <span class="text-cyan-400 font-bold block">1. SDETube Curated POTD</span>
+            <span class="text-slate-200">Morris Preorder Traversal</span>
+          </div>
+          <button onclick="simulateRunCode()" class="px-3 py-1.5 rounded-lg bg-cyan-400 text-slate-950 font-bold">
+            Solve in Monaco
+          </button>
+        </div>
+
+        <div class="p-4 rounded-xl bg-stitch-lowest border border-stitch-variant/40 flex justify-between items-center">
+          <div>
+            <span class="text-amber-400 font-bold block">2. LeetCode Live Sync POTD</span>
+            <span class="text-slate-200">Maximum Alternating Sum of Squares</span>
+          </div>
+          <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
+            ✓ Solved on LeetCode
+          </span>
+        </div>
+
+        <div class="p-4 rounded-xl bg-stitch-lowest border border-stitch-variant/40 flex justify-between items-center">
+          <div>
+            <span class="text-stitch-mint font-bold block">3. GeeksforGeeks Official Sync</span>
+            <span class="text-slate-200">Adding Ones</span>
+          </div>
+          <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1">
+            ✓ Solved on GFG
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-emerald-950 border border-emerald-500 text-emerald-200 font-mono text-xs flex items-center gap-2 shadow-2xl hidden animate-fadeIn">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+    <span id="toast-text">Testcase verified!</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- CLIENT JAVASCRIPT LOGIC                                                  -->
+  <!-- ========================================================================= -->
+  <script>
+    // Language Snippets
+    const CODE_SNIPPETS = {
+      cpp: `<p><span class="text-purple-400 font-semibold">#include</span> <span class="text-emerald-400">&lt;unordered_map&gt;</span></p>
+<p><span class="text-purple-400 font-semibold">#include</span> <span class="text-emerald-400">&lt;mutex&gt;</span></p>
+<p><span class="text-slate-500">// Production Grade Concurrency-Safe LRU with millisecond TTL</span></p>
+<p><span class="text-cyan-400 font-semibold">class</span> <span class="text-slate-100 font-bold">ConcurrentLRUCache</span> {</p>
+<p class="pl-4"><span class="text-cyan-400">private:</span></p>
+<p class="pl-6"><span class="text-purple-300">std::mutex</span> mtx;</p>
+<p class="pl-6 code-line-active"><span class="text-cyan-400">struct</span> <span class="text-slate-100">CacheNode</span> { <span class="text-purple-300">int</span> val; <span class="text-slate-500">uint64_t</span> expireAt; };</p>
+<p class="pl-6"><span class="text-purple-300">std::unordered_map</span>&lt;<span class="text-purple-300">int</span>, CacheNode&gt; table;</p>
+<p class="pl-4"><span class="text-cyan-400">public:</span></p>
+<p class="pl-6"><span class="text-purple-300 font-semibold">int</span> <span class="text-emerald-400 font-semibold">get</span>(<span class="text-purple-300">int</span> key) {</p>
+<p class="pl-8"><span class="text-purple-300">std::lock_guard</span>&lt;<span class="text-purple-300">std::mutex</span>&gt; lock(mtx);</p>
+<p class="pl-8"><span class="text-cyan-400 font-semibold">if</span> (!table.count(key) || isExpired(table[key])) <span class="text-rose-400 font-semibold">return</span> -1;</p>
+<p class="pl-8"><span class="text-rose-400 font-semibold">return</span> table[key].val;</p>
+<p class="pl-6">}</p>
+<p>};</p>`,
+      py: `<p><span class="text-purple-400 font-semibold">from</span> collections <span class="text-purple-400 font-semibold">import</span> OrderedDict</p>
+<p><span class="text-purple-400 font-semibold">import</span> threading, time</p>
+<p><span class="text-slate-500"># Python 3.11 Production Thread-Safe LRU</span></p>
+<p><span class="text-cyan-400 font-semibold">class</span> <span class="text-slate-100 font-bold">ConcurrentLRUCache</span>:</p>
+<p class="pl-4"><span class="text-cyan-400 font-semibold">def</span> <span class="text-emerald-400 font-semibold">__init__</span>(self, capacity: <span class="text-purple-300">int</span>):</p>
+<p class="pl-8">self.cap = capacity</p>
+<p class="pl-8">self.cache = OrderedDict()</p>
+<p class="pl-8">self.lock = threading.Lock()</p>
+<p class="pl-4"><span class="text-cyan-400 font-semibold">def</span> <span class="text-emerald-400 font-semibold">get</span>(self, key: <span class="text-purple-300">int</span>) -&gt; <span class="text-purple-300">int</span>:</p>
+<p class="pl-8"><span class="text-purple-400 font-semibold">with</span> self.lock:</p>
+<p class="pl-12"><span class="text-cyan-400 font-semibold">if</span> key <span class="text-purple-400 font-semibold">not in</span> self.cache: <span class="text-rose-400 font-semibold">return</span> -1</p>
+<p class="pl-12">self.cache.move_to_end(key)</p>
+<p class="pl-12"><span class="text-rose-400 font-semibold">return</span> self.cache[key]</p>`,
+      java: `<p><span class="text-purple-400 font-semibold">import</span> java.util.concurrent.ConcurrentHashMap;</p>
+<p><span class="text-purple-400 font-semibold">import</span> java.util.concurrent.locks.ReentrantLock;</p>
+<p><span class="text-slate-500">// Java 21 High-Throughput Memory Cache</span></p>
+<p><span class="text-cyan-400 font-semibold">public class</span> <span class="text-slate-100 font-bold">ConcurrentLRUCache</span> {</p>
+<p class="pl-4"><span class="text-cyan-400 font-semibold">private final</span> ReentrantLock lock = <span class="text-cyan-400">new</span> ReentrantLock();</p>
+<p class="pl-4"><span class="text-cyan-400 font-semibold">private final</span> ConcurrentHashMap&lt;Integer, Integer&gt; map;</p>
+<p class="pl-4"><span class="text-cyan-400 font-semibold">public int</span> <span class="text-emerald-400 font-semibold">get</span>(<span class="text-purple-300">int</span> key) {</p>
+<p class="pl-8">lock.lock();</p>
+<p class="pl-8"><span class="text-cyan-400 font-semibold">try</span> {</p>
+<p class="pl-12"><span class="text-rose-400 font-semibold">return</span> map.getOrDefault(key, -1);</p>
+<p class="pl-8">} <span class="text-cyan-400 font-semibold">finally</span> { lock.unlock(); }</p>
+<p class="pl-4">}</p>
+<p>}</p>`
+    };
+
+    function switchLanguage(lang) {
+      document.getElementById('code-content').innerHTML = CODE_SNIPPETS[lang];
+      ['cpp', 'py', 'java'].forEach(l => {
+        const tab = document.getElementById(`tab-${l}`);
+        if (l === lang) {
+          tab.className = "flex items-center gap-1.5 px-3 py-1 rounded bg-[#0c0f17] text-cyan-300 border-b-2 border-cyan-400 font-semibold cursor-pointer";
+        } else {
+          tab.className = "flex items-center gap-1.5 px-2.5 py-1 rounded text-stitch-muted hover:text-slate-200 text-[11px] cursor-pointer";
+        }
+      });
+      const badge = document.getElementById('compiler-badge');
+      if (lang === 'cpp') badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stitch-mint"></span> C++20 Clang';
+      if (lang === 'py') badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stitch-mint"></span> Python 3.11.8';
+      if (lang === 'java') badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-stitch-mint"></span> Java 21 OpenJDK';
+    }
+
+    // Default load
+    switchLanguage('cpp');
+
+    // Simulate Run Code Execution
+    function simulateRunCode() {
+      const summary = document.getElementById('test-summary');
+      const time = document.getElementById('exec-time');
+      const mem = document.getElementById('mem-alloc');
+      const consoleLog = document.getElementById('telemetry-log');
+
+      summary.innerText = "Executing on Judge0 CE...";
+      summary.className = "text-sm font-bold text-amber-400 font-mono animate-pulse";
+
+      setTimeout(() => {
+        summary.innerText = "All 28 Testcases Passed";
+        summary.className = "text-sm font-bold text-stitch-mint font-mono";
+        const randomMs = (Math.random() * 8 + 8).toFixed(0);
+        time.innerText = `${randomMs} ms`;
+        mem.innerText = `43.${(Math.random()*8).toFixed(0)} MB`;
+        showToast("Execution verified on Judge0: All 28 testcases passed!");
+      }, 900);
+    }
+
+    // Platform sync simulator
+    function triggerSync(platform) {
+      const icon = document.getElementById(`sync-${platform}-icon`);
+      const msg = document.getElementById(`${platform}-status-msg`);
+      if (icon) icon.classList.add('animate-spin');
+      if (msg) msg.innerText = `Connecting to ${platform.toUpperCase()}...`;
+
+      setTimeout(() => {
+        if (icon) icon.classList.remove('animate-spin');
+        if (msg) {
+          if (platform === 'lc') msg.innerText = "✓ Verified via @mdalamrahman4 profile!";
+          if (platform === 'gfg') msg.innerText = "✓ Verified 3-Day POTD Streak on GFG!";
+        }
+        showToast(`Profile sync successful for ${platform.toUpperCase()}!`);
+      }, 1200);
+    }
+
+    function simulateSyncAll() {
+      const icon = document.getElementById('sync-all-icon');
+      icon.classList.add('animate-spin');
+      setTimeout(() => {
+        icon.classList.remove('animate-spin');
+        triggerSync('lc');
+        triggerSync('gfg');
+        showToast("All platform profiles synchronized successfully!");
+      }, 800);
+    }
+
+    function togglePotdModal() {
+      const modal = document.getElementById('potd-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-text').innerText = text;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+
+    // Render 52-week activity heatmap
+    const heatmapContainer = document.getElementById('heatmap-container');
+    const colors = ['bg-slate-800', 'bg-emerald-950', 'bg-emerald-700', 'bg-emerald-500', 'bg-emerald-300'];
+    
+    for (let w = 0; w < 52; w++) {
+      const col = document.createElement('div');
+      col.className = 'flex flex-col gap-[3px]';
+      for (let d = 0; d < 7; d++) {
+        const cell = document.createElement('div');
+        // Weight toward active days
+        const rand = Math.random();
+        let colorIdx = 0;
+        if (rand > 0.4) colorIdx = 1;
+        if (rand > 0.6) colorIdx = 2;
+        if (rand > 0.8) colorIdx = 3;
+        if (rand > 0.95) colorIdx = 4;
+        cell.className = `heatmap-cell ${colors[colorIdx]}`;
+        cell.title = `Day ${w * 7 + d}: ${colorIdx * 3} solves`;
+        col.appendChild(cell);
+      }
+      heatmapContainer.appendChild(col);
+    }
+  </script>
+</body>
+</html>

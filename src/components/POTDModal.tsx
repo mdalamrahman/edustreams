@@ -3,7 +3,7 @@ import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, 
 import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
-import { getSolvedIds, getLinkedProfiles } from '../lib/progressService';
+import { getSolvedIds, getLinkedProfiles, LinkedProfilesConfig } from '../lib/progressService';
 import { 
   fetchLeetCodeFullProfile, 
   fetchGFGProfile, 
@@ -49,9 +49,24 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const [isSolvedEventTriggered, setIsSolvedEventTriggered] = useState(0);
 
   // External Platform Profiles
-  const linkedConfig = useMemo(() => getLinkedProfiles(), []);
+  const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles());
   const [leetcodeProfile, setLeetcodeProfile] = useState<LeetCodeFullProfileData | null>(null);
   const [gfgProfile, setGfgProfile] = useState<GFGProfileData | null>(null);
+
+  useEffect(() => {
+    const handleProfilesUpdate = () => {
+      setLinkedConfig(getLinkedProfiles());
+    };
+    handleProfilesUpdate();
+    window.addEventListener('sdetube_progress_updated', handleProfilesUpdate);
+    window.addEventListener('sdetube_linked_profiles_updated', handleProfilesUpdate);
+    window.addEventListener('storage', handleProfilesUpdate);
+    return () => {
+      window.removeEventListener('sdetube_progress_updated', handleProfilesUpdate);
+      window.removeEventListener('sdetube_linked_profiles_updated', handleProfilesUpdate);
+      window.removeEventListener('storage', handleProfilesUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (linkedConfig.leetcodeUsername?.trim()) {
@@ -107,11 +122,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   }, [sdePotd, today, isSolvedEventTriggered]);
 
   // Check if LeetCode POTD is solved TODAY
-  const isLcPotdSolved = useMemo(() => {
+  const isLcLocalSolved = useMemo(() => {
     if (!lcPotd) return false;
-    if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
-
-    // Check localStorage submissions made TODAY
     const subVariants = [
       lcPotd.titleSlug,
       (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
@@ -126,8 +138,16 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            const idStr = String(item.id || '');
+            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
+              return false;
+            }
             if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
+              const ts = parseInt(idStr.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            if (item.timestamp) {
+              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
               if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
             }
             return false;
@@ -137,9 +157,12 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
         } catch {}
       }
     }
+    return false;
+  }, [lcPotd, today, isSolvedEventTriggered]);
 
-    // Remote LeetCode check: only if an accepted submission matching slug was made TODAY
-    if (leetcodeProfile) {
+  const isLcRemoteSolved = useMemo(() => {
+    if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
+    if (leetcodeProfile && lcPotd) {
       const isRemoteSolved = isLeetCodeProblemSolvedToday(
         leetcodeProfile,
         lcPotd.titleSlug,
@@ -156,11 +179,11 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     return false;
   }, [lcPotd, leetcodeProfile, today, isSolvedEventTriggered]);
 
-  // Check if GFG POTD is solved
-  const isGfgPotdSolved = useMemo(() => {
-    if (!gfgPotd) return false;
-    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+  const isLcPotdSolved = isLcLocalSolved || isLcRemoteSolved;
 
+  // Check if GFG POTD is solved
+  const isGfgLocalSolved = useMemo(() => {
+    if (!gfgPotd) return false;
     const subVariants = [
       gfgPotd.titleSlug,
       '9999',
@@ -178,9 +201,13 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            const idStr = String(item.id || '');
+            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
+              return false;
+            }
             let isToday = false;
             if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
+              const ts = parseInt(idStr.split('_')[0], 10);
               if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
             }
             if (!isToday && item.timestamp) {
@@ -194,9 +221,12 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
         } catch {}
       }
     }
+    return false;
+  }, [gfgPotd, today, isSolvedEventTriggered]);
 
-    // Remote GFG check: only if verified solve was made today
-    if (gfgProfile) {
+  const isGfgRemoteSolved = useMemo(() => {
+    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+    if (gfgProfile && gfgPotd) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
       if (isRemoteSolved) {
         try {
@@ -209,6 +239,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     }
     return false;
   }, [gfgPotd, gfgProfile, today, isSolvedEventTriggered]);
+
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
@@ -298,6 +330,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
         const solved = gfgPotd ? isGfgProblemSolvedToday(profile, gfgPotd.titleSlug, gfgPotd.title) : false;
         if (solved) {
           localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
           localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
           if (gfgPotd) {
             markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
@@ -676,13 +710,13 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                       onClose();
                     }}
                     className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                      isLcPotdSolved
+                      isLcLocalSolved
                         ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-600/30'
                         : 'bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white shadow-amber-600/30'
                     }`}
                   >
                     <Code className="w-4 h-4 flex-shrink-0" />
-                    <span>{isLcPotdSolved ? 'Solved Today ✓ (Review in SDETube IDE)' : '⚡ Solve on SDETube IDE'}</span>
+                    <span>{isLcLocalSolved ? 'Solved Today ✓ (Review in SDETube IDE)' : '⚡ Solve on SDETube IDE'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -690,11 +724,24 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     href={lcPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
-                    title="Solve directly on LeetCode website"
+                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      isLcRemoteSolved
+                        ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300 hover:text-emerald-200 shadow-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 border-slate-700 hover:border-amber-500/50 text-slate-200 hover:text-amber-300'
+                    }`}
+                    title={isLcRemoteSolved ? 'Solved on LeetCode ✓' : 'Solve directly on LeetCode website'}
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>↗ Solve on LeetCode</span>
+                    {isLcRemoteSolved ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>✓ Solved on LeetCode</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>↗ Solve on LeetCode</span>
+                      </>
+                    )}
                   </a>
 
                   <button
@@ -932,13 +979,13 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                       onClose();
                     }}
                     className={`flex-1 py-3 px-4 rounded-xl font-bold text-xs shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                      isGfgPotdSolved
+                      isGfgLocalSolved
                         ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-600/30'
                         : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-emerald-600/30'
                     }`}
                   >
                     <Code className="w-4 h-4 flex-shrink-0" />
-                    <span>{isGfgPotdSolved ? 'Solved Today ✓ (Review in SDETube IDE)' : '⚡ Solve on SDETube IDE'}</span>
+                    <span>{isGfgLocalSolved ? 'Solved Today ✓ (Review in SDETube IDE)' : '⚡ Solve on SDETube IDE'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -946,11 +993,24 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     href={gfgPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500/50 text-slate-200 hover:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
-                    title="Solve directly on GeeksforGeeks website"
+                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      isGfgRemoteSolved
+                        ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300 hover:text-emerald-200 shadow-sm'
+                        : 'bg-slate-900 hover:bg-slate-800 border-slate-700 hover:border-emerald-500/50 text-slate-200 hover:text-emerald-300'
+                    }`}
+                    title={isGfgRemoteSolved ? 'Solved on GeeksforGeeks ✓' : 'Solve directly on GeeksforGeeks website'}
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>↗ Solve on GeeksforGeeks</span>
+                    {isGfgRemoteSolved ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>✓ Solved on GFG</span>
+                      </>
+                    ) : (
+                      <>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>↗ Solve on GeeksforGeeks</span>
+                      </>
+                    )}
                   </a>
 
                   <button

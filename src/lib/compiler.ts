@@ -52,58 +52,46 @@ export const CPP_STANDARD_HEADERS_PRELUDE = `// Comprehensive Standard C++ Heade
 using namespace std;
 `;
 
+export type ComparisonMode = 'STRICT_ORDER' | 'UNORDERED_SET' | 'BST_RECONSTRUCTION';
+
 /**
- * Canonicalizes complex nested data structures so that order-independent collections
- * (e.g. Subsets, Permutations, 3Sum, Group Anagrams, Combination Sum)
- * match regardless of subset ordering or element permutations.
+ * Canonicalizes complex nested data structures.
+ * When sortArrays is true (for order-independent collections like Subsets, Permutations, 3Sum, Group Anagrams),
+ * arrays and nested sub-arrays are canonicalized and sorted deterministically.
  */
-export function canonicalizeData(val: any, isInner: boolean = false): any {
+export function canonicalizeData(val: any, sortArrays: boolean = false): any {
   if (val === null || val === undefined) return val;
   if (typeof val === 'number') {
     return Math.abs(val) < 1e-9 ? 0 : Number(val.toFixed(6));
   }
-  if (typeof val === 'boolean' || typeof val === 'string') {
-    return val;
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+    if (['null', 'None', 'nil'].includes(trimmed)) return null;
+    const asNum = Number(trimmed);
+    if (trimmed !== '' && !Number.isNaN(asNum)) {
+      return Math.abs(asNum) < 1e-9 ? 0 : Number(asNum.toFixed(6));
+    }
+    return trimmed;
   }
+
   if (Array.isArray(val)) {
-    const isArrayOfArrays = val.length > 0 && val.every(item => Array.isArray(item));
-    const isArrayOfPrimitives = val.length > 0 && val.every(item => typeof item === 'number' || typeof item === 'string');
+    const mapped = val.map(item => canonicalizeData(item, sortArrays));
+    if (!sortArrays) return mapped;
 
-    if (isArrayOfArrays) {
-      const canonRows = val.map(row => {
-        if (Array.isArray(row)) {
-          const rowCopy = row.map(x => canonicalizeData(x, true));
-          if (rowCopy.every(elem => typeof elem === 'number' || typeof elem === 'string')) {
-            rowCopy.sort((a, b) => {
-              if (typeof a === 'number' && typeof b === 'number') return a - b;
-              return String(a).localeCompare(String(b));
-            });
-          }
-          return rowCopy;
-        }
-        return canonicalizeData(row, true);
-      });
-
-      canonRows.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-      return canonRows;
-    }
-
-    if (isArrayOfPrimitives && isInner) {
-      const copy = val.map(x => canonicalizeData(x, true));
-      copy.sort((a, b) => {
-        if (typeof a === 'number' && typeof b === 'number') return a - b;
-        return String(a).localeCompare(String(b));
-      });
-      return copy;
-    }
-
-    return val.map(x => canonicalizeData(x, isInner));
+    // Deterministic sorting with full JSON serialization to resolve ties across all elements (fixes 3Sum tie-breaking)
+    return mapped.sort((a, b) => {
+      if (typeof a === 'number' && typeof b === 'number') return a - b;
+      return JSON.stringify(a).localeCompare(JSON.stringify(b));
+    });
   }
 
   if (typeof val === 'object') {
     const sortedObj: Record<string, any> = {};
     Object.keys(val).sort().forEach(k => {
-      sortedObj[k] = canonicalizeData(val[k], isInner);
+      sortedObj[k] = canonicalizeData(val[k], sortArrays);
     });
     return sortedObj;
   }
@@ -111,7 +99,12 @@ export function canonicalizeData(val: any, isInner: boolean = false): any {
   return val;
 }
 
-export function compareOutputs(actual: any, expected: any): boolean {
+export function compareOutputs(
+  actual: any,
+  expected: any,
+  mode: ComparisonMode = 'STRICT_ORDER',
+  originalInputNums?: number[]
+): boolean {
   if (actual === expected) return true;
   if (actual === null || actual === undefined || expected === null || expected === undefined) {
     return actual == expected;
@@ -125,7 +118,7 @@ export function compareOutputs(actual: any, expected: any): boolean {
   if (cleanExp.includes(' or ') || cleanExp.includes('||')) {
     const delimiter = cleanExp.includes(' or ') ? ' or ' : '||';
     const options = cleanExp.split(delimiter).map(s => s.trim()).filter(Boolean);
-    if (options.some(opt => compareOutputs(cleanAct, opt))) {
+    if (options.some(opt => compareOutputs(cleanAct, opt, mode, originalInputNums))) {
       return true;
     }
   }
@@ -136,30 +129,30 @@ export function compareOutputs(actual: any, expected: any): boolean {
   const strippedExp = stripBrackets(cleanExp);
   if (strippedAct === strippedExp) return true;
 
-  // Case-insensitive / whitespace-normalized comma-separated tokens
-  const actTokens = strippedAct.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-  const expTokens = strippedExp.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-  if (actTokens.length > 0 && actTokens.length === expTokens.length && actTokens.every((t, i) => t === expTokens[i])) {
-    return true;
+  // Floating point numeric tolerance check (epsilon = 1e-6)
+  const actNum = Number(cleanAct);
+  const expNum = Number(cleanExp);
+  if (cleanAct !== '' && cleanExp !== '' && !Number.isNaN(actNum) && !Number.isNaN(expNum)) {
+    return Math.abs(actNum - expNum) <= 1e-6;
   }
 
   try {
     const parsedAct = JSON.parse(cleanAct);
     const parsedExp = JSON.parse(cleanExp);
 
-    // 1. Direct JSON comparison
+    // BST reconstruction mode validation
+    if (mode === 'BST_RECONSTRUCTION' && originalInputNums) {
+      return isValidHeightBalancedBSTForNums(parsedAct, originalInputNums);
+    }
+
+    // 1. Direct structural equality (strict order preserved by default)
     if (deepEqual(parsedAct, parsedExp)) return true;
 
-    // 2. Canonicalized order-independent comparison (for Subsets, 3Sum, Group Anagrams, Permutations, etc.)
-    const canonAct = canonicalizeData(parsedAct);
-    const canonExp = canonicalizeData(parsedExp);
-    if (deepEqual(canonAct, canonExp)) return true;
-
-    // 3. Multiset fallback for 1D arrays (e.g. array of strings / IP addresses)
-    if (Array.isArray(parsedAct) && Array.isArray(parsedExp) && parsedAct.length === parsedExp.length) {
-      const sortAct = [...parsedAct].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-      const sortExp = [...parsedExp].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-      if (deepEqual(sortAct, sortExp)) return true;
+    // 2. Order-independent comparison (ONLY applied if problem explicitly designates UNORDERED_SET)
+    if (mode === 'UNORDERED_SET') {
+      const canonAct = canonicalizeData(parsedAct, true);
+      const canonExp = canonicalizeData(parsedExp, true);
+      if (deepEqual(canonAct, canonExp)) return true;
     }
   } catch (_) {}
 
@@ -239,7 +232,15 @@ export function isValidHeightBalancedBSTForNums(treeOutput: string | any[], nums
       i++;
     }
 
-    // 1. In-order traversal must equal nums
+    // 0. Global BST Invariant: all left descendants < node.val < all right descendants
+    function validateGlobalBST(node: TreeNode | null, minVal: number, maxVal: number): boolean {
+      if (!node) return true;
+      if (node.val <= minVal || node.val >= maxVal) return false;
+      return validateGlobalBST(node.left, minVal, node.val) && validateGlobalBST(node.right, node.val, maxVal);
+    }
+    if (!validateGlobalBST(root, -Infinity, Infinity)) return false;
+
+    // 1. In-order traversal must equal sorted nums
     const inorder: number[] = [];
     function traverse(node: TreeNode | null) {
       if (!node) return;
@@ -810,9 +811,17 @@ export function wrapLeetCodeExecutableCode(
           }
         }
 
-        // Disambiguate C++ pointer variable prev to prevent collision with std::prev from <iterator>/<algorithm>
+        // Hoist any #include directives from C++ user code to avoid standard library include errors
+        let hoistedIncludes = '';
         let sanitizedUserCode = userCode;
         if (language === 'cpp' || (language as any) === 'c++') {
+          const includeRegex = /^\s*#\s*include\s*[<"][^>"]+[>"].*$/gm;
+          const incMatches = sanitizedUserCode.match(includeRegex) || [];
+          if (incMatches.length > 0) {
+            hoistedIncludes = incMatches.join('\n') + '\n';
+            sanitizedUserCode = sanitizedUserCode.replace(includeRegex, '// [Hoisted #include]');
+          }
+
           if (
             /\b(?:TreeNode|ListNode|Node|\w+)\s*\*\s*prev\b/.test(sanitizedUserCode) ||
             /(?:^|\n|\;)\s*(?:TreeNode|ListNode|Node)\s*\*\s*prev\s*=/.test(sanitizedUserCode) ||
@@ -832,6 +841,9 @@ export function wrapLeetCodeExecutableCode(
         } else {
           // Non-destructive replacement: replace only the comment itself, NEVER wipe out following helpers or structs!
           replaced = replaced.replace('// === USER SOLUTION ===', `// === USER SOLUTION ===\n${userBlock}\n`);
+        }
+        if (hoistedIncludes) {
+          replaced = `${hoistedIncludes}${replaced}`;
         }
       } else if (replaced.includes('# === USER SOLUTION ===')) {
         let postInject = '';
@@ -1934,15 +1946,53 @@ export async function executeCode(
       j0Payload.compiler_options = "-std=c++17 -O2";
     }
 
-    const response = await fetch('https://ce.judge0.com/submissions?wait=true&base64_encoded=true', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(j0Payload),
-      signal: AbortSignal.timeout(8000)
-    });
+    let data: any = null;
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch('https://ce.judge0.com/submissions?wait=true&base64_encoded=true', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(j0Payload),
+          signal: AbortSignal.timeout(8000)
+        });
 
-    if (response.ok) {
-      const data = await response.json();
+        if (response.status === 429 || response.status === 503 || response.status === 504) {
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt) + Math.random() * 400));
+            continue;
+          }
+        }
+
+        if (response.ok) {
+          data = await response.json();
+          // If execution is queued or processing asynchronously, poll token up to 5 times
+          if (data?.token && (data?.status?.id === 1 || data?.status?.id === 2)) {
+            for (let p = 1; p <= 5; p++) {
+              await new Promise(r => setTimeout(r, 1200 * p));
+              try {
+                const pollRes = await fetch(`https://ce.judge0.com/submissions/${data.token}?base64_encoded=true&fields=stdout,stderr,compile_output,time,memory,status,exit_code`);
+                if (pollRes.ok) {
+                  const pollData = await pollRes.json();
+                  if (pollData?.status?.id && pollData.status.id > 2) {
+                    data = pollData;
+                    break;
+                  }
+                }
+              } catch {}
+            }
+          }
+          break;
+        }
+      } catch (err) {
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt) + Math.random() * 400));
+          continue;
+        }
+      }
+    }
+
+    if (data) {
       const endTime = performance.now();
 
       const decodeB64 = (str?: string) => {

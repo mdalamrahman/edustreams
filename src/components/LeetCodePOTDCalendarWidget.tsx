@@ -253,13 +253,6 @@ export const LeetCodePOTDCalendarWidget: React.FC<LeetCodePOTDCalendarWidgetProp
       localStorage.setItem(`sdetube_potd_leetcode_solved_${dayObj.dateStr}`, 'true');
       localStorage.setItem(`sdetube_potd_solved_${dayObj.dateStr}`, 'true');
       if (titleSlug) {
-        localStorage.setItem(`edustream_submissions_${titleSlug}`, JSON.stringify([{
-          id: `${Date.now()}_potd`,
-          status: 'Accepted',
-          passedCount: 1,
-          totalCount: 1,
-          timestamp: Date.now()
-        }]));
         // Sync into global solved slugs so DSA Problems page shows tick mark
         markProblemSolved(titleSlug, 0, titleSlug);
       }

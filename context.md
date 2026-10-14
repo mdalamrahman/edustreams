@@ -194,7 +194,7 @@ The frontend caches data locally for instantaneous offline-first responsiveness:
 | :--- | :--- | :--- |
 | `vercel.json` | Edge rewrites & serverless routing | Rewrites `/api/leetcode/(.*)` to `api/leetcode/verify-potd.js` and `profile.js` |
 | `render.yaml` | Infrastructure as Code for Render | Service definition for `edustream-backend`, Python environment, health check path `/docs` |
-| `~/.render/cli.yaml` | Render CLI authentication | API token `rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY`, workspace `tea-d15t3sggjchc73frb2lg` |
+| `~/.render/cli.yaml` | Render CLI authentication | API token `<RENDER_TOKEN>`, workspace `tea-d15t3sggjchc73frb2lg` |
 | `.env` / `.env.render` | Local and production environment vars | `MISTRAL_API_KEY`, `VITE_SUPABASE_*`, `TELEGRAM_*`, `VITE_RENDER_BACKEND_URL` |
 | `scripts/copy_dist_assets.py` | Distribution packaging | Syncs `public/data/company_problems.json` (1.8MB) to `dist/data/` for production |
 
@@ -279,10 +279,10 @@ Set your Render API token in your current terminal session:
 
 ```powershell
 # PowerShell
-$env:RENDER_TOKEN = "rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY"
+$env:RENDER_TOKEN = "<RENDER_TOKEN>"
 
 # Bash / Zsh
-export RENDER_TOKEN="rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY"
+export RENDER_TOKEN="<RENDER_TOKEN>"
 ```
 
 *(Token is also stored in `~/.render/cli.yaml` for persistent CLI access).*
@@ -323,7 +323,7 @@ render-cli set-env -sid srv-d9nn8qm417fc73doitrg -k NEW_VAR_KEY -v NEW_VAR_VALUE
 Query the Render API to verify if the latest deployment succeeded (`live`):
 
 ```powershell
-python -c "import urllib.request, json, os; token = os.getenv('RENDER_TOKEN', 'rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY'); req = urllib.request.Request('https://api.render.com/v1/services/srv-d9nn8qm417fc73doitrg/deploys?limit=1', headers={'Authorization': 'Bearer ' + token}); res = urllib.request.urlopen(req); d = json.loads(res.read())[0]['deploy']; print(f'Deploy ID: {d[\"id\"]}\nStatus: {d[\"status\"]}\nCommit: {d[\"commit\"][\"id\"][:8]} - {d[\"commit\"][\"message\"]}')"
+python -c "import urllib.request, json, os, sys; token = os.environ.get('RENDER_TOKEN'); srv = os.environ.get('RENDER_SERVICE_ID'); sys.exit('RENDER_TOKEN and RENDER_SERVICE_ID required') if not token or not srv else None; req = urllib.request.Request(f'https://api.render.com/v1/services/{srv}/deploys?limit=1', headers={'Authorization': 'Bearer ' + token}); res = urllib.request.urlopen(req); d = json.loads(res.read())[0]['deploy']; print(f'Deploy ID: {d[\"id\"]}\nStatus: {d[\"status\"]}\nCommit: {d[\"commit\"][\"id\"][:8]} - {d[\"commit\"][\"message\"]}')"
 ```
 
 Expected output:
@@ -338,7 +338,7 @@ Commit: xxxxxxxx - feat: ...
 If you need to force an immediate redeployment without a new git commit:
 
 ```powershell
-python -c "import urllib.request, os; token = os.getenv('RENDER_TOKEN', 'rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY'); req = urllib.request.Request('https://api.render.com/v1/services/srv-d9nn8qm417fc73doitrg/deploys', headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'}, data=b'{}', method='POST'); res = urllib.request.urlopen(req); print('Triggered Deploy HTTP Status:', res.status)"
+python -c "import urllib.request, os, sys; token = os.environ.get('RENDER_TOKEN'); srv = os.environ.get('RENDER_SERVICE_ID'); sys.exit('RENDER_TOKEN and RENDER_SERVICE_ID required') if not token or not srv else None; req = urllib.request.Request(f'https://api.render.com/v1/services/{srv}/deploys', headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'}, data=b'{}', method='POST'); res = urllib.request.urlopen(req); print('Triggered Deploy HTTP Status:', res.status)"
 ```
 
 ### Verify Live HTTP Endpoints (Health Check)
@@ -362,7 +362,7 @@ curl -I https://sdetube.pages.dev/api/potd/leetcode
 - [ ] 2. Stage & commit changes: `git add -A && git commit -m "..."`
 - [ ] 3. Push to GitHub: `git push origin main`
 - [ ] 4. Deploy frontend via Wrangler: `npm run deploy:student`
-- [ ] 5. Set Render token: `$env:RENDER_TOKEN = "rnd_a3YkUrijIg5fDNtAPObhmpTD0qfY"`
+- [ ] 5. Set Render token: `$env:RENDER_TOKEN = "<YOUR_RENDER_TOKEN>"`
 - [ ] 6. Verify service in Render CLI: `render-cli find-service -sn edustream-backend`
 - [ ] 7. Confirm deployment status: Verify Render deploy status is `live`
 - [ ] 8. Verify live site: Visit https://sdetube.pages.dev

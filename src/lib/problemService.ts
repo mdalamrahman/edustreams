@@ -4,6 +4,7 @@ import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, reque
 import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
 import { SOLID_PREDEFINED_PROBLEMS, getSolidDriver } from './solidProblems';
 import { DESIGN_PATTERN_PREDEFINED_PROBLEMS, getDesignPatternDriver } from './designPatternProblems';
+import { idbGet, idbSet, idbDel } from './idbStorage';
 
 export interface ProblemApproach {
   id: string;
@@ -118,10 +119,14 @@ export const clearProblemCache = (slugOrTitle?: string): void => {
       localStorage.removeItem(`edustream_editorial_${slug}`);
       localStorage.removeItem(`edustream_problem_override_${slug}`);
       localStorage.removeItem(`edustream_testcase_override_${slug}`);
+      idbDel(`edustream_problem_spec_${slug}`).catch(() => {});
+      idbDel(`edustream_testcases_txt_${slug}`).catch(() => {});
       const langs = ['cpp', 'python', 'java', 'javascript', 'go', 'rust'];
       langs.forEach(lang => {
         localStorage.removeItem(`edustream_driver_${lang}_${slug}`);
         localStorage.removeItem(`edustream_driver_${slug}_${lang}`);
+        idbDel(`edustream_driver_${lang}_${slug}`).catch(() => {});
+        idbDel(`edustream_driver_${slug}_${lang}`).catch(() => {});
       });
     } else {
       const keysToRemove: string[] = [];
@@ -138,7 +143,10 @@ export const clearProblemCache = (slugOrTitle?: string): void => {
           keysToRemove.push(key);
         }
       }
-      keysToRemove.forEach(k => localStorage.removeItem(k));
+      keysToRemove.forEach(k => {
+        localStorage.removeItem(k);
+        idbDel(k).catch(() => {});
+      });
     }
   } catch (e) {
     console.warn('[clearProblemCache]:', e);
@@ -3802,11 +3810,21 @@ export async function fetchEnrichedProblem(
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
 
-  // 1. Check local spec cache
+  // 1. Check local spec cache (IndexedDB async, fallback to localStorage)
   try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      let parsed = JSON.parse(cached) as ProblemTemplate;
+    let parsed: ProblemTemplate | null = null;
+    const idbCached = await idbGet<ProblemTemplate>(cacheKey);
+    if (idbCached && typeof idbCached === 'object' && idbCached.name) {
+      parsed = idbCached;
+    } else {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        parsed = JSON.parse(cached) as ProblemTemplate;
+        idbSet(cacheKey, parsed).catch(() => {});
+      }
+    }
+
+    if (parsed) {
       // Sanity check: purge contaminated cache if name doesn't match slug or if description is low-quality fallback stub
       if (
         (parsed?.name && parsed.name.toLowerCase().includes('arguments') && !slug.includes('arguments')) ||
@@ -3817,6 +3835,7 @@ export async function fetchEnrichedProblem(
         ((slug.includes('strategy') || normSlug.includes('strategy')) && parsed?.description && (parsed.description.includes('nums') || parsed.description.includes('An optimal algorithm')))
       ) {
         localStorage.removeItem(cacheKey);
+        idbDel(cacheKey).catch(() => {});
       } else {
         parsed = repairAndHardenProblem(parsed);
         if (isProblemValidAndAuthentic(parsed)) {
@@ -3826,6 +3845,7 @@ export async function fetchEnrichedProblem(
           return applyOverride(await ensureAtLeast10Cases(parsed));
         } else {
           localStorage.removeItem(cacheKey);
+          idbDel(cacheKey).catch(() => {});
         }
       }
     }
@@ -3843,6 +3863,8 @@ export async function fetchEnrichedProblem(
         if (isProblemValidAndAuthentic(problemObj)) {
           const finalObj = await ensureAtLeast10Cases(problemObj);
           try {
+            idbSet(cacheKey, finalObj).catch(() => {});
+            idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj)).catch(() => {});
             localStorage.setItem(cacheKey, JSON.stringify(finalObj));
             localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj));
           } catch (_) {}
@@ -3860,6 +3882,8 @@ export async function fetchEnrichedProblem(
     if (lcData && isProblemValidAndAuthentic(lcData)) {
       const finalLc = await ensureAtLeast10Cases(lcData);
       try {
+        idbSet(cacheKey, finalLc).catch(() => {});
+        idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalLc));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc));
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
@@ -3880,6 +3904,8 @@ export async function fetchEnrichedProblem(
     if (ghData && isProblemValidAndAuthentic(ghData)) {
       const finalGh = await ensureAtLeast10Cases(ghData);
       try {
+        idbSet(cacheKey, finalGh).catch(() => {});
+        idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalGh));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh));
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
@@ -3900,6 +3926,8 @@ export async function fetchEnrichedProblem(
     if (gfgData && isProblemValidAndAuthentic(gfgData)) {
       const finalGfg = await ensureAtLeast10Cases(gfgData);
       try {
+        idbSet(cacheKey, finalGfg).catch(() => {});
+        idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalGfg));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg));
       } catch (_) {}
@@ -3914,6 +3942,8 @@ export async function fetchEnrichedProblem(
   generated = repairAndHardenProblem(generated);
   const finalGen = await ensureAtLeast10Cases(generated);
   try {
+    idbSet(cacheKey, finalGen).catch(() => {});
+    idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen)).catch(() => {});
     localStorage.setItem(cacheKey, JSON.stringify(finalGen));
     localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen));
   } catch (_) {}

@@ -963,9 +963,22 @@ INSERT INTO Department VALUES (1, 'Engineering');
   };
 }
 
+// Register standard SQL compatibility polyfills on AlaSQL
+try {
+  if (!(alasql as any).fn.DATEDIFF) {
+    (alasql as any).fn.DATEDIFF = (d1: string, d2: string) =>
+      Math.round((new Date(d1).getTime() - new Date(d2).getTime()) / 86400000);
+  }
+  if (!(alasql as any).fn.IFNULL) {
+    (alasql as any).fn.IFNULL = (val: any, fallback: any) =>
+      (val === null || val === undefined ? fallback : val);
+  }
+} catch {}
+
 /**
- * Executes a student SQL query against an in-memory AlaSQL sandbox and compares with solution query.
- * Can evaluate a specific test case (by index) or all test cases.
+ * Executes a student SQL query against an isolated AlaSQL sandbox and compares with solution query.
+ * Blocks dangerous JavaScript evaluation backticks, enforces a 2.5-second timeout,
+ * and executes within a Web Worker where available to prevent UI freezing.
  */
 export async function executeAndJudgeSQL(
   userSql: string,
@@ -973,18 +986,100 @@ export async function executeAndJudgeSQL(
   testCaseIdx: number = 0
 ): Promise<SQLJudgeResult> {
   const startTime = Date.now();
-  const dbId = 'db_' + Math.random().toString(36).substring(2, 9);
+  const safeRunId = 'run_' + Math.random().toString(36).substring(2, 9).replace(/[^a-zA-Z0-9_]/g, '');
   const activeTestCase = problem.testCases?.[testCaseIdx] || {
     name: 'Case 1',
     setupSql: problem.setupSql,
     tables: problem.tables
   };
 
+  // 1. Sanitize against dangerous JS backtick evaluation and external file loaders
+  if (/[`]|FROM\s+(XLSX|CSV|JSON|TXT|HTML)\s*\(/i.test(userSql) || /\b(?:REQUIRE|EVAL|IMPORT)\b/i.test(userSql)) {
+    return {
+      status: 'SYNTAX_ERROR',
+      executionTimeMs: 0,
+      columns: [],
+      rows: [],
+      expectedColumns: [],
+      expectedRows: [],
+      errorMessage: 'Security Exception: Disallowed JavaScript evaluation or file loader expression in SQL statement.',
+      tables: activeTestCase.tables,
+      testCaseIdx
+    };
+  }
+
+  const isOrdered = problem.solutionSql.toLowerCase().includes('order by');
+
+  // 2. Attempt execution in isolated Web Worker
+  if (typeof Worker !== 'undefined') {
+    try {
+      const workerResult = await new Promise<any>((resolve, reject) => {
+        let worker: Worker | null = null;
+        let timer: any = null;
+
+        try {
+          worker = new Worker(new URL('../workers/sqlWorker.ts', import.meta.url), { type: 'module' });
+        } catch {
+          // If module worker instantiation fails, fallback to main thread
+          return reject(new Error('WORKER_FALLBACK'));
+        }
+
+        timer = setTimeout(() => {
+          if (worker) worker.terminate();
+          resolve({
+            status: 'SYNTAX_ERROR',
+            executionTimeMs: 2500,
+            errorMessage: 'Time Limit Exceeded: SQL query execution timed out (2.5s).'
+          });
+        }, 2500);
+
+        worker.onmessage = (e) => {
+          clearTimeout(timer);
+          if (worker) worker.terminate();
+          resolve(e.data);
+        };
+
+        worker.onerror = (err) => {
+          clearTimeout(timer);
+          if (worker) worker.terminate();
+          resolve({
+            status: 'SYNTAX_ERROR',
+            errorMessage: err?.message || 'SQL Execution Error in Worker'
+          });
+        };
+
+        worker.postMessage({
+          runId: safeRunId,
+          setupSql: activeTestCase.setupSql,
+          solutionSql: problem.solutionSql,
+          userSql,
+          isOrdered
+        });
+      });
+
+      return {
+        status: workerResult.status,
+        executionTimeMs: workerResult.executionTimeMs || (Date.now() - startTime),
+        columns: workerResult.columns || [],
+        rows: workerResult.rows || [],
+        expectedColumns: workerResult.expectedColumns || [],
+        expectedRows: workerResult.expectedRows || [],
+        errorMessage: workerResult.errorMessage,
+        tables: activeTestCase.tables,
+        testCaseIdx
+      };
+    } catch (_) {
+      // Fallback to thread-safe local execution below
+    }
+  }
+
+  // 3. Fallback: Local execution with strict sandbox cleanup in finally block
+  const dbId = `sandbox_${safeRunId}`;
+
   try {
     alasql(`CREATE DATABASE ${dbId}`);
     alasql(`USE ${dbId}`);
 
-    // Run Setup DDL & DML for the active testcase
     const statements = activeTestCase.setupSql
       .split(';')
       .map(s => s.trim())
@@ -994,7 +1089,6 @@ export async function executeAndJudgeSQL(
       alasql(stmt);
     }
 
-    // Run Reference Solution Query to obtain Golden Expected Output
     let expectedRaw: any = [];
     try {
       expectedRaw = alasql(problem.solutionSql);
@@ -1010,7 +1104,6 @@ export async function executeAndJudgeSQL(
       ? expectedRaw.map((obj: any) => expectedColumns.map(col => obj[col]))
       : [];
 
-    // Run Student SQL Query
     const userCleanSql = userSql.trim().replace(/;+$/, '');
     let userRaw: any = [];
 
@@ -1018,7 +1111,6 @@ export async function executeAndJudgeSQL(
       userRaw = alasql(userCleanSql);
     } catch (syntaxErr: any) {
       const elapsed = Date.now() - startTime;
-      alasql(`DROP DATABASE ${dbId}`);
       return {
         status: 'SYNTAX_ERROR',
         executionTimeMs: elapsed,
@@ -1042,14 +1134,11 @@ export async function executeAndJudgeSQL(
 
     const elapsed = Date.now() - startTime;
 
-    // Compare columns and rows
     const isColsMatch = userColumns.length === expectedColumns.length &&
       userColumns.every((c, i) => c.toLowerCase() === expectedColumns[i].toLowerCase());
 
     const normalizeRow = (r: any[]) => JSON.stringify(r.map(v => v === undefined || v === null ? null : String(v).trim()));
-    
-    const isOrdered = problem.solutionSql.toLowerCase().includes('order by');
-    
+
     let isRowsMatch = false;
     if (userRows.length === expectedRows.length) {
       if (isOrdered) {
@@ -1063,8 +1152,6 @@ export async function executeAndJudgeSQL(
 
     const status = (isColsMatch && isRowsMatch) ? 'ACCEPTED' : 'WRONG_ANSWER';
 
-    alasql(`DROP DATABASE ${dbId}`);
-
     return {
       status,
       executionTimeMs: elapsed,
@@ -1076,9 +1163,6 @@ export async function executeAndJudgeSQL(
       testCaseIdx
     };
   } catch (globalErr: any) {
-    try {
-      alasql(`DROP DATABASE ${dbId}`);
-    } catch {}
     const elapsed = Date.now() - startTime;
     return {
       status: 'SYNTAX_ERROR',
@@ -1091,5 +1175,13 @@ export async function executeAndJudgeSQL(
       tables: activeTestCase.tables,
       testCaseIdx
     };
+  } finally {
+    try {
+      alasql('USE alasql');
+      alasql(`DROP DATABASE IF EXISTS ${dbId}`);
+      if ((alasql as any).databases) {
+        delete (alasql as any).databases[dbId];
+      }
+    } catch {}
   }
 }

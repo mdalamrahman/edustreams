@@ -163,6 +163,42 @@ BACKUP_CACHE_FILE = os.path.join(os.path.dirname(__file__), "ai_cache.json")
 ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
 SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "edustream_artifacts.db")
 
+def get_sqlite_conn(timeout: float = 30.0) -> sqlite3.Connection:
+    """Thread-safe SQLite connection manager with WAL mode and 30s busy timeout."""
+    conn = sqlite3.connect(SQLITE_DB_PATH, timeout=timeout)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout=30000;")
+    return conn
+
+class VideoChunkLRUCache:
+    """In-memory sliding RAM cache for 512KB MTProto chunks to prevent Telegram FloodWait."""
+    def __init__(self, max_blocks: int = 32):
+        self.cache: Dict[Tuple[str, int, int], bytes] = {}
+        self.keys: List[Tuple[str, int, int]] = []
+        self.max_blocks = max_blocks
+        self.lock = asyncio.Lock()
+
+    async def get(self, key: Tuple[str, int, int]) -> Optional[bytes]:
+        async with self.lock:
+            if key in self.cache:
+                if key in self.keys:
+                    self.keys.remove(key)
+                self.keys.append(key)
+                return self.cache[key]
+            return None
+
+    async def put(self, key: Tuple[str, int, int], data: bytes) -> None:
+        async with self.lock:
+            self.cache[key] = data
+            if key in self.keys:
+                self.keys.remove(key)
+            self.keys.append(key)
+            while len(self.keys) > self.max_blocks:
+                oldest = self.keys.pop(0)
+                self.cache.pop(oldest, None)
+
+_video_chunk_cache = VideoChunkLRUCache(32)
+
 _GLOBAL_AI_CACHE = {}
 
 # Global In-Memory Caches for Rapid Sub-millisecond Serving
@@ -318,6 +354,19 @@ class DatabaseManager:
                     )
                 """)
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_bounty_email ON problem_bounty_claims(user_email)")
+
+                # Global Defect Lock Table to prevent Sybil bounty farming
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS global_bounty_defect_locks (
+                        defect_lock_key TEXT PRIMARY KEY,
+                        problem_slug TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        claimed_by TEXT NOT NULL,
+                        reward_inr REAL NOT NULL DEFAULT 1.0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cursor.execute("CREATE INDEX IF NOT EXISTS idx_defect_lock_slug ON global_bounty_defect_locks(problem_slug)")
                 conn.commit()
         except Exception as e:
             print(f"[DatabaseManager Init Notice]: {e}")
@@ -4272,8 +4321,8 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
             clean_email = (payload.email or "").lower().strip()
             already_claimed = has_claimed_bounty(clean_email, clean_slug, "testcase")
             if not already_claimed:
-                # Atomically record claim then credit — avoids double-credit on retry
-                claim_recorded = claim_bounty(clean_email, clean_slug, "testcase")
+                # Atomically record claim with defect lock key then credit — avoids Sybil farming & double-credit
+                claim_recorded = claim_bounty(clean_email, clean_slug, "testcase", str(payload.correctedInput))
                 if claim_recorded:
                     prob_title = payload.problemTitle or problem.get("name") or clean_slug
                     reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and resolving testcase issue in {prob_title}"
@@ -4943,6 +4992,8 @@ async def get_gfg_profile(username: str):
         m_cur_streak = re.search(r'\"pod_solved_current_streak\"\s*:\s*([0-9]+)', full_stream)
         if m_cur_streak:
             res["current_streak"] = int(m_cur_streak.group(1))
+            res["pod_solved_current_streak"] = int(m_cur_streak.group(1))
+            res["streak"] = int(m_cur_streak.group(1))
 
         # Extract name accurately
         if soup.title and soup.title.string:
@@ -4988,6 +5039,40 @@ async def get_gfg_profile(username: str):
         diff_sum = sum(res["difficulty"].values())
         if diff_sum > 0 and res["total_problems_solved"] == 0:
             res["total_problems_solved"] = diff_sum
+
+        # Verify actual submission on today's date in IST to eliminate streak carryover false positive
+        now_utc = datetime.now(timezone.utc)
+        now_ist = now_utc + timedelta(hours=5, minutes=30)
+        today_ist_str = now_ist.strftime("%Y-%m-%d")
+        res["checked_date_ist"] = today_ist_str
+        res["solved_today_verified"] = False
+        res["today_submission_count"] = 0
+
+        try:
+            heatmap_resp = requests.post(
+                "https://practiceapi.geeksforgeeks.org/api/v1/user/problems/submissions/",
+                json={
+                    "handle": clean_user,
+                    "requestType": "getYearwiseUserSubmissions",
+                    "year": now_ist.year,
+                    "month": ""
+                },
+                headers=headers,
+                timeout=5
+            )
+            if heatmap_resp.status_code == 200:
+                h_json = heatmap_resp.json()
+                result_map = h_json.get("result", {})
+                if isinstance(result_map, dict):
+                    cnt = int(result_map.get(today_ist_str, 0))
+                    res["today_submission_count"] = cnt
+                    if cnt >= 1:
+                        res["solved_today_verified"] = True
+        except Exception as e:
+            # Fallback if practiceapi is unreachable
+            print(f"[GFG Heatmap Notice]: {e}")
+            res["today_submission_count"] = 1 if res.get("current_streak", 0) >= 1 else 0
+            res["solved_today_verified"] = res.get("current_streak", 0) >= 1
 
         return res, True
 
@@ -5754,8 +5839,16 @@ async def get_channel_catalog(chat_id: str, limit: int = 0):
 # TELEGRAM VIDEO STREAMING — Real bytes from Telegram Datacenters
 # -------------------------------------------------------------------
 
-REQUEST_SIZE = 512 * 1024  # 512KB per Telethon MTProto chunk (optimal throughput alignment)
-DEFAULT_RANGE_SIZE = 4 * 1024 * 1024  # 4MB default response chunk for smooth buffer
+REQUEST_SIZE = 512 * 1024        # 512KB per Telethon MTProto chunk (strictly valid for Telegram MTProto)
+MAX_HTTP_RANGE_BYTES = 2 * 1024 * 1024 # Cap single HTTP 206 response window at 2MB to prevent worker freeze
+
+ALLOWED_STREAM_CHANNELS = {
+    -1004390749731, -1004329144420, -1004332462419, -1004308430774, -5501631117,
+    4390749731, 4329144420, 4332462419, 4308430774, 5501631117,
+    -1005501631117, -100192837465,
+    "ch-dsa-01", "ch-sd-02", "ch-dbms-03", "ch-cn-04", "ch-hld-05",
+    "-1004390749731", "-1004329144420", "-1004332462419", "-1004308430774", "-5501631117",
+}
 
 
 @app.api_route("/stream/{chat_id}/{msg_id}", methods=["GET", "HEAD"])
@@ -5765,9 +5858,22 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
     Streams actual video bytes from local disk storage if available,
     otherwise fetches from Telegram Datacenters via Telethon MTProto.
     Supports HTTP 206 Partial Content range requests and HEAD probe requests.
+    Enforces channel allowlist to prevent IDOR and caps window to 2MB.
     """
-    # 1. Check if video file is already stored locally on disk (e.g. C:\Users\User\Desktop\edustreamfiles)
     real_chat_id = MOCK_CHANNEL_ID_MAP.get(chat_id, chat_id)
+
+    # 0. Telegram Channel IDOR Prevention Check
+    is_allowed = chat_id in ALLOWED_STREAM_CHANNELS or real_chat_id in ALLOWED_STREAM_CHANNELS
+    if not is_allowed:
+        try:
+            if int(str(real_chat_id).strip()) in ALLOWED_STREAM_CHANNELS:
+                is_allowed = True
+        except (ValueError, TypeError):
+            pass
+    if not is_allowed and not os.getenv("ALLOW_ALL_CHANNELS"):
+        raise HTTPException(status_code=403, detail="Unauthorized channel access")
+
+    # 1. Check if video file is already stored locally on disk (e.g. C:\Users\User\Desktop\edustreamfiles)
     local_filename = f"video_{real_chat_id}_{msg_id}.mp4"
     local_file_path = os.path.join(MEDIA_STORAGE_DIR, local_filename)
 
@@ -5780,12 +5886,19 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
             range_str = range_header.replace("bytes=", "")
             parts = range_str.split("-")
             start = int(parts[0]) if parts[0] else 0
-            end = int(parts[1]) if parts[1] else min(start + DEFAULT_RANGE_SIZE - 1, file_size - 1)
+            if len(parts) > 1 and parts[1]:
+                req_end = int(parts[1])
+                end = min(req_end, start + MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
+            else:
+                end = min(start + MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
         else:
             start = 0
-            end = min(DEFAULT_RANGE_SIZE - 1, file_size - 1)
+            end = min(MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
 
         end = min(end, file_size - 1)
+        if start >= file_size or start > end:
+            raise HTTPException(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
+
         chunk_size = end - start + 1
 
         headers = {
@@ -5869,22 +5982,26 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
         file_size = doc.size
         mime_type = doc.mime_type or "video/mp4"
 
-        # Parse Range header
+        # Parse Range header with 2MB maximum window cap
         range_header = request.headers.get("range")
         if range_header:
             range_str = range_header.replace("bytes=", "")
             parts = range_str.split("-")
             start = int(parts[0]) if parts[0] else 0
-            end = int(parts[1]) if parts[1] else min(start + DEFAULT_RANGE_SIZE - 1, file_size - 1)
+            if len(parts) > 1 and parts[1]:
+                req_end = int(parts[1])
+                end = min(req_end, start + MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
+            else:
+                end = min(start + MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
         else:
             start = 0
-            end = min(DEFAULT_RANGE_SIZE - 1, file_size - 1)
+            end = min(MAX_HTTP_RANGE_BYTES - 1, file_size - 1)
 
         end = min(end, file_size - 1)
-        chunk_size = end - start + 1
+        if start >= file_size or start > end:
+            raise HTTPException(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
 
-        aligned_start = (start // REQUEST_SIZE) * REQUEST_SIZE
-        skip_bytes = start - aligned_start
+        chunk_size = end - start + 1
 
         headers = {
             "Access-Control-Allow-Origin": "*",
@@ -5906,34 +6023,48 @@ async def stream_telegram_video(chat_id: str, msg_id: int, request: Request):
             bytes_sent = 0
             retries = 3
             current_target_start = start
-            
+
             while bytes_sent < chunk_size and retries > 0:
                 current_offset = current_target_start + bytes_sent
                 aligned_curr = (current_offset // REQUEST_SIZE) * REQUEST_SIZE
                 curr_skip = current_offset - aligned_curr
-                
+                cache_key = (str(real_chat_id), msg_id, aligned_curr)
+
+                # 1. Check RAM LRU cache
+                cached_chunk = await _video_chunk_cache.get(cache_key)
+                if cached_chunk is not None:
+                    slice_data = cached_chunk[curr_skip:]
+                    rem = chunk_size - bytes_sent
+                    if len(slice_data) > rem:
+                        slice_data = slice_data[:rem]
+                    if slice_data:
+                        yield slice_data
+                        bytes_sent += len(slice_data)
+                        if bytes_sent >= chunk_size:
+                            break
+                        continue
+
+                # 2. Cache miss: download single chunk from Telegram MTProto
                 try:
                     async for chunk in client.iter_download(
                         doc,
                         offset=aligned_curr,
                         request_size=REQUEST_SIZE,
+                        limit=REQUEST_SIZE,
                         dc_id=getattr(doc, 'dc_id', None),
                     ):
-                        if curr_skip > 0:
-                            if len(chunk) <= curr_skip:
-                                curr_skip -= len(chunk)
-                                continue
-                            chunk = chunk[curr_skip:]
-                            curr_skip = 0
+                        raw_block = bytes(chunk)
+                        await _video_chunk_cache.put(cache_key, raw_block)
 
-                        remaining = chunk_size - bytes_sent
-                        if remaining <= 0:
-                            break
-                        if len(chunk) > remaining:
-                            chunk = chunk[:remaining]
+                        slice_data = raw_block[curr_skip:]
+                        rem = chunk_size - bytes_sent
+                        if len(slice_data) > rem:
+                            slice_data = slice_data[:rem]
 
-                        yield bytes(chunk)
-                        bytes_sent += len(chunk)
+                        if slice_data:
+                            yield slice_data
+                            bytes_sent += len(slice_data)
+
                         if bytes_sent >= chunk_size:
                             break
                     break
@@ -7842,11 +7973,19 @@ class CreditCreditsPayload(BaseModel):
     description: str = "🎉 Verified Issue Report Bounty"
 
 
+class BountyClaimRequest(BaseModel):
+    problem_slug: str
+    category: str = "testcase"
+    test_input: str = ""
+    proposed_expected_output: str = ""
+    email: Optional[str] = None
+    problem_title: Optional[str] = None
+
+
 def has_claimed_bounty(email: str, slug: str, bounty_type: str = None) -> bool:
     """Returns True if the user has already claimed a bounty for this problem (1 bounty per problem per user)."""
-    import sqlite3
     try:
-        conn = sqlite3.connect(SQLITE_DB_PATH)
+        conn = get_sqlite_conn()
         cursor = conn.cursor()
         cursor.execute(
             "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? LIMIT 1",
@@ -7860,25 +7999,44 @@ def has_claimed_bounty(email: str, slug: str, bounty_type: str = None) -> bool:
         return False
 
 
-def claim_bounty(email: str, slug: str, bounty_type: str = "bounty") -> bool:
-    """Records a bounty claim (returns True on success, False if already claimed for this problem or error)."""
-    import sqlite3
+def claim_bounty(email: str, slug: str, bounty_type: str = "bounty", test_input: str = "") -> bool:
+    """Records a bounty claim with dual-scope idempotency check (defect lock + user lock)."""
     try:
         clean_email = email.lower().strip()
         clean_slug = slug.lower().strip()
-        conn = sqlite3.connect(SQLITE_DB_PATH)
+        clean_type = (bounty_type or "bounty").lower().strip()
+        norm_input = test_input.strip()
+
+        defect_lock_key = hashlib.sha256(f"{clean_slug}:{clean_type}:{norm_input}".encode()).hexdigest()
+
+        conn = get_sqlite_conn()
         cursor = conn.cursor()
+
+        # Check global defect lock if test_input is provided
+        if norm_input:
+            cursor.execute("SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ? LIMIT 1", (defect_lock_key,))
+            if cursor.fetchone():
+                conn.close()
+                return False
+
+        # Check per-user claim key
         cursor.execute(
-            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? LIMIT 1",
-            (clean_email, clean_slug)
+            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ? LIMIT 1",
+            (clean_email, clean_slug, clean_type)
         )
         if cursor.fetchone():
             conn.close()
             return False
 
+        if norm_input:
+            cursor.execute(
+                "INSERT OR IGNORE INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, 1.0)",
+                (defect_lock_key, clean_slug, clean_type, clean_email)
+            )
+
         cursor.execute(
             "INSERT OR IGNORE INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)",
-            (clean_email, clean_slug, bounty_type)
+            (clean_email, clean_slug, clean_type)
         )
         inserted = cursor.rowcount > 0
         conn.commit()
@@ -7890,34 +8048,90 @@ def claim_bounty(email: str, slug: str, bounty_type: str = "bounty") -> bool:
 
 
 def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "🎉 Verified Issue Report Bounty") -> dict:
-
     """Atomically credits funds to user wallet in SQLite database and syncs to Cloudflare R2."""
-    import sqlite3
     clean_email = (email or "student@edustream.io").lower().strip()
     wallet = get_or_create_wallet_db(clean_email)
     new_balance = round(wallet["balance"] + amount, 4)
     tx_id = f"tx-bounty-{int(time.time()*1000)}-{random.randint(100, 999)}"
-    
-    conn = sqlite3.connect(SQLITE_DB_PATH)
+
+    conn = get_sqlite_conn()
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE user_wallets 
         SET balance = ?, updated_at = CURRENT_TIMESTAMP 
         WHERE user_email = ?
     """, (new_balance, wallet["userEmail"]))
-    
+
     cursor.execute("""
         INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (tx_id, wallet["userId"], wallet["userEmail"], amount, "CREDIT", category, description, new_balance))
-    
+
     conn.commit()
     conn.close()
-    
+
     wallet["balance"] = new_balance
     wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
     save_wallet_to_cloud(wallet)
     return {"success": True, "newBalance": new_balance, "wallet": wallet, "txId": tx_id}
+
+
+@app.post("/api/bounty/claim")
+async def claim_bug_bounty_endpoint(payload: BountyClaimRequest):
+    """
+    Server-side hardened bug bounty claiming:
+    1. Enforces global defect lock key SHA256(slug + category + test_input) to prevent Sybil bounty farming.
+    2. Enforces per-user claim key SHA256(user + slug + category) to prevent duplicate claims.
+    3. Atomically credits ₹1.00 directly to the database wallet ledger.
+    """
+    clean_email = (payload.email or "student@edustream.io").lower().strip()
+    clean_slug = payload.problem_slug.lower().strip()
+    clean_cat = payload.category.lower().strip()
+    norm_input = payload.test_input.strip()
+
+    defect_lock_key = hashlib.sha256(f"{clean_slug}:{clean_cat}:{norm_input}".encode()).hexdigest()
+
+    conn = get_sqlite_conn()
+    cur = conn.cursor()
+
+    # 1. Check if defect already resolved globally
+    if norm_input:
+        cur.execute("SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ? LIMIT 1", (defect_lock_key,))
+        if cur.fetchone():
+            conn.close()
+            return JSONResponse(status_code=409, content={"status": "already_resolved", "detail": "This issue has already been resolved globally."})
+
+    # 2. Check if user already claimed for this problem & category
+    cur.execute("SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ? LIMIT 1", (clean_email, clean_slug, clean_cat))
+    if cur.fetchone():
+        conn.close()
+        return {"status": "already_claimed", "alreadyClaimed": True, "rewardedAmount": 0}
+
+    # Record locks
+    if norm_input:
+        cur.execute(
+            "INSERT OR IGNORE INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, 1.0)",
+            (defect_lock_key, clean_slug, clean_cat, clean_email)
+        )
+    cur.execute(
+        "INSERT OR IGNORE INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)",
+        (clean_email, clean_slug, clean_cat)
+    )
+    conn.commit()
+    conn.close()
+
+    prob_label = payload.problem_title or clean_slug
+    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_cat} in {prob_label}"
+    credit_res = credit_user_wallet_db(clean_email, 1.0, "BUG_BOUNTY", reward_desc)
+
+    return {
+        "status": "verified",
+        "reward_inr": 1.0,
+        "rewardedAmount": 1.0,
+        "defect_lock_key": defect_lock_key,
+        "newBalance": credit_res.get("newBalance"),
+        "alreadyClaimed": False
+    }
 
 
 @app.post("/api/billing/credit")

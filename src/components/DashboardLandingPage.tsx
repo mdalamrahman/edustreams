@@ -43,7 +43,7 @@ import {
 import { getRealAnalytics, RealAnalyticsMetrics, isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
 import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
-import { getSolvedIds, getLinkedProfiles } from '../lib/progressService';
+import { getSolvedIds, getLinkedProfiles, LinkedProfilesConfig } from '../lib/progressService';
 import { 
   fetchLeetCodeFullProfile, 
   fetchGFGProfile, 
@@ -141,7 +141,23 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   } = metrics;
 
   const userEmail = user?.email || 'mdalamrahman4@gmail.com';
-  const linkedConfig = useMemo(() => getLinkedProfiles(userEmail), [userEmail]);
+  const [linkedConfig, setLinkedConfig] = useState<LinkedProfilesConfig>(() => getLinkedProfiles(userEmail));
+
+  // Keep linkedConfig synchronized with profile changes, custom events, and localStorage updates
+  useEffect(() => {
+    const syncProfiles = () => {
+      setLinkedConfig(getLinkedProfiles(userEmail));
+    };
+    syncProfiles();
+    window.addEventListener('sdetube_progress_updated', syncProfiles);
+    window.addEventListener('sdetube_linked_profiles_updated', syncProfiles);
+    window.addEventListener('storage', syncProfiles);
+    return () => {
+      window.removeEventListener('sdetube_progress_updated', syncProfiles);
+      window.removeEventListener('sdetube_linked_profiles_updated', syncProfiles);
+      window.removeEventListener('storage', syncProfiles);
+    };
+  }, [userEmail]);
 
   // External Platform Profiles Data
   const [leetcodeProfile, setLeetcodeProfile] = useState<LeetCodeFullProfileData | null>(null);
@@ -241,6 +257,30 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     }
   }, [lcPotd, linkedConfig.leetcodeUsername, today]);
 
+  // Proactive background auto-verification for GFG POTD
+  useEffect(() => {
+    const gfgUser = linkedConfig.gfgUsername?.trim();
+    if (gfgUser) {
+      const alreadySolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+      if (!alreadySolved) {
+        fetchGFGProfile(gfgUser).then(profile => {
+          if (profile) {
+            setGfgProfile(profile);
+            if (isGfgProblemSolvedToday(profile, gfgPotd?.titleSlug, gfgPotd?.title)) {
+              localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+              localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
+              localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
+              localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
+              if (gfgPotd) markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
+              window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
+              setSolveEventCount(c => c + 1);
+            }
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [gfgPotd, linkedConfig.gfgUsername, today]);
+
   // Check Card A: SDETube SDE POTD solved status TODAY
   const isSdePotdSolved = useMemo(() => {
     if (localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true') return true;
@@ -266,10 +306,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   }, [sdePotd, today, solveEventCount]);
 
   // Check Card B: LeetCode POTD solved status TODAY
-  const isLcPotdSolved = useMemo(() => {
+  const isLcLocalSolved = useMemo(() => {
     if (!lcPotd) return false;
-    if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
-
     const subVariants = [
       lcPotd.titleSlug,
       (lcPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
@@ -284,8 +322,17 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            // Exclude synthetic POTD calendar markers, external sync markers, or manual solves
+            const idStr = String(item.id || '');
+            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
+              return false;
+            }
             if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
+              const ts = parseInt(idStr.split('_')[0], 10);
+              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
+            }
+            if (item.timestamp) {
+              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
               if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) return true;
             }
             return false;
@@ -295,8 +342,12 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
         } catch {}
       }
     }
+    return false;
+  }, [lcPotd, today, solveEventCount]);
 
-    if (leetcodeProfile) {
+  const isLcRemoteSolved = useMemo(() => {
+    if (localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true') return true;
+    if (leetcodeProfile && lcPotd) {
       const isRemoteSolved = isLeetCodeProblemSolvedToday(
         leetcodeProfile,
         lcPotd.titleSlug,
@@ -315,11 +366,11 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     return false;
   }, [lcPotd, leetcodeProfile, today, solveEventCount]);
 
-  // Check Card C: GFG POTD solved status
-  const isGfgPotdSolved = useMemo(() => {
-    if (!gfgPotd) return false;
-    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+  const isLcPotdSolved = isLcLocalSolved || isLcRemoteSolved;
 
+  // Check Card C: GFG POTD solved status
+  const isGfgLocalSolved = useMemo(() => {
+    if (!gfgPotd) return false;
     const subVariants = [
       gfgPotd.titleSlug,
       '9999',
@@ -337,9 +388,13 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
           const list = JSON.parse(sub);
           if (Array.isArray(list) && list.some(item => {
             if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
+            const idStr = String(item.id || '');
+            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
+              return false;
+            }
             let isToday = false;
             if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
+              const ts = parseInt(idStr.split('_')[0], 10);
               if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
             }
             if (!isToday && item.timestamp) {
@@ -353,12 +408,18 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
         } catch {}
       }
     }
+    return false;
+  }, [gfgPotd, today, solveEventCount]);
 
-    if (gfgProfile) {
+  const isGfgRemoteSolved = useMemo(() => {
+    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
+    if (gfgProfile && gfgPotd) {
       const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
       if (isRemoteSolved) {
         try {
           localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
           localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
           markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
         } catch {}
@@ -368,10 +429,13 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     return false;
   }, [gfgPotd, gfgProfile, today, solveEventCount]);
 
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
+
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
-    const lcUser = linkedConfig.leetcodeUsername?.trim();
-    const gfgUser = linkedConfig.gfgUsername?.trim();
+    const liveConfig = getLinkedProfiles(userEmail);
+    const lcUser = (liveConfig.leetcodeUsername || linkedConfig.leetcodeUsername || '').trim();
+    const gfgUser = (liveConfig.gfgUsername || linkedConfig.gfgUsername || '').trim();
     await Promise.allSettled([
       syncExternalProfiles(),
       fetchLeetCodePOTD(true).then(res => setLcPotd(res)),
@@ -383,7 +447,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   // Per-platform inline sync handlers
   const handleSyncLcPotd = async () => {
-    const lcUser = linkedConfig.leetcodeUsername?.trim();
+    const liveConfig = getLinkedProfiles(userEmail);
+    const lcUser = (liveConfig.leetcodeUsername || linkedConfig.leetcodeUsername || localStorage.getItem('sdetube_leetcode_username') || '').trim();
     if (!lcUser) { setLcSyncMessage('Link your LeetCode username in Settings first.'); return; }
     setIsSyncingLc(true);
     setLcSyncMessage('Checking LeetCode...');
@@ -422,17 +487,20 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   };
 
   const handleSyncGfgPotd = async () => {
-    const gfgUser = linkedConfig.gfgUsername?.trim();
+    const liveConfig = getLinkedProfiles(userEmail);
+    const gfgUser = (liveConfig.gfgUsername || linkedConfig.gfgUsername || localStorage.getItem('sdetube_gfg_username') || '').trim();
     if (!gfgUser) { setGfgSyncMessage('Link your GFG username in Settings first.'); return; }
     setIsSyncingGfg(true);
     setGfgSyncMessage('Checking GFG...');
     try {
-      const freshProfile = await fetchGFGProfile(gfgUser);
+      const freshProfile = await fetchGFGProfile(gfgUser, true);
       if (freshProfile) {
         setGfgProfile(freshProfile);
         const solved = gfgPotd ? isGfgProblemSolvedToday(freshProfile, gfgPotd.titleSlug, gfgPotd.title) : false;
         if (solved) {
           localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
+          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
           localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
           if (gfgPotd) markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
           window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
@@ -726,9 +794,16 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 }`}>
                   {lcPotd?.difficulty || 'Medium'}
                 </span>
-                <span className="font-mono text-[10px] text-stitch-muted">
-                  {linkedConfig.leetcodeUsername ? `@${linkedConfig.leetcodeUsername}` : 'Account Linked'}
-                </span>
+                {isLcRemoteSolved ? (
+                  <span className="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    Solved on LeetCode
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] text-stitch-muted">
+                    {linkedConfig.leetcodeUsername ? `@${linkedConfig.leetcodeUsername}` : 'Not Linked'}
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-bold text-slate-100 mb-2">
                 {lcPotd?.title || (isLoadingLc ? 'Loading Daily Challenge...' : 'Maximum Alternating Sum of Squares')}
@@ -773,22 +848,33 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 title="Solve in SDETube Monaco IDE with testcases"
               >
                 <Code className="w-3.5 h-3.5" />
-                <span className="truncate">{isLcPotdSolved ? '✓ Solved • Review on SDETube' : 'Solve on SDETube'}</span>
+                <span className="truncate">{isLcLocalSolved ? '✓ Solved • Review on SDETube' : 'Solve on SDETube'}</span>
               </button>
 
-              {/* Secondary row: Solve on LeetCode + Sync button */}
+              {/* Secondary row: Solved on LeetCode / Solve on LeetCode + Sync button */}
               <div className="flex gap-2">
                 <a
                   href={lcPotd?.url || (lcPotd?.titleSlug ? `https://leetcode.com/problems/${lcPotd.titleSlug}/` : 'https://leetcode.com/problemset/all/')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex-1 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    !lcPotd?.titleSlug && isLoadingLc ? 'pointer-events-none opacity-60' : ''
-                  }`}
-                  title="Solve directly on official LeetCode platform"
+                  className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    isLcRemoteSolved
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-300 hover:text-emerald-200 shadow-sm'
+                      : 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200'
+                  } ${!lcPotd?.titleSlug && isLoadingLc ? 'pointer-events-none opacity-60' : ''}`}
+                  title={isLcRemoteSolved ? 'Solved on LeetCode ✓ Click to review on LeetCode' : 'Solve directly on official LeetCode platform'}
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Solve on LeetCode</span>
+                  {isLcRemoteSolved ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>✓ Solved on LeetCode</span>
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Solve on LeetCode</span>
+                    </>
+                  )}
                 </a>
                 <button
                   onClick={handleSyncLcPotd}
@@ -823,9 +909,16 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 }`}>
                   {gfgPotd?.difficulty || 'Medium'}
                 </span>
-                <span className="font-mono text-[10px] text-stitch-muted">
-                  {gfgPotd?.accuracy ? `Acc: ${gfgPotd.accuracy}%` : 'Acc: 64.2%'}
-                </span>
+                {isGfgRemoteSolved ? (
+                  <span className="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    Solved on GFG
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] text-stitch-muted">
+                    {gfgPotd?.accuracy ? `Acc: ${gfgPotd.accuracy}%` : 'Acc: 64.2%'}
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-bold text-slate-100 mb-2">
                 {gfgPotd?.title || 'Distinct Subsequences in String Matrix'}
@@ -866,20 +959,33 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 title="Solve in SDETube Monaco IDE"
               >
                 <Code className="w-3.5 h-3.5" />
-                <span className="truncate">{isGfgPotdSolved ? '✓ Solved • Review on SDETube' : 'Solve on SDETube'}</span>
+                <span className="truncate">{isGfgLocalSolved ? '✓ Solved • Review on SDETube' : 'Solve on SDETube'}</span>
               </button>
 
-              {/* Secondary row: Solve on GFG + Sync button */}
+              {/* Secondary row: Solved on GFG / Solve on GFG + Sync button */}
               <div className="flex gap-2">
                 <a
                   href={gfgPotd?.url || (gfgPotd?.titleSlug ? `https://www.geeksforgeeks.org/problems/${gfgPotd.titleSlug}/1` : 'https://www.geeksforgeeks.org/problem-of-the-day')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  title="Solve on official GeeksforGeeks platform"
+                  className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    isGfgRemoteSolved
+                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-sm'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200'
+                  }`}
+                  title={isGfgRemoteSolved ? 'Solved on GFG ✓ Click to review on GeeksforGeeks' : 'Solve on official GeeksforGeeks platform'}
                 >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Solve on GFG</span>
+                  {isGfgRemoteSolved ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>✓ Solved on GFG</span>
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Solve on GFG</span>
+                    </>
+                  )}
                 </a>
                 <button
                   onClick={handleSyncGfgPotd}

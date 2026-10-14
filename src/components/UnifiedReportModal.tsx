@@ -23,7 +23,7 @@ import {
   DriverCorrectionResult
 } from '../lib/mistral';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
-import { claimReportBounty } from '../lib/billing';
+import { claimReportBounty, claimReportBountyServer } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
 import { resolveReferenceSolution } from '../lib/problemService';
 import { executeCode, SupportedLanguage } from '../lib/compiler';
@@ -223,8 +223,8 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
   const handleApplyTestCaseFix = async (correctedIn: string, correctedOut: string) => {
     setIsApplying(true);
     try {
-      // 1. Claim bounty idempotently
-      const bounty = claimReportBounty(problemSlug, problemTitle, 'testcase', activeEmail);
+      // 1. Claim bounty idempotently with server defect-lock verification
+      const bounty = await claimReportBountyServer(problemSlug, problemTitle, 'testcase', correctedIn, correctedOut, activeEmail);
       if (bounty.rewardedAmount > 0) {
         setRewardClaimed(true);
       }
@@ -278,8 +278,8 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
   const handleApplyDriverFix = async (newDriver: string) => {
     setIsApplying(true);
     try {
-      // 1. Claim bounty
-      const bounty = claimReportBounty(problemSlug, problemTitle, 'driver', activeEmail);
+      // 1. Claim bounty with server verification
+      const bounty = await claimReportBountyServer(problemSlug, problemTitle, 'driver', '', newDriver, activeEmail);
       if (bounty.rewardedAmount > 0) {
         setRewardClaimed(true);
       }

@@ -337,7 +337,8 @@ export function resetUnverifiedPotdToday(): void {
   // If GFG was marked solved today, verify whether there is an actual accepted submission today
   // or if the user explicitly clicked manual solve. If neither is true, clear the falsely cached key.
   const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
-  const gfgManual = localStorage.getItem(`sdetube_potd_gfg_manual_solved_${today}`) === 'true';
+  const gfgManual = localStorage.getItem(`sdetube_potd_gfg_manual_solved_${today}`) === 'true' ||
+                    localStorage.getItem(`sdetube_potd_gfg_synced_${today}`) === 'true';
   if (gfgSolved && !gfgManual) {
     let hasSubmissionToday = false;
     try {

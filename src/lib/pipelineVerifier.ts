@@ -97,7 +97,8 @@ export function isOutputValidForTestCase(
 
   const expStr = String(expectedOutput ?? '').trim();
   if (!expStr) return stdout.trim().length > 0;
-  return compareOutputs(stdout, expStr);
+  const isUnordered = cleanSlug.includes('3sum') || cleanSlug.includes('subset') || cleanSlug.includes('permutation') || cleanSlug.includes('combination-sum') || cleanSlug.includes('group-anagram');
+  return compareOutputs(stdout, expStr, isUnordered ? 'UNORDERED_SET' : 'STRICT_ORDER');
 }
 
 /**
