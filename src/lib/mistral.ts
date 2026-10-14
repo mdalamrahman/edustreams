@@ -1806,7 +1806,7 @@ export async function requestMistralTestcaseExpansion(
         testCases: existingCases,
         expectedOutputs: existingOutputs
       }),
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(2000)
     });
     if (resp.ok) {
       const data = await resp.json();
@@ -1855,7 +1855,7 @@ CRITICAL FORMAT & MATHEMATICAL ACCURACY REQUIREMENTS:
     const raw = await executeAIChatCascade([
       { role: 'system', content: 'You are an algorithms testing expert who outputs strictly valid JSON.' },
       { role: 'user', content: prompt }
-    ], { temperature: 0.1, responseFormatJson: true, timeoutMs: 16000 });
+    ], { temperature: 0.1, responseFormatJson: true, timeoutMs: 14000, preferMistral: false });
 
     if (raw) {
       const cleaned = raw.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();

@@ -1819,6 +1819,24 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
             problem_data["testCases"] = [c[0] for c in standard_lca_cases]
             problem_data["expectedOutputs"] = [c[1] for c in standard_lca_cases]
 
+    # 4. Vertical Order Traversal of a Binary Tree
+    is_vertical_order = "verticalordertraversal" in clean_name or clean_slug in ("vertical-order-traversal", "vertical-order-traversal-of-a-binary-tree")
+    if is_vertical_order:
+        standard_vot_cases = [
+            ("root = [3,9,20,null,null,15,7]", "[[9],[3,15],[20],[7]]"),
+            ("root = [1,2,3,4,5,6,7]", "[[4],[2],[1,5,6],[3],[7]]"),
+            ("root = [1,2,3,4,6,5,7]", "[[4],[2],[1,5,6],[3],[7]]"),
+            ("root = [1]", "[[1]]"),
+            ("root = [1,2,3]", "[[2],[1],[3]]"),
+            ("root = [3,1,4,0,2,2]", "[[0],[1],[3,2,2],[4]]"),
+            ("root = [0,8,1,null,null,3,2,null,4,5,null,null,7,6]", "[[8],[0,3,5],[1,4,7],[2,6]]"),
+            ("root = [1,2,null,3,null,4,null,5]", "[[5],[4],[3],[2],[1]]"),
+            ("root = [1,null,2,null,3,null,4,null,5]", "[[1],[2],[3],[4],[5]]"),
+            ("root = [3,9,20,null,null,15,7,null,null,null,null,null,null,null,null]", "[[9],[3,15],[20],[7]]")
+        ]
+        problem_data["testCases"] = [c[0] for c in standard_vot_cases]
+        problem_data["expectedOutputs"] = [c[1] for c in standard_vot_cases]
+
     # Ensure first example has image if problem has images
     if problem_data.get("images") and problem_data.get("examples"):
         if not problem_data["examples"][0].get("image"):

@@ -104,12 +104,6 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
       } else {
         setIssueCategory('testcase');
       }
-
-      // Proactively auto-trigger diagnosis on open for instant feedback
-      const timer = setTimeout(() => {
-        handleRunDiagnosis();
-      }, 120);
-      return () => clearTimeout(timer);
     }
   }, [isOpen, executionError]);
 
@@ -138,6 +132,7 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
 
         if (result && result.correctedDriverCode) {
           setDriverResult(result);
+          handleApplyDriverFix(result.correctedDriverCode, false);
         } else {
           setErrorMessage('AI could not automatically correct the driver harness. Our engineering team has been notified.');
         }
@@ -176,15 +171,17 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
           userActualOutput.trim() === referenceExecutionOutput &&
           referenceExecutionOutput !== (currentExpectedOutput || '').trim()
         ) {
-          setTestcaseResult({
+          const resObj: TestCaseVerificationResult = {
             isIncorrect: true,
             verdict: 'INCORRECT_EXPECTED',
             correctedInput: currentInput,
             correctedExpectedOutput: referenceExecutionOutput,
             analysis: `Verified by Execution: Canonical reference solution executed on SDETube Sandbox and produced "${referenceExecutionOutput}".`,
-            explanation: `Execution Verification Passed: The official platform reference solution was executed and produced "${referenceExecutionOutput}", which exactly matches your actual output. The testcase expected output ("${currentExpectedOutput}") is verified to be incorrect and has been corrected.`,
-            suggestedAction: 'Apply verified reference output & claim bounty'
-          });
+            explanation: `Execution Verification Passed: The official platform reference solution was executed and produced "${referenceExecutionOutput}", which exactly matches your actual output. The testcase expected output ("${currentExpectedOutput}") is verified to be incorrect and has been automatically resolved.`,
+            suggestedAction: 'Verified reference output applied & bounty claimed'
+          };
+          setTestcaseResult(resObj);
+          handleApplyTestCaseFix(currentInput, referenceExecutionOutput, false);
           setIsDiagnosing(false);
           return;
         }
@@ -209,6 +206,9 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
 
         if (result) {
           setTestcaseResult(result);
+          if (result.isIncorrect && result.correctedExpectedOutput) {
+            handleApplyTestCaseFix(result.correctedInput || currentInput, result.correctedExpectedOutput, false);
+          }
         } else {
           setErrorMessage('Could not verify testcase with AI. Please try again or submit manual feedback.');
         }
@@ -220,54 +220,56 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
     }
   };
 
-  const handleApplyTestCaseFix = async (correctedIn: string, correctedOut: string) => {
+  const handleApplyTestCaseFix = async (correctedIn: string, correctedOut: string, autoClose: boolean = false) => {
     setIsApplying(true);
     try {
-      // 1. Claim bounty idempotently with server defect-lock verification
-      const bounty = await claimReportBountyServer(problemSlug, problemTitle, 'testcase', correctedIn, correctedOut, activeEmail);
-      if (bounty.rewardedAmount > 0) {
-        setRewardClaimed(true);
-      }
-
-      // 2. Multi-tier upload to Cloudflare R2
-      const endpoints = [
-        `/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
-        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`
-      ];
-
-      for (const ep of endpoints) {
-        try {
-          await fetch(ep, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              testCaseIndex,
-              correctedInput: correctedIn,
-              correctedExpectedOutput: correctedOut,
-              email: activeEmail,
-              problemTitle
-            })
-          });
-          break;
-        } catch {}
-      }
-
-      // 3. Apply in UI
+      // 1. Apply in UI immediately (never blocked by network errors)
       let nextTemplate: any = undefined;
       if (onApplyTestCaseCorrection) {
         nextTemplate = onApplyTestCaseCorrection(correctedIn, correctedOut);
       }
 
       setAppliedMessage(
-        bounty.rewardedAmount > 0
-          ? 'Fixed! ₹1.00 bounty credited to your balance. Auto-resubmitting...'
-          : 'Testcase updated successfully! Auto-resubmitting...'
+        `Issue automatically resolved! Testcase #${testCaseIndex + 1} expected output updated to "${correctedOut}". You can now run or submit again.`
       );
 
-      setTimeout(() => {
-        onClose();
-        if (onResubmit) onResubmit(nextTemplate);
-      }, 1200);
+      // 2. Claim bounty & sync to R2 in the background (failures are non-fatal)
+      claimReportBountyServer(problemSlug, problemTitle, 'testcase', correctedIn, correctedOut, activeEmail)
+        .then(bounty => {
+          if (bounty?.rewardedAmount > 0) {
+            setRewardClaimed(true);
+            setAppliedMessage(
+              `Issue resolved & ₹1.00 bounty credited! Expected output updated to "${correctedOut}". You can now run or submit again.`
+            );
+          }
+        })
+        .catch(() => {});
+
+      const endpoints = [
+        `/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
+        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`
+      ];
+
+      for (const ep of endpoints) {
+        fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            testCaseIndex,
+            correctedInput: correctedIn,
+            correctedExpectedOutput: correctedOut,
+            email: activeEmail,
+            problemTitle
+          })
+        }).catch(() => {});
+      }
+
+      if (autoClose) {
+        setTimeout(() => {
+          onClose();
+          if (onResubmit) onResubmit(nextTemplate);
+        }, 1200);
+      }
     } catch (err: any) {
       setErrorMessage('Failed to apply fix: ' + (err?.message || 'Unknown error'));
     } finally {
@@ -275,37 +277,10 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
     }
   };
 
-  const handleApplyDriverFix = async (newDriver: string) => {
+  const handleApplyDriverFix = async (newDriver: string, autoClose: boolean = false) => {
     setIsApplying(true);
     try {
-      // 1. Claim bounty with server verification
-      const bounty = await claimReportBountyServer(problemSlug, problemTitle, 'driver', '', newDriver, activeEmail);
-      if (bounty.rewardedAmount > 0) {
-        setRewardClaimed(true);
-      }
-
-      // 2. Persist to Cloudflare R2
-      const endpoints = [
-        `/api/problem/${encodeURIComponent(problemSlug)}/save-driver`,
-        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/save-driver`
-      ];
-
-      for (const ep of endpoints) {
-        try {
-          await fetch(ep, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              language,
-              driverCode: newDriver,
-              email: activeEmail
-            })
-          });
-          break;
-        } catch {}
-      }
-
-      // Cache locally
+      // 1. Apply in UI immediately
       try {
         localStorage.setItem(`edustream_driver_${problemSlug}_${language}`, newDriver);
       } catch {}
@@ -314,16 +289,41 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
         onApplyDriverCorrection(newDriver);
       }
 
-      setAppliedMessage(
-        bounty.rewardedAmount > 0
-          ? 'Boilerplate updated! ₹1.00 bounty credited. Re-executing...'
-          : 'Boilerplate updated! Re-executing...'
-      );
+      setAppliedMessage('Driver boilerplate harness updated successfully! You can now recompile and run.');
 
-      setTimeout(() => {
-        onClose();
-        if (onResubmit) onResubmit();
-      }, 1200);
+      // 2. Claim bounty & sync in background
+      claimReportBountyServer(problemSlug, problemTitle, 'driver', '', newDriver, activeEmail)
+        .then(bounty => {
+          if (bounty?.rewardedAmount > 0) {
+            setRewardClaimed(true);
+            setAppliedMessage('Boilerplate updated & ₹1.00 bounty credited! You can now recompile and run.');
+          }
+        })
+        .catch(() => {});
+
+      const endpoints = [
+        `/api/problem/${encodeURIComponent(problemSlug)}/save-driver`,
+        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/save-driver`
+      ];
+
+      for (const ep of endpoints) {
+        fetch(ep, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            language,
+            driverCode: newDriver,
+            email: activeEmail
+          })
+        }).catch(() => {});
+      }
+
+      if (autoClose) {
+        setTimeout(() => {
+          onClose();
+          if (onResubmit) onResubmit();
+        }, 1200);
+      }
     } catch (err: any) {
       setErrorMessage('Failed to apply driver fix: ' + (err?.message || 'Unknown error'));
     } finally {
@@ -483,24 +483,34 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
               <p className="text-slate-300 leading-relaxed text-[11px]">{testcaseResult.explanation}</p>
 
               {testcaseResult.isIncorrect && (
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-600/40 font-mono text-[11px] flex items-center justify-between">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">CORRECTED EXPECTED OUTPUT</span>
-                    <span className="text-emerald-400 font-bold">{testcaseResult.correctedExpectedOutput}</span>
+                <div className="p-3 rounded-xl bg-slate-950 border border-emerald-600/40 font-mono text-[11px] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-slate-500 block text-[10px] font-bold">AUTOMATICALLY RESOLVED OUTPUT</span>
+                      <span className="text-emerald-400 font-bold text-xs">{testcaseResult.correctedExpectedOutput}</span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold">
+                      ✓ Fixed & Applied
+                    </span>
                   </div>
-                  <button
-                    onClick={() =>
-                      handleApplyTestCaseFix(
-                        testcaseResult.correctedInput || currentInput,
-                        testcaseResult.correctedExpectedOutput
-                      )
-                    }
-                    disabled={isApplying}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Apply Fix & Resubmit</span>
-                  </button>
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+                    <button
+                      onClick={() => {
+                        onClose();
+                        if (onResubmit) onResubmit();
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>Run / Submit Code Now</span>
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -509,12 +519,12 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
                   <span>The testcase appears correct. If your code output is intended as an alternative valid representation:</span>
                   <div className="mt-2 flex justify-end">
                     <button
-                      onClick={() => handleApplyTestCaseFix(currentInput, userActualOutput)}
+                      onClick={() => handleApplyTestCaseFix(currentInput, userActualOutput, true)}
                       disabled={isApplying}
                       className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>Accept My Output & Resubmit</span>
+                      <span>Accept My Output & Run</span>
                     </button>
                   </div>
                 </div>
@@ -531,15 +541,28 @@ export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
               </div>
               <p className="text-slate-300 leading-relaxed text-[11px]">{driverResult.explanation}</p>
 
-              <div className="flex justify-end">
-                <button
-                  onClick={() => handleApplyDriverFix(driverResult.correctedDriverCode)}
-                  disabled={isApplying}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Update Boilerplate & Recompile</span>
-                </button>
+              <div className="flex items-center justify-between pt-1">
+                <span className="px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 text-[10px] font-bold">
+                  ✓ Boilerplate Updated
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onResubmit) onResubmit();
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>Recompile & Run Now</span>
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             </div>
           )}

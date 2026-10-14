@@ -2468,6 +2468,33 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
     }
   }
 
+  // Resynchronize expected outputs with authentic problem.examples
+  if (Array.isArray(problem.examples) && problem.examples.length > 0 && Array.isArray(problem.testCases)) {
+    if (!Array.isArray(problem.expectedOutputs)) {
+      problem.expectedOutputs = [];
+    }
+    for (let j = 0; j < problem.testCases.length; j++) {
+      const tc = String(problem.testCases[j] || '').trim();
+      const normTc = tc.replace(/\s+/g, '').replace(/^[a-zA-Z0-9_]+=/, '');
+      for (const ex of problem.examples) {
+        const exIn = String(ex.input || '').trim().replace(/\s+/g, '').replace(/^[a-zA-Z0-9_]+=/, '');
+        const exOut = String(ex.output || '').trim();
+        if (normTc === exIn && exOut) {
+          problem.expectedOutputs[j] = exOut;
+          break;
+        }
+      }
+      // If index matches problem.examples[j], and current output is missing, '0', or invalid scalar
+      if (j < problem.examples.length) {
+        const exOut = String(problem.examples[j]?.output || '').trim();
+        const curOut = String(problem.expectedOutputs[j] || '').trim();
+        if (exOut && (!curOut || curOut === '0' || curOut.toLowerCase() === 'null' || (exOut.startsWith('[') && !curOut.startsWith('[')))) {
+          problem.expectedOutputs[j] = exOut;
+        }
+      }
+    }
+  }
+
   // Filter out any completely invalid testcases
   if (problem.testCases && problem.expectedOutputs) {
     const validPairs: { input: string; output: string }[] = [];
@@ -2755,6 +2782,17 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
     ) {
       return false;
     }
+  }
+
+  // Reject corrupted testcases where sample cases have dummy '0' when authentic examples expect non-zero / structured output
+  if (Array.isArray(p.examples) && p.examples.length >= 2 && Array.isArray(p.expectedOutputs)) {
+    const hasCorruptedZero = p.expectedOutputs.some((eo, idx) => {
+      if (idx >= p.examples.length) return false;
+      const exOut = String(p.examples[idx]?.output || '').trim();
+      const eoStr = String(eo || '').trim();
+      return (eoStr === '0' || eoStr === '') && exOut && exOut !== '0';
+    });
+    if (hasCorruptedZero) return false;
   }
 
   return Array.isArray(p.testCases) && p.testCases.length >= 1;
@@ -4048,6 +4086,273 @@ export function getDefaultDriverForProblem(slugOrTitle: string, language: Suppor
   const dpDrv = getDesignPatternDriver(slug, lang);
   if (dpDrv) {
     return dpDrv;
+  }
+
+  // === VERTICAL ORDER TRAVERSAL OF A BINARY TREE ===
+  const isVerticalOrder = slug.includes('vertical-order-traversal') || slug.includes('verticalordertraversal') || slug === '987';
+  if (isVerticalOrder) {
+    if (lang === 'cpp' || (lang as any) === 'c++') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <cctype>
+#include <map>
+#include <set>
+#include <algorithm>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static TreeNode* parseInputTree(const string& input) {
+    size_t open = input.find('[');
+    size_t close = input.rfind(']');
+    if (open == string::npos || close == string::npos || close <= open) return nullptr;
+    string content = input.substr(open + 1, close - open - 1);
+    if (content.empty()) return nullptr;
+
+    vector<string> tokens;
+    stringstream ss(content);
+    string token;
+    while (getline(ss, token, ',')) {
+        size_t start = 0;
+        while (start < token.size() && isspace(static_cast<unsigned char>(token[start]))) start++;
+        size_t end = token.size();
+        while (end > start && isspace(static_cast<unsigned char>(token[end - 1]))) end--;
+        tokens.push_back(token.substr(start, end - start));
+    }
+    if (tokens.empty() || tokens[0] == "null" || tokens[0].empty()) return nullptr;
+
+    TreeNode* root = new TreeNode(stoi(tokens[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t i = 1;
+    while (!q.empty() && i < tokens.size()) {
+        TreeNode* current = q.front();
+        q.pop();
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->left = new TreeNode(stoi(tokens[i]));
+            q.push(current->left);
+        }
+        i++;
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->right = new TreeNode(stoi(tokens[i]));
+            q.push(current->right);
+        }
+        i++;
+    }
+    return root;
+}
+
+static string format2D(const vector<vector<int>>& res) {
+    ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < res.size(); i++) {
+        if (i > 0) oss << ",";
+        oss << "[";
+        for (size_t j = 0; j < res[i].size(); j++) {
+            if (j > 0) oss << ",";
+            oss << res[i][j];
+        }
+        oss << "]";
+    }
+    oss << "]";
+    return oss.str();
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    string input = R"RAW(INPUT_PLACEHOLDER)RAW";
+    TreeNode* root = parseInputTree(input);
+    Solution sol;
+    vector<vector<int>> res = sol.verticalTraversal(root);
+    cout << format2D(res) << endl;
+    return 0;
+}
+`;
+    }
+    if (lang === 'python' || (lang as any) === 'py') {
+      return `import collections
+import json
+import sys
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def parse_tree(s):
+    lb = s.find('[')
+    rb = s.rfind(']')
+    if lb == -1 or rb == -1 or rb <= lb:
+        return None
+    content = s[lb+1:rb].strip()
+    if not content:
+        return None
+    tokens = [t.strip() for t in content.split(',')]
+    if not tokens or tokens[0] == 'null' or not tokens[0]:
+        return None
+    root = TreeNode(int(tokens[0]))
+    q = collections.deque([root])
+    i = 1
+    while q and i < len(tokens):
+        curr = q.popleft()
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.left = TreeNode(int(tokens[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.right = TreeNode(int(tokens[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+if __name__ == '__main__':
+    raw = """INPUT_PLACEHOLDER"""
+    root = parse_tree(raw)
+    sol = Solution()
+    res = sol.verticalTraversal(root)
+    print(json.dumps(res, separators=(',', ':')))
+`;
+    }
+    if (lang === 'javascript' || (lang as any) === 'js') {
+      return `function TreeNode(val, left, right) {
+    this.val = (val===undefined ? 0 : val);
+    this.left = (left===undefined ? null : left);
+    this.right = (right===undefined ? null : right);
+}
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function parseTree(s) {
+    const lb = s.indexOf('[');
+    const rb = s.lastIndexOf(']');
+    if (lb === -1 || rb === -1 || rb <= lb) return null;
+    const content = s.substring(lb + 1, rb).trim();
+    if (!content) return null;
+    const tokens = content.split(',').map(t => t.trim());
+    if (tokens.length === 0 || tokens[0] === 'null' || !tokens[0]) return null;
+    const root = new TreeNode(parseInt(tokens[0], 10));
+    const q = [root];
+    let i = 1;
+    while (q.length > 0 && i < tokens.length) {
+        const curr = q.shift();
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i]) {
+            curr.left = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.left);
+        }
+        i++;
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i]) {
+            curr.right = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.right);
+        }
+        i++;
+    }
+    return root;
+}
+
+const input = \`INPUT_PLACEHOLDER\`;
+const root = parseTree(input);
+let ans = null;
+if (typeof verticalTraversal === 'function') {
+    ans = verticalTraversal(root);
+} else if (typeof Solution === 'function') {
+    const s = new Solution();
+    ans = s.verticalTraversal(root);
+}
+console.log(JSON.stringify(ans || []));
+`;
+    }
+    if (lang === 'java') {
+      return `import java.util.*;
+
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    private static TreeNode parseTree(String s) {
+        int lb = s.indexOf('[');
+        int rb = s.lastIndexOf(']');
+        if (lb == -1 || rb == -1 || rb <= lb) return null;
+        String content = s.substring(lb + 1, rb).trim();
+        if (content.isEmpty()) return null;
+        String[] tokens = content.split(",");
+        for (int i = 0; i < tokens.length; i++) tokens[i] = tokens[i].trim();
+        if (tokens.length == 0 || tokens[0].equals("null") || tokens[0].isEmpty()) return null;
+        TreeNode root = new TreeNode(Integer.parseInt(tokens[0]));
+        Queue<TreeNode> q = new LinkedList<>();
+        q.add(root);
+        int i = 1;
+        while (!q.isEmpty() && i < tokens.length) {
+            TreeNode curr = q.poll();
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.left = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.left);
+            }
+            i++;
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.right = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.right);
+            }
+            i++;
+        }
+        return root;
+    }
+
+    public static void main(String[] args) {
+        String input = "INPUT_PLACEHOLDER";
+        TreeNode root = parseTree(input);
+        Solution sol = new Solution();
+        List<List<Integer>> res = sol.verticalTraversal(root);
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < res.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("[");
+            List<Integer> col = res.get(i);
+            for (int j = 0; j < col.size(); j++) {
+                if (j > 0) sb.append(",");
+                sb.append(col.get(j));
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+        System.out.println(sb.toString());
+    }
+}
+`;
+    }
   }
 
   // === BINARY TREE TO DOUBLE LINKEDLIST ===
