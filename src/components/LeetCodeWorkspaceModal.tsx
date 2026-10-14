@@ -209,7 +209,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       p.id?.toString() === slug || 
       p.slug === slug ||
       (p.slug && slug.toLowerCase() === p.slug.toLowerCase()) ||
-      p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === slug.toLowerCase().replace(/[^a-z0-9]/g, '')
+      p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === slug.toLowerCase().replace(/[^a-z0-9]/g, '') ||
+      toSlug(p.name) === slug ||
+      (p.leetcode && toSlug(p.leetcode) === slug)
     );
     if (!found && slug) {
       const cleanName = slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -268,25 +270,25 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
 
   const currentProblemSlug = useMemo(() => {
-    const rawName = (codingProblem?.name || codingProblem?.title || cleanTitle || '').toLowerCase();
+    const rawName = (effectiveCodingProblem?.name || effectiveCodingProblem?.title || cleanTitle || '').toLowerCase();
     if (rawName.includes('floor in bst') || rawName.includes('floor in a binary search tree')) {
       return 'floor-in-bst';
     }
-    if (codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()) {
-      return toSlug(codingProblem.slug);
+    if (effectiveCodingProblem?.slug && typeof effectiveCodingProblem.slug === 'string' && effectiveCodingProblem.slug.trim()) {
+      return toSlug(effectiveCodingProblem.slug);
     }
-    const candidateNameSlug = toSlug(codingProblem?.name || codingProblem?.title || cleanTitle);
+    if (effectiveCodingProblem?.leetcode && typeof effectiveCodingProblem.leetcode === 'string' && effectiveCodingProblem.leetcode.includes('/problems/')) {
+      return toSlug(effectiveCodingProblem.leetcode);
+    }
+    if (effectiveCodingProblem?.gfg && typeof effectiveCodingProblem.gfg === 'string' && effectiveCodingProblem.gfg.includes('/problems/')) {
+      return toSlug(effectiveCodingProblem.gfg);
+    }
+    const candidateNameSlug = toSlug(effectiveCodingProblem?.name || effectiveCodingProblem?.title || cleanTitle);
     if (PREDEFINED_SPECIAL_PROBLEMS[candidateNameSlug]) {
       return candidateNameSlug;
     }
-    if (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && codingProblem.leetcode.includes('/problems/')) {
-      return toSlug(codingProblem.leetcode);
-    }
-    if (codingProblem?.gfg && typeof codingProblem.gfg === 'string' && codingProblem.gfg.includes('/problems/')) {
-      return toSlug(codingProblem.gfg);
-    }
     return candidateNameSlug;
-  }, [codingProblem, cleanTitle]);
+  }, [effectiveCodingProblem, cleanTitle]);
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
@@ -297,8 +299,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     const isLldSlug = currentProblemSlug.includes('pattern') || currentProblemSlug.includes('factory') || currentProblemSlug.includes('builder') || currentProblemSlug.includes('singleton') || currentProblemSlug.includes('strategy');
     return {
       name: cleanTitle,
-      category: codingProblem?.category || (isLldSlug ? 'Low Level Design' : 'Algorithms'),
-      difficulty: (codingProblem?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
+      category: effectiveCodingProblem?.category || (isLldSlug ? 'Low Level Design' : 'Algorithms'),
+      difficulty: (effectiveCodingProblem?.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
       description: `Loading **${cleanTitle}** problem description...`,
       examples: [],
       constraints: [],
@@ -319,23 +321,23 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     let isCancelled = false;
     setIsLoadingEnriched(true);
 
-    const rawTarget = codingProblem?.slug && typeof codingProblem.slug === 'string' && codingProblem.slug.trim()
-      ? codingProblem.slug
+    const rawTarget = effectiveCodingProblem?.slug && typeof effectiveCodingProblem.slug === 'string' && effectiveCodingProblem.slug.trim()
+      ? effectiveCodingProblem.slug
       : PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug]
       ? currentProblemSlug
-      : (codingProblem?.name && (codingProblem.name.toLowerCase().includes('floor in bst') || codingProblem.name.toLowerCase().includes('floor in a binary search tree')))
+      : (effectiveCodingProblem?.leetcode && typeof effectiveCodingProblem.leetcode === 'string' && effectiveCodingProblem.leetcode.includes('/problems/'))
+      ? effectiveCodingProblem.leetcode
+      : (effectiveCodingProblem?.name && (effectiveCodingProblem.name.toLowerCase().includes('floor in bst') || effectiveCodingProblem.name.toLowerCase().includes('floor in a binary search tree')))
       ? 'floor-in-bst'
-      : (codingProblem?.leetcode && typeof codingProblem.leetcode === 'string' && codingProblem.leetcode.includes('/problems/'))
-      ? codingProblem.leetcode
-      : (codingProblem?.gfg && typeof codingProblem.gfg === 'string' && codingProblem.gfg.includes('/problems/'))
-      ? codingProblem.gfg
-      : (codingProblem?.name || cleanTitle);
+      : (effectiveCodingProblem?.gfg && typeof effectiveCodingProblem.gfg === 'string' && effectiveCodingProblem.gfg.includes('/problems/'))
+      ? effectiveCodingProblem.gfg
+      : (effectiveCodingProblem?.name || cleanTitle);
     const targetSlug = currentProblemSlug;
 
     fetchEnrichedProblem(
       rawTarget,
-      codingProblem?.category || 'Arrays',
-      codingProblem?.difficulty || 'Medium',
+      effectiveCodingProblem?.category || 'Algorithms',
+      effectiveCodingProblem?.difficulty || 'Medium',
       effectiveTranscript,
       notes
     ).then((enriched) => {
@@ -569,7 +571,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [currentProblemSlug, codingProblem, cleanTitle, effectiveTranscript, notes, language, initialCode]);
+  }, [currentProblemSlug, effectiveCodingProblem, cleanTitle, effectiveTranscript, notes, language, initialCode]);
 
   // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
@@ -676,23 +678,29 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   }, [currentProblemSlug, cleanTitle, problemTemplate.expectedOutputs]);
 
   
-  // Direct LeetCode & GeeksforGeeks links (Only if explicitly present)
+  // Direct LeetCode & GeeksforGeeks links (Always authentic and accessible)
   const lcUrl = useMemo(() => {
-    return (codingProblem?.leetcode && codingProblem.leetcode.trim().length > 0) ? codingProblem.leetcode : null;
-  }, [codingProblem]);
+    if (effectiveCodingProblem?.leetcode && effectiveCodingProblem.leetcode.trim().length > 0) {
+      return effectiveCodingProblem.leetcode;
+    }
+    if (currentProblemSlug && !currentProblemSlug.includes('pattern') && !currentProblemSlug.includes('solid') && !currentProblemSlug.includes('sql')) {
+      return `https://leetcode.com/problems/${currentProblemSlug}/`;
+    }
+    return null;
+  }, [effectiveCodingProblem, currentProblemSlug]);
 
   const gfgUrl = useMemo(() => {
-    return (codingProblem?.gfg && codingProblem.gfg.trim().length > 0) ? codingProblem.gfg : null;
-  }, [codingProblem]);
+    return (effectiveCodingProblem?.gfg && effectiveCodingProblem.gfg.trim().length > 0) ? effectiveCodingProblem.gfg : null;
+  }, [effectiveCodingProblem]);
 
   // YouTube embed URL parser (from problem metadata or template)
   const youtubeEmbedUrl = useMemo(() => {
-    const rawUrl = codingProblem?.youtube || codingProblem?.youtubeUrl || (problemTemplate as any)?.youtube || '';
+    const rawUrl = effectiveCodingProblem?.youtube || effectiveCodingProblem?.youtubeUrl || (problemTemplate as any)?.youtube || '';
     if (!rawUrl) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = rawUrl.match(regExp);
     return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : (rawUrl.startsWith('http') ? rawUrl : null);
-  }, [codingProblem, problemTemplate]);
+  }, [effectiveCodingProblem, problemTemplate]);
 
   // Valid matching channel video (must genuinely match the problem title)
   const validMatchingVideo = useMemo(() => {
@@ -780,7 +788,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     setIsSavingModalNotes(true);
     const slug = currentProblemSlug;
     const student = getCurrentStudent();
-    const res = await saveProblemNote(slug, codingProblem?.name || cleanTitle, modalNotesContent, student?.email);
+    const res = await saveProblemNote(slug, effectiveCodingProblem?.name || cleanTitle, modalNotesContent, student?.email);
     setIsSavingModalNotes(false);
     setModalNotesSavedStatus(res.syncedToCloudflare ? 'synced' : 'saved');
     setTimeout(() => setModalNotesSavedStatus('idle'), 4000);
@@ -788,7 +796,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const handleDownloadModalNotes = () => {
     const slug = currentProblemSlug;
-    downloadProblemNotesAsTxt(slug, codingProblem?.name || cleanTitle, modalNotesContent);
+    downloadProblemNotesAsTxt(slug, effectiveCodingProblem?.name || cleanTitle, modalNotesContent);
   };
   
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
@@ -957,7 +965,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
       })
       .catch(() => {});
-  }, [cleanTitle, problemTemplate.solutions, solutionLang, codingProblem]);
+  }, [cleanTitle, problemTemplate.solutions, solutionLang, effectiveCodingProblem]);
 
   const handleGenerateSolution = async (langToGen: SupportedLanguage = solutionLang) => {
     const user = getCurrentStudent();
@@ -977,7 +985,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     );
 
     // Derive clean problem slug for backend validation + R2 storage
-    const problemSlug = toSlug(codingProblem?.leetcode || codingProblem?.slug || codingProblem?.name || cleanTitle);
+    const problemSlug = toSlug(effectiveCodingProblem?.leetcode || effectiveCodingProblem?.slug || effectiveCodingProblem?.name || cleanTitle);
 
     setIsGeneratingSolution(true);
     try {
@@ -1844,13 +1852,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             origin: { y: 0.6 }
           });
           markProblemSolved(
-            codingProblem?.id || codingProblem?.name || cleanTitle,
+            effectiveCodingProblem?.id || effectiveCodingProblem?.name || cleanTitle,
             Math.max(1, Math.round(totalWallClockMs / 60000)),
-            currentProblemSlug || codingProblem?.slug || cleanTitle
+            currentProblemSlug || effectiveCodingProblem?.slug || cleanTitle
           );
 
           // Persist validated solution to Cloudflare R2
-          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/save-solution`, {
+          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(currentProblemSlug)}/save-solution`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ language, solution: code })
@@ -2034,17 +2042,17 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     }
   };
 
-  const difficulty = codingProblem?.difficulty || problemTemplate.difficulty || 'Medium';
+  const difficulty = effectiveCodingProblem?.difficulty || problemTemplate.difficulty || 'Medium';
 
   // Dynamic companies lookup: authentic hiring tech giants for this problem
   const [resolvedCompanies, setResolvedCompanies] = useState<string[]>(() => {
-    if (Array.isArray(codingProblem?.companies) && codingProblem.companies.length > 0) {
-      const valid = codingProblem.companies.filter((c: any) => 
+    if (Array.isArray(effectiveCodingProblem?.companies) && effectiveCodingProblem.companies.length > 0) {
+      const valid = effectiveCodingProblem.companies.filter((c: any) => 
         c && typeof c === 'string' && !c.toLowerCase().includes('all companies') && !c.toLowerCase().includes('tech company')
       );
       if (valid.length > 0) return valid;
     }
-    const targetSlug = codingProblem?.slug || codingProblem?.id || toSlug(problemTitle);
+    const targetSlug = effectiveCodingProblem?.slug || effectiveCodingProblem?.id || toSlug(problemTitle);
     const lookedUp = getCompaniesForProblem(targetSlug);
     if (lookedUp && lookedUp.length > 0) return lookedUp;
     return [];
@@ -2058,18 +2066,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   useEffect(() => {
     if (resolvedCompanies.length > 0) return;
     fetchCompanyProblemsDataset().then(() => {
-      const targetSlug = codingProblem?.slug || codingProblem?.id || toSlug(problemTitle);
+      const targetSlug = effectiveCodingProblem?.slug || effectiveCodingProblem?.id || toSlug(problemTitle);
       const lookedUp = getCompaniesForProblem(targetSlug);
       if (lookedUp && lookedUp.length > 0) {
         setResolvedCompanies(lookedUp);
       }
     });
-  }, [codingProblem, problemTitle, resolvedCompanies.length]);
+  }, [effectiveCodingProblem, problemTitle, resolvedCompanies.length]);
 
   const companies = resolvedCompanies.length > 0
     ? resolvedCompanies
-    : (Array.isArray(codingProblem?.companies) && codingProblem.companies.length > 0 && !codingProblem.companies[0].toLowerCase().includes('all companies'))
-    ? codingProblem.companies
+    : (Array.isArray(effectiveCodingProblem?.companies) && effectiveCodingProblem.companies.length > 0 && !effectiveCodingProblem.companies[0].toLowerCase().includes('all companies'))
+    ? effectiveCodingProblem.companies
     : ['Google', 'Amazon', 'Meta', 'Microsoft'];
 
   return (
@@ -2111,7 +2119,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 <span className={`w-2 h-2 rounded-full ${
                   difficulty === 'Easy' ? 'bg-emerald-400' : difficulty === 'Hard' ? 'bg-rose-400' : 'bg-amber-400'
                 } animate-ping`} />
-                <span className="text-slate-300 font-bold">{codingProblem?.category || 'Algorithm'}</span>
+                <span className="text-slate-300 font-bold">{effectiveCodingProblem?.category || problemTemplate.category || 'Algorithm'}</span>
                 <span className="text-slate-500">•</span>
                 <span className={
                   difficulty === 'Easy' ? 'text-emerald-400' : difficulty === 'Hard' ? 'text-rose-400' : 'text-amber-400'
@@ -2243,9 +2251,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 font-mono font-bold text-xs transition-all shadow-sm cursor-pointer"
-              title="Open External Problem Statement"
+              title="Solve on LeetCode"
             >
-              <span>Practice</span>
+              <span>LeetCode</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           )}
@@ -3559,7 +3567,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               </span>
               <button
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent('sdetube_open_sql_arena', { detail: { problem: codingProblem || { name: cleanTitle, slug: currentProblemSlug } } }));
+                  window.dispatchEvent(new CustomEvent('sdetube_open_sql_arena', { detail: { problem: effectiveCodingProblem || { name: cleanTitle, slug: currentProblemSlug } } }));
                   handleClose();
                 }}
                 className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer transition-all shadow text-xs flex items-center gap-1.5"

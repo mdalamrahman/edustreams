@@ -5,6 +5,15 @@ import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
 import { SOLID_PREDEFINED_PROBLEMS, getSolidDriver } from './solidProblems';
 import { DESIGN_PATTERN_PREDEFINED_PROBLEMS, getDesignPatternDriver } from './designPatternProblems';
 import { idbGet, idbSet, idbDel } from './idbStorage';
+import {
+  SDE_SHEET_191_DATA,
+  A2Z_DSA_SHEET_474_DATA,
+  SDETUBE_79_SHEET_DATA,
+  BLIND_75_SHEET_DATA,
+  CODESTORYWITHMIK_SHEET_DATA,
+  getLeetCodeSlug,
+  DSAProblem
+} from './dsaSheetsData';
 
 export interface ProblemApproach {
   id: string;
@@ -106,6 +115,56 @@ export const toSlug = (str?: string): string => {
   }
   return slug;
 };
+
+/**
+ * Canonicalizes any title, sheet slug, or URL to its authentic LeetCode slug
+ * using the official DSA Sheets (SDE 191, A2Z 474, SDETube 79, Blind 75, CodeStoryWithMIK).
+ */
+export function canonicalizeSheetProblemSlug(slugOrTitle: string): {
+  canonicalSlug: string;
+  problem?: DSAProblem;
+  leetcodeUrl?: string;
+} {
+  if (!slugOrTitle) return { canonicalSlug: 'algorithm-problem' };
+
+  const rawSlug = toSlug(slugOrTitle);
+  const cleanNorm = slugOrTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const sheets: DSAProblem[][] = [
+    SDE_SHEET_191_DATA,
+    A2Z_DSA_SHEET_474_DATA,
+    SDETUBE_79_SHEET_DATA,
+    BLIND_75_SHEET_DATA,
+    CODESTORYWITHMIK_SHEET_DATA
+  ];
+
+  for (const sheet of sheets) {
+    if (!Array.isArray(sheet)) continue;
+    for (const p of sheet) {
+      if (!p) continue;
+      const pSlug = p.slug || getLeetCodeSlug(p);
+      const pLcSlug = p.leetcode ? toSlug(p.leetcode) : '';
+      const pNameSlug = toSlug(p.name);
+      const pNorm = (p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      if (
+        pSlug === rawSlug ||
+        (pLcSlug && pLcSlug === rawSlug) ||
+        pNameSlug === rawSlug ||
+        (cleanNorm.length >= 5 && pNorm === cleanNorm)
+      ) {
+        const canonical = (pLcSlug && pLcSlug !== 'algorithm-problem') ? pLcSlug : (pSlug || rawSlug);
+        return {
+          canonicalSlug: canonical,
+          problem: p,
+          leetcodeUrl: p.leetcode || `https://leetcode.com/problems/${canonical}/`
+        };
+      }
+    }
+  }
+
+  return { canonicalSlug: rawSlug };
+}
 
 /**
  * Deletes cached problem specifications, test cases, and drivers so they can be regenerated.
@@ -2705,7 +2764,8 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
  * Fetches authentic problem data directly from the LeetCode GraphQL API via backend proxy or direct query.
  */
 export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
-  const slug = toSlug(slugOrUrl);
+  const { canonicalSlug } = canonicalizeSheetProblemSlug(slugOrUrl);
+  const slug = canonicalSlug || toSlug(slugOrUrl);
   if (!slug || slug === 'algorithm-problem') return null;
 
   const parseLeetCodeQuestion = (q: any): ProblemTemplate | null => {
@@ -3614,12 +3674,16 @@ export async function fetchEnrichedProblem(
   transcript?: string,
   notes?: string
 ): Promise<ProblemTemplate> {
-  const slug = toSlug(slugOrTitle);
+  const { canonicalSlug, problem: sheetProb } = canonicalizeSheetProblemSlug(slugOrTitle);
+  const slug = canonicalSlug || toSlug(slugOrTitle);
+  const rawRequestedSlug = toSlug(slugOrTitle);
   const cacheKey = `edustream_problem_spec_${slug}`;
+  const effectiveCategory = (category === 'Algorithms' && sheetProb?.category) ? sheetProb.category : category;
+  const effectiveDifficulty = (difficulty === 'Medium' && sheetProb?.difficulty) ? sheetProb.difficulty : difficulty;
 
   const applyOverride = (p: ProblemTemplate): ProblemTemplate => {
     try {
-      const overrideStr = localStorage.getItem(`edustream_testcase_override_${slug}`);
+      const overrideStr = localStorage.getItem(`edustream_testcase_override_${slug}`) || (rawRequestedSlug !== slug ? localStorage.getItem(`edustream_testcase_override_${rawRequestedSlug}`) : null);
       if (overrideStr) {
         const overrideObj = JSON.parse(overrideStr);
         if (overrideObj && Array.isArray(overrideObj.testCases) && overrideObj.testCases.length > 0) {
@@ -3813,11 +3877,11 @@ export async function fetchEnrichedProblem(
   // 1. Check local spec cache (IndexedDB async, fallback to localStorage)
   try {
     let parsed: ProblemTemplate | null = null;
-    const idbCached = await idbGet<ProblemTemplate>(cacheKey);
+    const idbCached = (await idbGet<ProblemTemplate>(cacheKey)) || (rawRequestedSlug !== slug ? await idbGet<ProblemTemplate>(`edustream_problem_spec_${rawRequestedSlug}`) : null);
     if (idbCached && typeof idbCached === 'object' && idbCached.name) {
       parsed = idbCached;
     } else {
-      const cached = localStorage.getItem(cacheKey);
+      const cached = localStorage.getItem(cacheKey) || (rawRequestedSlug !== slug ? localStorage.getItem(`edustream_problem_spec_${rawRequestedSlug}`) : null);
       if (cached) {
         parsed = JSON.parse(cached) as ProblemTemplate;
         idbSet(cacheKey, parsed).catch(() => {});
@@ -3867,6 +3931,10 @@ export async function fetchEnrichedProblem(
             idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj)).catch(() => {});
             localStorage.setItem(cacheKey, JSON.stringify(finalObj));
             localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj));
+            if (rawRequestedSlug && rawRequestedSlug !== slug) {
+              idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalObj).catch(() => {});
+              localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalObj));
+            }
           } catch (_) {}
           return applyOverride(finalObj);
         }
@@ -3878,7 +3946,7 @@ export async function fetchEnrichedProblem(
 
   // 3. Fetch from LeetCode GraphQL endpoint (/api/leetcode/{slug} or client-side fallback)
   try {
-    const lcData = await fetchFromLeetCodeAPI(slugOrTitle);
+    const lcData = await fetchFromLeetCodeAPI(slug);
     if (lcData && isProblemValidAndAuthentic(lcData)) {
       const finalLc = await ensureAtLeast10Cases(lcData);
       try {
@@ -3886,6 +3954,10 @@ export async function fetchEnrichedProblem(
         idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalLc));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc));
+        if (rawRequestedSlug && rawRequestedSlug !== slug) {
+          idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalLc).catch(() => {});
+          localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalLc));
+        }
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3900,7 +3972,7 @@ export async function fetchEnrichedProblem(
 
   // 3.5. Fetch from GitHub LeetCode Premium Repositories (AkashSingh3031 / doocs)
   try {
-    const ghData = await fetchFromGitHubLeetCode(slugOrTitle);
+    const ghData = await fetchFromGitHubLeetCode(slug);
     if (ghData && isProblemValidAndAuthentic(ghData)) {
       const finalGh = await ensureAtLeast10Cases(ghData);
       try {
@@ -3908,6 +3980,10 @@ export async function fetchEnrichedProblem(
         idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalGh));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh));
+        if (rawRequestedSlug && rawRequestedSlug !== slug) {
+          idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalGh).catch(() => {});
+          localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalGh));
+        }
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3922,7 +3998,8 @@ export async function fetchEnrichedProblem(
 
   // 4. Fetch from GeeksforGeeks API (/api/gfg/{slug} or practice API)
   try {
-    const gfgData = await fetchFromGFGAPI(slugOrTitle);
+    const gfgTarget = (sheetProb?.gfg && sheetProb.gfg.includes('/problems/')) ? sheetProb.gfg : slugOrTitle;
+    const gfgData = await fetchFromGFGAPI(gfgTarget);
     if (gfgData && isProblemValidAndAuthentic(gfgData)) {
       const finalGfg = await ensureAtLeast10Cases(gfgData);
       try {
@@ -3930,6 +4007,10 @@ export async function fetchEnrichedProblem(
         idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg)).catch(() => {});
         localStorage.setItem(cacheKey, JSON.stringify(finalGfg));
         localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg));
+        if (rawRequestedSlug && rawRequestedSlug !== slug) {
+          idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalGfg).catch(() => {});
+          localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalGfg));
+        }
       } catch (_) {}
       return applyOverride(finalGfg);
     }
@@ -3938,7 +4019,7 @@ export async function fetchEnrichedProblem(
   }
 
   // 5. If not found on LeetCode or GFG (custom non-LeetCode problem), generate with Mistral AI
-  let generated = await generateProblemWithMistral(slugOrTitle, category, difficulty, transcript, notes);
+  let generated = await generateProblemWithMistral(slugOrTitle, effectiveCategory, effectiveDifficulty, transcript, notes);
   generated = repairAndHardenProblem(generated);
   const finalGen = await ensureAtLeast10Cases(generated);
   try {
@@ -3946,6 +4027,10 @@ export async function fetchEnrichedProblem(
     idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen)).catch(() => {});
     localStorage.setItem(cacheKey, JSON.stringify(finalGen));
     localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen));
+    if (rawRequestedSlug && rawRequestedSlug !== slug) {
+      idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalGen).catch(() => {});
+      localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalGen));
+    }
   } catch (_) {}
 
   return applyOverride(finalGen);
