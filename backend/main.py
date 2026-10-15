@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import io
 import re
@@ -7,6 +8,7 @@ import random
 import threading
 import sqlite3
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 import asyncio
 import subprocess
@@ -17,7 +19,7 @@ import requests
 import urllib.request
 import urllib.error
 from bs4 import BeautifulSoup
-from typing import Optional, List, Any, Union, Dict
+from typing import Optional, List, Any, Union, Dict, Tuple, Set, Callable
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -1495,26 +1497,30 @@ def clean_html_entities(text: str) -> str:
         return ""
     text = re.sub(r'<sup>([\s\S]*?)</sup>', r'^\1', text, flags=re.IGNORECASE)
     text = re.sub(r'<sub>([\s\S]*?)</sub>', r'_\1', text, flags=re.IGNORECASE)
-    text = html.unescape(text)
-    replacements = {
-        '&ldquo;': '"',
-        '&rdquo;': '"',
-        '&lsquo;': "'",
-        '&rsquo;': "'",
-        '&nbsp;': ' ',
-        '&lt;': '<',
-        '&gt;': '>',
-        '&le;': '<=',
-        '&ge;': '>=',
-        '&quot;': '"',
-        '&#39;': "'",
-        '&amp;': '&',
-        '&hellip;': '...',
-        '&times;': '×',
-        '&minus;': '-',
-    }
-    for k, v in replacements.items():
-        text = text.replace(k, v)
+    for _ in range(3):
+        prev = text
+        text = html.unescape(text)
+        replacements = {
+            '&ldquo;': '"',
+            '&rdquo;': '"',
+            '&lsquo;': "'",
+            '&rsquo;': "'",
+            '&nbsp;': ' ',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&le;': '<=',
+            '&ge;': '>=',
+            '&quot;': '"',
+            '&#39;': "'",
+            '&amp;': '&',
+            '&hellip;': '...',
+            '&times;': '×',
+            '&minus;': '-',
+        }
+        for k, v in replacements.items():
+            text = text.replace(k, v)
+        if text == prev:
+            break
     return text
 
 
@@ -1563,9 +1569,9 @@ def parse_leetcode_html(html_str: str) -> dict:
         out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', pre_clean, re.IGNORECASE)
         exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', pre_clean, re.IGNORECASE)
 
-        inp = in_m.group(1).strip() if in_m else pre_clean
-        outp = out_m.group(1).strip() if out_m else ""
-        exp = exp_m.group(1).strip() if exp_m else None
+        inp = clean_html_entities(in_m.group(1).strip() if in_m else pre_clean)
+        outp = clean_html_entities(out_m.group(1).strip() if out_m else "")
+        exp = clean_html_entities(exp_m.group(1).strip()) if exp_m else None
 
         examples.append({
             "input": inp,
@@ -1582,9 +1588,9 @@ def parse_leetcode_html(html_str: str) -> dict:
             in_m = re.search(r'Input:\s*([\s\S]*?)(?=\nOutput:|$)', text, re.IGNORECASE)
             out_m = re.search(r'Output:\s*([\s\S]*?)(?=\nExplanation:|$)', text, re.IGNORECASE)
             exp_m = re.search(r'Explanation:\s*([\s\S]*?)$', text, re.IGNORECASE)
-            inp = in_m.group(1).strip() if in_m else text
-            outp = out_m.group(1).strip() if out_m else ""
-            exp = exp_m.group(1).strip() if exp_m else None
+            inp = clean_html_entities(in_m.group(1).strip() if in_m else text)
+            outp = clean_html_entities(out_m.group(1).strip() if out_m else "")
+            exp = clean_html_entities(exp_m.group(1).strip()) if exp_m else None
             if inp and outp:
                 examples.append({"input": inp, "output": outp, "explanation": exp})
 
@@ -1836,6 +1842,34 @@ def sanitize_and_harden_testcases(problem_data: dict) -> dict:
         ]
         problem_data["testCases"] = [c[0] for c in standard_vot_cases]
         problem_data["expectedOutputs"] = [c[1] for c in standard_vot_cases]
+
+    # 5. Binary Tree Paths (LeetCode 257)
+    is_bt_paths = "binarytreepaths" in clean_name or clean_slug in ("binary-tree-paths", "257")
+    if is_bt_paths:
+        standard_bt_paths_cases = [
+            ("root = [1,2,3,null,5]", '["1->2->5","1->3"]'),
+            ("root = [1]", '["1"]'),
+            ("root = [1,2,3]", '["1->2","1->3"]'),
+            ("root = [1,2]", '["1->2"]'),
+            ("root = [1,null,2]", '["1->2"]'),
+            ("root = [1,2,3,4,5]", '["1->2->4","1->2->5","1->3"]'),
+            ("root = [3,9,20,null,null,15,7]", '["3->9","3->20->15","3->20->7"]'),
+            ("root = [1,2,null,3,null,4]", '["1->2->3->4"]'),
+            ("root = [1,null,2,null,3,null,4]", '["1->2->3->4"]'),
+            ("root = [5,4,8,11,null,13,4,7,2,null,null,5,1]", '["5->4->11->7","5->4->11->2","5->8->13","5->8->4->5","5->8->4->1"]')
+        ]
+        problem_data["testCases"] = [c[0] for c in standard_bt_paths_cases]
+        problem_data["expectedOutputs"] = [c[1] for c in standard_bt_paths_cases]
+
+    # Universal entity cleanup across all examples and expected outputs
+    if problem_data.get("examples"):
+        for ex in problem_data["examples"]:
+            if "output" in ex:
+                ex["output"] = clean_html_entities(str(ex["output"]))
+            if "input" in ex:
+                ex["input"] = clean_html_entities(str(ex["input"]))
+    if problem_data.get("expectedOutputs"):
+        problem_data["expectedOutputs"] = [clean_html_entities(str(eo)) for eo in problem_data["expectedOutputs"]]
 
     # Ensure first example has image if problem has images
     if problem_data.get("images") and problem_data.get("examples"):

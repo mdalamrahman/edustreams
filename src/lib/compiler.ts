@@ -148,6 +148,15 @@ export function compareOutputs(
     // 1. Direct structural equality (strict order preserved by default)
     if (deepEqual(parsedAct, parsedExp)) return true;
 
+    // 1b. String arrays order-independence (e.g. root-to-leaf paths in any order)
+    if (Array.isArray(parsedAct) && Array.isArray(parsedExp)) {
+      if (parsedAct.length === parsedExp.length && parsedAct.every(x => typeof x === 'string') && parsedExp.every(x => typeof x === 'string')) {
+        const sAct = [...parsedAct].map(s => String(s).trim()).sort();
+        const sExp = [...parsedExp].map(s => String(s).trim()).sort();
+        if (deepEqual(sAct, sExp)) return true;
+      }
+    }
+
     // 2. Order-independent comparison (ONLY applied if problem explicitly designates UNORDERED_SET)
     if (mode === 'UNORDERED_SET') {
       const canonAct = canonicalizeData(parsedAct, true);

@@ -47,6 +47,32 @@ export interface ProblemTemplate {
   driverCode?: Partial<Record<SupportedLanguage, string>>;
 }
 
+/**
+ * Fully decodes HTML entities (&quot;, &gt;, &lt;, &amp;, &#39;, &nbsp;, etc.)
+ * with multi-pass support for double/triple encoded strings.
+ */
+export function decodeHtmlEntities(raw: string): string {
+  if (!raw) return '';
+  let str = String(raw);
+  for (let i = 0; i < 3; i++) {
+    const prev = str;
+    str = str
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&le;/g, '<=')
+      .replace(/&ge;/g, '>=')
+      .replace(/&hellip;/g, '...')
+      .replace(/&times;/g, '×')
+      .replace(/&minus;/g, '-');
+    if (str === prev) break;
+  }
+  return str;
+}
+
 // Normalize problem titles into clean slugs
 export const normalizeProblemTitle = (title?: string): string => {
   return (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -597,6 +623,215 @@ def treeToDoublyList(root):
         inorder(node.right);
     }
 }`
+    }
+  },
+  'binary-tree-paths': {
+    name: 'Binary Tree Paths',
+    category: 'Binary Trees',
+    difficulty: 'Easy',
+    description: `Given the root of a binary tree, return all root-to-leaf paths in any order.
+
+A leaf is a node with no children.
+
+### Example 1:
+![Binary Tree Diagram](https://assets.leetcode.com/uploads/2021/03/12/paths-tree.jpg)
+
+\`\`\`
+Input: root = [1,2,3,null,5]
+Output: ["1->2->5","1->3"]
+\`\`\`
+
+### Example 2:
+\`\`\`
+Input: root = [1]
+Output: ["1"]
+\`\`\`
+
+### Constraints:
+• The number of nodes in the tree is in the range \`[1, 100]\`.
+• \`-100 <= Node.val <= 100\``,
+    images: ['https://assets.leetcode.com/uploads/2021/03/12/paths-tree.jpg'],
+    constraints: [
+      'The number of nodes in the tree is in the range [1, 100].',
+      '-100 <= Node.val <= 100'
+    ],
+    examples: [
+      {
+        input: 'root = [1,2,3,null,5]',
+        output: '["1->2->5","1->3"]',
+        image: 'https://assets.leetcode.com/uploads/2021/03/12/paths-tree.jpg'
+      },
+      {
+        input: 'root = [1]',
+        output: '["1"]'
+      }
+    ],
+    testCases: [
+      'root = [1,2,3,null,5]',
+      'root = [1]',
+      'root = [1,2,3]',
+      'root = [1,2]',
+      'root = [1,null,2]',
+      'root = [1,2,3,4,5]',
+      'root = [3,9,20,null,null,15,7]',
+      'root = [1,2,null,3,null,4]',
+      'root = [1,null,2,null,3,null,4]',
+      'root = [5,4,8,11,null,13,4,7,2,null,null,5,1]'
+    ],
+    expectedOutputs: [
+      '["1->2->5","1->3"]',
+      '["1"]',
+      '["1->2","1->3"]',
+      '["1->2"]',
+      '["1->2"]',
+      '["1->2->4","1->2->5","1->3"]',
+      '["3->9","3->20->15","3->20->7"]',
+      '["1->2->3->4"]',
+      '["1->2->3->4"]',
+      '["5->4->11->7","5->4->11->2","5->8->13","5->8->4->5","5->8->4->1"]'
+    ],
+    starters: {
+      cpp: `/**
+ * Definition for a binary tree node.
+ * struct TreeNode {
+ *     int val;
+ *     TreeNode *left;
+ *     TreeNode *right;
+ *     TreeNode() : val(0), left(nullptr), right(nullptr) {}
+ *     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+ *     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+ * };
+ */
+class Solution {
+public:
+    vector<string> binaryTreePaths(TreeNode* root) {
+        
+    }
+};`,
+      python: `# Definition for a binary tree node.
+# class TreeNode:
+#     def __init__(self, val=0, left=None, right=None):
+#         self.val = val
+#         self.left = left
+#         self.right = right
+class Solution:
+    def binaryTreePaths(self, root: Optional[TreeNode]) -> List[str]:
+        `,
+      java: `/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     int val;
+ *     TreeNode left;
+ *     TreeNode right;
+ *     TreeNode() {}
+ *     TreeNode(int val) { this.val = val; }
+ *     TreeNode(int val, TreeNode left, TreeNode right) {
+ *         this.val = val;
+ *         this.left = left;
+ *         this.right = right;
+ *     }
+ * }
+ */
+class Solution {
+    public List<String> binaryTreePaths(TreeNode root) {
+        
+    }
+}`,
+      javascript: `/**
+ * Definition for a binary tree node.
+ * function TreeNode(val, left, right) {
+ *     this.val = (val===undefined ? 0 : val)
+ *     this.left = (left===undefined ? null : left)
+ *     this.right = (right===undefined ? null : right)
+ * }
+ */
+/**
+ * @param {TreeNode} root
+ * @return {string[]}
+ */
+var binaryTreePaths = function(root) {
+    
+};`
+    },
+    solutions: {
+      cpp: `class Solution {
+public:
+    void dfs(TreeNode* node, string path, vector<string>& result) {
+        if (!node) return;
+        if (!path.empty()) path += "->";
+        path += to_string(node->val);
+        if (!node->left && !node->right) {
+            result.push_back(path);
+            return;
+        }
+        if (node->left) dfs(node->left, path, result);
+        if (node->right) dfs(node->right, path, result);
+    }
+
+    vector<string> binaryTreePaths(TreeNode* root) {
+        vector<string> result;
+        dfs(root, "", result);
+        return result;
+    }
+};`,
+      python: `class Solution:
+    def binaryTreePaths(self, root: Optional[TreeNode]) -> List[str]:
+        if not root:
+            return []
+        paths = []
+        def dfs(node, path):
+            if not node:
+                return
+            path.append(str(node.val))
+            if not node.left and not node.right:
+                paths.append("->".join(path))
+            else:
+                if node.left:
+                    dfs(node.left, path)
+                if node.right:
+                    dfs(node.right, path)
+            path.pop()
+        dfs(root, [])
+        return paths`,
+      java: `class Solution {
+    public List<String> binaryTreePaths(TreeNode root) {
+        List<String> paths = new ArrayList<>();
+        if (root == null) return paths;
+        dfs(root, new StringBuilder(), paths);
+        return paths;
+    }
+
+    private void dfs(TreeNode node, StringBuilder sb, List<String> paths) {
+        if (node == null) return;
+        int len = sb.length();
+        if (len > 0) sb.append("->");
+        sb.append(node.val);
+        if (node.left == null && node.right == null) {
+            paths.add(sb.toString());
+        } else {
+            if (node.left != null) dfs(node.left, sb, paths);
+            if (node.right != null) dfs(node.right, sb, paths);
+        }
+        sb.setLength(len);
+    }
+}`,
+      javascript: `var binaryTreePaths = function(root) {
+    if (!root) return [];
+    const paths = [];
+    function dfs(node, path) {
+        if (!node) return;
+        path.push(String(node.val));
+        if (!node.left && !node.right) {
+            paths.push(path.join('->'));
+        } else {
+            if (node.left) dfs(node.left, path);
+            if (node.right) dfs(node.right, path);
+        }
+        path.pop();
+    }
+    dfs(root, []);
+    return paths;
+};`
     }
   },
   'serialize-and-deserialize-binary-tree': {
@@ -2376,19 +2611,25 @@ export function extractParamNames(starters: Record<SupportedLanguage, string> | 
 export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplate {
   if (!problem) return problem;
 
-  // Guarantee array properties are always defined with safe string elements
+  // Guarantee array properties are always defined with safe string elements and decoded entities
   problem.examples = (Array.isArray(problem.examples) ? problem.examples : []).map(ex => ({
     ...ex,
-    input: ex.input !== null && ex.input !== undefined ? String(ex.input) : '',
-    output: ex.output !== null && ex.output !== undefined ? String(ex.output) : ''
+    input: decodeHtmlEntities(ex.input !== null && ex.input !== undefined ? String(ex.input) : ''),
+    output: decodeHtmlEntities(ex.output !== null && ex.output !== undefined ? String(ex.output) : ''),
+    explanation: ex.explanation ? decodeHtmlEntities(String(ex.explanation)) : undefined
   }));
-  problem.constraints = Array.isArray(problem.constraints) ? problem.constraints : [];
+  problem.constraints = (Array.isArray(problem.constraints) ? problem.constraints : []).map(c =>
+    decodeHtmlEntities(String(c))
+  );
   problem.testCases = (Array.isArray(problem.testCases) ? problem.testCases : []).map(tc =>
-    tc !== null && tc !== undefined ? String(tc) : ''
+    decodeHtmlEntities(tc !== null && tc !== undefined ? String(tc) : '')
   );
   problem.expectedOutputs = (Array.isArray(problem.expectedOutputs) ? problem.expectedOutputs : []).map(eo =>
-    eo !== null && eo !== undefined ? String(eo) : ''
+    decodeHtmlEntities(eo !== null && eo !== undefined ? String(eo) : '')
   );
+  if (problem.description) {
+    problem.description = decodeHtmlEntities(problem.description);
+  }
   problem.hints = Array.isArray(problem.hints) ? problem.hints : [];
   problem.approaches = Array.isArray(problem.approaches) ? problem.approaches : [];
   if (!problem.starters || Object.keys(problem.starters).length === 0) {
@@ -2409,6 +2650,50 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
       }
       problem.driverCode![l] = builtIn;
     }
+  }
+
+  const normProblemName = normalizeProblemTitle(problem.name || '');
+  const isBinaryTreePaths = normProblemName === 'binarytreepaths' ||
+    checkSlug === 'binary-tree-paths' ||
+    (problem.name || '').toLowerCase().includes('binary tree paths') ||
+    JSON.stringify(problem.starters || {}).includes('binaryTreePaths');
+
+  if (isBinaryTreePaths) {
+    problem.examples = [
+      {
+        input: 'root = [1,2,3,null,5]',
+        output: '["1->2->5","1->3"]',
+        image: 'https://assets.leetcode.com/uploads/2021/03/12/paths-tree.jpg'
+      },
+      {
+        input: 'root = [1]',
+        output: '["1"]'
+      }
+    ];
+    problem.testCases = [
+      'root = [1,2,3,null,5]',
+      'root = [1]',
+      'root = [1,2,3]',
+      'root = [1,2]',
+      'root = [1,null,2]',
+      'root = [1,2,3,4,5]',
+      'root = [3,9,20,null,null,15,7]',
+      'root = [1,2,null,3,null,4]',
+      'root = [1,null,2,null,3,null,4]',
+      'root = [5,4,8,11,null,13,4,7,2,null,null,5,1]'
+    ];
+    problem.expectedOutputs = [
+      '["1->2->5","1->3"]',
+      '["1"]',
+      '["1->2","1->3"]',
+      '["1->2"]',
+      '["1->2"]',
+      '["1->2->4","1->2->5","1->3"]',
+      '["3->9","3->20->15","3->20->7"]',
+      '["1->2->3->4"]',
+      '["1->2->3->4"]',
+      '["5->4->11->7","5->4->11->2","5->8->13","5->8->4->5","5->8->4->1"]'
+    ];
   }
 
   const paramNames = extractParamNames(problem.starters, problem.examples);
@@ -2559,7 +2844,6 @@ export function repairAndHardenProblem(problem: ProblemTemplate): ProblemTemplat
   }
 
   // Ensure minimum 10 verified test cases for Next Permutation
-  const normProblemName = (problem.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   if (normProblemName.includes('nextpermutation') && (!problem.testCases || problem.testCases.length < 10)) {
     const standardNextPermCases = [
       { input: 'nums = [1, 2, 3]', output: '[1, 3, 2]' },
@@ -2843,16 +3127,16 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
 
       const preM = body.match(/<pre>([\s\S]*?)<\/pre>/i);
       const preText = preM ? preM[1] : body;
-      const text = preText.replace(/<[^>]+>/g, '').trim();
+      const text = decodeHtmlEntities(preText.replace(/<[^>]+>/g, '')).trim();
 
       const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
       const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
       const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
       if (inM && outM) {
         examples.push({
-          input: inM[1].trim(),
-          output: outM[1].trim(),
-          explanation: expM ? expM[1].trim() : undefined,
+          input: decodeHtmlEntities(inM[1].trim()),
+          output: decodeHtmlEntities(outM[1].trim()),
+          explanation: expM ? decodeHtmlEntities(expM[1].trim()) : undefined,
           image: imgUrl
         });
       }
@@ -2862,15 +3146,15 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
     if (examples.length === 0) {
       const preMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
       for (const m of preMatches) {
-        const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
+        const text = decodeHtmlEntities((m[1] || '').replace(/<[^>]+>/g, '')).trim();
         const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
         const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
         const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
         if (inM && outM) {
           examples.push({
-            input: inM[1].trim(),
-            output: outM[1].trim(),
-            explanation: expM ? expM[1].trim() : undefined
+            input: decodeHtmlEntities(inM[1].trim()),
+            output: decodeHtmlEntities(outM[1].trim()),
+            explanation: expM ? decodeHtmlEntities(expM[1].trim()) : undefined
           });
         }
       }
@@ -2884,7 +3168,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
     const descParts = contentHtml.split(/(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong>|<pre>)/i);
     const descRaw = descParts.length > 1 ? descParts[0] : contentHtml;
 
-    const cleanDesc = descRaw
+    const cleanDesc = decodeHtmlEntities(descRaw
       .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (_match: string, src: string) => `\n\n![Problem Diagram](${normalizeImgUrl(src)})\n\n`)
       .replace(/<p><strong class="example">[\s\S]*?<\/p>/gi, '')
       .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
@@ -2894,14 +3178,8 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
       .replace(/<li>/gi, '• ')
       .replace(/<\/li>/gi, '\n')
       .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&amp;/g, '&')
       .replace(/\n{3,}/g, '\n\n')
-      .trim();
+      .trim());
 
     const starters: Record<SupportedLanguage, string> = {} as any;
     const snippets: any[] = q.codeSnippets || [];
@@ -3511,6 +3789,11 @@ export async function resolveReferenceSolution(
     return existingSolutionCode.trim();
   }
 
+  // 1b. Check if predefined special problem has built-in authentic solution
+  if (PREDEFINED_SPECIAL_PROBLEMS[slug]?.solutions?.[language]) {
+    return PREDEFINED_SPECIAL_PROBLEMS[slug]!.solutions![language]!;
+  }
+
   // 2. Check local browser cache
   try {
     const cachedStr = localStorage.getItem(`edustream_ai_solutions_${slug}`);
@@ -3781,6 +4064,14 @@ export async function fetchEnrichedProblem(
     normSlug.includes('convertbinarytreetodll')
   ) {
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['binary-tree-to-double-linkedlist']);
+  }
+  if (
+    slug === 'binary-tree-paths' ||
+    normSlug === 'binarytreepaths' ||
+    slug.includes('binary-tree-paths') ||
+    slug === '257'
+  ) {
+    return applyOverride(PREDEFINED_SPECIAL_PROBLEMS['binary-tree-paths']);
   }
   if (
     slug === 'serialize-and-deserialize-binary-tree' ||
@@ -4346,6 +4637,261 @@ public class Main {
                 sb.append(col.get(j));
             }
             sb.append("]");
+        }
+        sb.append("]");
+        System.out.println(sb.toString());
+    }
+}
+`;
+    }
+  }
+
+  // === BINARY TREE PATHS ===
+  const isBinaryTreePaths = slug.includes('binary-tree-paths') || slug.includes('binarytreepaths') || slug === '257';
+  if (isBinaryTreePaths) {
+    if (lang === 'cpp' || (lang as any) === 'c++') {
+      return `#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <queue>
+#include <cctype>
+
+using namespace std;
+
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+static TreeNode* parseInputTree(const string& input) {
+    size_t open = input.find('[');
+    size_t close = input.rfind(']');
+    if (open == string::npos || close == string::npos || close <= open) return nullptr;
+    string content = input.substr(open + 1, close - open - 1);
+    if (content.empty()) return nullptr;
+
+    vector<string> tokens;
+    stringstream ss(content);
+    string token;
+    while (getline(ss, token, ',')) {
+        size_t start = 0;
+        while (start < token.size() && isspace(static_cast<unsigned char>(token[start]))) start++;
+        size_t end = token.size();
+        while (end > start && isspace(static_cast<unsigned char>(token[end - 1]))) end--;
+        tokens.push_back(token.substr(start, end - start));
+    }
+    if (tokens.empty() || tokens[0] == "null" || tokens[0].empty()) return nullptr;
+
+    TreeNode* root = new TreeNode(stoi(tokens[0]));
+    queue<TreeNode*> q;
+    q.push(root);
+    size_t i = 1;
+    while (!q.empty() && i < tokens.size()) {
+        TreeNode* current = q.front();
+        q.pop();
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->left = new TreeNode(stoi(tokens[i]));
+            q.push(current->left);
+        }
+        i++;
+        if (i < tokens.size() && tokens[i] != "null" && !tokens[i].empty()) {
+            current->right = new TreeNode(stoi(tokens[i]));
+            q.push(current->right);
+        }
+        i++;
+    }
+    return root;
+}
+
+static string formatStringVector(const vector<string>& res) {
+    ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < res.size(); i++) {
+        if (i > 0) oss << ",";
+        oss << "\\"" << res[i] << "\\"";
+    }
+    oss << "]";
+    return oss.str();
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+    string input = R"RAW(INPUT_PLACEHOLDER)RAW";
+    TreeNode* root = parseInputTree(input);
+    Solution sol;
+    vector<string> res = sol.binaryTreePaths(root);
+    cout << formatStringVector(res) << endl;
+    return 0;
+}
+`;
+    }
+    if (lang === 'python' || (lang as any) === 'py') {
+      return `import collections
+import json
+import sys
+from typing import Optional, List
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# === USER SOLUTION ===
+
+# === HIDDEN DRIVER ===
+def parse_tree(s):
+    lb = s.find('[')
+    rb = s.rfind(']')
+    if lb == -1 or rb == -1 or rb <= lb:
+        return None
+    content = s[lb+1:rb].strip()
+    if not content:
+        return None
+    tokens = [t.strip() for t in content.split(',')]
+    if not tokens or tokens[0] == 'null' or not tokens[0]:
+        return None
+    root = TreeNode(int(tokens[0]))
+    q = collections.deque([root])
+    i = 1
+    while q and i < len(tokens):
+        curr = q.popleft()
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.left = TreeNode(int(tokens[i]))
+            q.append(curr.left)
+        i += 1
+        if i < len(tokens) and tokens[i] != 'null' and tokens[i]:
+            curr.right = TreeNode(int(tokens[i]))
+            q.append(curr.right)
+        i += 1
+    return root
+
+if __name__ == '__main__':
+    raw = """INPUT_PLACEHOLDER"""
+    root = parse_tree(raw)
+    sol = Solution()
+    res = sol.binaryTreePaths(root)
+    print(json.dumps(res if res is not None else [], separators=(',', ':')))
+`;
+    }
+    if (lang === 'javascript' || (lang as any) === 'js') {
+      return `function TreeNode(val, left, right) {
+    this.val = (val===undefined ? 0 : val);
+    this.left = (left===undefined ? null : left);
+    this.right = (right===undefined ? null : right);
+}
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+function parseTree(s) {
+    const lb = s.indexOf('[');
+    const rb = s.lastIndexOf(']');
+    if (lb === -1 || rb === -1 || rb <= lb) return null;
+    const content = s.substring(lb + 1, rb).trim();
+    if (!content) return null;
+    const tokens = content.split(',').map(t => t.trim());
+    if (tokens.length === 0 || tokens[0] === 'null' || !tokens[0]) return null;
+    const root = new TreeNode(parseInt(tokens[0], 10));
+    const q = [root];
+    let i = 1;
+    while (q.length > 0 && i < tokens.length) {
+        const curr = q.shift();
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i]) {
+            curr.left = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.left);
+        }
+        i++;
+        if (i < tokens.length && tokens[i] !== 'null' && tokens[i]) {
+            curr.right = new TreeNode(parseInt(tokens[i], 10));
+            q.push(curr.right);
+        }
+        i++;
+    }
+    return root;
+}
+
+const input = \`INPUT_PLACEHOLDER\`;
+const root = parseTree(input);
+let ans = null;
+if (typeof binaryTreePaths === 'function') {
+    ans = binaryTreePaths(root);
+} else if (typeof Solution === 'function') {
+    const s = new Solution();
+    ans = s.binaryTreePaths(root);
+}
+console.log(JSON.stringify(ans || []));
+`;
+    }
+    if (lang === 'java') {
+      return `import java.util.*;
+
+class TreeNode {
+    int val;
+    TreeNode left;
+    TreeNode right;
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) {
+        this.val = val;
+        this.left = left;
+        this.right = right;
+    }
+}
+
+// === USER SOLUTION ===
+
+// === HIDDEN DRIVER ===
+public class Main {
+    static TreeNode parseTree(String s) {
+        int lb = s.indexOf('[');
+        int rb = s.lastIndexOf(']');
+        if (lb == -1 || rb == -1 || rb <= lb) return null;
+        String content = s.substring(lb + 1, rb).trim();
+        if (content.isEmpty()) return null;
+        String[] tokens = content.split(",");
+        for (int i = 0; i < tokens.length; i++) tokens[i] = tokens[i].trim();
+        if (tokens.length == 0 || tokens[0].equals("null") || tokens[0].isEmpty()) return null;
+        TreeNode root = new TreeNode(Integer.parseInt(tokens[0]));
+        Queue<TreeNode> q = new LinkedList<>();
+        q.add(root);
+        int i = 1;
+        while (!q.isEmpty() && i < tokens.length) {
+            TreeNode curr = q.poll();
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.left = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.left);
+            }
+            i++;
+            if (i < tokens.length && !tokens[i].equals("null") && !tokens[i].isEmpty()) {
+                curr.right = new TreeNode(Integer.parseInt(tokens[i]));
+                q.add(curr.right);
+            }
+            i++;
+        }
+        return root;
+    }
+
+    public static void main(String[] args) {
+        String input = "INPUT_PLACEHOLDER";
+        TreeNode root = parseTree(input);
+        Solution sol = new Solution();
+        List<String> res = sol.binaryTreePaths(root);
+        if (res == null) res = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < res.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("\\"").append(res.get(i)).append("\\"");
         }
         sb.append("]");
         System.out.println(sb.toString());
