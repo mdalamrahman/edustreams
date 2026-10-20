@@ -305,5 +305,30 @@
   background-size: 20px 20px;
 }
 
+/* ==============================================================================
+   MONACO EDITOR — WORD OCCURRENCE / MATCH HIGHLIGHT CURSOR FIX
+   Forces text cursor on occurrence highlights instead of the default pointer,
+   matching LeetCode's code editor experience exactly.
+   ============================================================================== */
+.monaco-editor .wordHighlight,
+.monaco-editor .wordHighlightStrong,
+.monaco-editor .wordHighlightText,
+.monaco-editor .selectionHighlight,
+.monaco-editor .findMatch,
+.monaco-editor .currentFindMatch,
+.monaco-editor .linkedEditing {
+  cursor: text !important;
+}
 
+/* Ensure the editor content area always shows text cursor */
+.monaco-editor .view-lines,
+.monaco-editor .view-line {
+  cursor: text !important;
+}
+
+/* Remove pointer cursor from editor decorations that show clickable hints */
+.monaco-editor .codelens-decoration,
+.monaco-editor .codelens-decoration a {
+  cursor: pointer !important;
+}
 

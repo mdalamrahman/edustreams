@@ -383,11 +383,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         } catch {}
 
-        enriched = guaranteeAtLeast10TestCases(enriched);
+        // Purge any corrupted SAMPLE testcases BEFORE padding hidden cases
+        // (e.g. nums = [] with k >= 1, or null expected output for scalar returns)
+        // IMPORTANT: run this filter FIRST so guaranteeAtLeast10TestCases pads from clean data,
+        // preventing the filter from accidentally stripping valid cycled hidden cases.
         enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
         enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
 
-        // Purge any corrupted testcases (e.g. nums = [] with k >= 1 or null expected output for scalar returns)
         const isKth = targetSlug.includes('kth') || enriched.name.toLowerCase().includes('kth');
         const startersStr = JSON.stringify(enriched.starters || {});
         const isScalar = startersStr.includes('int ') || startersStr.includes('bool ') || startersStr.includes('double ');
@@ -408,6 +410,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             enriched.expectedOutputs = cleanPairs.map(p => p.eo);
           }
         }
+
+        // NOW pad to at least 10 cases (hidden cases = total - sample cases).
+        // Cycled cases inherit correct outputs from originals, so the filter above won't touch them.
+        enriched = guaranteeAtLeast10TestCases(enriched);
+        enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
+        enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
 
         if (
           targetSlug.includes('kth-largest') ||
@@ -3127,7 +3135,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                               folding: true,
                               automaticLayout: true,
                               renderLineHighlight: 'none',
-                              fontFamily: 'Fira Code, JetBrains Mono, monospace'
+                              fontFamily: 'Fira Code, JetBrains Mono, monospace',
+                              mouseStyle: 'text'
                             }}
                           />
                         </div>
@@ -3386,7 +3395,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                     folding: true,
                                     automaticLayout: true,
                                     renderLineHighlight: 'none',
-                                    fontFamily: 'Fira Code, JetBrains Mono, monospace'
+                                    fontFamily: 'Fira Code, JetBrains Mono, monospace',
+                                    mouseStyle: 'text'
                                   }}
                                 />
                               </div>
@@ -3687,7 +3697,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   preview: true
                 },
                 parameterHints: { enabled: true, cycle: true },
-                formatOnType: true
+                formatOnType: true,
+                // LeetCode-style: always show text cursor, never pointer (even on word-match highlights)
+                mouseStyle: 'text'
               }}
             />
           </div>
