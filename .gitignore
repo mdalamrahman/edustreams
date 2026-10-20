@@ -3,6 +3,7 @@ dist
 .vercel
 .env*
 *.session
+*.session-journal
 __pycache__/
 *.pyc
 *.db

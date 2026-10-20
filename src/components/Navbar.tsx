@@ -28,7 +28,8 @@ import {
   ExternalLink,
   FileSearch,
   PanelsTopLeft,
-  Terminal
+  Terminal,
+  TrendingUp
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
@@ -49,6 +50,7 @@ export type AppTab =
   | 'system_design' 
   | 'interview' 
   | 'resume_analyst'
+  | 'career_engine'
   | 'analytics' 
   | 'profile' 
   | 'settings'
@@ -258,6 +260,15 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: FileSearch,
       color: 'text-violet-400',
       activeColor: 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
+    },
+    {
+      id: 'career_engine' as const,
+      path: '/career-engine',
+      label: 'Career & Salary Engine',
+      subtitle: 'FreeHire Live Market & 100% Match',
+      icon: TrendingUp,
+      color: 'text-emerald-400',
+      activeColor: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
     },
     {
       id: 'analytics' as const,

@@ -1021,6 +1021,17 @@ async def add_cors_and_caching_headers_middleware(request: Request, call_next):
     return response
 
 
+# ============================================================================
+# SDETube × FreeHire × Mistral AI Career & Compensation Engine Router
+# ============================================================================
+try:
+    from career_engine import career_router
+    app.include_router(career_router)
+    print("[Career Engine] Successfully mounted SDETube x FreeHire x Mistral Career & Compensation router.")
+except Exception as _ce_err:
+    print(f"[Career Engine Mount Warning]: {_ce_err}")
+
+
 # Pydantic Data Models
 class CodeCompileRequest(BaseModel):
     code: str

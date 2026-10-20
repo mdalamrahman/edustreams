@@ -12,6 +12,7 @@ import { HLDHub } from './components/HLDHub';
 import { UniversalStudioLayout } from './components/studio/UniversalStudioLayout';
 import { InterviewCompanion } from './components/InterviewCompanion';
 import { ResumeAnalyst } from './components/ResumeAnalyst';
+import { CareerSalaryAndJobEnginePage } from './components/CareerSalaryAndJobEnginePage';
 import { DeveloperProfilePage } from './components/DeveloperProfilePage';
 import { AnalyticsPage } from './components/AnalyticsPage';
 import { PrivacyPolicyPage } from './components/PrivacyPolicyPage';
@@ -50,7 +51,10 @@ export function AppRouter() {
         <Route path="/studio/:mode" element={<UniversalStudioLayout />} />
         <Route path="/studio/:mode/:slug" element={<UniversalStudioLayout />} />
 
-        {/* AI Career & Interview Suite */}
+        {/* AI Career & Compensation Engine Suite */}
+        <Route path="/career-engine" element={<CareerSalaryAndJobEnginePage />} />
+        <Route path="/compensation" element={<Navigate to="/career-engine" replace />} />
+        <Route path="/salary-engine" element={<Navigate to="/career-engine" replace />} />
         <Route path="/interview" element={<InterviewCompanion />} />
         <Route path="/resume-analyst" element={<ResumeAnalyst />} />
         <Route path="/resume-analyzer" element={<Navigate to="/resume-analyst" replace />} />

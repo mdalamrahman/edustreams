@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Upload,
   FileText,
@@ -41,11 +42,19 @@ import { AtsDeepDiveView } from './resume/AtsDeepDiveView';
 import { CareerRoadmapView } from './resume/CareerRoadmapView';
 import { ResumePreviewView } from './resume/ResumePreviewView';
 import { AtsResumeCreatorView } from './resume/AtsResumeCreatorView';
+import { CareerSalaryAndJobEngine } from './CareerSalaryAndJobEngine';
 
 type AnalystTab = 'dashboard' | 'creator' | 'flashcards' | 'ats_deep_dive' | 'career_roadmap' | 'preview';
 
 export const ResumeAnalyst: React.FC = () => {
-  const [mainMode, setMainMode] = useState<'analyst' | 'creator'>('analyst');
+  const [searchParams] = useSearchParams();
+  const initialMode = (() => {
+    const t = searchParams.get('tab') || searchParams.get('mode');
+    if (t === 'creator') return 'creator';
+    if (t === 'scanner' || t === 'analyst') return 'analyst';
+    return 'compensation'; // Default to the FreeHire Compensation & Salary Engine
+  })();
+  const [mainMode, setMainMode] = useState<'compensation' | 'analyst' | 'creator'>(initialMode);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState<string>('');
   const [jobDescription, setJobDescription] = useState<string>('');
@@ -207,26 +216,41 @@ export const ResumeAnalyst: React.FC = () => {
     <div className="space-y-8 max-w-[98%] xl:max-w-7xl mx-auto px-2 sm:px-4 py-6">
       
       {/* ========================================================================= */}
-      {/* 0. TOP MODE SELECTOR (SCANNER vs AI RESUME CREATOR)                       */}
+      {/* 0. TOP MODE SELECTOR (COMPENSATION vs SCANNER vs AI RESUME CREATOR)       */}
       {/* ========================================================================= */}
       <div className="flex items-center justify-center">
-        <div className="p-1 rounded-2xl bg-[#090d16]/95 border border-white/[0.08] flex items-center shadow-2xl backdrop-blur-xl">
+        <div className="p-1 rounded-2xl bg-[#090d16]/95 border border-white/[0.08] flex flex-wrap items-center justify-center gap-1 shadow-2xl backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => setMainMode('compensation')}
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
+              mainMode === 'compensation'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black shadow-lg shadow-emerald-500/30'
+                : 'text-stitch-dim hover:text-white'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span>FreeHire Salary &amp; 100% Match Engine</span>
+            <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-md bg-emerald-950/90 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
+              Live ₹ Market
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => setMainMode('analyst')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
               mainMode === 'analyst'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
                 : 'text-stitch-dim hover:text-white'
             }`}
           >
             <BarChart3 className="w-4 h-4 text-cyan-300" />
-            <span>ATS Resume Scanner &amp; Match Matrix</span>
+            <span>ATS Resume Scanner</span>
           </button>
           <button
             type="button"
             onClick={() => setMainMode('creator')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold transition-all cursor-pointer ${
               mainMode === 'creator'
                 ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/30'
                 : 'text-stitch-dim hover:text-white'
@@ -241,7 +265,9 @@ export const ResumeAnalyst: React.FC = () => {
         </div>
       </div>
 
-      {mainMode === 'creator' ? (
+      {mainMode === 'compensation' ? (
+        <CareerSalaryAndJobEngine />
+      ) : mainMode === 'creator' ? (
         <AtsResumeCreatorView
           analysisContext={analysisData}
         />
