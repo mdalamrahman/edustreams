@@ -136,7 +136,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       <Navbar />
 
-      <main className="flex-1 max-w-[98%] mx-auto w-full px-2 sm:px-4 lg:px-6 py-4">
+      <main className="flex-1 max-w-[98%] mx-auto w-full px-2 sm:px-4 lg:px-6 py-4 pb-20 sm:pb-6">
         {children}
       </main>
 

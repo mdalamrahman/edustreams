@@ -303,14 +303,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Sticky Navbar (Google Stitch Obsidian Command) */}
       <header className="sticky top-0 z-40 w-full border-b border-stitch-variant/50 bg-stitch-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]">
-        <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
           
           {/* Left: Hamburger Button + Stitch Brand Logo + Quick Desktop Links */}
-          <div className="flex items-center space-x-3 lg:space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-shrink-0">
             {/* Hamburger Trigger Button */}
             <button
               onClick={() => setIsDrawerOpen(true)}
-              className="p-2 rounded-xl bg-stitch-low hover:bg-stitch-high text-slate-300 hover:text-white border border-stitch-variant shadow-sm transition-all cursor-pointer group flex items-center gap-1.5"
+              className="p-2 rounded-xl bg-stitch-low hover:bg-stitch-high text-slate-300 hover:text-white border border-stitch-variant shadow-sm transition-all cursor-pointer group flex items-center justify-center flex-shrink-0 touch-target"
               title="Open Navigation Menu"
               aria-label="Navigation Menu"
             >
@@ -319,18 +319,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Brand Logo */}
             <div 
-              className="flex items-center space-x-2.5 cursor-pointer flex-shrink-0" 
+              className="flex items-center space-x-2 cursor-pointer flex-shrink-0" 
               onClick={() => handleNavigate('/', 'dashboard')}
             >
-              <div className="w-9 h-9 rounded-xl bg-stitch-high border border-stitch-variant/80 flex items-center justify-center text-stitch-cyan shadow-md">
-                <Terminal className="w-5 h-5 text-stitch-cyan" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stitch-high border border-stitch-variant/80 flex items-center justify-center text-stitch-cyan shadow-md flex-shrink-0">
+                <Terminal className="w-4 h-4 sm:w-5 sm:h-5 text-stitch-cyan" />
               </div>
               <div>
                 <div className="flex items-baseline space-x-0.5">
-                  <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-100 font-sans">
+                  <span className="font-extrabold text-sm sm:text-lg tracking-tight text-slate-100 font-sans">
                     SDET
                   </span>
-                  <span className="font-extrabold text-base sm:text-lg tracking-tight text-stitch-cyan font-sans">
+                  <span className="font-extrabold text-sm sm:text-lg tracking-tight text-stitch-cyan font-sans">
                     ube
                   </span>
                   <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-cyan-500/10 text-stitch-cyan border border-cyan-400/20 ml-1 hidden sm:inline">
@@ -370,17 +370,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Right Section: Wallet Balance + POTD Quick Action + User Avatar & Menu */}
-          <div className="flex items-center space-x-2.5" ref={dropdownRef}>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0" ref={dropdownRef}>
             
             {/* Live Wallet Balance Pill */}
             {onOpenWallet && (
               <button
                 onClick={onOpenWallet}
-                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-bold font-mono transition-all shadow-md cursor-pointer group"
+                className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-bold font-mono transition-all shadow-md cursor-pointer group flex-shrink-0"
                 title="SDETube Credits Wallet. Click to Recharge via UPI QR"
               >
-                <CreditCard className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span>₹{walletBalance.toFixed(2)}</span>
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+                <span className="hidden sm:inline">₹{walletBalance.toFixed(2)}</span>
+                <span className="sm:hidden">₹{Math.floor(walletBalance)}</span>
               </button>
             )}
 
@@ -388,7 +389,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenPotd && (
               <button
                 onClick={onOpenPotd}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group ${
+                className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group flex-shrink-0 ${
                   isPotdSolved
                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-emerald-500/10'
                     : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border-amber-500/40 text-amber-300 hover:text-amber-200'
@@ -396,11 +397,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title={isPotdSolved ? "Today's SDETube POTD Solved! Click to review" : "Open Today's Problem of the Day"}
               >
                 {isPotdSolved ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20 group-hover:scale-110 transition-transform" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20 group-hover:scale-110 transition-transform flex-shrink-0" />
                 ) : (
-                  <Flame className="w-3.5 h-3.5 fill-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
+                  <Flame className="w-3.5 h-3.5 fill-amber-400 animate-pulse group-hover:scale-110 transition-transform flex-shrink-0" />
                 )}
-                <span>{isPotdSolved ? 'POTD Solved ✓' : 'POTD'}</span>
+                <span className="hidden sm:inline">{isPotdSolved ? 'POTD Solved ✓' : 'POTD'}</span>
+                <span className="sm:hidden">{isPotdSolved ? 'Solved' : 'POTD'}</span>
               </button>
             )}
 
@@ -408,29 +410,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenSqlWorkspace && (
               <button
                 onClick={onOpenSqlWorkspace}
-                className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/60 to-blue-950/60 hover:from-cyan-900/60 hover:to-blue-900/60 text-cyan-300 hover:text-cyan-100 text-xs font-bold transition-all shadow-sm cursor-pointer group"
+                className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-950/60 to-blue-950/60 hover:from-cyan-900/60 hover:to-blue-900/60 text-cyan-300 hover:text-cyan-100 text-xs font-bold transition-all shadow-sm cursor-pointer group"
                 title="Open LeetCode SQL Arena (323 Questions)"
               >
-                <Database className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                <Database className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform flex-shrink-0" />
                 <span>SQL Arena</span>
               </button>
             )}
 
-            {/* Profile Page Quick Button */}
+            {/* Profile Page Quick Button (Desktop/Tablet only - mobile has it in drawer & user dropdown) */}
             <button
               onClick={() => {
                 setActiveTab?.('profile');
                 navigate('/profile');
               }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group ${
+              className={`hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer group flex-shrink-0 ${
                 activeTab === 'profile'
                   ? 'bg-purple-600 text-white border-purple-500 shadow-purple-600/30'
                   : 'bg-slate-900 hover:bg-slate-850 border-slate-800 text-purple-300 hover:text-white'
               }`}
               title="Open Developer Profile, Heatmap & Certificates"
             >
-              <User className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Profile</span>
+              <User className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+              <span>Profile</span>
             </button>
 
             {/* User Account / Auth Dropdown */}

@@ -129,28 +129,28 @@ export const LessonPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Workspace Lecture Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-xl">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-slate-900/90 p-3 sm:p-3.5 rounded-2xl border border-slate-800 shadow-xl">
+        <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold border border-slate-700 transition-all shadow-sm active:scale-95 cursor-pointer"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold border border-slate-700 transition-all shadow-sm active:scale-95 cursor-pointer flex-shrink-0"
             title="Return to previous screen"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
 
-          <div className="hidden md:flex items-center space-x-2">
-            <span className="text-xs text-indigo-300 font-mono font-bold px-3 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50 truncate max-w-sm">
+          <div className="flex items-center space-x-2 min-w-0">
+            <span className="text-xs text-indigo-300 font-mono font-bold px-2.5 py-1 rounded-xl bg-indigo-950 border border-indigo-700/50 truncate max-w-[200px] sm:max-w-sm">
               {selectedVideo.title}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
           <button
             onClick={() => openAskAIWithMode('notes')}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm cursor-pointer"
+            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700/60 text-purple-300 text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 flex-shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>Ask AI</span>
@@ -159,26 +159,29 @@ export const LessonPage: React.FC = () => {
           {isSqlLesson ? (
             <button
               onClick={() => navigate('/problem/sql-arena?type=sql')}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 via-sky-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-cyan-400/40 cursor-pointer"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 via-sky-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-cyan-400/40 cursor-pointer flex-shrink-0"
             >
               <Database className="w-4 h-4 text-cyan-200" />
-              <span>Open SQL Compiler</span>
+              <span className="hidden sm:inline">Open SQL Compiler</span>
+              <span className="sm:hidden">SQL Arena</span>
             </button>
           ) : isCodingLesson ? (
             <button
               onClick={handleOpenCodingIde}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40 cursor-pointer"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 border border-indigo-400/40 cursor-pointer flex-shrink-0"
             >
               <Code2 className="w-4 h-4" />
-              <span>Open Coding IDE</span>
+              <span className="hidden sm:inline">Open Coding IDE</span>
+              <span className="sm:hidden">Coding IDE</span>
             </button>
           ) : (
             <button
               onClick={() => openAskAIWithMode('quiz')}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex-shrink-0"
             >
               <HelpCircle className="w-4 h-4 text-emerald-400" />
-              <span>Practice MCQ Quiz</span>
+              <span className="hidden sm:inline">Practice MCQ Quiz</span>
+              <span className="sm:hidden">MCQ Quiz</span>
             </button>
           )}
         </div>

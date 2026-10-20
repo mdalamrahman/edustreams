@@ -747,18 +747,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
       
       {/* Video Title Bar & Navigation Controls */}
-      <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+      <div className="p-3 sm:p-4 bg-slate-900/90 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="min-w-0">
           <div className="flex items-center space-x-2 mb-1">
-            <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700 text-[11px] font-mono font-bold text-indigo-300">
+            <span className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-700 text-[11px] font-mono font-bold text-indigo-300 flex-shrink-0">
               Post #{video.telegram_message_id}
             </span>
-            <span className="text-[11px] font-mono text-slate-400">{video.sender_username || '@EduStreamBot'}</span>
+            <span className="text-[11px] font-mono text-slate-400 truncate">{video.sender_username || '@EduStreamBot'}</span>
           </div>
-          <h2 className="text-base font-bold text-slate-100 line-clamp-1">{video.title}</h2>
+          <h2 className="text-sm sm:text-base font-bold text-slate-100 line-clamp-1 break-words">{video.title}</h2>
         </div>
 
-        <div className="flex items-center space-x-2 flex-shrink-0">
+        <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 justify-end">
           {onPrevLecture && (
             <button
               onClick={onPrevLecture}
@@ -1143,12 +1143,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                     )}
                   </div>
 
-                  <span className="text-[11px] sm:text-xs text-slate-300 font-mono hidden xs:inline">
+                  <span className="text-[10px] sm:text-xs text-slate-300 font-mono hidden sm:inline">
                     {formatTime(currentTime)} / {formatTime(duration)}
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="flex items-center space-x-1 sm:space-x-2">
                   <div className="flex items-center space-x-0.5 bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-0.5 text-xs text-slate-300">
                     {[1, 1.25, 1.5, 2].map((speed) => (
                       <button
