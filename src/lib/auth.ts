@@ -755,3 +755,22 @@ export async function addPasskeyToSupabase(user: StudentUser): Promise<{ success
     };
   }
 }
+
+/**
+ * Instant Recruiter & Guest Demo login without requiring OTP or passkey.
+ * Gives portfolio visitors immediate hands-on access to test all features.
+ */
+export function signInAsGuestDemo(): StudentUser {
+  const demoUser: StudentUser = {
+    id: 'demo-recruiter-' + Math.random().toString(36).substring(2, 9),
+    email: 'recruiter.demo@sdetube.dev',
+    created_at: new Date().toISOString()
+  };
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(demoUser));
+    } catch {}
+  }
+  return demoUser;
+}
+

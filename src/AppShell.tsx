@@ -15,8 +15,17 @@ import { useAppContext } from './lib/AppContext';
 import { trackPageView } from './lib/analyticsTracker';
 import { useSEO } from './lib/useSEO';
 import { LoadingScreen } from './components/LoadingScreen';
+import { PortfolioShowcaseModal } from './components/PortfolioShowcaseModal';
 
 const PUBLIC_ROUTES = [
+  '/',
+  '/channels',
+  '/dsa-sheets',
+  '/sde-sheet',
+  '/dsa-problems',
+  '/lld',
+  '/hld',
+  '/system-design',
   '/privacy',
   '/terms',
   '/contact',
@@ -77,20 +86,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     selectedVideo,
   });
 
+  const [isArchitectureShowcaseOpen, setIsArchitectureShowcaseOpen] = React.useState(false);
+
   // Global custom event listeners
   useEffect(() => {
     const onOpenWallet = () => setIsWalletModalOpen(true);
     const onOpenAuth = () => setIsAuthModalOpen(true);
     const onOpenPotd = () => setIsPotdModalOpen(true);
+    const onOpenArch = () => setIsArchitectureShowcaseOpen(true);
 
     window.addEventListener('sdetube_open_wallet', onOpenWallet);
     window.addEventListener('sdetube_open_auth', onOpenAuth);
     window.addEventListener('sdetube_open_potd', onOpenPotd);
+    window.addEventListener('sdetube_open_architecture_showcase', onOpenArch);
 
     return () => {
       window.removeEventListener('sdetube_open_wallet', onOpenWallet);
       window.removeEventListener('sdetube_open_auth', onOpenAuth);
       window.removeEventListener('sdetube_open_potd', onOpenPotd);
+      window.removeEventListener('sdetube_open_architecture_showcase', onOpenArch);
     };
   }, [setIsWalletModalOpen, setIsAuthModalOpen, setIsPotdModalOpen]);
 
@@ -210,6 +224,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }}
         />
       )}
+
+      <PortfolioShowcaseModal
+        isOpen={isArchitectureShowcaseOpen}
+        onClose={() => setIsArchitectureShowcaseOpen(false)}
+      />
     </div>
   );
 }

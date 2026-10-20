@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --test tests/*.test.mjs",
     "build": "tsc && vite build && python scripts/copy_dist_assets.py",
     "build:student": "tsc && vite build && python scripts/copy_dist_assets.py",
     "build:admin": "cd admin-portal && npm run build",

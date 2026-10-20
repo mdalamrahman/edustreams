@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, ShieldCheck, Zap, Shield, ArrowRight, RefreshCw, Smartphone, Laptop } from 'lucide-react';
-import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle, signInWithEmailOtp } from '../lib/auth';
+import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle, signInWithEmailOtp, signInAsGuestDemo } from '../lib/auth';
 import { verifyStudentPasskey } from '../lib/passkey';
 import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
 import { registerDeviceSession } from '../lib/session';
@@ -436,6 +436,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <span>Continue with Google</span>
             </button>
 
+            {/* Recruiter / Portfolio Demo 1-Click Access */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const demoUser = signInAsGuestDemo();
+                  setSuccessMsg('✨ Welcome to the SDETube Architecture Tour & Live Demo!');
+                  setTimeout(() => {
+                    onSuccess(demoUser);
+                    if (onClose) onClose();
+                  }, 400);
+                }}
+                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:via-cyan-500/30 hover:to-indigo-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-emerald-500/20"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>Explore as Recruiter / Instant Demo</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">1-Click</span>
+              </button>
+            </div>
+
             {/* Switch to Password Option */}
             <div className="pt-2 border-t border-slate-800/80">
               <button
@@ -656,6 +676,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </svg>
               <span>Sign in with Google</span>
             </button>
+
+            {/* Recruiter / Portfolio Demo 1-Click Access */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const demoUser = signInAsGuestDemo();
+                  setSuccessMsg('✨ Welcome to the SDETube Architecture Tour & Live Demo!');
+                  setTimeout(() => {
+                    onSuccess(demoUser);
+                    if (onClose) onClose();
+                  }, 400);
+                }}
+                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:via-cyan-500/30 hover:to-indigo-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-emerald-500/20"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>Explore as Recruiter / Instant Demo</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">1-Click</span>
+              </button>
+            </div>
 
           </form>
         )}

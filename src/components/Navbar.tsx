@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
-import { addPasskeyToSupabase } from '../lib/auth';
+import { addPasskeyToSupabase, signInAsGuestDemo } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
 import { useAppContext } from '../lib/AppContext';
@@ -416,6 +416,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Architecture Tour & Resume Showcase Button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('sdetube_open_architecture_showcase'));
+              }}
+              className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 text-indigo-300 hover:text-indigo-100 text-xs font-bold transition-all shadow-sm cursor-pointer group"
+              title="View Staff Engineer Architecture & Design Decisions"
+            >
+              <Terminal className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span>Architecture</span>
+              <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.2 rounded font-mono font-medium">Tour</span>
+            </button>
+
             {/* Profile Page Quick Button */}
             <button
               onClick={() => {
@@ -449,9 +462,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl p-2 z-50 animate-fadeIn">
                     <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
-                      <div className="text-xs font-bold text-slate-200 truncate">{user.user_metadata?.name || 'SDETube Student'}</div>
+                      <div className="text-xs font-bold text-slate-200 truncate">{user.user_metadata?.name || (user.email === 'recruiter.demo@sdetube.dev' ? 'Recruiter Demo Account' : 'SDETube Student')}</div>
                       <div className="text-[11px] text-slate-400 font-mono truncate">{user.email}</div>
                     </div>
+
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        window.dispatchEvent(new CustomEvent('sdetube_open_architecture_showcase'));
+                      }}
+                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-indigo-300 hover:bg-indigo-950/50 flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Terminal className="w-4 h-4 text-indigo-400" />
+                      <span>Architecture Tour & Decisions</span>
+                    </button>
 
                     <button
                       onClick={() => {
@@ -463,9 +487,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <User className="w-4 h-4 text-purple-400" />
                       <span>Developer Profile & Heatmap</span>
                     </button>
-
-
-
 
                     <button
                       onClick={() => {
@@ -504,13 +525,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
             ) : (
-              <button
-                onClick={onOpenAuthModal}
-                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all cursor-pointer"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Sign In</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const demoUser = signInAsGuestDemo();
+                    appCtx.setUser(demoUser);
+                  }}
+                  className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  title="Explore with 1-Click Recruiter Demo Access"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  <span>Demo Tour</span>
+                </button>
+                <button
+                  onClick={onOpenAuthModal}
+                  className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md shadow-purple-600/30 transition-all cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </button>
+              </div>
             )}
 
           </div>
