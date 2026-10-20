@@ -416,19 +416,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Architecture Tour & Resume Showcase Button */}
-            <button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('sdetube_open_architecture_showcase'));
-              }}
-              className="hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-indigo-500/40 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 text-indigo-300 hover:text-indigo-100 text-xs font-bold transition-all shadow-sm cursor-pointer group"
-              title="View Staff Engineer Architecture & Design Decisions"
-            >
-              <Terminal className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
-              <span>Architecture</span>
-              <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.2 rounded font-mono font-medium">Tour</span>
-            </button>
-
             {/* Profile Page Quick Button */}
             <button
               onClick={() => {
@@ -465,17 +452,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="text-xs font-bold text-slate-200 truncate">{user.user_metadata?.name || (user.email === 'recruiter.demo@sdetube.dev' ? 'Recruiter Demo Account' : 'SDETube Student')}</div>
                       <div className="text-[11px] text-slate-400 font-mono truncate">{user.email}</div>
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        window.dispatchEvent(new CustomEvent('sdetube_open_architecture_showcase'));
-                      }}
-                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-indigo-300 hover:bg-indigo-950/50 flex items-center gap-2 transition-all cursor-pointer"
-                    >
-                      <Terminal className="w-4 h-4 text-indigo-400" />
-                      <span>Architecture Tour & Decisions</span>
-                    </button>
 
                     <button
                       onClick={() => {

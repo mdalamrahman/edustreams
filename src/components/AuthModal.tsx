@@ -442,7 +442,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={() => {
                   const demoUser = signInAsGuestDemo();
-                  setSuccessMsg('✨ Welcome to the SDETube Architecture Tour & Live Demo!');
+                  setSuccessMsg('✨ Welcome to the SDETube Live Demo!');
                   setTimeout(() => {
                     onSuccess(demoUser);
                     if (onClose) onClose();
@@ -683,7 +683,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={() => {
                   const demoUser = signInAsGuestDemo();
-                  setSuccessMsg('✨ Welcome to the SDETube Architecture Tour & Live Demo!');
+                  setSuccessMsg('✨ Welcome to the SDETube Live Demo!');
                   setTimeout(() => {
                     onSuccess(demoUser);
                     if (onClose) onClose();
