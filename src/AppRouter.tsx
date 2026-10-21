@@ -51,10 +51,10 @@ export function AppRouter() {
         <Route path="/studio/:mode" element={<UniversalStudioLayout />} />
         <Route path="/studio/:mode/:slug" element={<UniversalStudioLayout />} />
 
-        {/* AI Career & Compensation Engine Suite */}
-        <Route path="/career-engine" element={<CareerSalaryAndJobEnginePage />} />
-        <Route path="/compensation" element={<Navigate to="/career-engine" replace />} />
-        <Route path="/salary-engine" element={<Navigate to="/career-engine" replace />} />
+        {/* AI Career & ATS Studio Suite */}
+        <Route path="/career-engine" element={<Navigate to="/resume-analyst?tab=jobs" replace />} />
+        <Route path="/compensation" element={<Navigate to="/resume-analyst?tab=jobs" replace />} />
+        <Route path="/salary-engine" element={<Navigate to="/resume-analyst?tab=jobs" replace />} />
         <Route path="/interview" element={<InterviewCompanion />} />
         <Route path="/resume-analyst" element={<ResumeAnalyst />} />
         <Route path="/resume-analyzer" element={<Navigate to="/resume-analyst" replace />} />

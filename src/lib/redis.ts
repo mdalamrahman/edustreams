@@ -481,3 +481,83 @@ export async function testRedisConnection(): Promise<{ success: boolean; latency
     return { success: false, latencyMs: Date.now() - start, error: err?.message || String(err) };
   }
 }
+
+// ============================================================================
+// 6. UNIFIED RESUME ANALYST & FREEHIRE REDIS CACHING
+// ============================================================================
+
+export async function sha256Hex(input: string): Promise<string> {
+  const normalized = input.trim().toLowerCase();
+  try {
+    if (typeof globalThis !== 'undefined' && globalThis.crypto?.subtle) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(normalized);
+      const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+  } catch (_) {}
+
+  // Deterministic fallback hash if crypto.subtle is not accessible
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(16, '0');
+}
+
+export async function buildResumeAnalysisCacheKey(params: {
+  resumeText: string;
+  includeSdeTubeData: boolean;
+  userId?: string;
+  sdeTubeTelemetryHash?: string;
+  targetRole?: string;
+  targetJobId?: string;
+}): Promise<{ cacheKey: string; resumeHash: string }> {
+  const fullHash = await sha256Hex(params.resumeText);
+  const resumeHash = fullHash.slice(0, 24);
+  const roleSlug = (params.targetRole || 'auto').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const jdSlug = params.targetJobId ? `jd_${params.targetJobId}` : 'general';
+
+  if (!params.includeSdeTubeData) {
+    return {
+      resumeHash,
+      cacheKey: `sdetube:analyst:v2:resume_only:${resumeHash}:${roleSlug}:${jdSlug}`,
+    };
+  }
+
+  const uid = params.userId || 'anon';
+  const telemetryHash = params.sdeTubeTelemetryHash || 'no_telemetry';
+  return {
+    resumeHash,
+    cacheKey: `sdetube:analyst:v2:with_sdetube:${resumeHash}:${uid}:${telemetryHash}:${roleSlug}:${jdSlug}`,
+  };
+}
+
+export async function getCachedResumeAnalysis<T = any>(cacheKey: string): Promise<T | null> {
+  try {
+    return await redis.get<T>(cacheKey);
+  } catch (err) {
+    console.warn('[Redis Cache Read Error]:', err);
+    return null;
+  }
+}
+
+export async function setCachedResumeAnalysis<T = any>(
+  cacheKey: string,
+  data: T,
+  ttlSeconds: number = 86400 // 24 hours
+): Promise<void> {
+  try {
+    await redis.set(cacheKey, data, { ex: ttlSeconds });
+  } catch (err) {
+    console.warn('[Redis Cache Write Error]:', err);
+  }
+}
+

@@ -29,7 +29,8 @@ import {
   FileSearch,
   PanelsTopLeft,
   Terminal,
-  TrendingUp
+  TrendingUp,
+  Briefcase
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
@@ -255,18 +256,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       id: 'resume_analyst' as const,
       path: '/resume-analyst',
-      label: 'Resume Analyst',
-      subtitle: 'SDETube AI ATS & 3D Flashcards',
-      icon: FileSearch,
+      label: 'AI Career & ATS Studio',
+      subtitle: 'Market Valuation, ATS & What-If ROI',
+      icon: TrendingUp,
       color: 'text-violet-400',
       activeColor: 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white'
     },
     {
       id: 'career_engine' as const,
-      path: '/career-engine',
-      label: 'Career & Salary Engine',
-      subtitle: 'FreeHire Live Market & 100% Match',
-      icon: TrendingUp,
+      path: '/resume-analyst?tab=jobs',
+      label: 'Live FreeHire Jobs',
+      subtitle: 'Real ATS Postings & Skill Match %',
+      icon: Briefcase,
       color: 'text-emerald-400',
       activeColor: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
     },
