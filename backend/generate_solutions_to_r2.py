@@ -19,7 +19,7 @@ sys.path.insert(0, '.')
 from backend.r2_storage import r2_storage
 from backend.scrape_leetcode_to_r2 import get_sde_sheet_slugs
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def generate_solution_for_problem(title: str, description: str, starters: dict) -> dict:
@@ -68,8 +68,9 @@ Return ONLY valid JSON matching this exact structure:
 
     # Fallback to Mistral API
     try:
+        mistral_key = os.getenv("MISTRAL_API_KEY", "")
         m_headers = {
-            "Authorization": "Bearer ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5",
+            "Authorization": f"Bearer {mistral_key}",
             "Content-Type": "application/json"
         }
         m_payload = {

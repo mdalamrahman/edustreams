@@ -3056,7 +3056,11 @@ export const InterviewCompanion: React.FC<InterviewCompanionProps> = ({ onBackTo
                     scrollBeyondLastLine: false,
                     lineNumbers: 'on',
                     tabSize: 4,
-                    automaticLayout: true
+                    automaticLayout: true,
+                    fixedOverflowWidgets: true,
+                    acceptSuggestionOnEnter: 'smart',
+                    tabCompletion: 'off',
+                    formatOnType: false
                   }}
                 />
 

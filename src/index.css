@@ -306,10 +306,73 @@
 }
 
 /* ==============================================================================
-   MONACO EDITOR — WORD OCCURRENCE / MATCH HIGHLIGHT CURSOR FIX
-   Forces text cursor on occurrence highlights instead of the default pointer,
-   matching LeetCode's code editor experience exactly.
+   MONACO EDITOR COMPREHENSIVE TYPING & CURSOR FIX (LEETCODE / VS CODE PARITY)
+   Fixes box-sizing desync from Tailwind, letter-spacing cursor drift,
+   and character measurement errors that make typing and deleting difficult.
    ============================================================================== */
+
+/* 1. Prevent Tailwind CSS box-sizing: border-box from breaking Monaco character measurement */
+.monaco-editor,
+.monaco-editor .view-lines,
+.monaco-editor .view-line,
+.monaco-editor .lines-content,
+.monaco-editor .cursor,
+.monaco-editor .cursors-layer,
+.monaco-editor .glyph-margin {
+  box-sizing: content-box !important;
+}
+
+/* 2. Enforce strict monospace character width with 0 letter/word spacing & disable ligature drift */
+.monaco-editor,
+.monaco-editor .view-line,
+.monaco-editor .view-line span,
+.monaco-editor textarea.inputarea {
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+}
+
+/* 3. Textarea input area must not be shifted or deformed by Tailwind resets */
+.monaco-editor textarea.inputarea {
+  position: absolute !important;
+  outline: none !important;
+  resize: none !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  line-height: inherit !important;
+}
+
+/* 4. Fix suggest widget z-index, visibility, and prevent overlapping lines */
+.monaco-editor .suggest-widget {
+  z-index: 100 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: #0d111a !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list {
+  background-color: #0d111a !important;
+}
+
+/* 5. Snippet TabStop placeholder borders must not displace character widths */
+.monaco-editor .snippet-placeholder {
+  border: none !important;
+  background: rgba(99, 102, 241, 0.25) !important;
+  border-bottom: 2px solid #6366f1 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+}
+
+.monaco-editor .finish-snippet-placeholder {
+  border: none !important;
+}
+
+/* 6. Word occurrences, selections, and text cursor consistency */
 .monaco-editor .wordHighlight,
 .monaco-editor .wordHighlightStrong,
 .monaco-editor .wordHighlightText,
@@ -320,7 +383,6 @@
   cursor: text !important;
 }
 
-/* Ensure the editor content area always shows text cursor */
 .monaco-editor .view-lines,
 .monaco-editor .view-line {
   cursor: text !important;
@@ -331,4 +393,5 @@
 .monaco-editor .codelens-decoration a {
   cursor: pointer !important;
 }
+
 

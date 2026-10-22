@@ -50,9 +50,12 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
     }
 
     // 2. Fetch from database (Supabase)
-    const res = await fetch(`https://bbxwgezqiqjbmxthchfn.supabase.co/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
+    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
+    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
+    const res = await fetch(`${sbUrl}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo',
+        'apikey': sbKey,
+        'Authorization': `Bearer ${sbKey}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     });
@@ -90,9 +93,12 @@ export async function isUserAllowedToDownloadVideo(userEmail?: string | null): P
   if (cleanEmail.includes('mdalamrahman4') || cleanEmail.includes('admin@aspersde')) return true;
 
   try {
-    const res = await fetch(`https://bbxwgezqiqjbmxthchfn.supabase.co/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
+    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
+    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
+    const res = await fetch(`${sbUrl}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo',
+        'apikey': sbKey,
+        'Authorization': `Bearer ${sbKey}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     });

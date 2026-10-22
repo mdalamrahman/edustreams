@@ -512,6 +512,44 @@ export async function sha256Hex(input: string): Promise<string> {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(16, '0');
 }
 
+export async function sha256Short(input: string): Promise<string> {
+  const hex = await sha256Hex(input);
+  return hex.slice(0, 20);
+}
+
+export interface AnalystCacheKeyParams {
+  resumeText: string;
+  includeSdeTubeData: boolean;
+  userId?: string;
+  sdeTubeTelemetryHash?: string;
+  country: string;              // e.g., 'IN', 'US', 'GB', 'DE', 'SG'
+  preferredCity: string;        // e.g., 'Bengaluru', 'Kolkata', 'Hyderabad', 'Any'
+  workMode: 'all' | 'remote' | 'hybrid' | 'onsite';
+  targetRole?: string;
+  targetJobId?: string;
+}
+
+export async function buildLocationAwareAnalystCacheKey(
+  params: AnalystCacheKeyParams
+): Promise<{ analysisCacheKey: string; jobsCacheKey: string; resumeHash: string }> {
+  const resumeHash = await sha256Short(params.resumeText);
+  const roleSlug = (params.targetRole || 'auto').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const locSlug = `${params.country.toLowerCase()}_${params.preferredCity.toLowerCase().replace(/[^a-z0-9]+/g, '')}_${params.workMode}`;
+  const jdSlug = params.targetJobId ? `jd_${params.targetJobId}` : 'general';
+
+  const modeSegment = params.includeSdeTubeData
+    ? `sdetube_on:${params.userId || 'anon'}:${params.sdeTubeTelemetryHash || 'v0'}`
+    : `sdetube_off`;
+
+  return {
+    resumeHash,
+    // Caches full Valuation + ATS Audit + Skill ROI + Role Transitions (TTL: 24 Hours)
+    analysisCacheKey: `sdetube:analyst:v3:${modeSegment}:${resumeHash}:${locSlug}:${roleSlug}:${jdSlug}`,
+    // Caches FreeHire Live Job Feed for this skill+location cluster (TTL: 1 Hour)
+    jobsCacheKey: `sdetube:freehire:v3:${locSlug}:${roleSlug}:${resumeHash.slice(0, 8)}`,
+  };
+}
+
 export async function buildResumeAnalysisCacheKey(params: {
   resumeText: string;
   includeSdeTubeData: boolean;
@@ -519,7 +557,29 @@ export async function buildResumeAnalysisCacheKey(params: {
   sdeTubeTelemetryHash?: string;
   targetRole?: string;
   targetJobId?: string;
-}): Promise<{ cacheKey: string; resumeHash: string }> {
+  country?: string;
+  preferredCity?: string;
+  workMode?: 'all' | 'remote' | 'hybrid' | 'onsite';
+}): Promise<{ cacheKey: string; resumeHash: string; jobsCacheKey?: string }> {
+  if (params.country && params.preferredCity && params.workMode) {
+    const res = await buildLocationAwareAnalystCacheKey({
+      resumeText: params.resumeText,
+      includeSdeTubeData: params.includeSdeTubeData,
+      userId: params.userId,
+      sdeTubeTelemetryHash: params.sdeTubeTelemetryHash,
+      country: params.country,
+      preferredCity: params.preferredCity,
+      workMode: params.workMode,
+      targetRole: params.targetRole,
+      targetJobId: params.targetJobId
+    });
+    return {
+      cacheKey: res.analysisCacheKey,
+      resumeHash: res.resumeHash,
+      jobsCacheKey: res.jobsCacheKey
+    };
+  }
+
   const fullHash = await sha256Hex(params.resumeText);
   const resumeHash = fullHash.slice(0, 24);
   const roleSlug = (params.targetRole || 'auto').toLowerCase().replace(/[^a-z0-9]+/g, '_');

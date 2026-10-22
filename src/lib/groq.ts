@@ -1,5 +1,5 @@
 // Groq STT Speech-to-Text API Client
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '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';
+const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '';
 
 export interface GroqTranscriptionResponse {
   text: string;

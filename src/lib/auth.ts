@@ -156,7 +156,8 @@ const getRedirectUrl = (): string => {
   return 'https://sdetube.pages.dev';
 };
 
-const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo';
+const SUPABASE_SERVICE_ROLE_KEY = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY) || 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_SERVICE_ROLE_KEY) || '';
 
 /**
  * Signs up a student via Supabase Auth, generates a 6-digit OTP and direct verification link,

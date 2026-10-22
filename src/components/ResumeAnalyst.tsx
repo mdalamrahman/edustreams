@@ -36,7 +36,8 @@ import {
   Sliders,
   DollarSign,
   Building2,
-  HelpCircle
+  HelpCircle,
+  MapPin
 } from 'lucide-react';
 import {
   UnifiedResumeAnalysisResponse,
@@ -47,7 +48,11 @@ import {
   LiveJobMatch,
   SkillRoiRecommendation,
   RoleTransitionPath,
-  ResumeAnalysisResult
+  ResumeAnalysisResult,
+  UserLocationPreferences,
+  DEFAULT_LOCATION_PREFERENCES,
+  INDIA_CITY_MULTIPLIERS,
+  DualMarketValuation
 } from '../lib/resumeAnalyzerService';
 import {
   canAffordAction,
@@ -87,6 +92,8 @@ export const ResumeAnalyst: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<UnifiedStudioTab>(initialTab);
   const [includeSdeTubeData, setIncludeSdeTubeData] = useState<boolean>(true);
+  const [locationPrefs, setLocationPrefs] = useState<UserLocationPreferences>(DEFAULT_LOCATION_PREFERENCES);
+  const [jobsLaneFilter, setJobsLaneFilter] = useState<'domestic' | 'outside' | 'all'>('domestic');
   const [simulatedSkills, setSimulatedSkills] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState<string>(SAMPLE_RESUMES[0].preview);
@@ -126,7 +133,9 @@ export const ResumeAnalyst: React.FC = () => {
   const executeAnalysis = useCallback(async (
     textToAnalyze: string,
     withSdeTube: boolean,
-    force: boolean = false
+    force: boolean = false,
+    locOverride?: UserLocationPreferences,
+    simBoostOverride?: number
   ) => {
     const startTime = performance.now();
     try {
@@ -134,12 +143,17 @@ export const ResumeAnalyst: React.FC = () => {
       else setIsAnalyzing(true);
       setError(null);
 
+      const activeLoc = locOverride || locationPrefs;
+      const activeSimBoost = simBoostOverride !== undefined ? simBoostOverride : simulatedBoost;
+
       const result = await runUnifiedResumeAnalysis({
         resumeText: textToAnalyze,
         includeSdeTubeData: withSdeTube,
         targetRole,
         targetJobDescription: targetJobForScan?.rawDescription,
         targetJobId: targetJobForScan?.id,
+        locationPreferences: activeLoc,
+        simulatedSkillsBoost: activeSimBoost,
         forceRefresh: force
       });
 
@@ -154,11 +168,11 @@ export const ResumeAnalyst: React.FC = () => {
       setIsRefreshing(false);
       setAnalyzingStep(0);
     }
-  }, [targetRole, targetJobForScan]);
+  }, [targetRole, targetJobForScan, locationPrefs]);
 
   // Initial auto-run on mount
   useEffect(() => {
-    executeAnalysis(resumeText, includeSdeTubeData, false);
+    executeAnalysis(resumeText, includeSdeTubeData, false, locationPrefs, 0);
   }, []);
 
   // File selection
@@ -180,17 +194,30 @@ export const ResumeAnalyst: React.FC = () => {
     }
   }, [includeSdeTubeData, executeAnalysis]);
 
+  // Update Location Preferences & Trigger Fast Refresh
+  const updateLocationPrefs = (updates: Partial<UserLocationPreferences>) => {
+    const next: UserLocationPreferences = { ...locationPrefs, ...updates };
+    setLocationPrefs(next);
+    executeAnalysis(resumeText, includeSdeTubeData, false, next, simulatedBoost);
+  };
+
   // Toggle SDETube Verified Telemetry
   const handleToggleSdeTubeData = async (checked: boolean) => {
     setIncludeSdeTubeData(checked);
-    await executeAnalysis(resumeText, checked, false);
+    await executeAnalysis(resumeText, checked, false, locationPrefs, simulatedBoost);
   };
 
   // Toggle Simulated "What-If" Skill
   const handleToggleSimulatedSkill = (skillName: string) => {
-    setSimulatedSkills(prev =>
-      prev.includes(skillName) ? prev.filter(s => s !== skillName) : [...prev, skillName]
-    );
+    setSimulatedSkills(prev => {
+      const next = prev.includes(skillName) ? prev.filter(s => s !== skillName) : [...prev, skillName];
+      const newBoost = next.reduce((sum, name) => {
+        const rec = unifiedData?.skillRoiRecommendations.find(r => r.skillName === name);
+        return sum + (rec ? rec.marketValueDeltaLPA : 2.5);
+      }, 0);
+      executeAnalysis(resumeText, includeSdeTubeData, false, locationPrefs, newBoost);
+      return next;
+    });
   };
 
   // Calculate Marginal Boost from Simulated Skills
@@ -202,11 +229,30 @@ export const ResumeAnalyst: React.FC = () => {
     }, 0);
   }, [unifiedData, simulatedSkills]);
 
-  // Total Projected Market Value (Base + SDETube + Simulated)
+  // Total Projected Market Value (Domestic)
   const currentTotalLpa = useMemo(() => {
     if (!unifiedData) return 21.5;
+    if (unifiedData.dualValuation) {
+      return unifiedData.dualValuation.domestic.totalEstimatedValue;
+    }
     return Number((unifiedData.marketValuation.totalEstimatedValueLPA + simulatedBoost).toFixed(1));
   }, [unifiedData, simulatedBoost]);
+
+  // Filtered Jobs based on 2-Lane Location Preferences
+  const displayedJobs = useMemo(() => {
+    if (!unifiedData) return [];
+    if (jobsLaneFilter === 'domestic') {
+      return (unifiedData.domesticJobs && unifiedData.domesticJobs.length > 0)
+        ? unifiedData.domesticJobs
+        : unifiedData.liveJobs;
+    }
+    if (jobsLaneFilter === 'outside') {
+      return (unifiedData.outsideCountryJobs && unifiedData.outsideCountryJobs.length > 0)
+        ? unifiedData.outsideCountryJobs
+        : unifiedData.liveJobs;
+    }
+    return unifiedData.liveJobs;
+  }, [unifiedData, jobsLaneFilter]);
 
   // Preload Sample Resume
   const handleLoadSample = (sampleId: string) => {
@@ -274,127 +320,220 @@ export const ResumeAnalyst: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. PERSISTENT TOP VALUATION, CONTROL & TELEMETRY BAR                       */}
       {/* ========================================================================= */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#090d16]/95 p-4 sm:p-6 shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#090d16]/95 p-4 sm:p-5 shadow-2xl backdrop-blur-xl">
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        {/* Top Control Grid: 3-column / 12-col layout */}
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-center">
           
-          {/* Left: Active Resume Badge & File Switcher */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 font-mono text-[11px] font-bold text-cyan-400 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-cyan-300" />
-                <span>AI CAREER VALUATION &bull; ATS STUDIO</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-[#111622] border border-white/[0.08] text-[10px] font-mono text-stitch-dim">
-                REDIS PERSISTENCE &bull; FREEHIRE ATS SYNC
-              </span>
+          {/* 1. Resume Upload & Active File Pill (3 cols) */}
+          <div className="lg:col-span-3 flex items-center justify-between bg-slate-950/70 border border-slate-800 rounded-xl px-3.5 py-2.5">
+            <div className="truncate mr-2">
+              <div className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                <span className="truncate">{selectedFile ? selectedFile.name : 'Sample Resume (SDE-2)'}</span>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                {unifiedData?.parsedCandidate.resumeSkills.length || 12} Skills &bull; {unifiedData?.parsedCandidate.extractedYoe || 2.5} YOE Detected
+              </div>
+            </div>
+            <label className="px-2.5 py-1 text-xs font-mono font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1">
+              <Upload className="w-3 h-3" />
+              <span>Upload</span>
+              <input
+                type="file"
+                accept=".pdf,.txt,.md"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* 2. Country, Domestic City & Remote Filter (5 cols) */}
+          <div className="lg:col-span-5 grid grid-cols-3 gap-2">
+            {/* Country Selector */}
+            <div>
+              <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-400 mb-1">
+                Country
+              </label>
+              <select
+                value={locationPrefs.countryCode}
+                onChange={(e) => updateLocationPrefs({
+                  countryCode: e.target.value as any,
+                  countryName: e.target.value === 'IN' ? 'India' : e.target.value === 'US' ? 'USA' : e.target.value === 'GB' ? 'UK' : e.target.value === 'DE' ? 'Germany' : e.target.value === 'SG' ? 'Singapore' : 'UAE',
+                  currencySymbol: e.target.value === 'IN' ? '₹' : e.target.value === 'US' ? '$' : e.target.value === 'GB' ? '£' : e.target.value === 'DE' ? '€' : e.target.value === 'SG' ? 'S$' : 'AED',
+                  currencyUnit: e.target.value === 'IN' ? 'LPA' : 'K/yr'
+                })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+              >
+                <option value="IN">🇮🇳 India (₹ LPA)</option>
+                <option value="US">🇺🇸 USA ($ USD)</option>
+                <option value="GB">🇬🇧 UK (£ GBP)</option>
+                <option value="DE">🇩🇪 EU / Germany (€)</option>
+                <option value="SG">🇸🇬 Singapore (S$)</option>
+                <option value="AE">🇦🇪 UAE (AED)</option>
+              </select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0f1422] border border-white/[0.08] text-xs font-mono">
-                <FileText className="w-4 h-4 text-cyan-400" />
-                <span className="font-semibold text-white truncate max-w-[160px] sm:max-w-[220px]">
-                  {selectedFile ? selectedFile.name : 'Sample Resume (SDE-2 Full Stack)'}
-                </span>
-                <span className="text-[10px] text-stitch-dim">
-                  ({unifiedData?.parsedCandidate.extractedYoe || 2.5} YOE &bull; {unifiedData?.parsedCandidate.resumeSkills.length || 12} Skills)
-                </span>
-              </div>
-
-              <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-stitch-surface hover:bg-stitch-card border border-white/[0.08] hover:border-cyan-400/40 text-xs font-mono text-stitch-dim hover:text-white transition flex items-center gap-1.5">
-                <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Upload PDF</span>
-                <input
-                  type="file"
-                  accept=".pdf,.txt,.md"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                />
+            {/* Within-Country City / Hub Selector */}
+            <div>
+              <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-400 mb-1">
+                Preferred Hub / City
               </label>
-
-              <button
-                type="button"
-                onClick={() => handleLoadSample('sde2-fullstack')}
-                className="text-[11px] font-mono text-stitch-dim hover:text-cyan-300 underline underline-offset-4"
+              <select
+                value={locationPrefs.preferredCity}
+                onChange={(e) => updateLocationPrefs({ preferredCity: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
               >
-                Reset Demo
-              </button>
+                <option value="Bengaluru">Bengaluru (+15%)</option>
+                <option value="Hyderabad">Hyderabad (+10%)</option>
+                <option value="Pune">Pune (+4%)</option>
+                <option value="NCR (Gurugram / Noida)">NCR (Gurugram/Noida)</option>
+                <option value="Mumbai">Mumbai (+6%)</option>
+                <option value="Chennai">Chennai (+2%)</option>
+                <option value="Kolkata">Kolkata (-8%)</option>
+                <option value="Anywhere in India">Any City (National)</option>
+              </select>
+            </div>
+
+            {/* Work Mode / Remote Filter for FreeHire & Valuation */}
+            <div>
+              <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-400 mb-1">
+                Work Mode
+              </label>
+              <select
+                value={locationPrefs.workModeFilter}
+                onChange={(e) => updateLocationPrefs({
+                  workModeFilter: e.target.value as any,
+                  preferDomesticRemote: e.target.value === 'remote'
+                })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
+              >
+                <option value="all">City + Remote (All)</option>
+                <option value="remote">Remote Preferred</option>
+                <option value="hybrid">Hybrid ({locationPrefs.preferredCity})</option>
+                <option value="onsite">In-Office ({locationPrefs.preferredCity})</option>
+              </select>
             </div>
           </div>
 
-          {/* Center: Interactive SDETube Telemetry Toggle Checkbox */}
-          <div className="flex-shrink-0">
-            <label className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-950/60 border border-indigo-500/40 cursor-pointer hover:border-indigo-400 transition select-none shadow-lg shadow-indigo-950/20">
+          {/* 3. SDETube Telemetry Checkbox Toggle (4 cols) */}
+          <div className="lg:col-span-4 flex items-center justify-between gap-2.5">
+            <label className="flex items-center gap-3 px-3 py-2 rounded-xl bg-indigo-950/60 border border-indigo-500/40 cursor-pointer hover:border-indigo-400 transition select-none flex-1">
               <input
                 type="checkbox"
                 checked={includeSdeTubeData}
                 onChange={(e) => handleToggleSdeTubeData(e.target.checked)}
                 className="w-4 h-4 accent-indigo-500 rounded cursor-pointer"
               />
-              <div>
-                <div className="text-xs font-semibold text-indigo-200 flex items-center gap-2">
-                  <span>Include SDETube Verified Telemetry</span>
-                  <span className={`px-1.5 py-0.5 text-[10px] font-mono font-bold rounded ${
-                    includeSdeTubeData
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    {includeSdeTubeData
-                      ? `+₹${unifiedData?.marketValuation.sdeTubeBoostLPA || 2.4} LPA Boost Active`
-                      : 'Resume-Only Mode'}
-                  </span>
+              <div className="truncate">
+                <div className="text-xs font-semibold text-indigo-200 flex items-center gap-1.5 truncate">
+                  <span className="truncate">SDETube Activity</span>
+                  {unifiedData?.fromCache && (
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono flex-shrink-0">
+                      ⚡ Redis
+                    </span>
+                  )}
                 </div>
-                <div className="text-[11px] text-slate-400 hidden sm:block">
-                  Merges DSA/SQL solutions, HLD/LLD sandboxes &amp; AI mock interview scores
+                <div className="text-[10px] text-slate-400 truncate">
+                  {includeSdeTubeData
+                    ? `Boost: +₹${unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} LPA / +$${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.sdeTubeBoostUSD ?? 8500).toLocaleString()}`
+                    : 'Resume-Only Valuation'}
                 </div>
               </div>
             </label>
-          </div>
 
-          {/* Right: Live Market Value Counter & Redis Status */}
-          <div className="flex items-center gap-4 flex-shrink-0 justify-between lg:justify-end">
-            <div className="text-right">
-              <div className="text-[10px] font-mono uppercase font-bold text-stitch-dim tracking-wider">
-                Current Market Valuation
-              </div>
-              <div className="flex items-baseline justify-end gap-1.5">
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-400">
-                  ₹{currentTotalLpa} LPA
-                </span>
-                {simulatedBoost > 0 && (
-                  <span className="text-xs font-mono font-bold text-amber-300 animate-pulse">
-                    (+₹{simulatedBoost.toFixed(1)}L What-If)
-                  </span>
-                )}
-              </div>
-              <div className="text-[10px] font-mono text-stitch-dim">
-                Confidence: <span className="text-cyan-300 font-bold">{unifiedData?.marketValuation.confidenceScore || 85}%</span> &bull; Top {100 - (unifiedData?.marketValuation.marketPercentile || 82)}%
-              </div>
-            </div>
-
-            {/* Redis Cache Pill & Refresh */}
-            <div className="flex flex-col items-end gap-1.5 pl-3 border-l border-white/[0.08]">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0b101c] border border-cyan-500/20 text-[10px] font-mono text-cyan-300">
-                <Zap className="w-3 h-3 text-cyan-400" />
-                <span>Redis {unifiedData?.fromCache ? `⚡ (<${loadLatencyMs}ms)` : 'Fresh'}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => executeAnalysis(resumeText, includeSdeTubeData, true)}
-                disabled={isRefreshing}
-                className="text-[10px] font-mono text-stitch-dim hover:text-white flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-                title="Force refresh analysis from scratch"
-              >
-                <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
-                <span>Force Refresh</span>
-              </button>
-            </div>
-
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => executeAnalysis(resumeText, includeSdeTubeData, true, locationPrefs, simulatedBoost)}
+              disabled={isRefreshing}
+              className="p-2.5 rounded-xl bg-[#0f1422] border border-white/[0.08] text-stitch-dim hover:text-white transition disabled:opacity-50 cursor-pointer flex-shrink-0"
+              title="Force refresh analysis"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
+            </button>
           </div>
 
         </div>
+
+        {/* Dual Market Valuation Banner: In-Country vs Outside-Country */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-4 pt-4 border-t border-slate-800/80">
+          
+          {/* Card A: Within-Country Market Value */}
+          <div className="bg-slate-950/80 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col justify-between shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-mono font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                <span>In-Country Value ({unifiedData?.dualValuation?.domestic.cityOrRemoteLabel || locationPrefs.preferredCity})</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                {INDIA_CITY_MULTIPLIERS[locationPrefs.preferredCity]?.label || 'Active Hub'}
+              </span>
+            </div>
+
+            <div className="my-1.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                  ₹{unifiedData?.dualValuation?.domestic.totalEstimatedValue ?? currentTotalLpa} LPA
+                </span>
+                <span className="text-xs font-mono text-slate-400">
+                  (Range: ₹{unifiedData?.dualValuation?.domestic.range.min ?? (currentTotalLpa * 0.84).toFixed(1)} – ₹{unifiedData?.dualValuation?.domestic.range.max ?? (currentTotalLpa * 1.26).toFixed(1)} LPA)
+                </span>
+              </div>
+            </div>
+
+            <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
+              <span>Resume Base: <strong className="text-slate-200">₹{unifiedData?.dualValuation?.domestic.baseResumeOnlyValue ?? (currentTotalLpa - 2.4).toFixed(1)} LPA</strong></span>
+              {includeSdeTubeData && (
+                <span className="text-emerald-400">
+                  &bull; SDETube Boost: <strong>+₹{unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} LPA</strong>
+                </span>
+              )}
+              {simulatedBoost > 0 && (
+                <span className="text-amber-300">
+                  &bull; What-If: <strong>+₹{simulatedBoost.toFixed(1)} LPA</strong>
+                </span>
+              )}
+              <span className="text-indigo-300">
+                &bull; India Remote: <strong>₹{unifiedData?.dualValuation?.domestic.domesticRemoteComparison.domesticRemoteMedian ?? 22.5} LPA</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Card B: Outside-Country Market Value */}
+          <div className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-3.5 flex flex-col justify-between shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-mono font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-sky-400" />
+                <span>Outside-Country Value (Global Remote &amp; Relocation)</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                Readiness: {unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.readinessPct ?? 88}%
+              </span>
+            </div>
+
+            <div className="my-1.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
+                  ${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.totalMedianUSD ?? 76500).toLocaleString()} <span className="text-base font-semibold text-slate-400">/ yr</span>
+                </span>
+                <span className="text-xs font-mono text-slate-400">
+                  (${unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.hourlyRateUSD.min ?? 32}–${unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.hourlyRateUSD.max ?? 49}/hr Remote)
+                </span>
+              </div>
+            </div>
+
+            <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
+              <span>US Bay Area: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[0]?.estimatedRange || '$145K – $198K / yr'}</strong></span>
+              <span>&bull; EU Berlin: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[2]?.estimatedRange || '€85K – €115K / yr'}</strong></span>
+              <span>&bull; Dubai: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[4]?.estimatedRange || 'AED 320K – 440K / yr'}</strong></span>
+            </div>
+          </div>
+
+        </div>
+
       </div>
 
       {/* Error Notice */}
@@ -837,20 +976,64 @@ export const ResumeAnalyst: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <Briefcase className="w-5 h-5 text-emerald-400" />
-                    <span>Live FreeHire Engineering Feed &bull; Per-Job ATS Scoring</span>
+                    <span>Live FreeHire Engineering Feed &bull; 2-Lane Location Scored</span>
                   </h2>
                   <p className="text-xs text-stitch-dim">
                     Real live engineering jobs ranked against your active skills with guaranteed 404-free application links.
                   </p>
                 </div>
                 <div className="text-xs font-mono text-stitch-dim">
-                  Sorted by: <span className="text-cyan-300 font-bold">Highest ATS Match %</span>
+                  Priority: <span className="text-cyan-300 font-bold">{locationPrefs.preferredCity} &amp; Remote</span>
+                </div>
+              </div>
+
+              {/* 2-Lane Location Filter Selector */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-2 rounded-2xl bg-[#080c16] border border-white/[0.08]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setJobsLaneFilter('domestic')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      jobsLaneFilter === 'domestic'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                        : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>In-Country ({locationPrefs.preferredCity} &amp; Remote) ({unifiedData.domesticJobs?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobsLaneFilter('outside')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      jobsLaneFilter === 'outside'
+                        ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                        : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Outside-Country (Global Remote &amp; Hubs) ({unifiedData.outsideCountryJobs?.length || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJobsLaneFilter('all')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      jobsLaneFilter === 'all'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                        : 'text-stitch-dim hover:text-white hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <span>All Matches ({unifiedData.liveJobs.length})</span>
+                  </button>
+                </div>
+                <div className="text-xs font-mono text-stitch-dim px-2">
+                  Showing {displayedJobs.length} Live Positions
                 </div>
               </div>
 
               {/* Job Cards */}
               <div className="space-y-4">
-                {unifiedData.liveJobs.map((job) => (
+                {displayedJobs.map((job) => (
                   <div
                     key={job.id}
                     className="p-5 sm:p-6 rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-cyan-400/40 transition-all shadow-xl space-y-4 group"
@@ -861,9 +1044,20 @@ export const ResumeAnalyst: React.FC = () => {
                           <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
                             {job.salaryRangeText}
                           </span>
-                          {job.remote && (
-                            <span className="px-2 py-0.5 rounded bg-[#111622] text-stitch-dim font-mono text-[11px] border border-white/[0.08]">
-                              Remote
+                          {job.isPreferredCityMatch && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px] border border-emerald-500/30 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-emerald-400" />
+                              <span>{locationPrefs.preferredCity} Priority</span>
+                            </span>
+                          )}
+                          {job.isDomesticRemote && (
+                            <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[11px] border border-indigo-500/30">
+                              Domestic Remote
+                            </span>
+                          )}
+                          {job.remote && !job.isDomesticRemote && (
+                            <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[11px] border border-sky-500/30">
+                              Global Remote
                             </span>
                           )}
                           <span className="text-[11px] font-mono text-stitch-dim">
@@ -984,10 +1178,15 @@ export const ResumeAnalyst: React.FC = () => {
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
                       <div>
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-lg font-bold text-white">{rec.skillName}</h3>
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold">
-                            +₹{rec.marketValueDeltaLPA} LPA Boost
+                          <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-emerald-400" />
+                            <span>+₹{rec.marketValueDeltaLPA} LPA ({locationPrefs.preferredCity})</span>
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-mono font-bold flex items-center gap-1">
+                            <Globe className="w-3 h-3 text-sky-400" />
+                            <span>+${(rec.globalRoiUSD || Math.round(rec.marketValueDeltaLPA * 3500)).toLocaleString()} / yr Global</span>
                           </span>
                           <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono">
                             {rec.priority}

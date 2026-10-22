@@ -18,7 +18,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const apiKey = clientAuth?.replace(/^Bearer\s+/i, '') || 
       env.FISH_AUDIO_API_KEY || 
       env.VITE_FISH_AUDIO_API_KEY || 
-      'sk-fish-uoO0HkD31OPYy49TI9Hyx4vRiZ2q0DbD2dqIPR3ceY8';
+      '';
 
     const bodyText = await request.text();
     let bodyObj: any = {};

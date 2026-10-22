@@ -995,6 +995,193 @@ class UnifiedEvaluationRequest(BaseModel):
     target_role: Optional[str] = "Software Engineer"
     target_job_description: Optional[str] = None
     sdetube_telemetry: Optional[Dict[str, Any]] = None
+    country_name: Optional[str] = "India"
+    preferred_city: Optional[str] = "Bengaluru"
+    prefer_domestic_remote: Optional[bool] = False
+    work_mode_filter: Optional[str] = "all"
+    include_outside_country: Optional[bool] = True
+    simulated_skills_boost: Optional[float] = 0.0
+
+
+INDIA_CITY_MULTIPLIERS: Dict[str, Dict[str, Any]] = {
+    "Bengaluru": {"mult": 1.15, "label": "Bengaluru (Tier-1 Tech Hub +15%)"},
+    "Hyderabad": {"mult": 1.10, "label": "Hyderabad (Product & Enterprise Hub +10%)"},
+    "NCR (Gurugram / Noida)": {"mult": 1.06, "label": "Delhi NCR (+6%)"},
+    "Mumbai": {"mult": 1.06, "label": "Mumbai (+6%)"},
+    "Pune": {"mult": 1.04, "label": "Pune (+4%)"},
+    "Chennai": {"mult": 1.02, "label": "Chennai (+2%)"},
+    "Kolkata": {"mult": 0.92, "label": "Kolkata (Regional Cost-Adjusted -8%)"},
+    "Domestic Remote (India)": {"mult": 1.08, "label": "India Remote (Product/Startup Band +8%)"},
+    "Anywhere in India": {"mult": 1.00, "label": "India National Baseline (1.0x)"},
+}
+
+
+def calculate_dual_market_valuation(
+    yoe: float,
+    resume_skills: List[str],
+    quantified_bullet_ratio: float,
+    ats_score: int,
+    include_sdetube: bool,
+    telemetry: Optional[Dict[str, Any]] = None,
+    country_name: str = "India",
+    preferred_city: str = "Bengaluru",
+    prefer_domestic_remote: bool = False,
+    simulated_skills_boost: float = 0.0,
+) -> Dict[str, Any]:
+    seniority = (
+        "Entry / Intern" if yoe < 0.8 else "SDE-1" if yoe < 2.5 else "SDE-2" if yoe < 5.5 else "Senior / Staff"
+    )
+
+    if yoe < 0.8:
+        india_base_lpa = 6.5 + (yoe * 3.0)
+    elif yoe < 2.5:
+        india_base_lpa = 10.5 + ((yoe - 0.8) * 3.8)
+    elif yoe < 5.5:
+        india_base_lpa = 18.0 + ((yoe - 2.5) * 4.2)
+    else:
+        india_base_lpa = 31.0 + min(yoe - 5.5, 8.0) * 3.5
+
+    high_roi_skill_weights = {
+        "python": 1.04, "java": 1.05, "c++": 1.05, "cpp": 1.05, "typescript": 1.05, "javascript": 1.02,
+        "react": 1.04, "next.js": 1.05, "nextjs": 1.05, "node.js": 1.05, "nodejs": 1.05, "nestjs": 1.06,
+        "go": 1.09, "golang": 1.09, "rust": 1.11, "postgresql": 1.04, "postgres": 1.04,
+        "mongodb": 1.03, "redis": 1.06, "apache kafka": 1.09, "kafka": 1.09, "nats": 1.08,
+        "kubernetes": 1.09, "k8s": 1.09, "docker": 1.04, "aws": 1.07, "gcp": 1.07,
+        "system design": 1.10, "microservices": 1.07, "graphql": 1.04, "ci/cd": 1.03,
+        "llm": 1.10, "rag": 1.10, "pytorch": 1.09, "three.js": 1.06
+    }
+    skill_mult = 1.0
+    normalized_resume_skills = {s.lower().strip() for s in resume_skills}
+    for skill, weight in high_roi_skill_weights.items():
+        if any(skill in s for s in normalized_resume_skills):
+            skill_mult += (weight - 1.0) * 0.55
+    skill_mult = round(min(max(skill_mult, 0.90), 1.48), 2)
+
+    impact_mult = round(0.92 + min(quantified_bullet_ratio, 1.0) * 0.30, 2)
+    ats_mult = round(0.94 + (ats_score / 100.0) * 0.12, 2)
+
+    effective_city_key = "Domestic Remote (India)" if prefer_domestic_remote else (preferred_city or "Anywhere in India")
+    city_info = INDIA_CITY_MULTIPLIERS.get(effective_city_key, INDIA_CITY_MULTIPLIERS["Anywhere in India"])
+    city_mult = city_info["mult"]
+
+    raw_national_base = india_base_lpa * skill_mult * impact_mult * ats_mult
+    base_resume_domestic = round(raw_national_base * city_mult, 1)
+
+    sdetube_bonus_pct = 0.0
+    if include_sdetube and telemetry:
+        dsa_pct = min(telemetry.get("dsaSolvedCount", 0) / 150.0, 1.0) * 8.0
+        design_pct = min(
+            (
+                telemetry.get("hldTopologiesValidated", 0) * 2
+                + telemetry.get("lldProblemsCompleted", 0)
+                + telemetry.get("ddiaChaptersCompleted", 0)
+            )
+            / 20.0,
+            1.0,
+        ) * 10.0
+        sql_pct = min(telemetry.get("sqlSolvedCount", 0) / 30.0, 1.0) * 3.0
+        mock_pct = (telemetry.get("avgMockInterviewScore", 0) / 100.0) * 5.0
+        sdetube_bonus_pct = round(dsa_pct + design_pct + sql_pct + mock_pct, 1)
+
+    sdetube_domestic_boost = round(base_resume_domestic * (sdetube_bonus_pct / 100.0), 1)
+    total_domestic = round(base_resume_domestic + sdetube_domestic_boost + simulated_skills_boost, 1)
+
+    global_remote_base_usd = 32000 if yoe < 1.0 else 48000 if yoe < 2.5 else 78000 if yoe < 5.5 else 115000
+    resume_only_global_usd = int(round((global_remote_base_usd * skill_mult * impact_mult) / 1000.0) * 1000)
+    sdetube_global_boost_usd = int(round((resume_only_global_usd * (sdetube_bonus_pct / 100.0)) / 500.0) * 500)
+    total_global_remote_usd = resume_only_global_usd + sdetube_global_boost_usd
+
+    global_readiness_pct = min(96, int(ats_score * 0.55 + (skill_mult - 0.9) * 60 + sdetube_bonus_pct * 1.3))
+
+    city_onsite_median = round(raw_national_base * (INDIA_CITY_MULTIPLIERS.get(preferred_city, {}).get("mult", 1.0)), 1)
+    domestic_remote_median = round(raw_national_base * 1.08 + sdetube_domestic_boost, 1)
+    top_hub_median = round(raw_national_base * 1.15 + sdetube_domestic_boost, 1)
+
+    return {
+        "domestic": {
+            "countryName": country_name,
+            "cityOrRemoteLabel": city_info["label"],
+            "currency": "INR (₹ LPA)",
+            "baseResumeOnlyValue": base_resume_domestic,
+            "sdeTubeVerifiedBoost": sdetube_domestic_boost,
+            "simulatedSkillsBoost": simulated_skills_boost,
+            "totalEstimatedValue": total_domestic,
+            "range": {
+                "min": round(total_domestic * 0.84, 1),
+                "median": total_domestic,
+                "max": round(total_domestic * 1.26, 1),
+                "p90": round(total_domestic * 1.52, 1),
+            },
+            "cityMultiplierApplied": city_mult,
+            "domesticRemoteComparison": {
+                "cityOnsiteMedian": city_onsite_median,
+                "domesticRemoteMedian": domestic_remote_median,
+                "topHubMedian": top_hub_median,
+            },
+        },
+        "outsideCountry": {
+            "globalRemoteUSD": {
+                "baseResumeOnlyUSD": resume_only_global_usd,
+                "sdeTubeBoostUSD": sdetube_global_boost_usd,
+                "totalMedianUSD": total_global_remote_usd,
+                "rangeUSD": {
+                    "min": int(total_global_remote_usd * 0.82),
+                    "max": int(total_global_remote_usd * 1.30),
+                },
+                "hourlyRateUSD": {
+                    "min": int((total_global_remote_usd * 0.82) / 2000),
+                    "max": int((total_global_remote_usd * 1.30) / 2000),
+                },
+                "readinessPct": global_readiness_pct,
+            },
+            "internationalRelocationHubs": [
+                {
+                    "hubName": "US (Bay Area / NYC)",
+                    "currency": "USD ($)",
+                    "estimatedRange": f"${int(round(total_global_remote_usd * 1.9 / 1000))}K – ${int(round(total_global_remote_usd * 2.6 / 1000))}K / yr",
+                    "usdEquivalentMedian": int(total_global_remote_usd * 2.2),
+                    "visaSponsorshipLikelihood": "Moderate" if (yoe >= 2.5 or sdetube_bonus_pct >= 12) else "Selective",
+                },
+                {
+                    "hubName": "UK (London)",
+                    "currency": "GBP (£)",
+                    "estimatedRange": f"£${int(round(total_global_remote_usd * 1.05 / 1000))}K – £${int(round(total_global_remote_usd * 1.45 / 1000))}K / yr",
+                    "usdEquivalentMedian": int(total_global_remote_usd * 1.55),
+                    "visaSponsorshipLikelihood": "Moderate",
+                },
+                {
+                    "hubName": "EU (Berlin / Amsterdam)",
+                    "currency": "EUR (€)",
+                    "estimatedRange": f"€${int(round(total_global_remote_usd * 1.10 / 1000))}K – €${int(round(total_global_remote_usd * 1.50 / 1000))}K / yr",
+                    "usdEquivalentMedian": int(total_global_remote_usd * 1.42),
+                    "visaSponsorshipLikelihood": "High",
+                },
+                {
+                    "hubName": "Singapore",
+                    "currency": "SGD (S$)",
+                    "estimatedRange": f"S${int(round(total_global_remote_usd * 1.55 / 1000))}K – S${int(round(total_global_remote_usd * 2.15 / 1000))}K / yr",
+                    "usdEquivalentMedian": int(total_global_remote_usd * 1.38),
+                    "visaSponsorshipLikelihood": "Moderate",
+                },
+                {
+                    "hubName": "UAE (Dubai Tax-Free)",
+                    "currency": "AED",
+                    "estimatedRange": f"AED ${int(round(total_global_remote_usd * 4.2 / 1000))}K – ${int(round(total_global_remote_usd * 5.8 / 1000))}K / yr",
+                    "usdEquivalentMedian": int(total_global_remote_usd * 1.35),
+                    "visaSponsorshipLikelihood": "High",
+                },
+            ],
+        },
+        "confidenceScore": 92 if include_sdetube else 74,
+        "factors": {
+            "detectedYoe": yoe,
+            "seniorityBand": seniority,
+            "skillDemandMultiplier": skill_mult,
+            "impactQuantificationMultiplier": impact_mult,
+            "atsFormatMultiplier": ats_mult,
+            "sdeTubeBonusPct": sdetube_bonus_pct,
+        },
+    }
 
 
 def compute_market_valuation(
@@ -1164,6 +1351,19 @@ async def evaluate_resume_unified(req: UnifiedEvaluationRequest):
         sdetube_telemetry=req.sdetube_telemetry
     )
 
+    dual_valuation = calculate_dual_market_valuation(
+        yoe=yoe,
+        resume_skills=detected_skills,
+        quantified_bullet_ratio=quant_ratio,
+        ats_score=ats_score,
+        include_sdetube=req.include_sdetube_data,
+        telemetry=req.sdetube_telemetry,
+        country_name=req.country_name or "India",
+        preferred_city=req.preferred_city or "Bengaluru",
+        prefer_domestic_remote=bool(req.prefer_domestic_remote),
+        simulated_skills_boost=req.simulated_skills_boost or 0.0,
+    )
+
     return {
         "success": True,
         "parsedCandidate": {
@@ -1173,6 +1373,7 @@ async def evaluate_resume_unified(req: UnifiedEvaluationRequest):
             "resumeSkills": detected_skills,
         },
         "marketValuation": valuation,
+        "dualValuation": dual_valuation,
         "timestamp": "now"
     }
 

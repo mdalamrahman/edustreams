@@ -26,6 +26,88 @@ export interface SdeTubeTelemetrySnapshot {
   telemetryHash: string;
 }
 
+export interface UserLocationPreferences {
+  countryCode: 'IN' | 'US' | 'GB' | 'DE' | 'SG' | 'CA' | 'AE';
+  countryName: string;
+  currencySymbol: string;       // '₹', '$', '£', '€', 'S$', 'AED'
+  currencyUnit: string;         // 'LPA' for IN, 'K/yr' for US/GB/DE/SG/CA/AE
+  preferredCity: string;        // e.g., 'Bengaluru', 'Hyderabad', 'Pune', 'NCR (Gurugram / Noida)', 'Kolkata', 'Mumbai'
+  preferDomesticRemote: boolean;
+  workModeFilter: 'all' | 'remote' | 'hybrid' | 'onsite';
+  includeOutsideCountryJobs: boolean;
+}
+
+export const INDIA_CITY_MULTIPLIERS: Record<string, { mult: number; label: string }> = {
+  'Bengaluru': { mult: 1.15, label: 'Bengaluru (Tier-1 Tech Hub +15%)' },
+  'Hyderabad': { mult: 1.10, label: 'Hyderabad (Product & Enterprise Hub +10%)' },
+  'NCR (Gurugram / Noida)': { mult: 1.06, label: 'Delhi NCR (+6%)' },
+  'Mumbai': { mult: 1.06, label: 'Mumbai (+6%)' },
+  'Pune': { mult: 1.04, label: 'Pune (+4%)' },
+  'Chennai': { mult: 1.02, label: 'Chennai (+2%)' },
+  'Kolkata': { mult: 0.92, label: 'Kolkata (Regional Cost-Adjusted -8%)' },
+  'Domestic Remote (India)': { mult: 1.08, label: 'India Remote (Product/Startup Band +8%)' },
+  'Anywhere in India': { mult: 1.00, label: 'India National Baseline (1.0x)' },
+};
+
+export const DEFAULT_LOCATION_PREFERENCES: UserLocationPreferences = {
+  countryCode: 'IN',
+  countryName: 'India',
+  currencySymbol: '₹',
+  currencyUnit: 'LPA',
+  preferredCity: 'Bengaluru',
+  preferDomesticRemote: false,
+  workModeFilter: 'all',
+  includeOutsideCountryJobs: true,
+};
+
+export interface DualMarketValuation {
+  // 1. Within-Country (Domestic) Valuation
+  domestic: {
+    countryName: string;
+    cityOrRemoteLabel: string;
+    currency: string;           // e.g., 'INR (₹ LPA)'
+    baseResumeOnlyValue: number; // Strictly from uploaded resume
+    sdeTubeVerifiedBoost: number;// Added when checkbox is checked
+    simulatedSkillsBoost: number;// Added when user checks "What-If" skills
+    totalEstimatedValue: number; // base + sdeTubeBoost + simulatedSkillsBoost
+    range: { min: number; median: number; max: number; p90: number };
+    cityMultiplierApplied: number; // e.g., 1.15 for Bengaluru, 1.08 for India Remote, 0.92 for Kolkata
+    domesticRemoteComparison: {
+      cityOnsiteMedian: number;
+      domesticRemoteMedian: number;
+      topHubMedian: number;     // e.g., Bengaluru / Bay Area benchmark
+    };
+  };
+  // 2. Outside-Country (International Remote & Relocation) Valuation
+  outsideCountry: {
+    globalRemoteUSD: {
+      baseResumeOnlyUSD: number;
+      sdeTubeBoostUSD: number;
+      totalMedianUSD: number;
+      rangeUSD: { min: number; max: number };
+      hourlyRateUSD: { min: number; max: number };
+      readinessPct: number;
+    };
+    internationalRelocationHubs: {
+      hubName: 'US (Bay Area / NYC)' | 'UK (London)' | 'EU (Berlin / Amsterdam)' | 'Singapore' | 'UAE (Dubai Tax-Free)';
+      currency: string;
+      estimatedRange: string;
+      usdEquivalentMedian: number;
+      visaSponsorshipLikelihood: 'High' | 'Moderate' | 'Selective';
+    }[];
+  };
+  // Shared Multipliers & Confidence
+  confidenceScore: number;
+  factors: {
+    detectedYoe: number;
+    seniorityBand: 'Entry / Intern' | 'SDE-1' | 'SDE-2' | 'Senior / Staff';
+    skillDemandMultiplier: number;
+    impactQuantificationMultiplier: number;
+    atsFormatMultiplier: number;
+    sdeTubeBonusPct: number;
+  };
+}
+
 export interface MarketValuationBreakdown {
   baseResumeValueLPA: number;         // Calculated strictly from resume
   sdeTubeBoostLPA: number;            // Added only when includeSdeTubeData = true
@@ -81,8 +163,10 @@ export interface SkillRoiRecommendation {
   skillName: string;
   category: 'System Design & Scale' | 'Backend & Cloud' | 'Data & Streaming' | 'AI & LLM' | 'Core CS & DSA';
   priority: 'Critical' | 'High-ROI' | 'Emerging';
-  marketValueDeltaLPA: number;        // e.g., +2.8 (₹2.8 LPA increase)
+  marketValueDeltaLPA: number;        // e.g., +2.8 (₹2.8 LPA increase in India)
   marketValueDeltaPct: number;        // e.g., +16%
+  globalRoiUSD: number;               // e.g., +$9,500 / yr Global Remote increase
+  domesticCityRoiLPA?: Record<string, number>; // City-specific boosts
   atsScoreDeltaPct: number;           // e.g., +11% average ATS match boost
   unlockedJobsCount: number;          // Number of live FreeHire jobs requiring this
   estimatedHoursToLearn: number;
@@ -116,6 +200,9 @@ export interface LiveJobMatch {
   company: string;
   location: string;
   remote: boolean;
+  workMode?: 'remote' | 'hybrid' | 'onsite';
+  isPreferredCityMatch?: boolean;
+  isDomesticRemote?: boolean;
   salaryRangeText: string;
   estimatedLPA?: number;
   applyUrl: string;
@@ -150,6 +237,7 @@ export interface UnifiedResumeAnalysisResponse {
   cachedAt: string;
   fromCache: boolean;
   includeSdeTubeData: boolean;
+  locationPreferences: UserLocationPreferences;
   parsedCandidate: {
     name: string;
     currentRole: string;
@@ -159,8 +247,11 @@ export interface UnifiedResumeAnalysisResponse {
     resumeHash: string;
   };
   marketValuation: MarketValuationBreakdown;
+  dualValuation: DualMarketValuation;
   atsAudit: AtsAuditReport;
   liveJobs: LiveJobMatch[];
+  domesticJobs: LiveJobMatch[];
+  outsideCountryJobs: LiveJobMatch[];
   skillRoiRecommendations: SkillRoiRecommendation[];
   roleTransitions: RoleTransitionPath[];
 }
@@ -1876,6 +1967,177 @@ export function computeMarketValuationBreakdown(params: {
   };
 }
 
+export function computeSkillMultiplier(resumeSkills: string[]): number {
+  const HIGH_ROI_WEIGHTS: Record<string, number> = {
+    'python': 1.04, 'java': 1.05, 'c++': 1.05, 'cpp': 1.05, 'typescript': 1.05, 'javascript': 1.02,
+    'react': 1.04, 'next.js': 1.05, 'nextjs': 1.05, 'node.js': 1.05, 'nodejs': 1.05, 'nestjs': 1.06,
+    'go': 1.09, 'golang': 1.09, 'rust': 1.11, 'postgresql': 1.04, 'postgres': 1.04,
+    'mongodb': 1.03, 'redis': 1.06, 'apache kafka': 1.09, 'kafka': 1.09, 'nats': 1.08,
+    'kubernetes': 1.09, 'k8s': 1.09, 'docker': 1.04, 'aws': 1.07, 'gcp': 1.07,
+    'system design': 1.10, 'microservices': 1.07, 'graphql': 1.04, 'ci/cd': 1.03,
+    'llm': 1.10, 'rag': 1.10, 'pytorch': 1.09, 'three.js': 1.06
+  };
+
+  let skillMult = 1.0;
+  const normalized = resumeSkills.map(s => s.toLowerCase().trim());
+  for (const [skill, weight] of Object.entries(HIGH_ROI_WEIGHTS)) {
+    if (normalized.some(s => s === skill || s.includes(skill))) {
+      skillMult += (weight - 1.0) * 0.55;
+    }
+  }
+  return Math.round(Math.min(Math.max(skillMult, 0.90), 1.48) * 100) / 100;
+}
+
+export function calculateDualMarketValuation(
+  yoe: number,
+  resumeSkills: string[],
+  quantifiedBulletRatio: number,
+  atsScore: number,
+  includeSdeTube: boolean,
+  telemetry: SdeTubeTelemetrySnapshot | null,
+  location: UserLocationPreferences,
+  simulatedSkillsBoost: number = 0
+): DualMarketValuation {
+  // 1. Seniority & Country Base Anchor (INR LPA)
+  const seniority: DualMarketValuation['factors']['seniorityBand'] =
+    yoe < 0.8 ? 'Entry / Intern' : yoe < 2.5 ? 'SDE-1' : yoe < 5.5 ? 'SDE-2' : 'Senior / Staff';
+
+  const indiaBaseLPA =
+    yoe < 0.8
+      ? 6.5 + yoe * 3.0
+      : yoe < 2.5
+      ? 10.5 + (yoe - 0.8) * 3.8
+      : yoe < 5.5
+      ? 18.0 + (yoe - 2.5) * 4.2
+      : 31.0 + Math.min(yoe - 5.5, 8) * 3.5;
+
+  // 2. Skill, Impact, and ATS Multipliers
+  const skillMult = computeSkillMultiplier(resumeSkills); // 0.90 to 1.48
+  const impactMult = Number((0.92 + Math.min(quantifiedBulletRatio, 1) * 0.30).toFixed(2));
+  const atsMult = Number((0.94 + (atsScore / 100) * 0.12).toFixed(2));
+
+  // 3. Location / Remote Multiplier within Country
+  const effectiveCityKey = location.preferDomesticRemote
+    ? 'Domestic Remote (India)'
+    : location.preferredCity || 'Anywhere in India';
+  const cityInfo = INDIA_CITY_MULTIPLIERS[effectiveCityKey] || INDIA_CITY_MULTIPLIERS['Anywhere in India'];
+
+  const rawNationalBase = indiaBaseLPA * skillMult * impactMult * atsMult;
+  const baseResumeDomestic = Number((rawNationalBase * cityInfo.mult).toFixed(1));
+
+  // 4. SDETube Telemetry Boost (Strictly 0 if checkbox is unchecked)
+  let sdeTubeBonusPct = 0;
+  if (includeSdeTube && telemetry) {
+    const dsaPct = Math.min((telemetry.dsaSolvedCount || 0) / 150, 1) * 8;
+    const designPct =
+      Math.min(((telemetry.hldTopologiesValidated || 0) * 2 + (telemetry.lldProblemsCompleted || 0) + (telemetry.ddiaChaptersCompleted || 0)) / 20, 1) * 10;
+    const sqlPct = Math.min((telemetry.sqlSolvedCount || 0) / 30, 1) * 3;
+    const mockPct = ((telemetry.avgMockInterviewScore || 0) / 100) * 5;
+    sdeTubeBonusPct = Number((dsaPct + designPct + sqlPct + mockPct).toFixed(1));
+  }
+
+  const sdeTubeDomesticBoost = Number((baseResumeDomestic * (sdeTubeBonusPct / 100)).toFixed(1));
+  const totalDomestic = Number((baseResumeDomestic + sdeTubeDomesticBoost + simulatedSkillsBoost).toFixed(1));
+
+  // 5. Outside-Country Valuation (Global Remote USD & International Hubs)
+  const globalRemoteBaseUSD =
+    yoe < 1.0 ? 32000 : yoe < 2.5 ? 48000 : yoe < 5.5 ? 78000 : 115000;
+  const resumeOnlyGlobalUSD = Math.round((globalRemoteBaseUSD * skillMult * impactMult) / 1000) * 1000;
+  const sdeTubeGlobalBoostUSD = Math.round((resumeOnlyGlobalUSD * (sdeTubeBonusPct / 100)) / 500) * 500;
+  const totalGlobalRemoteUSD = resumeOnlyGlobalUSD + sdeTubeGlobalBoostUSD;
+
+  const globalReadinessPct = Math.min(
+    96,
+    Math.round(atsScore * 0.55 + (skillMult - 0.9) * 60 + sdeTubeBonusPct * 1.3)
+  );
+
+  return {
+    domestic: {
+      countryName: location.countryName,
+      cityOrRemoteLabel: cityInfo.label,
+      currency: location.countryCode === 'IN' ? 'INR (₹ LPA)' : `${location.currencySymbol} ${location.currencyUnit}`,
+      baseResumeOnlyValue: baseResumeDomestic,
+      sdeTubeVerifiedBoost: sdeTubeDomesticBoost,
+      simulatedSkillsBoost,
+      totalEstimatedValue: totalDomestic,
+      range: {
+        min: Number((totalDomestic * 0.84).toFixed(1)),
+        median: totalDomestic,
+        max: Number((totalDomestic * 1.26).toFixed(1)),
+        p90: Number((totalDomestic * 1.52).toFixed(1)),
+      },
+      cityMultiplierApplied: cityInfo.mult,
+      domesticRemoteComparison: {
+        cityOnsiteMedian: Number((rawNationalBase * (INDIA_CITY_MULTIPLIERS[location.preferredCity]?.mult || 1.0)).toFixed(1)),
+        domesticRemoteMedian: Number((rawNationalBase * 1.08 + sdeTubeDomesticBoost).toFixed(1)),
+        topHubMedian: Number((rawNationalBase * 1.15 + sdeTubeDomesticBoost).toFixed(1)),
+      },
+    },
+    outsideCountry: {
+      globalRemoteUSD: {
+        baseResumeOnlyUSD: resumeOnlyGlobalUSD,
+        sdeTubeBoostUSD: sdeTubeGlobalBoostUSD,
+        totalMedianUSD: totalGlobalRemoteUSD,
+        rangeUSD: {
+          min: Math.round(totalGlobalRemoteUSD * 0.82),
+          max: Math.round(totalGlobalRemoteUSD * 1.30),
+        },
+        hourlyRateUSD: {
+          min: Math.round((totalGlobalRemoteUSD * 0.82) / 2000),
+          max: Math.round((totalGlobalRemoteUSD * 1.30) / 2000),
+        },
+        readinessPct: globalReadinessPct,
+      },
+      internationalRelocationHubs: [
+        {
+          hubName: 'US (Bay Area / NYC)',
+          currency: 'USD ($)',
+          estimatedRange: `$${Math.round((totalGlobalRemoteUSD * 1.9) / 1000)}K – $${Math.round((totalGlobalRemoteUSD * 2.6) / 1000)}K / yr`,
+          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 2.2),
+          visaSponsorshipLikelihood: yoe >= 2.5 || sdeTubeBonusPct >= 12 ? 'Moderate' : 'Selective',
+        },
+        {
+          hubName: 'UK (London)',
+          currency: 'GBP (£)',
+          estimatedRange: `£${Math.round((totalGlobalRemoteUSD * 1.05) / 1000)}K – £${Math.round((totalGlobalRemoteUSD * 1.45) / 1000)}K / yr`,
+          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.55),
+          visaSponsorshipLikelihood: 'Moderate',
+        },
+        {
+          hubName: 'EU (Berlin / Amsterdam)',
+          currency: 'EUR (€)',
+          estimatedRange: `€${Math.round((totalGlobalRemoteUSD * 1.10) / 1000)}K – €${Math.round((totalGlobalRemoteUSD * 1.50) / 1000)}K / yr`,
+          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.42),
+          visaSponsorshipLikelihood: 'High',
+        },
+        {
+          hubName: 'Singapore',
+          currency: 'SGD (S$)',
+          estimatedRange: `S$${Math.round((totalGlobalRemoteUSD * 1.55) / 1000)}K – S$${Math.round((totalGlobalRemoteUSD * 2.15) / 1000)}K / yr`,
+          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.38),
+          visaSponsorshipLikelihood: 'Moderate',
+        },
+        {
+          hubName: 'UAE (Dubai Tax-Free)',
+          currency: 'AED',
+          estimatedRange: `AED ${Math.round((totalGlobalRemoteUSD * 4.2) / 1000)}K – ${Math.round((totalGlobalRemoteUSD * 5.8) / 1000)}K / yr`,
+          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.35),
+          visaSponsorshipLikelihood: 'High',
+        },
+      ],
+    },
+    confidenceScore: includeSdeTube ? 92 : 74,
+    factors: {
+      detectedYoe: yoe,
+      seniorityBand: seniority,
+      skillDemandMultiplier: skillMult,
+      impactQuantificationMultiplier: impactMult,
+      atsFormatMultiplier: atsMult,
+      sdeTubeBonusPct,
+    },
+  };
+}
+
 // ============================================================================
 // VERIFIED 404-FREE LIVE FREEHIRE JOBS REPOSITORY & PER-JOB ATS MATCHER
 // ============================================================================
@@ -2006,6 +2268,8 @@ export async function runUnifiedResumeAnalysis(params: {
   targetRole?: string;
   targetJobDescription?: string;
   targetJobId?: string;
+  locationPreferences?: Partial<UserLocationPreferences>;
+  simulatedSkillsBoost?: number;
   forceRefresh?: boolean;
 }): Promise<UnifiedResumeAnalysisResponse> {
   const {
@@ -2015,20 +2279,30 @@ export async function runUnifiedResumeAnalysis(params: {
     targetRole = 'Software Engineer',
     targetJobDescription,
     targetJobId,
+    locationPreferences,
+    simulatedSkillsBoost = 0,
     forceRefresh = false
   } = params;
+
+  const loc: UserLocationPreferences = {
+    ...DEFAULT_LOCATION_PREFERENCES,
+    ...(locationPreferences || {})
+  };
 
   // 1. Gather SDETube Verified Telemetry
   const telemetry = await getSdeTubeTelemetrySnapshot(userId);
 
-  // 2. Build Cache Key
+  // 2. Build Location-Aware Cache Key
   const { cacheKey, resumeHash } = await buildResumeAnalysisCacheKey({
     resumeText,
     includeSdeTubeData,
     userId: telemetry.userId,
     sdeTubeTelemetryHash: telemetry.telemetryHash,
     targetRole,
-    targetJobId
+    targetJobId,
+    country: loc.countryCode,
+    preferredCity: loc.preferredCity,
+    workMode: loc.workModeFilter
   });
 
   // 3. Fast Redis Cache Hit (<50ms)
@@ -2125,7 +2399,7 @@ export async function runUnifiedResumeAnalysis(params: {
     targetJobDescription || (targetRole + ' microservices, distributed systems, system design, high concurrency')
   );
 
-  // 6. Compute Multi-Factor Market Valuation
+  // 6. Compute Multi-Factor Market Valuation & Location-Aware Dual Valuation
   const marketValuation = computeMarketValuationBreakdown({
     extractedYoe,
     resumeSkills,
@@ -2136,7 +2410,25 @@ export async function runUnifiedResumeAnalysis(params: {
     targetRoleTitle: targetRole
   });
 
-  // 7. Per-Job ATS Match Calculations
+  const dualValuation = calculateDualMarketValuation(
+    extractedYoe,
+    resumeSkills,
+    quantifiedBulletRatio,
+    atsAuditRes.overallScore,
+    includeSdeTubeData,
+    telemetry,
+    loc,
+    simulatedSkillsBoost
+  );
+
+  // 7. Per-Job ATS Match Calculations & 2-Lane Location Sorting
+  const cityLower = (loc.preferredCity || '').toLowerCase();
+  const countryLower = (loc.countryName || 'india').toLowerCase();
+  const indianHubs = ['india', 'bengaluru', 'bangalore', 'hyderabad', 'pune', 'mumbai', 'gurgaon', 'gurugram', 'noida', 'chennai', 'kolkata', 'delhi'];
+
+  const domesticJobs: LiveJobMatch[] = [];
+  const outsideCountryJobs: LiveJobMatch[] = [];
+
   const liveJobs: LiveJobMatch[] = VERIFIED_LIVE_FREEHIRE_JOBS.map(job => {
     const effectiveSkills = includeSdeTubeData
       ? [...resumeSkills, ...telemetry.verifiedSkills.map(s => s.replace(/\s*\(Verified.*$/, ''))]
@@ -2147,27 +2439,62 @@ export async function runUnifiedResumeAnalysis(params: {
       fromSdeTube: includeSdeTubeData && telemetry.verifiedSkills.some(v => v.toLowerCase().includes(m.name.toLowerCase()))
     }));
 
-    const valDiff = (job.estimatedLPA || 30) - marketValuation.totalEstimatedValueLPA;
+    const valDiff = (job.estimatedLPA || 30) - dualValuation.domestic.totalEstimatedValue;
     const comparison: LiveJobMatch['marketValueComparison'] =
       valDiff > 5 ? 'Above Your Valuation' : valDiff < -5 ? 'Below Your Valuation' : 'Matches Your Valuation';
 
-    return {
+    const locText = (job.location || '').toLowerCase();
+    const isDomestic = countryLower === 'india'
+      ? (locText.includes('india') || indianHubs.some(h => locText.includes(h)) || (job.remote && locText.includes('remote')))
+      : locText.includes(countryLower);
+
+    const isPrefCity = Boolean(cityLower && cityLower !== 'any' && locText.includes(cityLower));
+    const isDomesticRem = Boolean(isDomestic && job.remote);
+
+    const enriched: LiveJobMatch = {
       ...job,
+      workMode: job.remote ? 'remote' : 'hybrid',
+      isPreferredCityMatch: isPrefCity,
+      isDomesticRemote: isDomesticRem,
       matchedSkills: matched,
       marketValueComparison: comparison
     };
+
+    if (isDomestic) {
+      domesticJobs.push(enriched);
+    } else {
+      outsideCountryJobs.push(enriched);
+    }
+
+    return enriched;
   });
 
-  // 8. Skill ROI Recommendations
+  // Sort Domestic jobs: Preferred City / Domestic Remote first, then by ATS Match Score
+  domesticJobs.sort((a, b) => {
+    const aPriority = (a.isPreferredCityMatch || (loc.preferDomesticRemote && a.isDomesticRemote)) ? 1 : 0;
+    const bPriority = (b.isPreferredCityMatch || (loc.preferDomesticRemote && b.isDomesticRemote)) ? 1 : 0;
+    if (aPriority !== bPriority) return bPriority - aPriority;
+    return b.atsMatchScore - a.atsMatchScore;
+  });
+
+  outsideCountryJobs.sort((a, b) => b.atsMatchScore - a.atsMatchScore);
+
+  // 8. Skill ROI Recommendations with Dual Valuation Boosts
   const skillRoiRecommendations: SkillRoiRecommendation[] = Object.entries(SKILL_RESOURCE_CATALOG).map(([skillName, meta]) => {
-    const isPresent = resumeSkills.some(s => s.toLowerCase() === skillName.toLowerCase());
     const prio: SkillRoiRecommendation['priority'] = meta.baseRoiLPA >= 3.0 ? 'Critical' : meta.baseRoiLPA >= 2.5 ? 'High-ROI' : 'Emerging';
+    const globalRoiUSD = Math.round((meta.baseRoiLPA * 3500) / 500) * 500;
     return {
       skillName,
       category: meta.category,
       priority: prio,
       marketValueDeltaLPA: meta.baseRoiLPA,
-      marketValueDeltaPct: Math.round((meta.baseRoiLPA / marketValuation.baseResumeValueLPA) * 100),
+      marketValueDeltaPct: Math.round((meta.baseRoiLPA / dualValuation.domestic.baseResumeOnlyValue) * 100),
+      globalRoiUSD,
+      domesticCityRoiLPA: {
+        'Bengaluru': Number((meta.baseRoiLPA * 1.15).toFixed(1)),
+        'Hyderabad': Number((meta.baseRoiLPA * 1.10).toFixed(1)),
+        'India Remote': Number((meta.baseRoiLPA * 1.08).toFixed(1)),
+      },
       atsScoreDeltaPct: Math.round(meta.demandMultiplier * 10 - 2),
       unlockedJobsCount: Math.floor(Math.random() * 8 + 6),
       estimatedHoursToLearn: meta.estimatedHours,
@@ -2187,10 +2514,10 @@ export async function runUnifiedResumeAnalysis(params: {
       transitionType: 'Vertical Promotion',
       currentReadinessPct: Math.min(94, Math.floor(atsAuditRes.overallScore * 0.85 + (includeSdeTubeData ? 14 : 0))),
       projectedMarketValueLPA: {
-        min: Math.round(marketValuation.totalEstimatedValueLPA * 1.35 * 10) / 10,
-        max: Math.round(marketValuation.totalEstimatedValueLPA * 1.85 * 10) / 10
+        min: Math.round(dualValuation.domestic.totalEstimatedValue * 1.35 * 10) / 10,
+        max: Math.round(dualValuation.domestic.totalEstimatedValue * 1.85 * 10) / 10
       },
-      valueJumpLPA: Math.round((marketValuation.totalEstimatedValueLPA * 0.50) * 10) / 10,
+      valueJumpLPA: Math.round((dualValuation.domestic.totalEstimatedValue * 0.50) * 10) / 10,
       transferableSkills: resumeSkills.slice(0, 5),
       requiredBridgeSkills: ['Apache Kafka', 'Distributed Consensus (Raft/Paxos)', 'System Design (HLD & LLD)'],
       matchingLiveJobsCount: 14,
@@ -2229,10 +2556,10 @@ export async function runUnifiedResumeAnalysis(params: {
       transitionType: 'High-Growth Pivot',
       currentReadinessPct: Math.min(88, Math.floor(atsAuditRes.overallScore * 0.75 + (includeSdeTubeData ? 12 : 0))),
       projectedMarketValueLPA: {
-        min: Math.round(marketValuation.totalEstimatedValueLPA * 1.40 * 10) / 10,
-        max: Math.round(marketValuation.totalEstimatedValueLPA * 2.05 * 10) / 10
+        min: Math.round(dualValuation.domestic.totalEstimatedValue * 1.40 * 10) / 10,
+        max: Math.round(dualValuation.domestic.totalEstimatedValue * 2.05 * 10) / 10
       },
-      valueJumpLPA: Math.round((marketValuation.totalEstimatedValueLPA * 0.65) * 10) / 10,
+      valueJumpLPA: Math.round((dualValuation.domestic.totalEstimatedValue * 0.65) * 10) / 10,
       transferableSkills: resumeSkills.filter(s => ['Python', 'PostgreSQL', 'Docker', 'Redis'].includes(s)),
       requiredBridgeSkills: ['LLM & RAG Orchestration', 'Vector Embeddings', 'vLLM / TensorRT-LLM Serving'],
       matchingLiveJobsCount: 9,
@@ -2274,6 +2601,7 @@ export async function runUnifiedResumeAnalysis(params: {
     cachedAt: new Date().toISOString(),
     fromCache: false,
     includeSdeTubeData,
+    locationPreferences: loc,
     parsedCandidate: {
       name,
       currentRole: targetRole,
@@ -2283,6 +2611,7 @@ export async function runUnifiedResumeAnalysis(params: {
       resumeHash,
     },
     marketValuation,
+    dualValuation,
     atsAudit: {
       overallScore: atsAuditRes.overallScore,
       targetJobTitle: targetRole,
@@ -2317,6 +2646,8 @@ export async function runUnifiedResumeAnalysis(params: {
       })
     },
     liveJobs,
+    domesticJobs,
+    outsideCountryJobs,
     skillRoiRecommendations,
     roleTransitions
   };

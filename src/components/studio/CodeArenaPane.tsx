@@ -219,7 +219,12 @@ export const CodeArenaPane: React.FC<CodeArenaPaneProps> = ({
             fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace",
             wordWrap: 'on',
             suggestOnTriggerCharacters: true,
-            tabSize: 4
+            fixedOverflowWidgets: true,
+            tabSize: 4,
+            acceptSuggestionOnEnter: 'smart',
+            tabCompletion: 'off',
+            formatOnType: false,
+            quickSuggestions: { other: true, comments: false, strings: false }
           }}
         />
       </div>

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = 'https://bbxwgezqiqjbmxthchfn.supabase.co';
-export const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo';
+export const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
+export const SERVICE_ROLE_KEY = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.SUPABASE_SERVICE_ROLE_KEY)) || '';
 
 // Direct zero-browser-cache Supabase Admin Client
 export const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {

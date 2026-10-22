@@ -7,9 +7,7 @@ const SUPABASE_URL = (rawUrl && !rawUrl.includes('edustream-demo') && rawUrl.sta
   : 'https://bbxwgezqiqjbmxthchfn.supabase.co';
 
 const rawKey = (typeof import.meta !== 'undefined' && import.meta?.env) ? import.meta.env.VITE_SUPABASE_ANON_KEY : undefined;
-const SUPABASE_ANON_KEY = (rawKey && !rawKey.includes('sb_publishable') && rawKey.length > 50)
-  ? rawKey
-  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM';
+const SUPABASE_ANON_KEY = rawKey || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_ANON_KEY) || '';
 
 /**
  * Single Responsibility Principle (SRP) Singleton Supabase Client:
@@ -24,7 +22,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo';
+const SERVICE_ROLE_KEY = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY) || 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_SERVICE_ROLE_KEY) || '';
 
 export const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: {

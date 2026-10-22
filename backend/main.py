@@ -40,13 +40,13 @@ API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
 API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 
 # Supabase Configuration for Multi-User Global Persistence
 SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://bbxwgezqiqjbmxthchfn.supabase.co"
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1Njg2MTUsImV4cCI6MjEwMTE0NDYxNX0._mAndBqpnJdoTdTfAS4bx0_XQKtrC5n4GevwBZWr9uM"
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or ""
 
 # Upstash Redis Global Realtime & Billing Cache
 UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL") or os.getenv("VITE_UPSTASH_REDIS_REST_URL") or "https://organic-tahr-192308.upstash.io"
@@ -1157,7 +1157,7 @@ async def send_admin_auth_otp_endpoint(payload: SendAdminAuthOtpRequest, request
 
     # 1. Dispatch via Supabase Custom SMTP & Auth Mailer
     sb_url = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
-    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or ""
     try:
         sb_res = requests.post(
             f"{sb_url}/auth/v1/otp",
@@ -1326,7 +1326,7 @@ async def send_invite_email_endpoint(payload: SendInviteEmailRequest):
 
     # 1. Try Supabase Custom SMTP & Auth Mailer first
     sb_url = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
-    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+    sb_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or ""
     try:
         sb_res = requests.post(
             f"{sb_url}/auth/v1/otp",
@@ -7547,7 +7547,7 @@ async def register_confirmed_user(payload: dict):
     if not email or not password:
         raise HTTPException(status_code=400, detail="Email and password are required.")
 
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo"
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or ""
     url = f"{SUPABASE_URL}/auth/v1/admin/users"
 
     headers = {
@@ -7816,7 +7816,7 @@ class AdminReviewTopupPayload(BaseModel):
 
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieHdnZXpxaXFqYm14dGhjaGZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTU2ODYxNSwiZXhwIjoyMTAxMTQ0NjE1fQ.dUf9-JdItaM0HUQ7Jf44cYpHBwDbIXBB18uAyzP3WQo")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
 def sync_transaction_to_supabase(tx: dict, wallet: dict):

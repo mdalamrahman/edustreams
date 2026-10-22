@@ -2,8 +2,8 @@ import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
 import { executeCode, compareOutputs, SupportedLanguage, isDriverHarnessValid } from './compiler';
 
-export const MISTRAL_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_API_KEY) || 'ME2AJmpgz5j0QgKMkyDGkjDL0PMkb2E5';
-export const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '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';
+export const MISTRAL_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_API_KEY) || '';
+export const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '';
 
 export interface CodeTAReview {
   time_complexity: string;

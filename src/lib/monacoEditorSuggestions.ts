@@ -106,16 +106,34 @@ export function extractParametersFromCode(code: string, language: string): strin
 function getCppSuggestions(monaco: any, range: any): any[] {
   const K = monaco.languages.CompletionItemKind;
   return [
-    // Containers
-    { label: 'vector', kind: K.Class, insertText: 'vector<${1:int}> ${2:v};', insertTextRules: 4, detail: 'std::vector dynamic array', range },
-    { label: 'unordered_map', kind: K.Class, insertText: 'unordered_map<${1:int}, ${2:int}> ${3:mp};', insertTextRules: 4, detail: 'std::unordered_map hash table', range },
-    { label: 'unordered_set', kind: K.Class, insertText: 'unordered_set<${1:int}> ${2:st};', insertTextRules: 4, detail: 'std::unordered_set hash set', range },
-    { label: 'priority_queue', kind: K.Class, insertText: 'priority_queue<${1:int}> ${2:pq};', insertTextRules: 4, detail: 'std::priority_queue (Max-Heap)', range },
-    { label: 'priority_queue_min', kind: K.Snippet, insertText: 'priority_queue<${1:int}, vector<${1:int}>, greater<${1:int}>> ${2:minPq};', insertTextRules: 4, detail: 'std::priority_queue (Min-Heap)', range },
-    { label: 'queue', kind: K.Class, insertText: 'queue<${1:int}> ${2:q};', insertTextRules: 4, detail: 'std::queue FIFO container', range },
-    { label: 'stack', kind: K.Class, insertText: 'stack<${1:int}> ${2:st};', insertTextRules: 4, detail: 'std::stack LIFO container', range },
-    { label: 'deque', kind: K.Class, insertText: 'deque<${1:int}> ${2:dq};', insertTextRules: 4, detail: 'std::deque double-ended queue', range },
-    { label: 'pair', kind: K.Class, insertText: 'pair<${1:int}, ${2:int}>', insertTextRules: 4, detail: 'std::pair', range },
+    // Clean Keywords & Fundamental Types (Instant replacement without snippet lock)
+    { label: 'void', kind: K.Keyword, insertText: 'void', detail: 'void keyword', range },
+    { label: 'int', kind: K.Keyword, insertText: 'int', detail: 'int type', range },
+    { label: 'long long', kind: K.Keyword, insertText: 'long long', detail: '64-bit integer type', range },
+    { label: 'string', kind: K.Class, insertText: 'string', detail: 'std::string', range },
+    { label: 'bool', kind: K.Keyword, insertText: 'bool', detail: 'boolean type', range },
+    { label: 'char', kind: K.Keyword, insertText: 'char', detail: 'char type', range },
+    { label: 'double', kind: K.Keyword, insertText: 'double', detail: 'double type', range },
+    { label: 'auto', kind: K.Keyword, insertText: 'auto', detail: 'auto type deduction', range },
+    { label: 'const', kind: K.Keyword, insertText: 'const', detail: 'const qualifier', range },
+    { label: 'return', kind: K.Keyword, insertText: 'return', detail: 'return statement', range },
+    { label: 'nullptr', kind: K.Keyword, insertText: 'nullptr', detail: 'null pointer literal', range },
+
+    // Containers (Clean type templates)
+    { label: 'vector', kind: K.Class, insertText: 'vector<${1:int}>', insertTextRules: 4, detail: 'std::vector<T>', range },
+    { label: 'unordered_map', kind: K.Class, insertText: 'unordered_map<${1:int}, ${2:int}>', insertTextRules: 4, detail: 'std::unordered_map<K, V>', range },
+    { label: 'unordered_set', kind: K.Class, insertText: 'unordered_set<${1:int}>', insertTextRules: 4, detail: 'std::unordered_set<T>', range },
+    { label: 'priority_queue', kind: K.Class, insertText: 'priority_queue<${1:int}>', insertTextRules: 4, detail: 'std::priority_queue (Max-Heap)', range },
+    { label: 'priority_queue_min', kind: K.Snippet, insertText: 'priority_queue<${1:int}, vector<${1:int}>, greater<${1:int}>>', insertTextRules: 4, detail: 'std::priority_queue (Min-Heap)', range },
+    { label: 'queue', kind: K.Class, insertText: 'queue<${1:int}>', insertTextRules: 4, detail: 'std::queue FIFO container', range },
+    { label: 'stack', kind: K.Class, insertText: 'stack<${1:int}>', insertTextRules: 4, detail: 'std::stack LIFO container', range },
+    { label: 'deque', kind: K.Class, insertText: 'deque<${1:int}>', insertTextRules: 4, detail: 'std::deque double-ended queue', range },
+    { label: 'pair', kind: K.Class, insertText: 'pair<${1:int}, ${2:int}>', insertTextRules: 4, detail: 'std::pair<T1, T2>', range },
+
+    // Full Variable Declaration Snippets (Explicitly labeled as snippets)
+    { label: 'vector_def', kind: K.Snippet, insertText: 'vector<${1:int}> ${2:v};', insertTextRules: 4, detail: 'vector<T> v; declaration', range },
+    { label: 'unordered_map_def', kind: K.Snippet, insertText: 'unordered_map<${1:int}, ${2:int}> ${3:mp};', insertTextRules: 4, detail: 'unordered_map<K, V> mp; declaration', range },
+    { label: 'unordered_set_def', kind: K.Snippet, insertText: 'unordered_set<${1:int}> ${2:st};', insertTextRules: 4, detail: 'unordered_set<T> st; declaration', range },
 
     // Member methods
     { label: 'push_back', kind: K.Method, insertText: 'push_back(${1:val})', insertTextRules: 4, detail: 'vector.push_back(val)', range },
@@ -407,9 +425,20 @@ export function registerLeetCodeCompletionProviders(monaco: Monaco): void {
 
   languages.forEach(langId => {
     monaco.languages.registerCompletionItemProvider(langId, {
-      triggerCharacters: ['.', ':', '>', '<', '(', ' '],
+      triggerCharacters: ['.', ':', '>', '<'],
       provideCompletionItems: (model, position) => {
         const word = model.getWordUntilPosition(position);
+        const lineContent = model.getLineContent(position.lineNumber);
+        const lineBefore = lineContent.substring(0, position.column - 1).trim();
+        const isMemberAccess = lineBefore.endsWith('.') || lineBefore.endsWith('->') || lineBefore.endsWith('::');
+
+        // CRITICAL FIX: If there is no active typed word and no member access, do NOT trigger suggestions.
+        // This prevents suggestions popping up in blank whitespace, after spacebars (e.g. after "void "),
+        // or on blank lines, which steals keyboard focus and traps Backspace and Enter.
+        if (!word.word && !isMemberAccess) {
+          return { suggestions: [] };
+        }
+
         const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
@@ -434,11 +463,8 @@ export function registerLeetCodeCompletionProviders(monaco: Monaco): void {
           });
         });
 
-        // 2. TreeNode & ListNode Properties (if referenced in problem code)
-        const lineContent = model.getLineContent(position.lineNumber);
-        const lineBefore = lineContent.substring(0, position.column - 1).trim();
-
-        if (lineBefore.endsWith('.') || lineBefore.endsWith('->')) {
+        // 2. TreeNode & ListNode Properties (only on member access)
+        if (isMemberAccess) {
           if (code.includes('TreeNode')) {
             suggestions.push(
               { label: 'val', kind: monaco.languages.CompletionItemKind.Field, insertText: 'val', detail: 'TreeNode.val', sortText: '0001_val', range },
@@ -454,7 +480,7 @@ export function registerLeetCodeCompletionProviders(monaco: Monaco): void {
           }
         }
 
-        // 3. Language-Specific STL / Collections
+        // 3. Language-Specific STL / Collections / Keywords
         if (langId === 'cpp' || langId === 'c') {
           suggestions.push(...getCppSuggestions(monaco, range));
         } else if (langId === 'java') {
@@ -469,8 +495,10 @@ export function registerLeetCodeCompletionProviders(monaco: Monaco): void {
           suggestions.push(...getRustSuggestions(monaco, range));
         }
 
-        // 4. Algorithm Snippets
-        suggestions.push(...getAlgorithmSnippets(monaco, range, langId));
+        // 4. Algorithm Snippets (only show when typing at least 2 characters)
+        if (word.word && word.word.length >= 2) {
+          suggestions.push(...getAlgorithmSnippets(monaco, range, langId));
+        }
 
         return { suggestions };
       }

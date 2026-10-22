@@ -3678,14 +3678,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 autoClosingBrackets: 'always',
                 autoClosingQuotes: 'always',
                 suggestOnTriggerCharacters: true,
+                fixedOverflowWidgets: true,
                 quickSuggestions: {
                   other: true,
                   comments: false,
-                  strings: true
+                  strings: false
                 },
-                acceptSuggestionOnEnter: 'on',
-                tabCompletion: 'on',
-                wordBasedSuggestions: 'allDocuments',
+                acceptSuggestionOnEnter: 'smart',
+                tabCompletion: 'off',
+                wordBasedSuggestions: 'currentDocument',
                 suggest: {
                   localityBonus: true,
                   showWords: true,
@@ -3694,10 +3695,10 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   showFunctions: true,
                   showClasses: true,
                   snippetsPreventQuickSuggestions: false,
-                  preview: true
+                  preview: false
                 },
                 parameterHints: { enabled: true, cycle: true },
-                formatOnType: true,
+                formatOnType: false,
                 // LeetCode-style: always show text cursor, never pointer (even on word-match highlights)
                 mouseStyle: 'text'
               }}
