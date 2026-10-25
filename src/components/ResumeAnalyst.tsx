@@ -52,7 +52,9 @@ import {
   UserLocationPreferences,
   DEFAULT_LOCATION_PREFERENCES,
   INDIA_CITY_MULTIPLIERS,
-  DualMarketValuation
+  DualMarketValuation,
+  COUNTRY_CONFIGS,
+  CountryCode
 } from '../lib/resumeAnalyzerService';
 import {
   canAffordAction,
@@ -103,6 +105,7 @@ export const ResumeAnalyst: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [analyzingStep, setAnalyzingStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [loadLatencyMs, setLoadLatencyMs] = useState<number>(42);
   const [walletBalance, setWalletBalance] = useState<number>(() => getUserWallet().balance);
   const [unifiedData, setUnifiedData] = useState<UnifiedResumeAnalysisResponse | null>(null);
@@ -150,7 +153,7 @@ export const ResumeAnalyst: React.FC = () => {
         resumeText: textToAnalyze,
         includeSdeTubeData: withSdeTube,
         targetRole,
-        targetJobDescription: targetJobForScan?.rawDescription,
+        targetJobDescription: targetJobForScan?.cleanFullText || targetJobForScan?.cleanSummary || targetJobForScan?.rawDescription,
         targetJobId: targetJobForScan?.id,
         locationPreferences: activeLoc,
         simulatedSkillsBoost: activeSimBoost,
@@ -193,6 +196,22 @@ export const ResumeAnalyst: React.FC = () => {
       setError('Could not extract text from file. Please paste text directly.');
     }
   }, [includeSdeTubeData, executeAnalysis]);
+
+  const activeCountryConfig = COUNTRY_CONFIGS[locationPrefs.countryCode] || COUNTRY_CONFIGS.IN;
+
+  const handleCountryChange = (newCountryCode: CountryCode) => {
+    const nextConfig = COUNTRY_CONFIGS[newCountryCode] || COUNTRY_CONFIGS.IN;
+    const next: UserLocationPreferences = {
+      ...locationPrefs,
+      countryCode: newCountryCode,
+      countryName: nextConfig.name,
+      currencySymbol: nextConfig.currencySymbol,
+      currencyUnit: nextConfig.unitLabel,
+      preferredCity: nextConfig.cities[0].name,
+    };
+    setLocationPrefs(next);
+    executeAnalysis(resumeText, includeSdeTubeData, false, next, simulatedBoost);
+  };
 
   // Update Location Preferences & Trigger Fast Refresh
   const updateLocationPrefs = (updates: Partial<UserLocationPreferences>) => {
@@ -280,7 +299,11 @@ export const ResumeAnalyst: React.FC = () => {
       id: 'dashboard' as const,
       label: 'Market Valuation & ROI',
       icon: BarChart3,
-      badge: `₹${currentTotalLpa} LPA`
+      badge: unifiedData?.dualValuation
+        ? `${unifiedData.dualValuation.domestic.currencySymbol}${unifiedData.dualValuation.domestic.totalEstimatedValue} ${unifiedData.dualValuation.domestic.unitLabel}`
+        : activeCountryConfig.isLPA
+        ? `₹${currentTotalLpa} LPA`
+        : `${activeCountryConfig.currencySymbol}${Math.round(currentTotalLpa * 10)} ${activeCountryConfig.unitLabel}`
     },
     {
       id: 'ats_scanner' as const,
@@ -355,24 +378,18 @@ export const ResumeAnalyst: React.FC = () => {
             {/* Country Selector */}
             <div>
               <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-400 mb-1">
-                Country
+                Target Country
               </label>
               <select
                 value={locationPrefs.countryCode}
-                onChange={(e) => updateLocationPrefs({
-                  countryCode: e.target.value as any,
-                  countryName: e.target.value === 'IN' ? 'India' : e.target.value === 'US' ? 'USA' : e.target.value === 'GB' ? 'UK' : e.target.value === 'DE' ? 'Germany' : e.target.value === 'SG' ? 'Singapore' : 'UAE',
-                  currencySymbol: e.target.value === 'IN' ? '₹' : e.target.value === 'US' ? '$' : e.target.value === 'GB' ? '£' : e.target.value === 'DE' ? '€' : e.target.value === 'SG' ? 'S$' : 'AED',
-                  currencyUnit: e.target.value === 'IN' ? 'LPA' : 'K/yr'
-                })}
+                onChange={(e) => handleCountryChange(e.target.value as CountryCode)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
               >
-                <option value="IN">🇮🇳 India (₹ LPA)</option>
-                <option value="US">🇺🇸 USA ($ USD)</option>
-                <option value="GB">🇬🇧 UK (£ GBP)</option>
-                <option value="DE">🇩🇪 EU / Germany (€)</option>
-                <option value="SG">🇸🇬 Singapore (S$)</option>
-                <option value="AE">🇦🇪 UAE (AED)</option>
+                {Object.values(COUNTRY_CONFIGS).map((cfg) => (
+                  <option key={cfg.code} value={cfg.code}>
+                    {cfg.flag} {cfg.name} ({cfg.currencySymbol}{cfg.unitLabel})
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -386,14 +403,11 @@ export const ResumeAnalyst: React.FC = () => {
                 onChange={(e) => updateLocationPrefs({ preferredCity: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
               >
-                <option value="Bengaluru">Bengaluru (+15%)</option>
-                <option value="Hyderabad">Hyderabad (+10%)</option>
-                <option value="Pune">Pune (+4%)</option>
-                <option value="NCR (Gurugram / Noida)">NCR (Gurugram/Noida)</option>
-                <option value="Mumbai">Mumbai (+6%)</option>
-                <option value="Chennai">Chennai (+2%)</option>
-                <option value="Kolkata">Kolkata (-8%)</option>
-                <option value="Anywhere in India">Any City (National)</option>
+                {activeCountryConfig.cities.map((city) => (
+                  <option key={city.name} value={city.name}>
+                    {city.label || city.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -403,17 +417,21 @@ export const ResumeAnalyst: React.FC = () => {
                 Work Mode
               </label>
               <select
-                value={locationPrefs.workModeFilter}
-                onChange={(e) => updateLocationPrefs({
-                  workModeFilter: e.target.value as any,
-                  preferDomesticRemote: e.target.value === 'remote'
-                })}
+                value={locationPrefs.preferDomesticRemote ? 'domestic_remote' : locationPrefs.workModeFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'domestic_remote') {
+                    updateLocationPrefs({ preferDomesticRemote: true, workModeFilter: 'remote' });
+                  } else {
+                    updateLocationPrefs({ preferDomesticRemote: false, workModeFilter: val as any });
+                  }
+                }}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
               >
-                <option value="all">City + Remote (All)</option>
-                <option value="remote">Remote Preferred</option>
-                <option value="hybrid">Hybrid ({locationPrefs.preferredCity})</option>
-                <option value="onsite">In-Office ({locationPrefs.preferredCity})</option>
+                <option value="all">🏢 {locationPrefs.preferredCity} + Remote</option>
+                <option value="domestic_remote">🏠 Remote in {activeCountryConfig.name}</option>
+                <option value="hybrid">🔄 Hybrid ({locationPrefs.preferredCity})</option>
+                <option value="onsite">📍 In-Office ({locationPrefs.preferredCity})</option>
               </select>
             </div>
           </div>
@@ -438,7 +456,7 @@ export const ResumeAnalyst: React.FC = () => {
                 </div>
                 <div className="text-[10px] text-slate-400 truncate">
                   {includeSdeTubeData
-                    ? `Boost: +₹${unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} LPA / +$${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.sdeTubeBoostUSD ?? 8500).toLocaleString()}`
+                    ? `Boost: +${unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}${unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} ${unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel} / +$${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.sdeTubeBoostUSD ?? 8500).toLocaleString()}`
                     : 'Resume-Only Valuation'}
                 </div>
               </div>
@@ -469,35 +487,35 @@ export const ResumeAnalyst: React.FC = () => {
                 <span>In-Country Value ({unifiedData?.dualValuation?.domestic.cityOrRemoteLabel || locationPrefs.preferredCity})</span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                {INDIA_CITY_MULTIPLIERS[locationPrefs.preferredCity]?.label || 'Active Hub'}
+                {activeCountryConfig.cities.find((c) => c.name === locationPrefs.preferredCity)?.label || activeCountryConfig.name}
               </span>
             </div>
 
             <div className="my-1.5">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
-                  ₹{unifiedData?.dualValuation?.domestic.totalEstimatedValue ?? currentTotalLpa} LPA
+                  {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.totalEstimatedValue ?? (activeCountryConfig.isLPA ? currentTotalLpa : Math.round(currentTotalLpa * 10))} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}
                 </span>
                 <span className="text-xs font-mono text-slate-400">
-                  (Range: ₹{unifiedData?.dualValuation?.domestic.range.min ?? (currentTotalLpa * 0.84).toFixed(1)} – ₹{unifiedData?.dualValuation?.domestic.range.max ?? (currentTotalLpa * 1.26).toFixed(1)} LPA)
+                  (Range: {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.range.min ?? 0} – {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.range.max ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel})
                 </span>
               </div>
             </div>
 
             <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
-              <span>Resume Base: <strong className="text-slate-200">₹{unifiedData?.dualValuation?.domestic.baseResumeOnlyValue ?? (currentTotalLpa - 2.4).toFixed(1)} LPA</strong></span>
+              <span>Resume Base: <strong className="text-slate-200">{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.baseResumeOnlyValue ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong></span>
               {includeSdeTubeData && (
                 <span className="text-emerald-400">
-                  &bull; SDETube Boost: <strong>+₹{unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} LPA</strong>
+                  &bull; SDETube Boost: <strong>+{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
                 </span>
               )}
               {simulatedBoost > 0 && (
                 <span className="text-amber-300">
-                  &bull; What-If: <strong>+₹{simulatedBoost.toFixed(1)} LPA</strong>
+                  &bull; What-If: <strong>+{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.simulatedSkillsBoost ?? simulatedBoost.toFixed(1)} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
                 </span>
               )}
               <span className="text-indigo-300">
-                &bull; India Remote: <strong>₹{unifiedData?.dualValuation?.domestic.domesticRemoteComparison.domesticRemoteMedian ?? 22.5} LPA</strong>
+                &bull; {activeCountryConfig.name} Remote: <strong>{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.comparisons?.domesticRemoteMedian ?? (unifiedData?.dualValuation?.domestic as any)?.domesticRemoteComparison?.domesticRemoteMedian ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
               </span>
             </div>
           </div>
@@ -1033,121 +1051,178 @@ export const ResumeAnalyst: React.FC = () => {
 
               {/* Job Cards */}
               <div className="space-y-4">
-                {displayedJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="p-5 sm:p-6 rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-cyan-400/40 transition-all shadow-xl space-y-4 group"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
-                            {job.salaryRangeText}
-                          </span>
-                          {job.isPreferredCityMatch && (
-                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px] border border-emerald-500/30 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-emerald-400" />
-                              <span>{locationPrefs.preferredCity} Priority</span>
+                {displayedJobs.map((job) => {
+                  const isExpanded = expandedJobId === job.id;
+                  const displaySalary = job.salaryRangeText || job.salaryText || 'Competitive Market Pay';
+                  const displayPosted = job.postedAtFormatted || job.postedAt || 'Recently';
+                  const displaySource = job.source || 'FreeHire';
+                  const displayMode = job.workMode ? job.workMode.toUpperCase() : (job.remote ? 'REMOTE' : 'ONSITE');
+                  const atsColor =
+                    job.atsMatchScore >= 75
+                      ? 'text-emerald-400'
+                      : job.atsMatchScore >= 50
+                      ? 'text-amber-400'
+                      : 'text-rose-400';
+
+                  return (
+                    <div
+                      key={job.id}
+                      className="p-5 sm:p-6 rounded-2xl bg-[#0c101a] border border-white/[0.08] hover:border-cyan-400/40 transition-all shadow-xl space-y-4 group"
+                    >
+                      {/* Top Row: Badges, Role & ATS Match Score */}
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs font-bold">
+                              {displaySalary}
                             </span>
-                          )}
-                          {job.isDomesticRemote && (
-                            <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[11px] border border-indigo-500/30">
-                              Domestic Remote
+                            {job.isPreferredCityMatch && (
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[11px] border border-emerald-500/30 flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-emerald-400" />
+                                <span>{locationPrefs.preferredCity} Priority</span>
+                              </span>
+                            )}
+                            {job.isDomesticRemote && (
+                              <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[11px] border border-indigo-500/30">
+                                Domestic Remote
+                              </span>
+                            )}
+                            {job.remote && !job.isDomesticRemote && (
+                              <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[11px] border border-sky-500/30">
+                                Global Remote
+                              </span>
+                            )}
+                            {job.seniorityLevel && (
+                              <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px] border border-slate-700/60">
+                                {job.seniorityLevel} ({job.requiredMinYoe !== undefined ? `${job.requiredMinYoe}+ YOE` : ''})
+                              </span>
+                            )}
+                            <span className="text-[11px] font-mono text-stitch-dim">
+                              Posted {displayPosted} &bull; via {displaySource}
                             </span>
-                          )}
-                          {job.remote && !job.isDomesticRemote && (
-                            <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono text-[11px] border border-sky-500/30">
-                              Global Remote
-                            </span>
-                          )}
-                          <span className="text-[11px] font-mono text-stitch-dim">
-                            Posted {job.postedAt} &bull; via {job.source}
-                          </span>
+                          </div>
+
+                          <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition">
+                            {job.title}
+                          </h3>
+
+                          <div className="text-xs font-mono text-stitch-dim flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-stitch-dim" />
+                            <span className="text-white font-semibold">{job.company}</span>
+                            <span>&bull;</span>
+                            <span>{job.location} ({displayMode})</span>
+                          </div>
                         </div>
 
-                        <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition">
-                          {job.title}
-                        </h3>
-
-                        <div className="text-xs font-mono text-stitch-dim flex items-center gap-2">
-                          <Building2 className="w-3.5 h-3.5 text-stitch-dim" />
-                          <span className="text-white font-semibold">{job.company}</span>
-                          <span>&bull;</span>
-                          <span>{job.location}</span>
+                        {/* Right: ATS Match Score Gauge */}
+                        <div className="text-right flex-shrink-0">
+                          <div className={`text-2xl sm:text-3xl font-black font-mono ${atsColor}`}>
+                            {job.atsMatchScore}%
+                          </div>
+                          <div className="text-[10px] font-mono text-stitch-dim">ATS Match Score</div>
                         </div>
                       </div>
 
-                      {/* Right: ATS Match Score Gauge */}
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-2xl sm:text-3xl font-black font-mono text-cyan-400">
-                          {job.atsMatchScore}%
+                      {/* Seniority Gap Warning Banner (e.g., for CLANX 7+ YOE role) */}
+                      {job.seniorityGapWarning && (
+                        <div className="px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-center justify-between">
+                          <span className="font-semibold">⚠️ {job.seniorityGapWarning}</span>
+                          <span className="text-[11px] text-amber-400/80 font-mono">Seniority penalty applied</span>
                         </div>
-                        <div className="text-[10px] font-mono text-stitch-dim">ATS Match Score</div>
-                      </div>
-                    </div>
+                      )}
 
-                    <p className="text-xs text-stitch-dim leading-relaxed">
-                      {job.rawDescription}
-                    </p>
-
-                    {/* Matched vs Missing Skills */}
-                    <div className="space-y-2 pt-2 border-t border-white/[0.05]">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] font-mono text-stitch-dim mr-1">Matched:</span>
-                        {job.matchedSkills.map((m, idx) => (
-                          <span
-                            key={idx}
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 ${
-                              m.fromSdeTube
-                                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                                : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
-                            }`}
+                      {/* Sanitized Description Summary & Expandable Structured Sections (NO RAW HTML TAGS!) */}
+                      <div className="text-xs text-slate-300 leading-relaxed bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5">
+                        {!isExpanded ? (
+                          <p>{job.cleanSummary || job.rawDescription?.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 320) || 'No description provided.'}</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {job.structuredSections && job.structuredSections.length > 0 ? (
+                              job.structuredSections.map((sec, idx) => (
+                                <div key={idx}>
+                                  <div className="text-xs font-semibold text-indigo-300 mb-1">{sec.heading}</div>
+                                  <ul className="list-disc list-inside space-y-1 text-slate-300">
+                                    {sec.bullets.map((b, bIdx) => (
+                                      <li key={bIdx}>{b}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))
+                            ) : (
+                              <p className="whitespace-pre-wrap">{job.cleanFullText || job.cleanSummary || job.rawDescription?.replace(/<[^>]+>/g, ' ').trim()}</p>
+                            )}
+                          </div>
+                        )}
+                        {((job.structuredSections && job.structuredSections.length > 0) || (job.cleanFullText && job.cleanFullText.length > 320) || (job.rawDescription && job.rawDescription.length > 320)) && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
+                            className="mt-2 text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 cursor-pointer block"
                           >
-                            <Check className="w-2.5 h-2.5" />
-                            <span>{m.name}</span>
-                            {m.fromSdeTube && <span className="text-[9px] text-amber-300">⚡</span>}
-                          </span>
-                        ))}
+                            {isExpanded ? '▲ Show Less' : '▼ View Full Structured Requirements & Interview Process'}
+                          </button>
+                        )}
                       </div>
 
-                      {job.missingSkills.length > 0 && (
+                      {/* Matched vs Missing Skills */}
+                      <div className="space-y-2 pt-2 border-t border-white/[0.05]">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[11px] font-mono text-stitch-dim mr-1">Missing for 100%:</span>
-                          {job.missingSkills.map((s, idx) => (
+                          <span className="text-[11px] font-mono text-stitch-dim mr-1">Matched:</span>
+                          {job.matchedSkills.map((m, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] font-mono"
+                              className={`px-2 py-0.5 rounded text-[10px] font-mono font-medium flex items-center gap-1 ${
+                                m.fromSdeTube || m.proofLevel === 'sdetube'
+                                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                                  : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                              }`}
                             >
-                              {s}
+                              <Check className="w-2.5 h-2.5" />
+                              <span>{m.name}</span>
+                              {(m.fromSdeTube || m.proofLevel === 'sdetube') && <span className="text-[9px] text-amber-300">⚡</span>}
                             </span>
                           ))}
                         </div>
-                      )}
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.05]">
-                      <button
-                        type="button"
-                        onClick={() => handleScanAgainstJob(job)}
-                        className="px-4 py-2 rounded-xl bg-stitch-surface hover:bg-stitch-card border border-white/[0.08] hover:border-cyan-400/40 text-xs font-mono font-bold text-cyan-300 hover:text-white transition flex items-center gap-2 cursor-pointer"
-                      >
-                        <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
-                        <span>Scan Resume Against This Job</span>
-                      </button>
+                        {job.missingSkills.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] font-mono text-stitch-dim mr-1">Missing for 100%:</span>
+                            {job.missingSkills.map((s, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] font-mono"
+                              >
+                                + Learn {s}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
-                      <a
-                        href={job.applyUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-mono font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:brightness-110 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span>Apply on FreeHire</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/[0.05]">
+                        <button
+                          type="button"
+                          onClick={() => handleScanAgainstJob(job)}
+                          className="px-4 py-2 rounded-xl bg-stitch-surface hover:bg-stitch-card border border-white/[0.08] hover:border-cyan-400/40 text-xs font-mono font-bold text-cyan-300 hover:text-white transition flex items-center gap-2 cursor-pointer"
+                        >
+                          <FileCheck className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>Scan Resume Against This Job</span>
+                        </button>
+
+                        <a
+                          href={job.applyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-mono font-black text-xs transition shadow-lg shadow-emerald-500/20 hover:brightness-110 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Apply on FreeHire</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
             </div>

@@ -1,16 +1,281 @@
-import { executeAIChatCascade } from './mistral';
+import { executeAIChatCascade, MISTRAL_API_KEY, GROQ_API_KEY } from './mistral';
 import {
   buildResumeAnalysisCacheKey,
   getCachedResumeAnalysis,
   setCachedResumeAnalysis,
-  sha256Hex
+  sha256Hex,
+  redisGet,
+  redisSet
 } from './redis';
 import { getUserProgressSync } from './progressService';
 import { getInterviewHistory } from './interviewHistoryService';
 
 // ============================================================================
-// UNIFIED STUDIO DATA CONTRACTS
+// 1. MULTI-COUNTRY & CITY REGISTRY (FIXES COUNTRY/CITY DROPDOWN & CURRENCY BUG)
 // ============================================================================
+
+export type CountryCode = 'IN' | 'US' | 'GB' | 'DE' | 'SG' | 'CA' | 'AE';
+
+export interface CityHubOption {
+  name: string;
+  multiplier: number;
+  label: string;
+  searchKeywords: string[];
+}
+
+export interface CountryMarketConfig {
+  code: CountryCode;
+  name: string;
+  flag: string;
+  currencySymbol: string;
+  unitLabel: string; // 'LPA' for India, 'K/yr' for US/UK/EU/SG/CA/AE
+  isLPA: boolean;
+  baseAnchorsByBand: {
+    fresher: number; // 0 - 0.5 YOE
+    sde1: number;    // 0.5 - 2.0 YOE
+    sde2: number;    // 2.0 - 4.5 YOE
+    senior: number;  // 4.5 - 7.5 YOE
+    staff: number;   // 7.5+ YOE
+  };
+  perYoeSlope: number;
+  maxSkillPremium: number;
+  domesticRemoteMultiplier: number;
+  topHubName: string;
+  cities: CityHubOption[];
+  countryMatchKeywords: string[];
+}
+
+export const COUNTRY_CONFIGS: Record<CountryCode, CountryMarketConfig> = {
+  IN: {
+    code: 'IN',
+    name: 'India',
+    flag: '🇮🇳',
+    currencySymbol: '₹',
+    unitLabel: 'LPA',
+    isLPA: true,
+    baseAnchorsByBand: { fresher: 6.0, sde1: 9.5, sde2: 16.0, senior: 26.0, staff: 42.0 },
+    perYoeSlope: 2.4,
+    maxSkillPremium: 6.5,
+    domesticRemoteMultiplier: 1.08,
+    topHubName: 'Bengaluru',
+    countryMatchKeywords: ['india', 'bengaluru', 'bangalore', 'hyderabad', 'pune', 'mumbai', 'gurugram', 'gurgaon', 'noida', 'delhi', 'chennai', 'kolkata'],
+    cities: [
+      { name: 'Bengaluru', multiplier: 1.15, label: 'Bengaluru (Tier-1 Tech Hub +15%)', searchKeywords: ['bengaluru', 'bangalore'] },
+      { name: 'Hyderabad', multiplier: 1.10, label: 'Hyderabad (Product & Cloud Hub +10%)', searchKeywords: ['hyderabad'] },
+      { name: 'Pune', multiplier: 1.04, label: 'Pune (+4%)', searchKeywords: ['pune'] },
+      { name: 'NCR (Gurugram / Noida)', multiplier: 1.06, label: 'Delhi NCR (+6%)', searchKeywords: ['gurugram', 'gurgaon', 'noida', 'delhi', 'ncr'] },
+      { name: 'Mumbai', multiplier: 1.06, label: 'Mumbai (+6%)', searchKeywords: ['mumbai'] },
+      { name: 'Chennai', multiplier: 1.02, label: 'Chennai (+2%)', searchKeywords: ['chennai'] },
+      { name: 'Kolkata', multiplier: 0.92, label: 'Kolkata (Cost-Adjusted -8%)', searchKeywords: ['kolkata', 'calcutta'] },
+      { name: 'Anywhere in India', multiplier: 1.00, label: 'All India Baseline (1.0x)', searchKeywords: ['india'] },
+    ],
+  },
+  US: {
+    code: 'US',
+    name: 'United States',
+    flag: '🇺🇸',
+    currencySymbol: '$',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 88, sde1: 112, sde2: 145, senior: 182, staff: 235 },
+    perYoeSlope: 11,
+    maxSkillPremium: 38,
+    domesticRemoteMultiplier: 1.02,
+    topHubName: 'San Francisco / Bay Area',
+    countryMatchKeywords: ['united states', 'usa', 'u.s.', 'san francisco', 'bay area', 'new york', 'seattle', 'austin', 'boston', 'california', 'texas', 'us remote'],
+    cities: [
+      { name: 'San Francisco / Bay Area', multiplier: 1.22, label: 'SF / Silicon Valley (+22%)', searchKeywords: ['san francisco', 'bay area', 'palo alto', 'mountain view', 'sunnyvale', 'san jose'] },
+      { name: 'New York City', multiplier: 1.18, label: 'New York City (+18%)', searchKeywords: ['new york', 'nyc', 'brooklyn', 'manhattan'] },
+      { name: 'Seattle', multiplier: 1.15, label: 'Seattle / Bellevue (+15%)', searchKeywords: ['seattle', 'bellevue', 'redmond'] },
+      { name: 'Austin', multiplier: 1.05, label: 'Austin, TX (+5%)', searchKeywords: ['austin'] },
+      { name: 'Boston', multiplier: 1.10, label: 'Boston, MA (+10%)', searchKeywords: ['boston', 'cambridge'] },
+      { name: 'Anywhere in US', multiplier: 1.00, label: 'US National Baseline (1.0x)', searchKeywords: ['united states', 'usa', 'us'] },
+    ],
+  },
+  GB: {
+    code: 'GB',
+    name: 'United Kingdom',
+    flag: '🇬🇧',
+    currencySymbol: '£',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 42, sde1: 56, sde2: 76, senior: 98, staff: 132 },
+    perYoeSlope: 6.5,
+    maxSkillPremium: 22,
+    domesticRemoteMultiplier: 1.00,
+    topHubName: 'London',
+    countryMatchKeywords: ['united kingdom', 'uk', 'london', 'manchester', 'edinburgh', 'cambridge', 'bristol', 'england'],
+    cities: [
+      { name: 'London', multiplier: 1.18, label: 'London (+18%)', searchKeywords: ['london'] },
+      { name: 'Cambridge / Oxford', multiplier: 1.08, label: 'Cambridge / Oxford (+8%)', searchKeywords: ['cambridge', 'oxford'] },
+      { name: 'Manchester', multiplier: 0.96, label: 'Manchester (-4%)', searchKeywords: ['manchester'] },
+      { name: 'Edinburgh', multiplier: 0.98, label: 'Edinburgh (-2%)', searchKeywords: ['edinburgh'] },
+      { name: 'Anywhere in UK', multiplier: 1.00, label: 'UK National Baseline (1.0x)', searchKeywords: ['uk', 'united kingdom'] },
+    ],
+  },
+  DE: {
+    code: 'DE',
+    name: 'Germany / EU',
+    flag: '🇩🇪',
+    currencySymbol: '€',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 54, sde1: 66, sde2: 84, senior: 105, staff: 135 },
+    perYoeSlope: 6.0,
+    maxSkillPremium: 20,
+    domesticRemoteMultiplier: 1.02,
+    topHubName: 'Munich / Berlin',
+    countryMatchKeywords: ['germany', 'berlin', 'munich', 'frankfurt', 'amsterdam', 'netherlands', 'europe', 'eu'],
+    cities: [
+      { name: 'Berlin', multiplier: 1.08, label: 'Berlin (+8%)', searchKeywords: ['berlin'] },
+      { name: 'Munich', multiplier: 1.14, label: 'Munich (+14%)', searchKeywords: ['munich', 'münchen'] },
+      { name: 'Amsterdam (NL)', multiplier: 1.15, label: 'Amsterdam (+15%)', searchKeywords: ['amsterdam', 'netherlands'] },
+      { name: 'Frankfurt', multiplier: 1.06, label: 'Frankfurt (+6%)', searchKeywords: ['frankfurt'] },
+      { name: 'Anywhere in EU', multiplier: 1.00, label: 'EU Baseline (1.0x)', searchKeywords: ['germany', 'europe', 'eu'] },
+    ],
+  },
+  SG: {
+    code: 'SG',
+    name: 'Singapore',
+    flag: '🇸🇬',
+    currencySymbol: 'S$',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 62, sde1: 78, sde2: 106, senior: 142, staff: 190 },
+    perYoeSlope: 8.5,
+    maxSkillPremium: 28,
+    domesticRemoteMultiplier: 1.00,
+    topHubName: 'Singapore Central',
+    countryMatchKeywords: ['singapore', 'apac'],
+    cities: [
+      { name: 'Singapore Central', multiplier: 1.05, label: 'Singapore Tech Hub (+5%)', searchKeywords: ['singapore'] },
+      { name: 'Anywhere in APAC', multiplier: 1.00, label: 'APAC Baseline (1.0x)', searchKeywords: ['singapore', 'apac'] },
+    ],
+  },
+  CA: {
+    code: 'CA',
+    name: 'Canada',
+    flag: '🇨🇦',
+    currencySymbol: 'C$',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 76, sde1: 94, sde2: 122, senior: 155, staff: 195 },
+    perYoeSlope: 8.0,
+    maxSkillPremium: 26,
+    domesticRemoteMultiplier: 1.02,
+    topHubName: 'Toronto / Vancouver',
+    countryMatchKeywords: ['canada', 'toronto', 'vancouver', 'montreal', 'waterloo', 'ottawa'],
+    cities: [
+      { name: 'Toronto', multiplier: 1.10, label: 'Toronto / Waterloo (+10%)', searchKeywords: ['toronto', 'waterloo'] },
+      { name: 'Vancouver', multiplier: 1.08, label: 'Vancouver (+8%)', searchKeywords: ['vancouver'] },
+      { name: 'Montreal', multiplier: 0.96, label: 'Montreal (-4%)', searchKeywords: ['montreal'] },
+      { name: 'Anywhere in Canada', multiplier: 1.00, label: 'Canada Baseline (1.0x)', searchKeywords: ['canada'] },
+    ],
+  },
+  AE: {
+    code: 'AE',
+    name: 'UAE (Tax-Free)',
+    flag: '🇦🇪',
+    currencySymbol: 'AED ',
+    unitLabel: 'K/yr',
+    isLPA: false,
+    baseAnchorsByBand: { fresher: 140, sde1: 190, sde2: 270, senior: 360, staff: 480 },
+    perYoeSlope: 22,
+    maxSkillPremium: 65,
+    domesticRemoteMultiplier: 1.00,
+    topHubName: 'Dubai',
+    countryMatchKeywords: ['uae', 'dubai', 'abu dhabi', 'united arab emirates', 'mena'],
+    cities: [
+      { name: 'Dubai', multiplier: 1.08, label: 'Dubai Internet City (+8% Tax-Free)', searchKeywords: ['dubai'] },
+      { name: 'Abu Dhabi', multiplier: 1.05, label: 'Abu Dhabi (+5% Tax-Free)', searchKeywords: ['abu dhabi'] },
+      { name: 'Anywhere in UAE', multiplier: 1.00, label: 'UAE Baseline (1.0x)', searchKeywords: ['uae', 'dubai', 'abu dhabi'] },
+    ],
+  },
+};
+
+export const INDIA_CITY_MULTIPLIERS: Record<string, { mult: number; label: string }> = {
+  'Bengaluru': { mult: 1.15, label: 'Bengaluru (Tier-1 Tech Hub +15%)' },
+  'Hyderabad': { mult: 1.10, label: 'Hyderabad (Product & Enterprise Hub +10%)' },
+  'NCR (Gurugram / Noida)': { mult: 1.06, label: 'Delhi NCR (+6%)' },
+  'Mumbai': { mult: 1.06, label: 'Mumbai (+6%)' },
+  'Pune': { mult: 1.04, label: 'Pune (+4%)' },
+  'Chennai': { mult: 1.02, label: 'Chennai (+2%)' },
+  'Kolkata': { mult: 0.92, label: 'Kolkata (Regional Cost-Adjusted -8%)' },
+  'Domestic Remote (India)': { mult: 1.08, label: 'India Remote (Product/Startup Band +8%)' },
+  'Anywhere in India': { mult: 1.00, label: 'India National Baseline (1.0x)' },
+};
+
+export interface UserLocationPreferences {
+  countryCode: CountryCode;
+  countryName?: string;
+  currencySymbol?: string;
+  currencyUnit?: string;
+  preferredCity: string;
+  preferDomesticRemote: boolean;
+  workModeFilter: 'all' | 'remote' | 'hybrid' | 'onsite';
+  includeOutsideCountryJobs: boolean;
+}
+
+export const DEFAULT_LOCATION_PREFERENCES: UserLocationPreferences = {
+  countryCode: 'IN',
+  countryName: 'India',
+  currencySymbol: '₹',
+  currencyUnit: 'LPA',
+  preferredCity: 'Bengaluru',
+  preferDomesticRemote: false,
+  workModeFilter: 'all',
+  includeOutsideCountryJobs: true,
+};
+
+// ============================================================================
+// 2. DATA CONTRACTS & INTERFACES
+// ============================================================================
+
+export type RoleArchetype =
+  | 'Backend & Distributed Systems'
+  | 'Full-Stack Engineering'
+  | 'Frontend & UI/3D Engineering'
+  | 'Data, AI & ML Engineering'
+  | 'DevOps, Cloud & Platform'
+  | 'Software Engineering (General)';
+
+export interface VerifiedWorkEntry {
+  company: string;
+  roleTitle: string;
+  startDate: string;
+  endDate: string;
+  months: number;
+  classification: 'full_time' | 'internship' | 'part_time_or_teaching';
+  reason: string;
+}
+
+export interface ParsedExperienceMetrics {
+  fullTimeYoe: number;           // Strict full-time industry YOE
+  internshipMonths: number;      // Non-overlapping internship / trainee / TA months
+  teachingOrPartTimeMonths: number;
+  effectiveValuationYoe: number; // fullTimeYoe + (internshipMonths/12)*0.25
+  manualOverrideApplied?: boolean;
+  detectedGraduationYear: number | null;
+  detectedRoleArchetype: RoleArchetype;
+  verifiedByLLM?: boolean;
+  llmAuditNotes?: string;
+  workEntries?: VerifiedWorkEntry[];
+  excludedEducationEntries?: string[];
+  detectedIntervals?: {
+    roleSnippet: string;
+    startLabel: string;
+    endLabel: string;
+    months: number;
+    classification: 'full-time' | 'internship' | 'part-time/teaching';
+  }[];
+}
+
+export interface SkillProofClassification {
+  allSkills: string[];
+  provenInExperience: string[]; // 100% valuation & ATS weight
+  provenInProjects: string[];   // 65% valuation & ATS weight
+  listedOnlyInSkills: string[]; // 15% valuation weight (unverified keyword)
+}
 
 export interface SdeTubeTelemetrySnapshot {
   userId: string;
@@ -26,59 +291,34 @@ export interface SdeTubeTelemetrySnapshot {
   telemetryHash: string;
 }
 
-export interface UserLocationPreferences {
-  countryCode: 'IN' | 'US' | 'GB' | 'DE' | 'SG' | 'CA' | 'AE';
-  countryName: string;
-  currencySymbol: string;       // '₹', '$', '£', '€', 'S$', 'AED'
-  currencyUnit: string;         // 'LPA' for IN, 'K/yr' for US/GB/DE/SG/CA/AE
-  preferredCity: string;        // e.g., 'Bengaluru', 'Hyderabad', 'Pune', 'NCR (Gurugram / Noida)', 'Kolkata', 'Mumbai'
-  preferDomesticRemote: boolean;
-  workModeFilter: 'all' | 'remote' | 'hybrid' | 'onsite';
-  includeOutsideCountryJobs: boolean;
-}
-
-export const INDIA_CITY_MULTIPLIERS: Record<string, { mult: number; label: string }> = {
-  'Bengaluru': { mult: 1.15, label: 'Bengaluru (Tier-1 Tech Hub +15%)' },
-  'Hyderabad': { mult: 1.10, label: 'Hyderabad (Product & Enterprise Hub +10%)' },
-  'NCR (Gurugram / Noida)': { mult: 1.06, label: 'Delhi NCR (+6%)' },
-  'Mumbai': { mult: 1.06, label: 'Mumbai (+6%)' },
-  'Pune': { mult: 1.04, label: 'Pune (+4%)' },
-  'Chennai': { mult: 1.02, label: 'Chennai (+2%)' },
-  'Kolkata': { mult: 0.92, label: 'Kolkata (Regional Cost-Adjusted -8%)' },
-  'Domestic Remote (India)': { mult: 1.08, label: 'India Remote (Product/Startup Band +8%)' },
-  'Anywhere in India': { mult: 1.00, label: 'India National Baseline (1.0x)' },
-};
-
-export const DEFAULT_LOCATION_PREFERENCES: UserLocationPreferences = {
-  countryCode: 'IN',
-  countryName: 'India',
-  currencySymbol: '₹',
-  currencyUnit: 'LPA',
-  preferredCity: 'Bengaluru',
-  preferDomesticRemote: false,
-  workModeFilter: 'all',
-  includeOutsideCountryJobs: true,
-};
-
 export interface DualMarketValuation {
-  // 1. Within-Country (Domestic) Valuation
   domestic: {
+    countryCode?: CountryCode;
     countryName: string;
+    flag?: string;
     cityOrRemoteLabel: string;
     currency: string;           // e.g., 'INR (₹ LPA)'
+    currencySymbol: string;
+    unitLabel: string;
+    isLPA?: boolean;
     baseResumeOnlyValue: number; // Strictly from uploaded resume
     sdeTubeVerifiedBoost: number;// Added when checkbox is checked
     simulatedSkillsBoost: number;// Added when user checks "What-If" skills
     totalEstimatedValue: number; // base + sdeTubeBoost + simulatedSkillsBoost
     range: { min: number; median: number; max: number; p90: number };
-    cityMultiplierApplied: number; // e.g., 1.15 for Bengaluru, 1.08 for India Remote, 0.92 for Kolkata
-    domesticRemoteComparison: {
+    cityMultiplierApplied?: number;
+    domesticRemoteComparison?: {
       cityOnsiteMedian: number;
       domesticRemoteMedian: number;
-      topHubMedian: number;     // e.g., Bengaluru / Bay Area benchmark
+      topHubMedian: number;
+    };
+    comparisons?: {
+      selectedCityOnsite: number;
+      domesticRemoteMedian: number;
+      topNationalHubMedian: number;
+      topNationalHubName?: string;
     };
   };
-  // 2. Outside-Country (International Remote & Relocation) Valuation
   outsideCountry: {
     globalRemoteUSD: {
       baseResumeOnlyUSD: number;
@@ -89,22 +329,41 @@ export interface DualMarketValuation {
       readinessPct: number;
     };
     internationalRelocationHubs: {
-      hubName: 'US (Bay Area / NYC)' | 'UK (London)' | 'EU (Berlin / Amsterdam)' | 'Singapore' | 'UAE (Dubai Tax-Free)';
+      countryCode?: CountryCode;
+      hubName: string;
       currency: string;
       estimatedRange: string;
-      usdEquivalentMedian: number;
-      visaSponsorshipLikelihood: 'High' | 'Moderate' | 'Selective';
+      usdEquivalentMedian?: number;
+      visaSponsorshipLikelihood?: 'High' | 'Moderate' | 'Selective';
+      visaSponsorshipFit?: 'High' | 'Moderate' | 'Selective';
+    }[];
+    internationalHubs?: {
+      countryCode?: CountryCode;
+      hubName: string;
+      currency: string;
+      estimatedRange: string;
+      usdEquivalentMedian?: number;
+      visaSponsorshipFit?: 'High' | 'Moderate' | 'Selective';
+      visaSponsorshipLikelihood?: 'High' | 'Moderate' | 'Selective';
     }[];
   };
-  // Shared Multipliers & Confidence
   confidenceScore: number;
+  marketPercentile?: number;
   factors: {
-    detectedYoe: number;
-    seniorityBand: 'Entry / Intern' | 'SDE-1' | 'SDE-2' | 'Senior / Staff';
-    skillDemandMultiplier: number;
-    impactQuantificationMultiplier: number;
-    atsFormatMultiplier: number;
+    detectedYoe?: number;
+    fullTimeYoe?: number;
+    internshipMonths?: number;
+    seniorityBand: 'Fresher / Entry' | 'Entry / Intern' | 'SDE-1' | 'SDE-1 (Junior)' | 'SDE-2' | 'SDE-2 (Mid-Level)' | 'Senior / Staff' | 'Senior (SDE-3)' | 'Staff / Principal';
+    skillDemandMultiplier?: number;
+    impactQuantificationMultiplier?: number;
+    atsFormatMultiplier?: number;
     sdeTubeBonusPct: number;
+    baseAnchorLPA?: number;
+    earnedSkillPremiumLPA?: number;
+    impactQuantificationBonusLPA?: number;
+    atsFormatAdjustmentLPA?: number;
+    provenSkillsCount?: number;
+    unverifiedSkillsCount?: number;
   };
 }
 
@@ -200,19 +459,29 @@ export interface LiveJobMatch {
   company: string;
   location: string;
   remote: boolean;
-  workMode?: 'remote' | 'hybrid' | 'onsite';
+  workMode: 'remote' | 'hybrid' | 'onsite';
+  isDomestic?: boolean;
   isPreferredCityMatch?: boolean;
   isDomesticRemote?: boolean;
+  salaryText?: string;
   salaryRangeText: string;
   estimatedLPA?: number;
   applyUrl: string;
   postedAt: string;
+  postedAtFormatted?: string;
   source: 'FreeHire' | 'PartnerFeed';
   atsMatchScore: number;              // 0-100%
-  matchedSkills: { name: string; fromSdeTube: boolean }[];
+  seniorityGapWarning?: string | null; // e.g., "Seniority Gap: Requires 7+ YOE (Your Verified Full-Time: 1.0 YOE)"
+  requiredMinYoe?: number;
+  seniorityLevel?: string;
+  matchedSkills: { name: string; proofLevel?: 'experience' | 'project' | 'sdetube' | 'skills_only'; fromSdeTube?: boolean }[];
   missingSkills: string[];
-  marketValueComparison: 'Above Your Valuation' | 'Matches Your Valuation' | 'Below Your Valuation';
-  rawDescription: string;
+  extractedSkills?: string[];
+  marketValueComparison?: 'Above Your Valuation' | 'Matches Your Valuation' | 'Below Your Valuation';
+  rawDescription?: string;
+  cleanSummary?: string;
+  cleanFullText?: string;
+  structuredSections?: { heading: string; bullets: string[] }[];
 }
 
 export interface RoleTransitionPath {
@@ -243,6 +512,17 @@ export interface UnifiedResumeAnalysisResponse {
     currentRole: string;
     extractedYoe: number;
     resumeSkills: string[];
+    sdeTubeSkillsIncluded: string[];
+    resumeHash: string;
+    experienceMetrics?: ParsedExperienceMetrics;
+    skillProof?: SkillProofClassification;
+  };
+  candidateProfile?: {
+    name: string;
+    email: string;
+    detectedRoleArchetype: RoleArchetype;
+    experienceMetrics: ParsedExperienceMetrics;
+    skillProof: SkillProofClassification;
     sdeTubeSkillsIncluded: string[];
     resumeHash: string;
   };
@@ -1830,8 +2110,988 @@ export async function getSdeTubeTelemetrySnapshot(userId?: string): Promise<SdeT
 }
 
 // ============================================================================
-// MULTI-FACTOR MARKET VALUATION CALCULATOR
+// CANONICAL SKILLS, SECTION EXTRACTOR & ACCURATE EXPERIENCE PARSER
 // ============================================================================
+
+export interface CanonicalSkillDef {
+  name: string;
+  category: 'System Design & Scale' | 'Backend & Cloud' | 'Data & Streaming' | 'AI & LLM' | 'Core CS & DSA';
+  regex: RegExp;
+  lpaPremium: number;
+  usdPremium: number;
+  whyItMatters: string;
+}
+
+export const CANONICAL_SKILLS: CanonicalSkillDef[] = [
+  { name: 'Go', category: 'Backend & Cloud', regex: /\bgolang\b|\bgo\s+(?:language|developer|engineer|backend|microservices|goroutines)\b/i, lpaPremium: 2.8, usdPremium: 8500, whyItMatters: 'Unlocks high-throughput networking and cloud infrastructure roles with low memory overhead.' },
+  { name: 'Apache Kafka', category: 'Data & Streaming', regex: /\bkafka\b|\bapache\s+kafka\b/i, lpaPremium: 2.6, usdPremium: 8000, whyItMatters: 'Essential for event-driven architectures and distributed message streaming at enterprise scale.' },
+  { name: 'Kubernetes', category: 'Backend & Cloud', regex: /\bkubernetes\b|\bk8s\b|\bk3d\b|\bk3s\b|\bhelm\b/i, lpaPremium: 2.7, usdPremium: 8500, whyItMatters: 'The universal orchestrator for modern cloud-native systems, auto-scaling, and rolling updates.' },
+  { name: 'System Design (HLD & LLD)', category: 'System Design & Scale', regex: /\bsystem\s+design\b|\bdistributed\s+systems?\b|\bscalability\b|\bhld\b|\blld\b/i, lpaPremium: 3.2, usdPremium: 10000, whyItMatters: 'The single highest-weighted factor separating SDE-1 from SDE-2/Senior compensation bands.' },
+  { name: 'Redis', category: 'System Design & Scale', regex: /\bredis\b/i, lpaPremium: 1.8, usdPremium: 5500, whyItMatters: 'Sub-millisecond latency distributed caching, rate-limiting, and session management.' },
+  { name: 'PostgreSQL', category: 'System Design & Scale', regex: /\bpostgres(?:ql)?\b/i, lpaPremium: 1.6, usdPremium: 5000, whyItMatters: 'Relational data modeling, indexing, connection pooling, and transactional consistency.' },
+  { name: 'TypeScript', category: 'Backend & Cloud', regex: /\btypescript\b|\bts\b/i, lpaPremium: 1.4, usdPremium: 4500, whyItMatters: 'Strict type safety across full-stack and scalable Node.js architectures.' },
+  { name: 'React', category: 'Backend & Cloud', regex: /\breact(?:\.js|js)?\b/i, lpaPremium: 1.3, usdPremium: 4000, whyItMatters: 'Industry-standard frontend library for modern reactive web applications.' },
+  { name: 'Next.js', category: 'Backend & Cloud', regex: /\bnext(?:\.js|js)\b/i, lpaPremium: 1.5, usdPremium: 4500, whyItMatters: 'Production server-side rendering, streaming, and full-stack edge performance.' },
+  { name: 'Node.js', category: 'Backend & Cloud', regex: /\bnode(?:\.js|js)?\b/i, lpaPremium: 1.4, usdPremium: 4000, whyItMatters: 'High-performance asynchronous backend runtime for microservices and APIs.' },
+  { name: 'Java', category: 'Backend & Cloud', regex: /\bjava\b(?!\s*script)/i, lpaPremium: 1.5, usdPremium: 4500, whyItMatters: 'Enterprise tier-1 platform engineering with Spring Boot and JVM optimization.' },
+  { name: 'C++', category: 'Core CS & DSA', regex: /\bc\+\+\b|\bcpp\b/i, lpaPremium: 1.8, usdPremium: 5500, whyItMatters: 'Low-latency systems, game engines, performance-critical infra, and algorithmic problem solving.' },
+  { name: 'Python', category: 'AI & LLM', regex: /\bpython\b/i, lpaPremium: 1.4, usdPremium: 4000, whyItMatters: 'Dominant ecosystem for AI/ML pipelines, backend services, and rapid scripting.' },
+  { name: 'Docker', category: 'Backend & Cloud', regex: /\bdocker\b|\bcontainerization\b/i, lpaPremium: 1.1, usdPremium: 3500, whyItMatters: 'Reproducible container environments and modern microservice packaging.' },
+  { name: 'AWS', category: 'Backend & Cloud', regex: /\baws\b|\bamazon\s+web\s+services\b/i, lpaPremium: 1.7, usdPremium: 5000, whyItMatters: 'Cloud primitives (ECS, S3, SQS, DynamoDB, Lambda) powering global applications.' },
+  { name: 'GCP', category: 'Backend & Cloud', regex: /\bgcp\b|\bgoogle\s+cloud\b/i, lpaPremium: 1.6, usdPremium: 5000, whyItMatters: 'Google Cloud services, BigQuery, and enterprise Kubernetes engines.' },
+  { name: 'Microservices', category: 'System Design & Scale', regex: /\bmicroservices?\b/i, lpaPremium: 1.6, usdPremium: 5000, whyItMatters: 'Decoupled domain-driven system architectures with fault boundaries.' },
+  { name: 'GraphQL', category: 'Backend & Cloud', regex: /\bgraphql\b|\bapollo\b/i, lpaPremium: 1.3, usdPremium: 4000, whyItMatters: 'Declarative, client-specified data querying for complex entity graphs.' },
+  { name: 'LLM / GenAI', category: 'AI & LLM', regex: /\bllm\b|\brag\b|\blangchain\b|\bgenerative\s+ai\b|\bopenai\b|\bvllm\b/i, lpaPremium: 3.0, usdPremium: 9500, whyItMatters: 'Cutting-edge production retrieval, agentic workflows, and model quantization.' },
+  { name: 'PyTorch', category: 'AI & LLM', regex: /\bpytorch\b/i, lpaPremium: 2.2, usdPremium: 7000, whyItMatters: 'Deep learning research, model fine-tuning, and inference pipelines.' },
+  { name: 'Three.js', category: 'Backend & Cloud', regex: /\bthree(?:\.js|js)\b|\bwebgl\b/i, lpaPremium: 1.6, usdPremium: 5000, whyItMatters: 'Interactive 3D graphics on the web with shaders and WebGL pipelines.' },
+  { name: 'NATS', category: 'Data & Streaming', regex: /\bnats\b/i, lpaPremium: 1.8, usdPremium: 5500, whyItMatters: 'Ultra-lightweight, high-performance messaging for modern microservice clusters.' },
+  { name: 'Rust', category: 'Backend & Cloud', regex: /\brust\b/i, lpaPremium: 2.8, usdPremium: 8500, whyItMatters: 'Zero-cost abstractions and memory safety without garbage collection.' },
+  { name: 'CI/CD', category: 'Backend & Cloud', regex: /\bci\/cd\b|\bgithub\s+actions\b|\bjenkins\b/i, lpaPremium: 1.1, usdPremium: 3500, whyItMatters: 'Automated testing, build pipelines, and production deployment automation.' },
+  { name: 'Data Structures & Algorithms', category: 'Core CS & DSA', regex: /\balgorithms?\b|\bleetcode\b|\bdsa\b|\bdata\s+structures\b/i, lpaPremium: 1.6, usdPremium: 5000, whyItMatters: 'Core computational problem solving and tier-1 interview readiness.' },
+];
+
+export const CANONICAL_SKILL_MAP = new Map<string, CanonicalSkillDef>(
+  CANONICAL_SKILLS.map(s => [s.name.toLowerCase(), s])
+);
+
+// ============================================================================
+// 3. LLM-POWERED RESUME AUDITOR + DETERMINISTIC GUARDRAIL (FIXES BUG #1)
+// ============================================================================
+
+const LLM_EXTRACTION_SYSTEM_PROMPT = `You are a strict, zero-hallucination Technical Resume Auditor.
+Extract structured data from the candidate's resume text and return ONLY valid JSON matching this exact schema:
+{
+  "candidateName": "string",
+  "detectedRoleArchetype": "Backend & Distributed Systems" | "Full-Stack Engineering" | "Frontend & UI/3D Engineering" | "Data, AI & ML Engineering" | "DevOps, Cloud & Platform" | "Software Engineering (General)",
+  "graduationYear": number | null,
+  "educationEntriesExcluded": ["string (e.g., B.Tech CSE-AI at IEM 2021-2025, Class XII 2019-2021)"],
+  "workEntries": [
+    {
+      "company": "string",
+      "roleTitle": "string",
+      "startMonth": number (1-12),
+      "startYear": number (YYYY),
+      "endMonth": number (1-12),
+      "endYear": number (YYYY),
+      "isCurrent": boolean,
+      "classification": "full_time" | "internship" | "part_time_or_teaching",
+      "reason": "string explaining why this is full_time vs internship vs part_time_or_teaching"
+    }
+  ],
+  "provenInExperienceSkills": ["canonical skill names explicitly used in work experience bullets"],
+  "provenInProjectsSkills": ["canonical skill names explicitly used in project bullets"],
+  "listedOnlySkills": ["skills listed ONLY in the skills section without work/project proof"],
+  "auditNote": "1-sentence summary of how YOE was calculated and what was excluded"
+}
+
+CRITICAL RULES FOR EXPERIENCE CLASSIFICATION:
+1. NEVER include University, College, B.Tech, B.E., M.Tech, BCA, MCA, or High School dates in "workEntries". Put them in "educationEntriesExcluded".
+2. Any role with "Intern", "Internship", "Trainee", "Apprentice", "Summer", "Winter", "Student", or any role that ended BEFORE the candidate's college graduationYear MUST have classification = "internship".
+3. Any role as a "Teacher", "Educator", "Tutor", "Teaching Assistant", "Subject Matter Expert", "Mentor", "Freelance", or "Part-Time" instructor MUST have classification = "part_time_or_teaching".
+4. ONLY post-graduation, full-time software/research engineering employment gets classification = "full_time".`;
+
+export async function verifyAndExtractResumeWithLLM(
+  rawResumeText: string,
+  resumeHash: string
+): Promise<{
+  expMetrics: ParsedExperienceMetrics;
+  skillProof: SkillProofClassification;
+  candidateName: string;
+} | null> {
+  const llmCacheKey = `sdetube:llm_parsed_resume:v5:${resumeHash}`;
+  try {
+    const cached = await redisGet<any>(llmCacheKey);
+    if (cached && cached.expMetrics && cached.skillProof) {
+      return cached;
+    }
+  } catch {
+    // Continue if Redis unavailable
+  }
+
+  const groqKey =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GROQ_API_KEY) ||
+    GROQ_API_KEY;
+  const mistralKey =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_MISTRAL_API_KEY) ||
+    MISTRAL_API_KEY;
+
+  if (!groqKey && !mistralKey) return null;
+
+  try {
+    const isGroq = Boolean(groqKey);
+    const endpoint = isGroq
+      ? 'https://api.groq.com/openai/v1/chat/completions'
+      : 'https://api.mistral.ai/v1/chat/completions';
+    const apiKey = isGroq ? groqKey : mistralKey;
+    const model = isGroq ? 'llama-3.3-70b-versatile' : 'mistral-small-latest';
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.0,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: LLM_EXTRACTION_SYSTEM_PROMPT },
+          { role: 'user', content: `RESUME TEXT:\n\n${rawResumeText.slice(0, 12000)}` },
+        ],
+      }),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const parsed = JSON.parse(content);
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth() + 1; // 1-12
+    const curAbs = curYear * 12 + curMonth;
+
+    const gradYear: number | null =
+      typeof parsed.graduationYear === 'number' && parsed.graduationYear >= 2005 && parsed.graduationYear <= 2032
+        ? parsed.graduationYear
+        : null;
+
+    const ftIntervals: [number, number][] = [];
+    const internIntervals: [number, number][] = [];
+    const teachingIntervals: [number, number][] = [];
+    const workEntries: VerifiedWorkEntry[] = [];
+
+    for (const entry of Array.isArray(parsed.workEntries) ? parsed.workEntries : []) {
+      const roleTitle = String(entry.roleTitle || '');
+      const company = String(entry.company || '');
+
+      // Double-check LLM didn't accidentally pass a college degree
+      if (/\b(b\.?\s*tech|bachelor|master|high\s+school|secondary|convocation|university|college\s+student)\b/i.test(`${company} ${roleTitle}`)) {
+        continue;
+      }
+
+      const sYear = Number(entry.startYear) || curYear;
+      const sMonth = Math.min(12, Math.max(1, Number(entry.startMonth) || 1));
+      const eYear = entry.isCurrent ? curYear : Number(entry.endYear) || sYear;
+      const eMonth = entry.isCurrent ? curMonth : Math.min(12, Math.max(1, Number(entry.endMonth) || 12));
+
+      let startAbs = sYear * 12 + sMonth;
+      const endAbs = Math.min(curAbs, eYear * 12 + eMonth);
+      if (endAbs < startAbs || sYear < 2005) continue;
+
+      let classification: VerifiedWorkEntry['classification'] =
+        entry.classification === 'internship' || entry.classification === 'part_time_or_teaching'
+          ? entry.classification
+          : 'full_time';
+
+      // Hard deterministic guardrail on top of LLM output:
+      if (/\b(educator|teacher|tutor|teaching|instructor|faculty|mentor|part[\s-]*time|freelance)\b/i.test(`${roleTitle} ${company}`)) {
+        classification = 'part_time_or_teaching';
+      } else if (/\b(intern|internship|trainee|apprentice|student|fellow)\b/i.test(`${roleTitle} ${company}`)) {
+        classification = 'internship';
+      } else if (gradYear && eYear < gradYear) {
+        classification = 'internship';
+      } else if (gradYear && sYear < gradYear && eYear >= gradYear && classification === 'full_time') {
+        const gradAbs = gradYear * 12 + 6;
+        if (endAbs >= gradAbs) {
+          internIntervals.push([startAbs, gradAbs - 1]);
+          startAbs = gradAbs;
+        } else {
+          classification = 'internship';
+        }
+      }
+
+      const months = Math.max(1, endAbs - startAbs + 1);
+      if (classification === 'full_time') ftIntervals.push([startAbs, endAbs]);
+      else if (classification === 'internship') internIntervals.push([startAbs, endAbs]);
+      else teachingIntervals.push([startAbs, endAbs]);
+
+      workEntries.push({
+        company,
+        roleTitle,
+        startDate: `${sMonth}/${sYear}`,
+        endDate: entry.isCurrent ? 'Present' : `${eMonth}/${eYear}`,
+        months,
+        classification,
+        reason: String(entry.reason || classification),
+      });
+    }
+
+    const mergeIntervalsSum = (list: [number, number][]): number => {
+      if (list.length === 0) return 0;
+      const sorted = [...list].sort((a, b) => a[0] - b[0]);
+      const merged: [number, number][] = [[sorted[0][0], sorted[0][1]]];
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = merged[merged.length - 1];
+        const curr = sorted[i];
+        if (curr[0] <= prev[1] + 1) prev[1] = Math.max(prev[1], curr[1]);
+        else merged.push([curr[0], curr[1]]);
+      }
+      return merged.reduce((sum, [s, e]) => sum + Math.max(1, e - s + 1), 0);
+    };
+
+    const ftMonths = mergeIntervalsSum(ftIntervals);
+    const internMonths = mergeIntervalsSum(internIntervals);
+    const teachingMonths = mergeIntervalsSum(teachingIntervals);
+    const fullTimeYoe = Number((ftMonths / 12).toFixed(1));
+    const effectiveValuationYoe = Number(
+      (fullTimeYoe + (Math.min(internMonths, 12) / 12) * 0.25 + (Math.min(teachingMonths, 24) / 12) * 0.15).toFixed(1)
+    );
+
+    const regexSkillProof = classifySkillProofDeterministic(rawResumeText);
+    const provenExp = Array.from(
+      new Set([...regexSkillProof.provenInExperience, ...(parsed.provenInExperienceSkills || [])])
+    );
+    const provenProj = Array.from(
+      new Set([...regexSkillProof.provenInProjects, ...(parsed.provenInProjectsSkills || [])])
+    ).filter((s) => !provenExp.includes(s));
+    const listedOnly = Array.from(
+      new Set([...regexSkillProof.listedOnlyInSkills, ...(parsed.listedOnlySkills || [])])
+    ).filter((s) => !provenExp.includes(s) && !provenProj.includes(s));
+
+    const detectedIntervals = workEntries.map(e => ({
+      roleSnippet: `${e.roleTitle} at ${e.company}`.slice(0, 70),
+      startLabel: e.startDate,
+      endLabel: e.endDate,
+      months: e.months,
+      classification: (e.classification === 'full_time' ? 'full-time' : e.classification === 'internship' ? 'internship' : 'part-time/teaching') as any
+    }));
+
+    const output = {
+      candidateName: String(parsed.candidateName || 'Candidate'),
+      expMetrics: {
+        fullTimeYoe,
+        internshipMonths: internMonths,
+        teachingOrPartTimeMonths: teachingMonths,
+        effectiveValuationYoe,
+        detectedGraduationYear: gradYear,
+        detectedRoleArchetype: (parsed.detectedRoleArchetype as RoleArchetype) || regexSkillProof.archetype,
+        verifiedByLLM: true,
+        llmAuditNotes: String(
+          parsed.auditNote ||
+            `Verified ${fullTimeYoe} yrs full-time experience (${internMonths} mos internship, ${teachingMonths} mos teaching/part-time excluded from full-time tenure).`
+        ),
+        workEntries,
+        excludedEducationEntries: Array.isArray(parsed.educationEntriesExcluded)
+          ? parsed.educationEntriesExcluded
+          : [],
+        detectedIntervals
+      },
+      skillProof: {
+        allSkills: [...provenExp, ...provenProj, ...listedOnly],
+        provenInExperience: provenExp,
+        provenInProjects: provenProj,
+        listedOnlyInSkills: listedOnly,
+      },
+    };
+
+    try {
+      await redisSet(llmCacheKey, output, 86400 * 7);
+    } catch {
+      // Ignore cache error
+    }
+
+    return output;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// 4. DETERMINISTIC FALLBACK PARSER (IF LLM KEY IS ABSENT)
+// ============================================================================
+
+export function classifySkillProofDeterministic(rawText: string): SkillProofClassification & {
+  archetype: RoleArchetype;
+} {
+  const lines = rawText.replace(/\r\n/g, '\n').split('\n');
+  const nonEduLines = lines.filter(
+    (line) =>
+      !/\b(b\.?\s*tech|b\.?\s*e\.?|bachelor|m\.?\s*tech|diploma|higher\s+secondary|class\s+xii|class\s+x|icse|isc|cbse|wbchse|cgpa|gpa|convocation|university|college|institute\s+of\s+engineering)\b/i.test(
+        line
+      )
+  );
+  const cleanCorpus = nonEduLines.join('\n');
+
+  const provenInExperience: string[] = [];
+  const provenInProjects: string[] = [];
+  const listedOnlyInSkills: string[] = [];
+
+  const expSectionMatch = /(?:W\s*O\s*R\s*K\s+E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|P\s*R\s*O\s*F\s*E\s*S\s*S\s*I\s*O\s*N\s*A\s*L\s+E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|EMPLOYMENT|CAREER\s+HISTORY)([\s\S]*?)(?=\n\s*(?:EDUCATION|PROJECTS|SKILLS|ACHIEVEMENTS|CERTIFICATIONS)\b|$)/i.exec(
+    cleanCorpus
+  );
+  const projSectionMatch = /(?:PROJECTS|PERSONAL\s+PROJECTS|KEY\s+PROJECTS)([\s\S]*?)(?=\n\s*(?:EDUCATION|EXPERIENCE|SKILLS|ACHIEVEMENTS|CERTIFICATIONS)\b|$)/i.exec(
+    cleanCorpus
+  );
+
+  const expText = expSectionMatch ? expSectionMatch[1] : '';
+  const projText = projSectionMatch ? projSectionMatch[1] : '';
+
+  const skillPatterns: [string, RegExp][] = [
+    ['Go', /\bgolang\b|\bgo\b(?=\s*(?:,|\/|\||routines|microservices|backend))/i],
+    ['Apache Kafka', /\bkafka\b/i],
+    ['NATS', /\bnats\b/i],
+    ['Redis', /\bredis\b|\bvalkey\b/i],
+    ['Kubernetes', /\bkubernetes\b|\bk8s\b|\bk3d\b/i],
+    ['KEDA', /\bkeda\b/i],
+    ['Docker', /\bdocker\b/i],
+    ['NestJS', /\bnest(?:\.js|js)\b/i],
+    ['Node.js', /\bnode(?:\.js|js)\b/i],
+    ['PostgreSQL', /\bpostgres(?:ql)?\b/i],
+    ['Next.js', /\bnext(?:\.js|js)\b/i],
+    ['React', /\breact(?:\.js|js)?\b/i],
+    ['TypeScript', /\btypescript\b/i],
+    ['Three.js / WebGL', /\bthree(?:\.js|js)\b|\bwebgl\b/i],
+    ['NVIDIA Omniverse / Godot', /\bomniverse\b|\bgodot\b|\bblender\b/i],
+    ['C++', /\bc\+\+\b|\bcpp\b/i],
+    ['Python', /\bpython\b|\bfastapi\b/i],
+    ['Distributed Systems', /\bdistributed\s+systems?\b|\bmicroservices?\b|\beclipse\s+ditto\b|\bscada\b|\bnode-red\b/i],
+    ['Agentic AI / LLM Systems', /\bllm\b|\brag\b|\bmistral\b|\bwhisper\b|\bagentic\b/i],
+    ['SQL', /\bsql\b|\bsupabase\b/i],
+  ];
+
+  for (const [name, regex] of skillPatterns) {
+    if (!regex.test(rawText)) continue;
+    if (expText && regex.test(expText)) provenInExperience.push(name);
+    else if (projText && regex.test(projText)) provenInProjects.push(name);
+    else listedOnlyInSkills.push(name);
+  }
+
+  return {
+    allSkills: [...provenInExperience, ...provenInProjects, ...listedOnlyInSkills],
+    provenInExperience,
+    provenInProjects,
+    listedOnlyInSkills,
+    archetype: provenInExperience.some((s) => ['Go', 'Apache Kafka', 'NATS', 'NestJS', 'PostgreSQL', 'Distributed Systems'].includes(s))
+      ? 'Backend & Distributed Systems'
+      : 'Full-Stack Engineering',
+  };
+}
+
+export function splitResumeSections(rawText: string): {
+  experienceBlock: string;
+  projectsBlock: string;
+  skillsBlock: string;
+  educationBlock: string;
+  otherBlock: string;
+} {
+  const normalized = rawText.replace(/\r\n/g, '\n');
+  const HEADERS: [string, RegExp][] = [
+    ['experience', /(?:^|\n)\s*(?:W\s*O\s*R\s*K\s+E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|P\s*R\s*O\s*F\s*E\s*S\s*S\s*I\s*O\s*N\s*A\s*L\s+E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E|EMPLOYMENT\s+HISTORY|WORK\s+HISTORY|CAREER\s+HISTORY|E\s*X\s*P\s*E\s*R\s*I\s*E\s*N\s*C\s*E)\s*(?::|\n)/i],
+    ['projects', /(?:^|\n)\s*(?:PERSONAL\s+PROJECTS|KEY\s+PROJECTS|ACADEMIC\s+PROJECTS|P\s*R\s*O\s*J\s*E\s*C\s*T\s*S)\s*(?::|\n)/i],
+    ['skills', /(?:^|\n)\s*(?:TECHNICAL\s+SKILLS|CORE\s+COMPETENCIES|S\s*K\s*I\s*L\s*L\s*S|TECHNOLOGIES)\s*(?::|\n)/i],
+    ['education', /(?:^|\n)\s*(?:E\s*D\s*U\s*C\s*A\s*T\s*I\s*O\s*N|ACADEMIC\s+BACKGROUND|ACADEMICS|QUALIFICATIONS)\s*(?::|\n)/i],
+  ];
+
+  const positions: { start: number; end: number; name: string }[] = [];
+  for (const [name, rgx] of HEADERS) {
+    const m = rgx.exec(normalized);
+    if (m) {
+      positions.push({ start: m.index, end: m.index + m[0].length, name });
+    }
+  }
+  positions.sort((a, b) => a.start - b.start);
+
+  const sections = {
+    experienceBlock: '',
+    projectsBlock: '',
+    skillsBlock: '',
+    educationBlock: '',
+    otherBlock: ''
+  };
+
+  if (positions.length === 0) {
+    sections.experienceBlock = normalized;
+    return sections;
+  }
+
+  sections.otherBlock = normalized.slice(0, positions[0].start).trim();
+
+  for (let i = 0; i < positions.length; i++) {
+    const cur = positions[i];
+    const nextStart = i + 1 < positions.length ? positions[i + 1].start : normalized.length;
+    const content = normalized.slice(cur.end, nextStart).trim();
+    if (cur.name === 'experience') sections.experienceBlock = content;
+    else if (cur.name === 'projects') sections.projectsBlock = content;
+    else if (cur.name === 'skills') sections.skillsBlock = content;
+    else if (cur.name === 'education') sections.educationBlock = content;
+  }
+
+  return sections;
+}
+
+const MONTH_NAME_MAP: Record<string, number> = {
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+  may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7,
+  sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
+};
+
+export function extractAccurateExperience(
+  rawResumeText: string,
+  manualFullTimeYoeOverride?: number | null
+): ParsedExperienceMetrics {
+  const sections = splitResumeSections(rawResumeText);
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentAbsMonth = currentYear * 12 + currentMonth;
+
+  // 1. Detect Graduation Year from Education Block
+  let graduationYear: number | null = null;
+  const eduTarget = sections.educationBlock || rawResumeText;
+  const eduMatch = /\b(?:B\.?\s*Tech|B\.?\s*E\.?|Bachelor|B\.?\s*Sc|M\.?\s*Tech|MCA|BCA|Graduation|Class\s+of)[\s\S]{0,180}?\b(20\d{2})\s*(?:[-–—to]+\s*(20\d{2}|Present|Current))?/i.exec(eduTarget);
+  if (eduMatch) {
+    const yr2 = eduMatch[2] && /^\d{4}$/.test(eduMatch[2]) ? parseInt(eduMatch[2], 10) : parseInt(eduMatch[1], 10);
+    if (yr2 >= 2010 && yr2 <= 2030) {
+      graduationYear = yr2;
+    }
+  }
+
+  // 2. Parse Date Intervals Exclusively from the Experience Block
+  const expBlock = sections.experienceBlock || rawResumeText;
+  const dateRangeRegex = /\b(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)|(0?[1-9]|1[0-2]))[\s,./'-]+(20\d{2})\s*(?:[-–—]|to)\s*(?:(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)|(0?[1-9]|1[0-2]))[\s,./'-]+(20\d{2})|(Present|Current|Now|Ongoing))\b/gi;
+
+  const fullTimeIntervals: [number, number, string][] = [];
+  const internIntervals: [number, number, string][] = [];
+  const detectedIntervals: ParsedExperienceMetrics['detectedIntervals'] = [];
+
+  let match: RegExpExecArray | null;
+  while ((match = dateRangeRegex.exec(expBlock)) !== null) {
+    const sStr = match[1]?.toLowerCase();
+    const sNum = match[2] ? parseInt(match[2], 10) - 1 : (sStr ? MONTH_NAME_MAP[sStr] ?? 0 : 0);
+    const sYr = parseInt(match[3], 10);
+
+    const isPresent = Boolean(match[7]);
+    const eStr = match[4]?.toLowerCase();
+    const eNum = isPresent ? currentMonth : match[5] ? parseInt(match[5], 10) - 1 : (eStr ? MONTH_NAME_MAP[eStr] ?? 11 : 11);
+    const eYr = isPresent ? currentYear : parseInt(match[6], 10);
+
+    const sAbs = sYr * 12 + sNum;
+    const eAbs = Math.min(currentAbsMonth, eYr * 12 + eNum);
+    if (eAbs < sAbs || sYr < 2005) continue;
+
+    // Context around interval to detect internship or part-time roles
+    const ctxStart = Math.max(0, match.index - 120);
+    const ctxEnd = Math.min(expBlock.length, match.index + match[0].length + 80);
+    const contextSnippet = expBlock.slice(ctxStart, ctxEnd);
+
+    // Hard guard: Never count degree or schooling intervals in work experience
+    if (/\b(b\.?\s*tech|b\.?\s*e\.?|bachelor|m\.?\s*tech|mca|bca|diploma|higher\s+secondary|class\s+xii|class\s+x|icse|isc|cbse|convocation|institute\s+of\s+engineering|university|college|school)\b/i.test(contextSnippet)) {
+      continue;
+    }
+
+    const isIntern =
+      /\b(intern|internship|trainee|apprentice|fellow|ta|teaching|part[- ]time)\b/i.test(contextSnippet) ||
+      (graduationYear !== null && eYr < graduationYear);
+
+    const months = Math.max(1, eAbs - sAbs + 1);
+    const classification = isIntern ? 'internship' : 'full-time';
+
+    detectedIntervals.push({
+      roleSnippet: contextSnippet.split('\n')[0].slice(0, 70),
+      startLabel: `${sStr || (sNum + 1)} ${sYr}`,
+      endLabel: isPresent ? 'Present' : `${eStr || (eNum + 1)} ${eYr}`,
+      months,
+      classification
+    });
+
+    if (isIntern) {
+      internIntervals.push([sAbs, eAbs, match[0]]);
+    } else {
+      fullTimeIntervals.push([sAbs, eAbs, match[0]]);
+    }
+  }
+
+  // 3. Union Overlapping Intervals
+  const mergeIntervals = (arr: [number, number, string][]): number => {
+    if (arr.length === 0) return 0;
+    arr.sort((a, b) => a[0] - b[0]);
+    const merged: [number, number][] = [[arr[0][0], arr[0][1]]];
+    for (let i = 1; i < arr.length; i++) {
+      const prev = merged[merged.length - 1];
+      const cur = arr[i];
+      if (cur[0] <= prev[1] + 1) {
+        prev[1] = Math.max(prev[1], cur[1]);
+      } else {
+        merged.push([cur[0], cur[1]]);
+      }
+    }
+    return merged.reduce((sum, [s, e]) => sum + (e - s + 1), 0);
+  };
+
+  const ftMonths = mergeIntervals(fullTimeIntervals);
+  const internMonths = mergeIntervals(internIntervals);
+
+  let rawFullTimeYoe = Math.round((ftMonths / 12) * 10) / 10;
+  // Fallback if no dates matched but experience exists
+  if (rawFullTimeYoe === 0 && internMonths === 0) {
+    if (/senior|lead|architect/i.test(rawResumeText)) rawFullTimeYoe = 4.5;
+    else if (/software\s+engineer|developer/i.test(rawResumeText)) rawFullTimeYoe = 1.8;
+    else rawFullTimeYoe = 0.5;
+  }
+
+  const manualOverrideApplied = typeof manualFullTimeYoeOverride === 'number' && manualFullTimeYoeOverride >= 0;
+  const fullTimeYoe = manualOverrideApplied ? manualFullTimeYoeOverride : rawFullTimeYoe;
+  const effectiveValuationYoe = Number((fullTimeYoe + (internMonths / 12) * 0.25).toFixed(1));
+  const detectedRoleArchetype = detectPrimaryRoleArchetype(rawResumeText);
+
+  return {
+    fullTimeYoe,
+    internshipMonths: internMonths,
+    teachingOrPartTimeMonths: 0,
+    effectiveValuationYoe,
+    manualOverrideApplied,
+    detectedGraduationYear: graduationYear,
+    detectedRoleArchetype,
+    detectedIntervals
+  };
+}
+
+export function detectPrimaryRoleArchetype(rawResumeText: string): RoleArchetype {
+  const scores: Record<RoleArchetype, number> = {
+    'Backend & Distributed Systems': 0,
+    'Full-Stack Engineering': 0,
+    'Frontend & UI/3D Engineering': 0,
+    'Data, AI & ML Engineering': 0,
+    'DevOps, Cloud & Platform': 0,
+    'Software Engineering (General)': 1,
+  };
+
+  if (/\b(backend|distributed\s+systems?|microservices?|grpc|kafka|redis|sql|database|concurrency)\b/i.test(rawResumeText)) {
+    scores['Backend & Distributed Systems'] += 4;
+  }
+  if (/\b(full\s*stack|mern|next\.js|react\s+and\s+node|graphql)\b/i.test(rawResumeText)) {
+    scores['Full-Stack Engineering'] += 5;
+  }
+  if (/\b(frontend|react|vue|three\.js|webgl|tailwind|css|ui\/ux)\b/i.test(rawResumeText)) {
+    scores['Frontend & UI/3D Engineering'] += 4;
+  }
+  if (/\b(machine\s+learning|ai|llm|deep\s+learning|pytorch|pandas|rag|langchain|data\s+science)\b/i.test(rawResumeText)) {
+    scores['Data, AI & ML Engineering'] += 5;
+  }
+  if (/\b(devops|sre|kubernetes|terraform|docker|ci\/cd|platform\s+engineer|aws\s+infra)\b/i.test(rawResumeText)) {
+    scores['DevOps, Cloud & Platform'] += 5;
+  }
+
+  let bestRole: RoleArchetype = 'Full-Stack Engineering';
+  let bestScore = -1;
+  for (const [role, score] of Object.entries(scores) as [RoleArchetype, number][]) {
+    if (score > bestScore) {
+      bestScore = score;
+      bestRole = role;
+    }
+  }
+  return bestRole;
+}
+
+export function classifySkillProofLevels(rawResumeText: string): SkillProofClassification {
+  const sections = splitResumeSections(rawResumeText);
+  const provenInExperience: string[] = [];
+  const provenInProjects: string[] = [];
+  const listedOnlyInSkills: string[] = [];
+
+  for (const skill of CANONICAL_SKILLS) {
+    const inExp = skill.regex.test(sections.experienceBlock);
+    const inProj = skill.regex.test(sections.projectsBlock);
+    const inSkills = skill.regex.test(sections.skillsBlock) || skill.regex.test(sections.otherBlock);
+
+    if (inExp) {
+      provenInExperience.push(skill.name);
+    } else if (inProj) {
+      provenInProjects.push(skill.name);
+    } else if (inSkills) {
+      listedOnlyInSkills.push(skill.name);
+    }
+  }
+
+  const allSkills = Array.from(new Set([...provenInExperience, ...provenInProjects, ...listedOnlyInSkills]));
+  return {
+    allSkills,
+    provenInExperience,
+    provenInProjects,
+    listedOnlyInSkills
+  };
+}
+
+// ============================================================================
+// 5. MULTI-COUNTRY DUAL VALUATION ENGINE (DYNAMIC CURRENCY & HUBS)
+// ============================================================================
+
+export function calculateMultiCountryDualValuation(params: {
+  expMetrics: ParsedExperienceMetrics;
+  skillProof: SkillProofClassification;
+  quantifiedBulletRatio: number;
+  atsOverallScore: number;
+  includeSdeTubeData: boolean;
+  telemetry: SdeTubeTelemetrySnapshot | null;
+  location: UserLocationPreferences;
+  simulatedSkillsBoost?: number;
+}): DualMarketValuation {
+  const countryCfg = COUNTRY_CONFIGS[params.location.countryCode] || COUNTRY_CONFIGS.IN;
+  const ftYoe = params.expMetrics.fullTimeYoe;
+  const effYoe = params.expMetrics.effectiveValuationYoe;
+
+  // 1. Determine Seniority Band & Country Base Anchor
+  let seniorityBand: DualMarketValuation['factors']['seniorityBand'] = 'Fresher / Entry';
+  let baseAnchor = countryCfg.baseAnchorsByBand.fresher;
+
+  if (ftYoe < 0.5) {
+    seniorityBand = 'Fresher / Entry';
+    baseAnchor = countryCfg.baseAnchorsByBand.fresher + effYoe * (countryCfg.perYoeSlope * 0.6);
+  } else if (ftYoe < 2.0) {
+    seniorityBand = 'SDE-1 (Junior)';
+    baseAnchor = countryCfg.baseAnchorsByBand.sde1 + (ftYoe - 0.5) * countryCfg.perYoeSlope;
+  } else if (ftYoe < 4.5) {
+    seniorityBand = 'SDE-2 (Mid-Level)';
+    baseAnchor = countryCfg.baseAnchorsByBand.sde2 + (ftYoe - 2.0) * countryCfg.perYoeSlope;
+  } else if (ftYoe < 7.5) {
+    seniorityBand = 'Senior (SDE-3)';
+    baseAnchor = countryCfg.baseAnchorsByBand.senior + (ftYoe - 4.5) * countryCfg.perYoeSlope;
+  } else {
+    seniorityBand = 'Staff / Principal';
+    baseAnchor = countryCfg.baseAnchorsByBand.staff + Math.min(ftYoe - 7.5, 6) * countryCfg.perYoeSlope;
+  }
+
+  // 2. Evidence-Gated Skill Premium (scaled to the selected country's unit)
+  const weightedSkillUnits =
+    params.skillProof.provenInExperience.length * 1.0 +
+    params.skillProof.provenInProjects.length * 0.6 +
+    params.skillProof.listedOnlyInSkills.length * 0.15;
+
+  const skillSaturation = Math.min(1.0, weightedSkillUnits / 10);
+  const earnedSkillPremium = skillSaturation * countryCfg.maxSkillPremium;
+
+  // 3. Impact & ATS Readability Adjustment
+  const impactAdjustment = (params.quantifiedBulletRatio - 0.25) * (countryCfg.maxSkillPremium * 0.28);
+
+  // 4. City or Domestic Remote Multiplier for the Selected Country
+  const selectedCityObj =
+    countryCfg.cities.find((c) => c.name === params.location.preferredCity) || countryCfg.cities[0];
+
+  const activeMultiplier = params.location.preferDomesticRemote
+    ? countryCfg.domesticRemoteMultiplier
+    : selectedCityObj.multiplier;
+
+  const activeLocationLabel = params.location.preferDomesticRemote
+    ? `${countryCfg.name} Remote (${countryCfg.domesticRemoteMultiplier >= 1 ? '+' : ''}${Math.round((countryCfg.domesticRemoteMultiplier - 1) * 100)}%)`
+    : selectedCityObj.label;
+
+  const rawNationalValue = Math.max(
+    countryCfg.baseAnchorsByBand.fresher * 0.75,
+    baseAnchor + earnedSkillPremium + impactAdjustment
+  );
+
+  const roundVal = (v: number) => (countryCfg.isLPA ? Number(v.toFixed(1)) : Math.round(v));
+  const baseResumeOnlyValue = roundVal(rawNationalValue * activeMultiplier);
+
+  // 5. Conditional SDETube Telemetry Boost (Strictly 0 when checkbox is unchecked)
+  let sdeTubeBonusPct = 0;
+  if (params.includeSdeTubeData && params.telemetry) {
+    const dsaPct = Math.min((params.telemetry.dsaSolvedCount || 0) / 180, 1) * 6.5;
+    const designPct =
+      Math.min(
+        ((params.telemetry.hldTopologiesValidated || 0) * 2 +
+          (params.telemetry.lldProblemsCompleted || 0) +
+          (params.telemetry.ddiaChaptersCompleted || 0)) /
+          18,
+        1
+      ) * 7.5;
+    const mockPct = ((params.telemetry.avgMockInterviewScore || 0) / 100) * 4.0;
+    sdeTubeBonusPct = Number((dsaPct + designPct + mockPct).toFixed(1));
+  }
+
+  const sdeTubeVerifiedBoost = roundVal(baseResumeOnlyValue * (sdeTubeBonusPct / 100));
+  const simulatedSkillsBoost = roundVal(
+    (params.simulatedSkillsBoost || 0) * activeMultiplier
+  );
+
+  const totalDomestic = roundVal(baseResumeOnlyValue + sdeTubeVerifiedBoost + simulatedSkillsBoost);
+
+  // 6. Outside-Country Valuation (Global Remote Contractor USD + International Relocation Hubs)
+  const globalRemoteBaseUSD =
+    ftYoe < 0.5
+      ? 18000 + skillSaturation * 10000
+      : ftYoe < 2.0
+      ? 28000 + ftYoe * 6000 + skillSaturation * 14000
+      : ftYoe < 4.5
+      ? 46000 + (ftYoe - 2.0) * 8500 + skillSaturation * 18000
+      : 72000 + Math.min(ftYoe - 4.5, 6) * 8000 + skillSaturation * 24000;
+
+  const baseResumeOnlyUSD = Math.round(globalRemoteBaseUSD / 500) * 500;
+  const sdeTubeBoostUSD = Math.round((baseResumeOnlyUSD * (sdeTubeBonusPct / 100)) / 500) * 500;
+  const totalMedianUSD = baseResumeOnlyUSD + sdeTubeBoostUSD;
+
+  // Build Outside-Country Hub comparisons excluding the user's current home country
+  const allHubCodes: CountryCode[] = ['US', 'GB', 'DE', 'SG', 'AE', 'IN', 'CA'];
+  const internationalHubs = allHubCodes
+    .filter((code) => code !== params.location.countryCode)
+    .slice(0, 5)
+    .map((code) => {
+      const cfg = COUNTRY_CONFIGS[code];
+      const hubAnchor =
+        ftYoe < 0.5
+          ? cfg.baseAnchorsByBand.fresher
+          : ftYoe < 2.0
+          ? cfg.baseAnchorsByBand.sde1 + (ftYoe - 0.5) * cfg.perYoeSlope
+          : ftYoe < 4.5
+          ? cfg.baseAnchorsByBand.sde2 + (ftYoe - 2.0) * cfg.perYoeSlope
+          : cfg.baseAnchorsByBand.senior;
+      const med = hubAnchor + skillSaturation * cfg.maxSkillPremium;
+      const minStr = cfg.isLPA ? (med * 0.88).toFixed(1) : Math.round(med * 0.88);
+      const maxStr = cfg.isLPA ? (med * 1.25).toFixed(1) : Math.round(med * 1.25);
+
+      return {
+        countryCode: code,
+        hubName: `${cfg.flag} ${cfg.name} (${cfg.topHubName})`,
+        currency: `${cfg.currencySymbol}${cfg.unitLabel}`,
+        estimatedRange: `${cfg.currencySymbol}${minStr} – ${cfg.currencySymbol}${maxStr} ${cfg.unitLabel}`,
+        usdEquivalentMedian: Math.round(totalMedianUSD * 1.5),
+        visaSponsorshipFit: (ftYoe >= 2.0 || sdeTubeBonusPct >= 10 ? 'High' : 'Moderate') as 'High' | 'Moderate' | 'Selective',
+        visaSponsorshipLikelihood: (ftYoe >= 2.0 || sdeTubeBonusPct >= 10 ? 'High' : 'Moderate') as 'High' | 'Moderate' | 'Selective',
+      };
+    });
+
+  const topHubMult = countryCfg.cities[0]?.multiplier || 1.15;
+
+  return {
+    domestic: {
+      countryCode: countryCfg.code,
+      countryName: countryCfg.name,
+      flag: countryCfg.flag,
+      cityOrRemoteLabel: activeLocationLabel,
+      currency: countryCfg.isLPA ? 'INR (₹ LPA)' : `${countryCfg.currencySymbol} ${countryCfg.unitLabel}`,
+      currencySymbol: countryCfg.currencySymbol,
+      unitLabel: countryCfg.unitLabel,
+      isLPA: countryCfg.isLPA,
+      baseResumeOnlyValue,
+      sdeTubeVerifiedBoost,
+      simulatedSkillsBoost,
+      totalEstimatedValue: totalDomestic,
+      range: {
+        min: roundVal(totalDomestic * 0.86),
+        median: totalDomestic,
+        max: roundVal(totalDomestic * 1.24),
+        p90: roundVal(totalDomestic * 1.45),
+      },
+      cityMultiplierApplied: activeMultiplier,
+      domesticRemoteComparison: {
+        cityOnsiteMedian: roundVal(rawNationalValue * selectedCityObj.multiplier + sdeTubeVerifiedBoost),
+        domesticRemoteMedian: roundVal(rawNationalValue * countryCfg.domesticRemoteMultiplier + sdeTubeVerifiedBoost),
+        topHubMedian: roundVal(rawNationalValue * topHubMult + sdeTubeVerifiedBoost),
+      },
+      comparisons: {
+        selectedCityOnsite: roundVal(rawNationalValue * selectedCityObj.multiplier + sdeTubeVerifiedBoost),
+        domesticRemoteMedian: roundVal(rawNationalValue * countryCfg.domesticRemoteMultiplier + sdeTubeVerifiedBoost),
+        topNationalHubMedian: roundVal(rawNationalValue * topHubMult + sdeTubeVerifiedBoost),
+        topNationalHubName: countryCfg.topHubName,
+      },
+    },
+    outsideCountry: {
+      globalRemoteUSD: {
+        baseResumeOnlyUSD,
+        sdeTubeBoostUSD,
+        totalMedianUSD,
+        rangeUSD: {
+          min: Math.round(totalMedianUSD * 0.85),
+          max: Math.round(totalMedianUSD * 1.28),
+        },
+        hourlyRateUSD: {
+          min: Math.round((totalMedianUSD * 0.85) / 2000),
+          max: Math.round((totalMedianUSD * 1.28) / 2000),
+        },
+        readinessPct: Math.min(96, Math.round(params.atsOverallScore * 0.6 + sdeTubeBonusPct * 1.2)),
+      },
+      internationalRelocationHubs: internationalHubs,
+      internationalHubs,
+    },
+    confidenceScore: params.expMetrics.verifiedByLLM ? (params.includeSdeTubeData ? 96 : 88) : 76,
+    marketPercentile: Math.min(98, Math.round(50 + skillSaturation * 35 + sdeTubeBonusPct)),
+    factors: {
+      detectedYoe: ftYoe,
+      fullTimeYoe: ftYoe,
+      internshipMonths: params.expMetrics.internshipMonths,
+      seniorityBand,
+      sdeTubeBonusPct,
+      provenSkillsCount:
+        params.skillProof.provenInExperience.length + params.skillProof.provenInProjects.length,
+      unverifiedSkillsCount: params.skillProof.listedOnlyInSkills.length,
+    },
+  };
+}
+
+export function calculateRealisticDualValuation(params: {
+  expMetrics: ParsedExperienceMetrics;
+  skillProof: SkillProofClassification;
+  atsScore: number;
+  quantifiedBulletRatio: number;
+  includeSdeTube: boolean;
+  telemetry: SdeTubeTelemetrySnapshot | null;
+  location: UserLocationPreferences;
+  simulatedSkillsBoost?: number;
+}): DualMarketValuation {
+  return calculateMultiCountryDualValuation({
+    expMetrics: params.expMetrics,
+    skillProof: params.skillProof,
+    quantifiedBulletRatio: params.quantifiedBulletRatio,
+    atsOverallScore: params.atsScore,
+    includeSdeTubeData: params.includeSdeTube,
+    telemetry: params.telemetry,
+    location: params.location,
+    simulatedSkillsBoost: params.simulatedSkillsBoost,
+  });
+}
+
+// ============================================================================
+// 6. HARD-SENIORITY-GATED JOB SCORER (FIXES BUG #3: 7+ YOE CLANX FALSE 50% MATCH)
+// ============================================================================
+
+export function scoreJobWithSeniorityGate(params: {
+  job: any;
+  expMetrics: ParsedExperienceMetrics;
+  skillProof: SkillProofClassification;
+  sdeTubeSkills: string[];
+  includeSdeTubeData: boolean;
+  location: UserLocationPreferences;
+}): LiveJobMatch {
+  const countryCfg = COUNTRY_CONFIGS[params.location.countryCode] || COUNTRY_CONFIGS.IN;
+  const selectedCityObj =
+    countryCfg.cities.find((c) => c.name === params.location.preferredCity) || countryCfg.cities[0];
+
+  const locLower = String(params.job.location || '').toLowerCase();
+  const rawMode = String(params.job.workMode || (params.job.remote ? 'remote' : 'hybrid')).toLowerCase();
+  const isRemote = rawMode === 'remote' || locLower.includes('remote');
+  const isDomestic = countryCfg.countryMatchKeywords.some((kw) => locLower.includes(kw));
+  const isPreferredCityMatch = selectedCityObj.searchKeywords.some((kw) => locLower.includes(kw));
+
+  const expSet = new Set(params.skillProof.provenInExperience.map((s) => s.toLowerCase()));
+  const projSet = new Set(params.skillProof.provenInProjects.map((s) => s.toLowerCase()));
+  const listSet = new Set(params.skillProof.listedOnlyInSkills.map((s) => s.toLowerCase()));
+  const sdeSet = new Set(params.sdeTubeSkills.map((s) => s.toLowerCase()));
+
+  const jobSkills: string[] = Array.isArray(params.job.extractedSkills)
+    ? params.job.extractedSkills
+    : Array.isArray(params.job.skills)
+    ? params.job.skills
+    : [];
+
+  const matchedSkills: LiveJobMatch['matchedSkills'] = [];
+  const missingSkills: string[] = [];
+  let earnedSkillPoints = 0;
+
+  for (const js of jobSkills) {
+    const jsLower = js.toLowerCase();
+    if (expSet.has(jsLower)) {
+      earnedSkillPoints += 1.0;
+      matchedSkills.push({ name: js, proofLevel: 'experience', fromSdeTube: false });
+    } else if (projSet.has(jsLower)) {
+      earnedSkillPoints += 0.8;
+      matchedSkills.push({ name: js, proofLevel: 'project', fromSdeTube: false });
+    } else if (params.includeSdeTubeData && sdeSet.has(jsLower)) {
+      earnedSkillPoints += 0.85;
+      matchedSkills.push({ name: js, proofLevel: 'sdetube', fromSdeTube: true });
+    } else if (listSet.has(jsLower)) {
+      earnedSkillPoints += 0.35;
+      matchedSkills.push({ name: js, proofLevel: 'skills_only', fromSdeTube: false });
+    } else {
+      missingSkills.push(js);
+    }
+  }
+
+  // Fallback if matchedSkills is empty:
+  if (matchedSkills.length === 0 && params.skillProof.provenInExperience.length > 0) {
+    const cleanFull = String(params.job.cleanFullText || params.job.rawDescription || '').toLowerCase();
+    for (const expSkill of params.skillProof.provenInExperience) {
+      if (cleanFull.includes(expSkill.toLowerCase())) {
+        matchedSkills.push({ name: expSkill, proofLevel: 'experience', fromSdeTube: false });
+        earnedSkillPoints += 0.7;
+      }
+    }
+  }
+
+  const denom = Math.max(jobSkills.length, 3);
+  const rawStackScore = Math.min(100, Math.round((earnedSkillPoints / denom) * 100));
+
+  // HARD SENIORITY GATE (Prevents 7+ YOE Senior/Architect jobs from getting 50% for a 1 YOE candidate)
+  const reqMinYoe = typeof params.job.requiredMinYoe === 'number' ? params.job.requiredMinYoe : 1;
+  const candidateFtYoe = params.expMetrics.fullTimeYoe;
+  const yoeGap = reqMinYoe - candidateFtYoe;
+
+  let yoeFitScore = 100;
+  let seniorityMultiplier = 1.0;
+  let seniorityGapWarning: string | null = null;
+
+  if (yoeGap > 0.5 && yoeGap <= 1.5) {
+    yoeFitScore = 78;
+    seniorityMultiplier = 0.92;
+  } else if (yoeGap > 1.5 && yoeGap <= 3.0) {
+    yoeFitScore = 45;
+    seniorityMultiplier = 0.72;
+    seniorityGapWarning = `Stretch Role: Requires ${reqMinYoe}+ YOE (Your Verified Full-Time: ${candidateFtYoe} YOE)`;
+  } else if (yoeGap > 3.0) {
+    // e.g., CLANX 7+ YOE vs Candidate 1.0 YOE -> Hard Seniority Penalty!
+    yoeFitScore = 12;
+    seniorityMultiplier = 0.42;
+    seniorityGapWarning = `Seniority Gap: Requires ${reqMinYoe}+ YOE (Your Verified Full-Time: ${candidateFtYoe} YOE)`;
+  }
+
+  const locationFitScore =
+    isPreferredCityMatch || (params.location.preferDomesticRemote && isRemote)
+      ? 100
+      : isRemote
+      ? 88
+      : isDomestic
+      ? 72
+      : 50;
+
+  const weightedRaw = 0.60 * rawStackScore + 0.25 * yoeFitScore + 0.15 * locationFitScore;
+  const finalAtsScore = Math.max(8, Math.min(98, Math.round(weightedRaw * seniorityMultiplier)));
+
+  const salaryRangeText = String(params.job.salaryRangeText || params.job.salaryText || 'Competitive Market Pay');
+  const estLPA = typeof params.job.estimatedLPA === 'number' ? params.job.estimatedLPA : 32.0;
+
+  return {
+    id: String(params.job.id || `job-${Math.random()}`),
+    title: params.job.title,
+    company: params.job.company,
+    location: params.job.location,
+    remote: isRemote,
+    workMode: isRemote ? 'remote' : (rawMode === 'hybrid' ? 'hybrid' : 'onsite'),
+    isDomestic,
+    isPreferredCityMatch,
+    isDomesticRemote: isDomestic && isRemote,
+    salaryText: salaryRangeText,
+    salaryRangeText,
+    estimatedLPA: estLPA,
+    applyUrl: params.job.applyUrl || 'https://freehire.me',
+    postedAt: params.job.postedAtFormatted || params.job.postedAt || 'Recently',
+    postedAtFormatted: params.job.postedAtFormatted || params.job.postedAt || 'Recently',
+    source: (params.job.source as any) || 'FreeHire',
+    atsMatchScore: finalAtsScore,
+    seniorityGapWarning,
+    requiredMinYoe: reqMinYoe,
+    seniorityLevel: params.job.seniorityLevel || (reqMinYoe >= 7 ? 'Staff / Principal' : reqMinYoe >= 5 ? 'Senior (SDE-3)' : reqMinYoe >= 2 ? 'Mid-Level (SDE-2)' : 'Junior (SDE-1)'),
+    matchedSkills: matchedSkills.length > 0 ? matchedSkills : [{ name: 'Software Engineering', fromSdeTube: false, proofLevel: 'experience' }],
+    missingSkills: missingSkills.slice(0, 6),
+    marketValueComparison: 'Matches Your Valuation',
+    cleanSummary: params.job.cleanSummary || params.job.summary || '',
+    cleanFullText: params.job.cleanFullText || params.job.rawDescription || '',
+    rawDescription: params.job.cleanFullText || params.job.rawDescription || params.job.description || '',
+    structuredSections: Array.isArray(params.job.structuredSections) ? params.job.structuredSections : [],
+  };
+}
+
+export function computeSkillMultiplier(resumeSkills: string[]): number {
+  let skillMult = 1.0;
+  const normalized = resumeSkills.map(s => s.toLowerCase().trim());
+  for (const skill of CANONICAL_SKILLS) {
+    if (normalized.some(s => s === skill.name.toLowerCase() || skill.regex.test(s))) {
+      skillMult += (skill.lpaPremium / 25.0);
+    }
+  }
+  return Math.round(Math.min(Math.max(skillMult, 0.90), 1.45) * 100) / 100;
+}
 
 export function computeMarketValuationBreakdown(params: {
   extractedYoe: number;
@@ -1852,42 +3112,23 @@ export function computeMarketValuationBreakdown(params: {
   } = params;
 
   let seniorityLevel: MarketValuationBreakdown['factors']['seniorityLevel'] = 'SDE-1';
-  let baseAnchor = 11.0;
-
-  if (extractedYoe < 0.8) {
+  let baseAnchor = 10.4;
+  if (extractedYoe < 0.5) {
     seniorityLevel = 'Entry / Intern';
-    baseAnchor = 6.5 + (extractedYoe * 3.0);
-  } else if (extractedYoe < 2.5) {
+    baseAnchor = 5.5 + extractedYoe * 2.5;
+  } else if (extractedYoe < 2.0) {
     seniorityLevel = 'SDE-1';
-    baseAnchor = 10.5 + ((extractedYoe - 0.8) * 3.8);
-  } else if (extractedYoe < 5.5) {
+    baseAnchor = 8.2 + extractedYoe * 2.2;
+  } else if (extractedYoe < 4.5) {
     seniorityLevel = 'SDE-2';
-    baseAnchor = 18.0 + ((extractedYoe - 2.5) * 4.2);
+    baseAnchor = 13.5 + (extractedYoe - 2.0) * 3.2;
   } else {
     seniorityLevel = 'Senior / Staff';
-    baseAnchor = 31.0 + Math.min(extractedYoe - 5.5, 8.0) * 3.5;
+    baseAnchor = 22.0 + Math.min(extractedYoe - 4.5, 8.0) * 3.4;
   }
 
-  const HIGH_ROI_WEIGHTS: Record<string, number> = {
-    'python': 1.04, 'java': 1.05, 'c++': 1.05, 'cpp': 1.05, 'typescript': 1.05, 'javascript': 1.02,
-    'react': 1.04, 'next.js': 1.05, 'nextjs': 1.05, 'node.js': 1.05, 'nodejs': 1.05, 'nestjs': 1.06,
-    'go': 1.09, 'golang': 1.09, 'rust': 1.11, 'postgresql': 1.04, 'postgres': 1.04,
-    'mongodb': 1.03, 'redis': 1.06, 'apache kafka': 1.09, 'kafka': 1.09, 'nats': 1.08,
-    'kubernetes': 1.09, 'k8s': 1.09, 'docker': 1.04, 'aws': 1.07, 'gcp': 1.07,
-    'system design': 1.10, 'microservices': 1.07, 'graphql': 1.04, 'ci/cd': 1.03,
-    'llm': 1.10, 'rag': 1.10, 'pytorch': 1.09, 'three.js': 1.06
-  };
-
-  let skillMult = 1.0;
-  const normalized = resumeSkills.map(s => s.toLowerCase().trim());
-  for (const [skill, weight] of Object.entries(HIGH_ROI_WEIGHTS)) {
-    if (normalized.some(s => s === skill || s.includes(skill))) {
-      skillMult += (weight - 1.0) * 0.55;
-    }
-  }
-  skillMult = Math.round(Math.min(Math.max(skillMult, 0.90), 1.48) * 100) / 100;
-
-  const impactMult = Math.round((0.92 + (Math.min(quantifiedBulletRatio, 1.0) * 0.30)) * 100) / 100;
+  const skillMult = computeSkillMultiplier(resumeSkills);
+  const impactMult = Math.round((0.92 + (Math.min(quantifiedBulletRatio, 1.0) * 0.28)) * 100) / 100;
   const atsMult = Math.round((0.94 + ((atsOverallScore / 100.0) * 0.12)) * 100) / 100;
 
   const baseResumeValueLPA = Math.round((baseAnchor * skillMult * impactMult * atsMult) * 10) / 10;
@@ -1967,27 +3208,6 @@ export function computeMarketValuationBreakdown(params: {
   };
 }
 
-export function computeSkillMultiplier(resumeSkills: string[]): number {
-  const HIGH_ROI_WEIGHTS: Record<string, number> = {
-    'python': 1.04, 'java': 1.05, 'c++': 1.05, 'cpp': 1.05, 'typescript': 1.05, 'javascript': 1.02,
-    'react': 1.04, 'next.js': 1.05, 'nextjs': 1.05, 'node.js': 1.05, 'nodejs': 1.05, 'nestjs': 1.06,
-    'go': 1.09, 'golang': 1.09, 'rust': 1.11, 'postgresql': 1.04, 'postgres': 1.04,
-    'mongodb': 1.03, 'redis': 1.06, 'apache kafka': 1.09, 'kafka': 1.09, 'nats': 1.08,
-    'kubernetes': 1.09, 'k8s': 1.09, 'docker': 1.04, 'aws': 1.07, 'gcp': 1.07,
-    'system design': 1.10, 'microservices': 1.07, 'graphql': 1.04, 'ci/cd': 1.03,
-    'llm': 1.10, 'rag': 1.10, 'pytorch': 1.09, 'three.js': 1.06
-  };
-
-  let skillMult = 1.0;
-  const normalized = resumeSkills.map(s => s.toLowerCase().trim());
-  for (const [skill, weight] of Object.entries(HIGH_ROI_WEIGHTS)) {
-    if (normalized.some(s => s === skill || s.includes(skill))) {
-      skillMult += (weight - 1.0) * 0.55;
-    }
-  }
-  return Math.round(Math.min(Math.max(skillMult, 0.90), 1.48) * 100) / 100;
-}
-
 export function calculateDualMarketValuation(
   yoe: number,
   resumeSkills: string[],
@@ -1996,174 +3216,115 @@ export function calculateDualMarketValuation(
   includeSdeTube: boolean,
   telemetry: SdeTubeTelemetrySnapshot | null,
   location: UserLocationPreferences,
-  simulatedSkillsBoost: number = 0
-): DualMarketValuation {
-  // 1. Seniority & Country Base Anchor (INR LPA)
-  const seniority: DualMarketValuation['factors']['seniorityBand'] =
-    yoe < 0.8 ? 'Entry / Intern' : yoe < 2.5 ? 'SDE-1' : yoe < 5.5 ? 'SDE-2' : 'Senior / Staff';
-
-  const indiaBaseLPA =
-    yoe < 0.8
-      ? 6.5 + yoe * 3.0
-      : yoe < 2.5
-      ? 10.5 + (yoe - 0.8) * 3.8
-      : yoe < 5.5
-      ? 18.0 + (yoe - 2.5) * 4.2
-      : 31.0 + Math.min(yoe - 5.5, 8) * 3.5;
-
-  // 2. Skill, Impact, and ATS Multipliers
-  const skillMult = computeSkillMultiplier(resumeSkills); // 0.90 to 1.48
-  const impactMult = Number((0.92 + Math.min(quantifiedBulletRatio, 1) * 0.30).toFixed(2));
-  const atsMult = Number((0.94 + (atsScore / 100) * 0.12).toFixed(2));
-
-  // 3. Location / Remote Multiplier within Country
-  const effectiveCityKey = location.preferDomesticRemote
-    ? 'Domestic Remote (India)'
-    : location.preferredCity || 'Anywhere in India';
-  const cityInfo = INDIA_CITY_MULTIPLIERS[effectiveCityKey] || INDIA_CITY_MULTIPLIERS['Anywhere in India'];
-
-  const rawNationalBase = indiaBaseLPA * skillMult * impactMult * atsMult;
-  const baseResumeDomestic = Number((rawNationalBase * cityInfo.mult).toFixed(1));
-
-  // 4. SDETube Telemetry Boost (Strictly 0 if checkbox is unchecked)
-  let sdeTubeBonusPct = 0;
-  if (includeSdeTube && telemetry) {
-    const dsaPct = Math.min((telemetry.dsaSolvedCount || 0) / 150, 1) * 8;
-    const designPct =
-      Math.min(((telemetry.hldTopologiesValidated || 0) * 2 + (telemetry.lldProblemsCompleted || 0) + (telemetry.ddiaChaptersCompleted || 0)) / 20, 1) * 10;
-    const sqlPct = Math.min((telemetry.sqlSolvedCount || 0) / 30, 1) * 3;
-    const mockPct = ((telemetry.avgMockInterviewScore || 0) / 100) * 5;
-    sdeTubeBonusPct = Number((dsaPct + designPct + sqlPct + mockPct).toFixed(1));
+  simulatedSkillsBoost: number = 0,
+  options?: {
+    expMetrics?: ParsedExperienceMetrics;
+    skillProof?: SkillProofClassification;
   }
-
-  const sdeTubeDomesticBoost = Number((baseResumeDomestic * (sdeTubeBonusPct / 100)).toFixed(1));
-  const totalDomestic = Number((baseResumeDomestic + sdeTubeDomesticBoost + simulatedSkillsBoost).toFixed(1));
-
-  // 5. Outside-Country Valuation (Global Remote USD & International Hubs)
-  const globalRemoteBaseUSD =
-    yoe < 1.0 ? 32000 : yoe < 2.5 ? 48000 : yoe < 5.5 ? 78000 : 115000;
-  const resumeOnlyGlobalUSD = Math.round((globalRemoteBaseUSD * skillMult * impactMult) / 1000) * 1000;
-  const sdeTubeGlobalBoostUSD = Math.round((resumeOnlyGlobalUSD * (sdeTubeBonusPct / 100)) / 500) * 500;
-  const totalGlobalRemoteUSD = resumeOnlyGlobalUSD + sdeTubeGlobalBoostUSD;
-
-  const globalReadinessPct = Math.min(
-    96,
-    Math.round(atsScore * 0.55 + (skillMult - 0.9) * 60 + sdeTubeBonusPct * 1.3)
-  );
-
-  return {
-    domestic: {
-      countryName: location.countryName,
-      cityOrRemoteLabel: cityInfo.label,
-      currency: location.countryCode === 'IN' ? 'INR (₹ LPA)' : `${location.currencySymbol} ${location.currencyUnit}`,
-      baseResumeOnlyValue: baseResumeDomestic,
-      sdeTubeVerifiedBoost: sdeTubeDomesticBoost,
-      simulatedSkillsBoost,
-      totalEstimatedValue: totalDomestic,
-      range: {
-        min: Number((totalDomestic * 0.84).toFixed(1)),
-        median: totalDomestic,
-        max: Number((totalDomestic * 1.26).toFixed(1)),
-        p90: Number((totalDomestic * 1.52).toFixed(1)),
-      },
-      cityMultiplierApplied: cityInfo.mult,
-      domesticRemoteComparison: {
-        cityOnsiteMedian: Number((rawNationalBase * (INDIA_CITY_MULTIPLIERS[location.preferredCity]?.mult || 1.0)).toFixed(1)),
-        domesticRemoteMedian: Number((rawNationalBase * 1.08 + sdeTubeDomesticBoost).toFixed(1)),
-        topHubMedian: Number((rawNationalBase * 1.15 + sdeTubeDomesticBoost).toFixed(1)),
-      },
-    },
-    outsideCountry: {
-      globalRemoteUSD: {
-        baseResumeOnlyUSD: resumeOnlyGlobalUSD,
-        sdeTubeBoostUSD: sdeTubeGlobalBoostUSD,
-        totalMedianUSD: totalGlobalRemoteUSD,
-        rangeUSD: {
-          min: Math.round(totalGlobalRemoteUSD * 0.82),
-          max: Math.round(totalGlobalRemoteUSD * 1.30),
-        },
-        hourlyRateUSD: {
-          min: Math.round((totalGlobalRemoteUSD * 0.82) / 2000),
-          max: Math.round((totalGlobalRemoteUSD * 1.30) / 2000),
-        },
-        readinessPct: globalReadinessPct,
-      },
-      internationalRelocationHubs: [
-        {
-          hubName: 'US (Bay Area / NYC)',
-          currency: 'USD ($)',
-          estimatedRange: `$${Math.round((totalGlobalRemoteUSD * 1.9) / 1000)}K – $${Math.round((totalGlobalRemoteUSD * 2.6) / 1000)}K / yr`,
-          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 2.2),
-          visaSponsorshipLikelihood: yoe >= 2.5 || sdeTubeBonusPct >= 12 ? 'Moderate' : 'Selective',
-        },
-        {
-          hubName: 'UK (London)',
-          currency: 'GBP (£)',
-          estimatedRange: `£${Math.round((totalGlobalRemoteUSD * 1.05) / 1000)}K – £${Math.round((totalGlobalRemoteUSD * 1.45) / 1000)}K / yr`,
-          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.55),
-          visaSponsorshipLikelihood: 'Moderate',
-        },
-        {
-          hubName: 'EU (Berlin / Amsterdam)',
-          currency: 'EUR (€)',
-          estimatedRange: `€${Math.round((totalGlobalRemoteUSD * 1.10) / 1000)}K – €${Math.round((totalGlobalRemoteUSD * 1.50) / 1000)}K / yr`,
-          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.42),
-          visaSponsorshipLikelihood: 'High',
-        },
-        {
-          hubName: 'Singapore',
-          currency: 'SGD (S$)',
-          estimatedRange: `S$${Math.round((totalGlobalRemoteUSD * 1.55) / 1000)}K – S$${Math.round((totalGlobalRemoteUSD * 2.15) / 1000)}K / yr`,
-          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.38),
-          visaSponsorshipLikelihood: 'Moderate',
-        },
-        {
-          hubName: 'UAE (Dubai Tax-Free)',
-          currency: 'AED',
-          estimatedRange: `AED ${Math.round((totalGlobalRemoteUSD * 4.2) / 1000)}K – ${Math.round((totalGlobalRemoteUSD * 5.8) / 1000)}K / yr`,
-          usdEquivalentMedian: Math.round(totalGlobalRemoteUSD * 1.35),
-          visaSponsorshipLikelihood: 'High',
-        },
-      ],
-    },
-    confidenceScore: includeSdeTube ? 92 : 74,
-    factors: {
-      detectedYoe: yoe,
-      seniorityBand: seniority,
-      skillDemandMultiplier: skillMult,
-      impactQuantificationMultiplier: impactMult,
-      atsFormatMultiplier: atsMult,
-      sdeTubeBonusPct,
-    },
+): DualMarketValuation {
+  const expMetrics: ParsedExperienceMetrics = options?.expMetrics || {
+    fullTimeYoe: yoe,
+    internshipMonths: 0,
+    teachingOrPartTimeMonths: 0,
+    effectiveValuationYoe: yoe,
+    manualOverrideApplied: false,
+    detectedGraduationYear: null,
+    detectedRoleArchetype: 'Full-Stack Engineering',
+    detectedIntervals: []
   };
+
+  const skillProof: SkillProofClassification = options?.skillProof || {
+    allSkills: resumeSkills,
+    provenInExperience: resumeSkills.slice(0, Math.ceil(resumeSkills.length * 0.6)),
+    provenInProjects: resumeSkills.slice(Math.ceil(resumeSkills.length * 0.6), Math.ceil(resumeSkills.length * 0.85)),
+    listedOnlyInSkills: resumeSkills.slice(Math.ceil(resumeSkills.length * 0.85))
+  };
+
+  return calculateRealisticDualValuation({
+    expMetrics,
+    skillProof,
+    atsScore,
+    quantifiedBulletRatio,
+    includeSdeTube,
+    telemetry,
+    location,
+    simulatedSkillsBoost
+  });
 }
 
-// ============================================================================
-// VERIFIED 404-FREE LIVE FREEHIRE JOBS REPOSITORY & PER-JOB ATS MATCHER
-// ============================================================================
-
 export const VERIFIED_LIVE_FREEHIRE_JOBS: LiveJobMatch[] = [
+  {
+    id: 'backend-engineer-clanx-senior-7yoe',
+    title: 'Senior Backend Engineer',
+    company: 'ClanX',
+    location: 'Remote (India / Global)',
+    remote: true,
+    workMode: 'remote',
+    salaryText: '₹35.0L – ₹55.0L',
+    salaryRangeText: '₹35.0L – ₹55.0L',
+    estimatedLPA: 45.0,
+    applyUrl: 'https://freehire.me/jobs/clanx-senior-backend',
+    postedAt: '4 days ago • Oct 21, 2026',
+    postedAtFormatted: '4 days ago • Oct 21, 2026',
+    source: 'FreeHire',
+    atsMatchScore: 24,
+    requiredMinYoe: 7,
+    seniorityLevel: 'Staff / Principal',
+    extractedSkills: ['Go', 'PostgreSQL', 'Redis', 'Apache Kafka', 'Distributed Systems', 'Data Modelling & Consistency', 'Event-Driven / Event Sourcing', 'Multi-Tenant Architecture', 'Concurrency & Scale', 'Agentic AI / LLM Systems'],
+    matchedSkills: [
+      { name: 'Distributed Systems', fromSdeTube: true, proofLevel: 'experience' },
+      { name: 'PostgreSQL', fromSdeTube: false, proofLevel: 'experience' }
+    ],
+    missingSkills: ['Multi-Tenant Architecture', 'Event-Driven / Event Sourcing', 'Concurrency & Scale'],
+    marketValueComparison: 'Above Your Valuation',
+    cleanSummary: 'ClanX is looking for a Senior Backend Engineer with 7+ years in backend and distributed systems to design high-throughput, fault-tolerant architectures.',
+    cleanFullText: 'ClanX is looking for a Senior Backend Engineer with 7+ years in backend and distributed systems. You will lead architecture ownership, data modelling, consistency, and multi-tenant isolation.',
+    rawDescription: 'ClanX is looking for a Senior Backend Engineer with 7+ years in backend and distributed systems.',
+    structuredSections: [
+      {
+        heading: 'The Role',
+        bullets: [
+          'Lead backend architecture and distributed systems across multi-tenant environments',
+          'Ensure strong data consistency, isolation, and fault tolerance across asynchronous services'
+        ]
+      },
+      {
+        heading: 'Requirements',
+        bullets: [
+          '7+ years in backend and distributed systems engineering',
+          'Deep expertise in data modelling, concurrency, and event-driven architectures'
+        ]
+      }
+    ]
+  },
   {
     id: 'backend-engineer-upwind-security-syrytvvf',
     title: 'Backend Software Engineer — Cloud-Native Security & Runtime Mesh',
     company: 'Upwind Security',
     location: 'Global / Remote',
     remote: true,
+    workMode: 'remote',
     salaryRangeText: '₹45.0L – ₹68.0L',
+    salaryText: '₹45.0L – ₹68.0L',
     estimatedLPA: 55.0,
     applyUrl: 'https://www.upwind.io/careers/co/iceland/D6.27F/backend-engineer/all?utm_source=freehire.me',
     postedAt: '2 days ago',
+    postedAtFormatted: '2 days ago',
     source: 'FreeHire',
     atsMatchScore: 82,
+    requiredMinYoe: 2,
+    seniorityLevel: 'Mid-Level (SDE-2)',
+    extractedSkills: ['C++', 'PostgreSQL', 'Node.js', 'Algorithms', 'Distributed Systems', 'Go', 'Kubernetes'],
     matchedSkills: [
-      { name: 'C++', fromSdeTube: false },
-      { name: 'PostgreSQL', fromSdeTube: false },
-      { name: 'Node.js', fromSdeTube: false },
-      { name: 'Algorithms (1200+ LC)', fromSdeTube: true },
-      { name: 'Distributed Systems', fromSdeTube: true }
+      { name: 'C++', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'PostgreSQL', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Node.js', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Distributed Systems', fromSdeTube: true, proofLevel: 'experience' }
     ],
-    missingSkills: ['Golang High-Concurrency Microservices', 'Kubernetes'],
+    missingSkills: ['Kubernetes'],
     marketValueComparison: 'Above Your Valuation',
+    cleanSummary: 'Build high-throughput, low-latency microservices in Go, C++20, and eBPF for cloud security runtime mesh.',
+    cleanFullText: 'Build high-throughput, low-latency microservices in Go, C++20, and eBPF for cloud security runtime mesh.',
     rawDescription: 'Build high-throughput, low-latency microservices in Go, C++20, and eBPF for cloud security runtime mesh.'
   },
   {
@@ -2172,21 +3333,28 @@ export const VERIFIED_LIVE_FREEHIRE_JOBS: LiveJobMatch[] = [
     company: 'Jobgether Platform',
     location: 'Remote / India',
     remote: true,
+    workMode: 'remote',
     salaryRangeText: '₹32.0L – ₹48.0L',
+    salaryText: '₹32.0L – ₹48.0L',
     estimatedLPA: 40.0,
     applyUrl: 'https://jobgether.com/offer/679a02251a70cb65ce74d289?utm_source=freehire.me',
     postedAt: '1 day ago',
+    postedAtFormatted: '1 day ago',
     source: 'FreeHire',
     atsMatchScore: 88,
+    requiredMinYoe: 3,
+    seniorityLevel: 'Senior (SDE-3)',
+    extractedSkills: ['Node.js', 'TypeScript', 'PostgreSQL', 'System Design & Architecture', 'Apache Kafka', 'Redis'],
     matchedSkills: [
-      { name: 'Node.js', fromSdeTube: false },
-      { name: 'TypeScript', fromSdeTube: false },
-      { name: 'PostgreSQL', fromSdeTube: false },
-      { name: 'System Design', fromSdeTube: true },
-      { name: 'Low-Level Design (SOLID)', fromSdeTube: true }
+      { name: 'Node.js', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'TypeScript', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'PostgreSQL', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'System Design & Architecture', fromSdeTube: true, proofLevel: 'experience' }
     ],
     missingSkills: ['Apache Kafka', 'Redis'],
     marketValueComparison: 'Above Your Valuation',
+    cleanSummary: 'Architect scalable event-driven services with Node.js, TypeScript, Kafka event brokers, and Redis distributed caching.',
+    cleanFullText: 'Architect scalable event-driven services with Node.js, TypeScript, Kafka event brokers, and Redis distributed caching.',
     rawDescription: 'Architect scalable event-driven services with Node.js, TypeScript, Kafka event brokers, and Redis distributed caching.'
   },
   {
@@ -2195,20 +3363,27 @@ export const VERIFIED_LIVE_FREEHIRE_JOBS: LiveJobMatch[] = [
     company: 'Google',
     location: 'Bangalore / Hyderabad / Remote',
     remote: false,
+    workMode: 'hybrid',
     salaryRangeText: '₹42.0L – ₹65.0L',
+    salaryText: '₹42.0L – ₹65.0L',
     estimatedLPA: 52.0,
     applyUrl: 'https://www.google.com/about/careers/applications/jobs/results/114948843232142022?utm_source=freehire.me',
     postedAt: '3 days ago',
+    postedAtFormatted: '3 days ago',
     source: 'FreeHire',
     atsMatchScore: 78,
+    requiredMinYoe: 2,
+    seniorityLevel: 'Mid-Level (SDE-2)',
+    extractedSkills: ['Algorithms', 'C++', 'Java', 'System Design & Architecture', 'Distributed Systems'],
     matchedSkills: [
-      { name: 'Data Structures & Algorithms', fromSdeTube: true },
-      { name: 'C++', fromSdeTube: false },
-      { name: 'Java', fromSdeTube: false },
-      { name: 'System Design (HLD)', fromSdeTube: true }
+      { name: 'C++', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Java', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Distributed Systems', fromSdeTube: true, proofLevel: 'experience' }
     ],
-    missingSkills: ['Distributed Consensus (Raft/Paxos)', 'Kubernetes'],
+    missingSkills: ['Distributed Consensus'],
     marketValueComparison: 'Above Your Valuation',
+    cleanSummary: 'Design, develop, test, and deploy resilient web services and distributed data processing pipelines for billions of users.',
+    cleanFullText: 'Design, develop, test, and deploy resilient web services and distributed data processing pipelines for billions of users.',
     rawDescription: 'Design, develop, test, and deploy resilient web services and distributed data processing pipelines for billions of users.'
   },
   {
@@ -2217,21 +3392,28 @@ export const VERIFIED_LIVE_FREEHIRE_JOBS: LiveJobMatch[] = [
     company: 'Cleo India',
     location: 'Bangalore, India (Hybrid)',
     remote: true,
+    workMode: 'hybrid',
     salaryRangeText: '₹28.0L – ₹42.0L',
+    salaryText: '₹28.0L – ₹42.0L',
     estimatedLPA: 35.0,
     applyUrl: 'https://boards.greenhouse.io/cleo/jobs/4528148005?utm_source=freehire.me',
     postedAt: 'Just now',
+    postedAtFormatted: 'Just now',
     source: 'FreeHire',
     atsMatchScore: 92,
+    requiredMinYoe: 1,
+    seniorityLevel: 'Junior (SDE-1)',
+    extractedSkills: ['React', 'TypeScript', 'Next.js', 'PostgreSQL', 'SQL', 'Redis'],
     matchedSkills: [
-      { name: 'React', fromSdeTube: false },
-      { name: 'TypeScript', fromSdeTube: false },
-      { name: 'Next.js', fromSdeTube: false },
-      { name: 'PostgreSQL', fromSdeTube: false },
-      { name: 'SQL Query Tuning', fromSdeTube: true }
+      { name: 'React', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'TypeScript', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Next.js', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'PostgreSQL', fromSdeTube: false, proofLevel: 'experience' }
     ],
     missingSkills: ['Redis'],
     marketValueComparison: 'Matches Your Valuation',
+    cleanSummary: 'Build smart conversational finance apps used by 5M+ Gen-Z users with Next.js, TypeScript, Python, and PostgreSQL.',
+    cleanFullText: 'Build smart conversational finance apps used by 5M+ Gen-Z users with Next.js, TypeScript, Python, and PostgreSQL.',
     rawDescription: 'Build smart conversational finance apps used by 5M+ Gen-Z users with Next.js, TypeScript, Python, and PostgreSQL.'
   },
   {
@@ -2240,22 +3422,286 @@ export const VERIFIED_LIVE_FREEHIRE_JOBS: LiveJobMatch[] = [
     company: 'WatchGuard Technologies',
     location: 'Noida, India / Hybrid',
     remote: false,
+    workMode: 'hybrid',
     salaryRangeText: '₹22.0L – ₹34.0L',
+    salaryText: '₹22.0L – ₹34.0L',
     estimatedLPA: 28.0,
     applyUrl: 'https://recruiting.ultipro.com/WAT1003WGTR/JobBoard/8fc5d140-d98c-4860-994c-cb141ae6b4b4/OpportunityDetail?opportunityId=73c79a29-0fa7-4007-8898-dbe38bf5bb4c&utm_source=freehire.me',
     postedAt: '4 days ago',
+    postedAtFormatted: '4 days ago',
     source: 'FreeHire',
     atsMatchScore: 85,
+    requiredMinYoe: 1,
+    seniorityLevel: 'Junior (SDE-1)',
+    extractedSkills: ['C++', 'Data Structures', 'Docker', 'Networking'],
     matchedSkills: [
-      { name: 'C++', fromSdeTube: false },
-      { name: 'Data Structures', fromSdeTube: true },
-      { name: 'Networking & Sockets', fromSdeTube: false }
+      { name: 'C++', fromSdeTube: false, proofLevel: 'experience' },
+      { name: 'Docker', fromSdeTube: false, proofLevel: 'experience' }
     ],
-    missingSkills: ['Golang High-Concurrency Microservices', 'Docker & Containerization'],
+    missingSkills: ['Golang High-Concurrency Microservices'],
     marketValueComparison: 'Matches Your Valuation',
+    cleanSummary: 'Develop network security firewalls, unified threat management appliances, and high-throughput packet routing systems.',
+    cleanFullText: 'Develop network security firewalls, unified threat management appliances, and high-throughput packet routing systems.',
     rawDescription: 'Develop network security firewalls, unified threat management appliances, and high-throughput packet routing systems.'
   }
 ];
+
+// ============================================================================
+// MAIN UNIFIED STUDIO PIPELINE ORCHESTRATOR (WITH REDIS CACHE)
+// ============================================================================
+// 4-VECTOR LIVE JOB SCORER & PIPELINE ORCHESTRATOR (WITH REDIS CACHE)
+// ============================================================================
+
+export async function fetchAndScoreLiveJobs(params: {
+  candidateProfile: {
+    archetype: RoleArchetype;
+    provenInExperience: string[];
+    provenInProjects: string[];
+    listedOnlyInSkills: string[];
+    fullTimeYoe: number;
+    effectiveValuationYoe: number;
+  };
+  includeSdeTubeData: boolean;
+  telemetry: SdeTubeTelemetrySnapshot;
+  locationPreferences: UserLocationPreferences;
+  domesticValuationLPA: number;
+}): Promise<{
+  allJobs: LiveJobMatch[];
+  domesticJobs: LiveJobMatch[];
+  outsideCountryJobs: LiveJobMatch[];
+}> {
+  const { candidateProfile, includeSdeTubeData, telemetry, locationPreferences } = params;
+
+  let rawListings: any[] = [];
+  try {
+    const countryCfg = COUNTRY_CONFIGS[locationPreferences.countryCode] || COUNTRY_CONFIGS.IN;
+    const queryParams = new URLSearchParams({
+      role: candidateProfile.archetype,
+      skills: candidateProfile.provenInExperience.slice(0, 5).join(','),
+      country: locationPreferences.countryName || countryCfg.name || 'India',
+      location: locationPreferences.preferredCity || '',
+      work_mode: locationPreferences.workModeFilter || 'all',
+      limit: '50'
+    });
+    // In browser context or local dev, call the Cloudflare Pages Function
+    const apiUrl = typeof window !== 'undefined'
+      ? `/api/freehire-jobs?${queryParams.toString()}`
+      : `http://localhost:8788/api/freehire-jobs?${queryParams.toString()}`;
+
+    const res = await fetch(apiUrl, { method: 'GET', headers: { 'Accept': 'application/json' } });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.jobs) && data.jobs.length >= 5) {
+        rawListings = data.jobs;
+      }
+    }
+  } catch (err) {
+    // Graceful fallback to verified benchmark jobs if offline or network failure
+  }
+
+  if (rawListings.length === 0) {
+    rawListings = VERIFIED_LIVE_FREEHIRE_JOBS;
+  }
+
+  const sdeSkills = (includeSdeTubeData ? telemetry.verifiedSkills : []).map(s => s.replace(/\s*\(verified.*$/, ''));
+
+  const allJobs: LiveJobMatch[] = rawListings.map((job) => {
+    return scoreJobWithSeniorityGate({
+      job,
+      expMetrics: {
+        fullTimeYoe: candidateProfile.fullTimeYoe,
+        internshipMonths: 0,
+        teachingOrPartTimeMonths: 0,
+        effectiveValuationYoe: candidateProfile.effectiveValuationYoe,
+        detectedGraduationYear: null,
+        detectedRoleArchetype: candidateProfile.archetype,
+      },
+      skillProof: {
+        allSkills: [...candidateProfile.provenInExperience, ...candidateProfile.provenInProjects, ...candidateProfile.listedOnlyInSkills],
+        provenInExperience: candidateProfile.provenInExperience,
+        provenInProjects: candidateProfile.provenInProjects,
+        listedOnlyInSkills: candidateProfile.listedOnlyInSkills,
+      },
+      sdeTubeSkills: sdeSkills,
+      includeSdeTubeData,
+      location: locationPreferences,
+    });
+  });
+
+  // Sort allJobs by ATS Match Score descending
+  allJobs.sort((a, b) => b.atsMatchScore - a.atsMatchScore);
+
+  const domesticJobs = allJobs.filter((j) => j.isDomestic);
+  const outsideCountryJobs = allJobs.filter((j) => !j.isDomestic);
+
+  // Preferred City or Domestic Remote priority for domestic jobs
+  domesticJobs.sort((a, b) => {
+    const aPrio = (a.isPreferredCityMatch || (locationPreferences.preferDomesticRemote && a.isDomesticRemote)) ? 1 : 0;
+    const bPrio = (b.isPreferredCityMatch || (locationPreferences.preferDomesticRemote && b.isDomesticRemote)) ? 1 : 0;
+    if (aPrio !== bPrio) return bPrio - aPrio;
+    return b.atsMatchScore - a.atsMatchScore;
+  });
+
+  return { allJobs, domesticJobs, outsideCountryJobs };
+}
+
+export function generateSkillRoiAndTransitions(params: {
+  provenInExperience: string[];
+  provenInProjects: string[];
+  archetype: RoleArchetype;
+  domesticBaseValue: number;
+  totalDomesticValue: number;
+  extractedYoe: number;
+  atsOverallScore: number;
+  includeSdeTubeData: boolean;
+}): {
+  skillRoiRecommendations: SkillRoiRecommendation[];
+  roleTransitions: RoleTransitionPath[];
+} {
+  const {
+    provenInExperience,
+    provenInProjects,
+    archetype,
+    domesticBaseValue,
+    totalDomesticValue,
+    extractedYoe,
+    atsOverallScore,
+    includeSdeTubeData
+  } = params;
+
+  const provenLower = new Set(provenInExperience.map(s => s.toLowerCase()));
+  const projLower = new Set(provenInProjects.map(s => s.toLowerCase()));
+
+  // 1. Skill ROI Recommendations
+  const skillRoiRecommendations: SkillRoiRecommendation[] = Object.entries(SKILL_RESOURCE_CATALOG)
+    .filter(([skillName]) => !provenLower.has(skillName.toLowerCase()))
+    .map(([skillName, meta]) => {
+      const isPartiallyInProjects = projLower.has(skillName.toLowerCase());
+      const prio: SkillRoiRecommendation['priority'] =
+        meta.baseRoiLPA >= 3.0 ? 'Critical' : meta.baseRoiLPA >= 2.5 ? 'High-ROI' : 'Emerging';
+      const globalRoiUSD = Math.round((meta.baseRoiLPA * 3500) / 500) * 500;
+
+      return {
+        skillName: isPartiallyInProjects ? `${skillName} (Move to Work Experience)` : skillName,
+        category: meta.category,
+        priority: prio,
+        marketValueDeltaLPA: isPartiallyInProjects ? Number((meta.baseRoiLPA * 0.45).toFixed(1)) : meta.baseRoiLPA,
+        marketValueDeltaPct: Math.round((meta.baseRoiLPA / (domesticBaseValue || 10)) * 100),
+        globalRoiUSD,
+        domesticCityRoiLPA: {
+          'Bengaluru': Number((meta.baseRoiLPA * 1.15).toFixed(1)),
+          'Hyderabad': Number((meta.baseRoiLPA * 1.10).toFixed(1)),
+          'India Remote': Number((meta.baseRoiLPA * 1.08).toFixed(1)),
+        },
+        atsScoreDeltaPct: Math.round(meta.demandMultiplier * 10 - 2),
+        unlockedJobsCount: Math.floor(Math.random() * 8 + 6),
+        estimatedHoursToLearn: isPartiallyInProjects ? Math.round(meta.estimatedHours * 0.4) : meta.estimatedHours,
+        whyItMatters: isPartiallyInProjects
+          ? `You have demonstrated ${skillName} in personal projects (65% weight). Highlighting it in your primary work experience unlocks the full 100% premium.`
+          : meta.whyItMatters,
+        learningResources: {
+          sdeTube: meta.sdeTube,
+          github: meta.github,
+          internet: meta.internet
+        }
+      };
+    })
+    .slice(0, 8);
+
+  // 2. Role Transitions
+  const verticalTargetRole = extractedYoe < 2.5
+    ? 'Software Engineer II (SDE-2) — Distributed Systems'
+    : 'Staff / Principal Platform Engineer';
+
+  const roleTransitions: RoleTransitionPath[] = [
+    {
+      targetRoleTitle: verticalTargetRole,
+      transitionType: 'Vertical Promotion',
+      currentReadinessPct: Math.min(94, Math.floor(atsOverallScore * 0.85 + (includeSdeTubeData ? 14 : 0))),
+      projectedMarketValueLPA: {
+        min: Math.round(totalDomesticValue * 1.35 * 10) / 10,
+        max: Math.round(totalDomesticValue * 1.85 * 10) / 10
+      },
+      valueJumpLPA: Math.round((totalDomesticValue * 0.50) * 10) / 10,
+      transferableSkills: provenInExperience.slice(0, 5),
+      requiredBridgeSkills: ['Apache Kafka', 'Distributed Consensus (Raft/Paxos)', 'System Design (HLD & LLD)'],
+      matchingLiveJobsCount: 14,
+      roadmapPhases: [
+        {
+          days: 'Days 1–30',
+          focus: 'Deepen Storage Internals & DDIA Foundations',
+          actionItems: [
+            'Read DDIA Ch. 3 (Storage Engines) and Ch. 5 (Replication) on SDETube Reader',
+            'Validate 3 high-throughput topologies on SDETube HLD Canvas'
+          ],
+          sdeTubeVerificationTarget: 'DDIA Ch. 1–5 Mastery'
+        },
+        {
+          days: 'Days 31–60',
+          focus: 'Event-Driven Architectures & Partitioned Streaming',
+          actionItems: [
+            'Build idempotent consumer with Dead Letter Queue using Kafka/Redpanda',
+            'Benchmark consumer group rebalance and partition lag metrics'
+          ],
+          sdeTubeVerificationTarget: 'HLD Architecture Topology Pass'
+        },
+        {
+          days: 'Days 61–90',
+          focus: 'Staff/SDE-2 Bar-Raiser Defense & Mock Interviews',
+          actionItems: [
+            'Complete 2 full AI Mock Interviews with Bar-Raiser defense on distributed consistency',
+            'Update resume with verified XYZ bullet points and apply directly to FreeHire target listings'
+          ],
+          sdeTubeVerificationTarget: 'Bar-Raiser Scorecard >= 85%'
+        }
+      ]
+    },
+    {
+      targetRoleTitle: 'AI Platform & LLM Systems Engineer',
+      transitionType: 'High-Growth Pivot',
+      currentReadinessPct: Math.min(88, Math.floor(atsOverallScore * 0.75 + (includeSdeTubeData ? 12 : 0))),
+      projectedMarketValueLPA: {
+        min: Math.round(totalDomesticValue * 1.40 * 10) / 10,
+        max: Math.round(totalDomesticValue * 2.05 * 10) / 10
+      },
+      valueJumpLPA: Math.round((totalDomesticValue * 0.65) * 10) / 10,
+      transferableSkills: provenInExperience.filter(s => ['Python', 'PostgreSQL', 'Docker', 'Redis'].includes(s)),
+      requiredBridgeSkills: ['LLM & RAG Orchestration', 'Vector Embeddings', 'vLLM / TensorRT-LLM Serving'],
+      matchingLiveJobsCount: 9,
+      roadmapPhases: [
+        {
+          days: 'Days 1–30',
+          focus: 'Vector Databases, Indexing & Chunking Pipelines',
+          actionItems: [
+            'Implement hybrid BM25 + dense vector semantic search using pgvector / Qdrant',
+            'Evaluate chunk overlap strategies and token window optimization'
+          ],
+          sdeTubeVerificationTarget: 'SQL & Vector Query Benchmark'
+        },
+        {
+          days: 'Days 31–60',
+          focus: 'Low-Latency Model Serving & Inference Pipelines',
+          actionItems: [
+            'Deploy quantized model using vLLM with PagedAttention and continuous batching',
+            'Implement semantic cache with Redis to reduce redundant token generation by 40%'
+          ],
+          sdeTubeVerificationTarget: 'High-Throughput Serving Benchmark'
+        },
+        {
+          days: 'Days 61–90',
+          focus: 'Agentic Workflows & Production Guardrails',
+          actionItems: [
+            'Engineer multi-agent planning loop with fallback circuit breakers and tool calling',
+            'Pass AI Mock Interview on Production LLM Architecture & Safety'
+          ],
+          sdeTubeVerificationTarget: 'AI Systems Bar-Raiser Scorecard >= 88%'
+        }
+      ]
+    }
+  ];
+
+  return { skillRoiRecommendations, roleTransitions };
+}
 
 // ============================================================================
 // MAIN UNIFIED STUDIO PIPELINE ORCHESTRATOR (WITH REDIS CACHE)
@@ -2269,6 +3715,7 @@ export async function runUnifiedResumeAnalysis(params: {
   targetJobDescription?: string;
   targetJobId?: string;
   locationPreferences?: Partial<UserLocationPreferences>;
+  manualYoeOverride?: number | null;
   simulatedSkillsBoost?: number;
   forceRefresh?: boolean;
 }): Promise<UnifiedResumeAnalysisResponse> {
@@ -2280,6 +3727,7 @@ export async function runUnifiedResumeAnalysis(params: {
     targetJobDescription,
     targetJobId,
     locationPreferences,
+    manualYoeOverride,
     simulatedSkillsBoost = 0,
     forceRefresh = false
   } = params;
@@ -2316,45 +3764,36 @@ export async function runUnifiedResumeAnalysis(params: {
     }
   }
 
-  // 4. Deterministic Extraction & Heuristic Candidate Profiling
+  // 4. Accurate Experience Parsing (No College Year Bleed)
   const lines = resumeText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const name = lines[0]?.slice(0, 40) || 'Candidate';
+  let name = lines[0]?.slice(0, 40) || 'Candidate';
+  const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const email = emailMatch ? emailMatch[0] : 'candidate@example.com';
 
-  // Detect Years of Experience
-  let extractedYoe = 2.5;
-  const yoeMatch = resumeText.match(/(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)(?:\s+of)?\s+(?:experience|exp)/i);
-  if (yoeMatch) {
-    extractedYoe = parseFloat(yoeMatch[1]);
-  } else {
-    // Count year ranges like 2021 - 2024
-    const years = (resumeText.match(/\b(201\d|202\d)\b/g) || []).map(Number);
-    if (years.length >= 2) {
-      const minYear = Math.min(...years);
-      const maxYear = Math.max(...years);
-      const diff = maxYear - minYear;
-      if (diff > 0 && diff <= 15) {
-        extractedYoe = diff;
+  let expMetrics = extractAccurateExperience(resumeText, manualYoeOverride);
+  let skillProof = classifySkillProofLevels(resumeText);
+
+  // Integrate LLM verification if available and not manually overridden
+  if (!manualYoeOverride) {
+    try {
+      const llmResult = await verifyAndExtractResumeWithLLM(resumeText, resumeHash);
+      if (llmResult) {
+        expMetrics = llmResult.expMetrics;
+        skillProof = {
+          allSkills: Array.from(new Set([...skillProof.allSkills, ...llmResult.skillProof.allSkills])),
+          provenInExperience: Array.from(new Set([...skillProof.provenInExperience, ...llmResult.skillProof.provenInExperience])),
+          provenInProjects: Array.from(new Set([...skillProof.provenInProjects, ...llmResult.skillProof.provenInProjects])),
+          listedOnlyInSkills: Array.from(new Set([...skillProof.listedOnlyInSkills, ...llmResult.skillProof.listedOnlyInSkills])),
+        };
+        if (llmResult.candidateName && llmResult.candidateName !== 'Candidate') {
+          name = llmResult.candidateName;
+        }
       }
+    } catch (err) {
+      console.warn('LLM resume verification skipped, using deterministic parser:', err);
     }
   }
 
-  // Detect Skills
-  const COMMON_SKILLS = [
-    'Python', 'Java', 'C++', 'TypeScript', 'JavaScript', 'React', 'Next.js', 'Node.js', 'NestJS',
-    'Go', 'Golang', 'Rust', 'PostgreSQL', 'MongoDB', 'Redis', 'Apache Kafka', 'Kubernetes',
-    'Docker', 'AWS', 'GCP', 'System Design', 'Microservices', 'GraphQL', 'CI/CD', 'Git', 'SQL',
-    'REST', 'Linux', 'Tailwind CSS', 'Redux'
-  ];
-
-  const resumeSkills: string[] = [];
-  const textLower = resumeText.toLowerCase();
-  COMMON_SKILLS.forEach(skill => {
-    if (textLower.includes(skill.toLowerCase())) {
-      resumeSkills.push(skill);
-    }
-  });
-
-  // Quantification Ratio
   const bullets = lines.filter(l => l.startsWith('-') || l.startsWith('•') || l.startsWith('*'));
   const quantifiedBullets = bullets.filter(b => /[\d%]|ms|x|k|m|₹|\$|reduced|increased|improved|scaled/i.test(b));
   const quantifiedBulletRatio = bullets.length > 0 ? (quantifiedBullets.length / bullets.length) : 0.65;
@@ -2363,20 +3802,20 @@ export async function runUnifiedResumeAnalysis(params: {
   const dummyResumeObj: AtsResumeData = {
     personalInfo: {
       fullName: name,
-      email: 'candidate@example.com',
+      email,
       phone: '',
-      location: 'Remote',
+      location: loc.preferredCity || 'Remote',
       linkedin: '',
       github: '',
       portfolio: ''
     },
-    targetRole: targetRole,
-    summary: `Software engineer with ${extractedYoe} years of experience designing and scaling distributed systems and web architectures.`,
+    targetRole,
+    summary: `Software engineer with ${expMetrics.fullTimeYoe} years of full-time experience specializing in ${expMetrics.detectedRoleArchetype}.`,
     skills: {
-      languages: resumeSkills.filter(s => ['Python', 'Java', 'C++', 'TypeScript', 'JavaScript', 'Go', 'Rust'].includes(s)),
-      frameworks: resumeSkills.filter(s => ['React', 'Next.js', 'Node.js', 'NestJS'].includes(s)),
-      databases: resumeSkills.filter(s => ['PostgreSQL', 'MongoDB', 'Redis'].includes(s)),
-      cloudDevOps: resumeSkills.filter(s => ['Kubernetes', 'Docker', 'AWS', 'GCP', 'Apache Kafka'].includes(s)),
+      languages: skillProof.allSkills.filter(s => ['Python', 'Java', 'C++', 'TypeScript', 'JavaScript', 'Go', 'Rust'].includes(s)),
+      frameworks: skillProof.allSkills.filter(s => ['React', 'Next.js', 'Node.js', 'NestJS'].includes(s)),
+      databases: skillProof.allSkills.filter(s => ['PostgreSQL', 'MongoDB', 'Redis'].includes(s)),
+      cloudDevOps: skillProof.allSkills.filter(s => ['Kubernetes', 'Docker', 'AWS', 'GCP', 'Apache Kafka'].includes(s)),
       toolsAndMethods: ['Microservices', 'REST', 'System Design']
     },
     experience: bullets.map((b, i) => ({
@@ -2390,7 +3829,7 @@ export async function runUnifiedResumeAnalysis(params: {
       bullets: [b.replace(/^[-•*]\s*/, '')]
     })),
     projects: [],
-    education: [{ id: 'edu-1', degree: 'B.Tech in Computer Science', institution: 'University', year: '2021' }],
+    education: [{ id: 'edu-1', degree: 'B.Tech in Computer Science', institution: 'University', year: expMetrics.detectedGraduationYear ? String(expMetrics.detectedGraduationYear) : '2021' }],
     certifications: []
   };
 
@@ -2399,10 +3838,21 @@ export async function runUnifiedResumeAnalysis(params: {
     targetJobDescription || (targetRole + ' microservices, distributed systems, system design, high concurrency')
   );
 
-  // 6. Compute Multi-Factor Market Valuation & Location-Aware Dual Valuation
+  // 6. Realistic 2026 Dual Market Valuation
+  const dualValuation = calculateRealisticDualValuation({
+    expMetrics,
+    skillProof,
+    atsScore: atsAuditRes.overallScore,
+    quantifiedBulletRatio,
+    includeSdeTube: includeSdeTubeData,
+    telemetry,
+    location: loc,
+    simulatedSkillsBoost
+  });
+
   const marketValuation = computeMarketValuationBreakdown({
-    extractedYoe,
-    resumeSkills,
+    extractedYoe: expMetrics.fullTimeYoe,
+    resumeSkills: skillProof.allSkills,
     quantifiedBulletRatio,
     atsOverallScore: atsAuditRes.overallScore,
     includeSdeTubeData,
@@ -2410,192 +3860,35 @@ export async function runUnifiedResumeAnalysis(params: {
     targetRoleTitle: targetRole
   });
 
-  const dualValuation = calculateDualMarketValuation(
-    extractedYoe,
-    resumeSkills,
-    quantifiedBulletRatio,
-    atsAuditRes.overallScore,
+  // 7. Dynamic FreeHire 4-Vector Job Matching
+  const { allJobs: liveJobs, domesticJobs, outsideCountryJobs } = await fetchAndScoreLiveJobs({
+    candidateProfile: {
+      archetype: expMetrics.detectedRoleArchetype,
+      provenInExperience: skillProof.provenInExperience,
+      provenInProjects: skillProof.provenInProjects,
+      listedOnlyInSkills: skillProof.listedOnlyInSkills,
+      fullTimeYoe: expMetrics.fullTimeYoe,
+      effectiveValuationYoe: expMetrics.effectiveValuationYoe
+    },
     includeSdeTubeData,
     telemetry,
-    loc,
-    simulatedSkillsBoost
-  );
-
-  // 7. Per-Job ATS Match Calculations & 2-Lane Location Sorting
-  const cityLower = (loc.preferredCity || '').toLowerCase();
-  const countryLower = (loc.countryName || 'india').toLowerCase();
-  const indianHubs = ['india', 'bengaluru', 'bangalore', 'hyderabad', 'pune', 'mumbai', 'gurgaon', 'gurugram', 'noida', 'chennai', 'kolkata', 'delhi'];
-
-  const domesticJobs: LiveJobMatch[] = [];
-  const outsideCountryJobs: LiveJobMatch[] = [];
-
-  const liveJobs: LiveJobMatch[] = VERIFIED_LIVE_FREEHIRE_JOBS.map(job => {
-    const effectiveSkills = includeSdeTubeData
-      ? [...resumeSkills, ...telemetry.verifiedSkills.map(s => s.replace(/\s*\(Verified.*$/, ''))]
-      : resumeSkills;
-
-    const matched = job.matchedSkills.map(m => ({
-      ...m,
-      fromSdeTube: includeSdeTubeData && telemetry.verifiedSkills.some(v => v.toLowerCase().includes(m.name.toLowerCase()))
-    }));
-
-    const valDiff = (job.estimatedLPA || 30) - dualValuation.domestic.totalEstimatedValue;
-    const comparison: LiveJobMatch['marketValueComparison'] =
-      valDiff > 5 ? 'Above Your Valuation' : valDiff < -5 ? 'Below Your Valuation' : 'Matches Your Valuation';
-
-    const locText = (job.location || '').toLowerCase();
-    const isDomestic = countryLower === 'india'
-      ? (locText.includes('india') || indianHubs.some(h => locText.includes(h)) || (job.remote && locText.includes('remote')))
-      : locText.includes(countryLower);
-
-    const isPrefCity = Boolean(cityLower && cityLower !== 'any' && locText.includes(cityLower));
-    const isDomesticRem = Boolean(isDomestic && job.remote);
-
-    const enriched: LiveJobMatch = {
-      ...job,
-      workMode: job.remote ? 'remote' : 'hybrid',
-      isPreferredCityMatch: isPrefCity,
-      isDomesticRemote: isDomesticRem,
-      matchedSkills: matched,
-      marketValueComparison: comparison
-    };
-
-    if (isDomestic) {
-      domesticJobs.push(enriched);
-    } else {
-      outsideCountryJobs.push(enriched);
-    }
-
-    return enriched;
+    locationPreferences: loc,
+    domesticValuationLPA: dualValuation.domestic.totalEstimatedValue
   });
 
-  // Sort Domestic jobs: Preferred City / Domestic Remote first, then by ATS Match Score
-  domesticJobs.sort((a, b) => {
-    const aPriority = (a.isPreferredCityMatch || (loc.preferDomesticRemote && a.isDomesticRemote)) ? 1 : 0;
-    const bPriority = (b.isPreferredCityMatch || (loc.preferDomesticRemote && b.isDomesticRemote)) ? 1 : 0;
-    if (aPriority !== bPriority) return bPriority - aPriority;
-    return b.atsMatchScore - a.atsMatchScore;
+  // 8. Skill ROI and Transition Roadmaps
+  const { skillRoiRecommendations, roleTransitions } = generateSkillRoiAndTransitions({
+    provenInExperience: skillProof.provenInExperience,
+    provenInProjects: skillProof.provenInProjects,
+    archetype: expMetrics.detectedRoleArchetype,
+    domesticBaseValue: dualValuation.domestic.baseResumeOnlyValue,
+    totalDomesticValue: dualValuation.domestic.totalEstimatedValue,
+    extractedYoe: expMetrics.fullTimeYoe,
+    atsOverallScore: atsAuditRes.overallScore,
+    includeSdeTubeData
   });
 
-  outsideCountryJobs.sort((a, b) => b.atsMatchScore - a.atsMatchScore);
-
-  // 8. Skill ROI Recommendations with Dual Valuation Boosts
-  const skillRoiRecommendations: SkillRoiRecommendation[] = Object.entries(SKILL_RESOURCE_CATALOG).map(([skillName, meta]) => {
-    const prio: SkillRoiRecommendation['priority'] = meta.baseRoiLPA >= 3.0 ? 'Critical' : meta.baseRoiLPA >= 2.5 ? 'High-ROI' : 'Emerging';
-    const globalRoiUSD = Math.round((meta.baseRoiLPA * 3500) / 500) * 500;
-    return {
-      skillName,
-      category: meta.category,
-      priority: prio,
-      marketValueDeltaLPA: meta.baseRoiLPA,
-      marketValueDeltaPct: Math.round((meta.baseRoiLPA / dualValuation.domestic.baseResumeOnlyValue) * 100),
-      globalRoiUSD,
-      domesticCityRoiLPA: {
-        'Bengaluru': Number((meta.baseRoiLPA * 1.15).toFixed(1)),
-        'Hyderabad': Number((meta.baseRoiLPA * 1.10).toFixed(1)),
-        'India Remote': Number((meta.baseRoiLPA * 1.08).toFixed(1)),
-      },
-      atsScoreDeltaPct: Math.round(meta.demandMultiplier * 10 - 2),
-      unlockedJobsCount: Math.floor(Math.random() * 8 + 6),
-      estimatedHoursToLearn: meta.estimatedHours,
-      whyItMatters: meta.whyItMatters,
-      learningResources: {
-        sdeTube: meta.sdeTube,
-        github: meta.github,
-        internet: meta.internet
-      }
-    };
-  }).filter(r => !resumeSkills.some(s => s.toLowerCase() === r.skillName.toLowerCase()));
-
-  // 9. Role Transitions
-  const roleTransitions: RoleTransitionPath[] = [
-    {
-      targetRoleTitle: extractedYoe < 3 ? 'Senior SDE-2 (Distributed Systems)' : 'Staff Software Engineer / Architect',
-      transitionType: 'Vertical Promotion',
-      currentReadinessPct: Math.min(94, Math.floor(atsAuditRes.overallScore * 0.85 + (includeSdeTubeData ? 14 : 0))),
-      projectedMarketValueLPA: {
-        min: Math.round(dualValuation.domestic.totalEstimatedValue * 1.35 * 10) / 10,
-        max: Math.round(dualValuation.domestic.totalEstimatedValue * 1.85 * 10) / 10
-      },
-      valueJumpLPA: Math.round((dualValuation.domestic.totalEstimatedValue * 0.50) * 10) / 10,
-      transferableSkills: resumeSkills.slice(0, 5),
-      requiredBridgeSkills: ['Apache Kafka', 'Distributed Consensus (Raft/Paxos)', 'System Design (HLD & LLD)'],
-      matchingLiveJobsCount: 14,
-      roadmapPhases: [
-        {
-          days: 'Days 1–30',
-          focus: 'Deepen Storage Internals & DDIA Foundations',
-          actionItems: [
-            'Read DDIA Ch. 3 (Storage Engines) and Ch. 5 (Replication) on SDETube Reader',
-            'Validate 3 high-throughput topologies on SDETube HLD Canvas'
-          ],
-          sdeTubeVerificationTarget: 'DDIA Ch. 1–5 Mastery'
-        },
-        {
-          days: 'Days 31–60',
-          focus: 'Event-Driven Architectures & Partitioned Streaming',
-          actionItems: [
-            'Build idempotent consumer with Dead Letter Queue using Kafka/Redpanda',
-            'Benchmark consumer group rebalance and partition lag metrics'
-          ],
-          sdeTubeVerificationTarget: 'HLD Architecture Topology Pass'
-        },
-        {
-          days: 'Days 61–90',
-          focus: 'Staff/SDE-2 Bar-Raiser Defense & Mock Interviews',
-          actionItems: [
-            'Complete 2 full AI Mock Interviews with Bar-Raiser defense on distributed consistency',
-            'Update resume with verified XYZ bullet points and apply directly to FreeHire target listings'
-          ],
-          sdeTubeVerificationTarget: 'Bar-Raiser Scorecard >= 85%'
-        }
-      ]
-    },
-    {
-      targetRoleTitle: 'AI Platform & LLM Systems Engineer',
-      transitionType: 'High-Growth Pivot',
-      currentReadinessPct: Math.min(88, Math.floor(atsAuditRes.overallScore * 0.75 + (includeSdeTubeData ? 12 : 0))),
-      projectedMarketValueLPA: {
-        min: Math.round(dualValuation.domestic.totalEstimatedValue * 1.40 * 10) / 10,
-        max: Math.round(dualValuation.domestic.totalEstimatedValue * 2.05 * 10) / 10
-      },
-      valueJumpLPA: Math.round((dualValuation.domestic.totalEstimatedValue * 0.65) * 10) / 10,
-      transferableSkills: resumeSkills.filter(s => ['Python', 'PostgreSQL', 'Docker', 'Redis'].includes(s)),
-      requiredBridgeSkills: ['LLM & RAG Orchestration', 'Vector Embeddings', 'vLLM / TensorRT-LLM Serving'],
-      matchingLiveJobsCount: 9,
-      roadmapPhases: [
-        {
-          days: 'Days 1–30',
-          focus: 'Vector Databases, Indexing & Chunking Pipelines',
-          actionItems: [
-            'Implement hybrid BM25 + dense vector semantic search using pgvector / Qdrant',
-            'Evaluate chunk overlap strategies and token window optimization'
-          ],
-          sdeTubeVerificationTarget: 'SQL & Vector Query Benchmark'
-        },
-        {
-          days: 'Days 31–60',
-          focus: 'Low-Latency Model Serving & Inference Pipelines',
-          actionItems: [
-            'Deploy quantized model using vLLM with PagedAttention and continuous batching',
-            'Implement semantic cache with Redis to reduce redundant token generation by 40%'
-          ],
-          sdeTubeVerificationTarget: 'High-Throughput Serving Benchmark'
-        },
-        {
-          days: 'Days 61–90',
-          focus: 'Agentic Workflows & Production Guardrails',
-          actionItems: [
-            'Engineer multi-agent planning loop with fallback circuit breakers and tool calling',
-            'Pass AI Mock Interview on Production LLM Architecture & Safety'
-          ],
-          sdeTubeVerificationTarget: 'AI Systems Bar-Raiser Scorecard >= 88%'
-        }
-      ]
-    }
-  ];
-
-  // 10. Assemble Full Response
+  // 9. Assemble Full Response
   const responsePayload: UnifiedResumeAnalysisResponse = {
     cacheKey,
     cachedAt: new Date().toISOString(),
@@ -2605,10 +3898,21 @@ export async function runUnifiedResumeAnalysis(params: {
     parsedCandidate: {
       name,
       currentRole: targetRole,
-      extractedYoe,
-      resumeSkills,
+      extractedYoe: expMetrics.fullTimeYoe,
+      resumeSkills: skillProof.allSkills,
       sdeTubeSkillsIncluded: includeSdeTubeData ? telemetry.verifiedSkills : [],
       resumeHash,
+      experienceMetrics: expMetrics,
+      skillProof
+    },
+    candidateProfile: {
+      name,
+      email,
+      detectedRoleArchetype: expMetrics.detectedRoleArchetype,
+      experienceMetrics: expMetrics,
+      skillProof,
+      sdeTubeSkillsIncluded: includeSdeTubeData ? telemetry.verifiedSkills : [],
+      resumeHash
     },
     marketValuation,
     dualValuation,
@@ -2640,7 +3944,7 @@ export async function runUnifiedResumeAnalysis(params: {
           hasStrongVerb,
           score: hasMetric && hasStrongVerb ? 'strong' : hasMetric || hasStrongVerb ? 'moderate' : 'weak',
           issue: !hasMetric ? 'Lacks measurable business or latency impact.' : !hasStrongVerb ? 'Opens with a passive verb.' : 'Well structured.',
-          aiSuggestedRewrite: `Engineered high-concurrency microservices using ${resumeSkills[0] || 'Go'} and Redis, reducing p99 API latency by 38% and supporting 150K+ daily active users.`,
+          aiSuggestedRewrite: `Engineered high-concurrency microservices using ${skillProof.provenInExperience[0] || 'Go'} and Redis, reducing p99 API latency by 38% and supporting 150K+ daily active users.`,
           addedKeywords: ['Redis', 'Microservices', 'p99 latency']
         };
       })
@@ -2652,11 +3956,10 @@ export async function runUnifiedResumeAnalysis(params: {
     roleTransitions
   };
 
-  // 11. Write to Redis Cache (24h TTL)
+  // 10. Write to Redis Cache (24h TTL)
   await setCachedResumeAnalysis(cacheKey, responsePayload, 86400);
 
   return responsePayload;
 }
 
-
-
+export const analyzeResumeComplete = runUnifiedResumeAnalysis;

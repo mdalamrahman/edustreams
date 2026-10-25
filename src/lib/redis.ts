@@ -621,3 +621,19 @@ export async function setCachedResumeAnalysis<T = any>(
   }
 }
 
+export async function redisGet<T = any>(key: string): Promise<T | null> {
+  try {
+    return await redis.get<T>(key);
+  } catch {
+    return null;
+  }
+}
+
+export async function redisSet<T = any>(key: string, value: T, ttlSeconds: number = 86400 * 7): Promise<void> {
+  try {
+    await redis.set(key, value, { ex: ttlSeconds });
+  } catch {
+    // Ignore error
+  }
+}
+
