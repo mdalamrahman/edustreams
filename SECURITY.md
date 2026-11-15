@@ -29,6 +29,8 @@ Use `npm audit` at the root and in `admin-portal/`. Audit the resolved Python en
 
 On the current single-instance Render free service, `LEDGER_SNAPSHOT_KEY` enables restoration from a private R2 snapshot at startup and persistence after successful financial operations. `BILLING_SNAPSHOT_KEY` supports a one-release import of the pre-release billing backup. Clear the bootstrap setting after verifying the durable ledger. Do not scale separate SQLite instances against a shared snapshot; use a transactional shared database before scaling. Failed snapshot uploads return a server error and require operational attention.
 
+Keep Auth user metadata small: billing transactions and wallet caches must stay in the ledger and private backups, not JWT claims. Historical oversized metadata can make otherwise valid sign-ins fail HTTP header limits. Back it up before removing financial fields. Legacy wallet imports must also reconcile reused internal IDs by account email; a durable restore must fail if any backed-up account is omitted.
+
 Request limits currently apply per process and per verified account, with a separate invitation-verification IP limit. Configure gateway-wide limits for multiple workers/instances and a trusted proxy IP policy before relying on IP quotas. Configure provider spending caps.
 
 The legacy frontend still estimates some charges locally. Authentication, balances and financial mutations are server-protected, but end-to-end pricing enforcement and video purchase entitlement are separate concerns: media tickets currently prove a signed-in session, not purchase ownership. Do not represent those controls as complete payment enforcement. Live Supabase policies, provider revocation, and staging workflows require operational verification.

@@ -32,6 +32,7 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
         cls.network.start()
         import main
         cls.main = main
+        cls.original_cloud_save = staticmethod(main.save_wallet_to_cloud)
         cls.cloud_save = patch.object(main, 'save_wallet_to_cloud', lambda wallet: None)
         cls.cloud_load = patch.object(main, 'load_wallet_from_cloud', lambda email: None)
         cls.cloud_save.start()
@@ -81,6 +82,14 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_provider_configuration_does_not_contact_upstream(self):
         response = await self.client.post('/api/provider/groq/chat/completions', json={}, headers={'Authorization': 'Bearer student'})
         self.assertEqual(response.status_code, 503)
+
+    async def test_financial_backup_never_expands_auth_metadata(self):
+        with patch.object(self.main.r2_storage, 'upload_json', return_value='saved') as upload, patch(
+            'requests.get') as read_auth, patch('requests.put') as write_auth:
+            self.original_cloud_save({'userEmail': 'student@example.com', 'balance': 8})
+            upload.assert_called_once()
+            read_auth.assert_not_called()
+            write_auth.assert_not_called()
 
     async def test_provider_uses_server_key_and_preserves_stream(self):
         import httpx

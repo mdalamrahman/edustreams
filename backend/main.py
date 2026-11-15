@@ -7842,41 +7842,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
-def sync_transaction_to_supabase(tx: dict, wallet: dict):
-    """Saves transaction and wallet details directly to Supabase Auth metadata for 100% durability."""
-    try:
-        url = f"{SUPABASE_URL}/auth/v1/admin/users"
-        headers = {
-            "apikey": SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-            "Content-Type": "application/json"
-        }
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            users = res.json().get("users", [])
-            target_email = wallet.get("userEmail", "").strip().lower()
-            matching_user = next((u for u in users if (u.get("email") or "").strip().lower() == target_email), None)
-            if matching_user:
-                uid = matching_user["id"]
-                curr_meta = matching_user.get("user_metadata") or {}
-                curr_txs = curr_meta.get("billing_transactions") or []
-                updated_txs = [tx] + [t for t in curr_txs if t.get("id") != tx.get("id")]
-                updated_txs = updated_txs[:500]
-
-                update_payload = {
-                    "user_metadata": {
-                        **curr_meta,
-                        "billing_wallet": wallet,
-                        "billing_transactions": updated_txs
-                    }
-                }
-                requests.put(f"{SUPABASE_URL}/auth/v1/admin/users/{uid}", headers=headers, json=update_payload, timeout=5)
-    except Exception as e:
-        print(f"[Supabase Transaction Sync Error]: {e}")
-
-
 def load_wallet_from_cloud(email: str) -> Optional[dict]:
-    """Retrieves user wallet from durable Supabase Auth metadata or Cloudflare R2 if local SQLite was reset."""
+    """Retrieves a server-owned R2 wallet backup if local SQLite was reset."""
     import re
     # User-editable Auth metadata is never a financial source of truth.
     # 2. Fallback to Cloudflare R2
@@ -7891,22 +7858,8 @@ def load_wallet_from_cloud(email: str) -> Optional[dict]:
 
 
 def save_wallet_to_cloud(wallet: dict):
-    """Saves user wallet to durable Supabase Auth metadata and Cloudflare R2."""
+    """Saves a server-owned R2 backup; financial history must never enter Auth JWT metadata."""
     import re
-    # 1. Save to Supabase
-    try:
-        dummy_tx = {
-            "id": f"sync-{int(time.time()*1000)}",
-            "type": "SYNC",
-            "category": "WALLET_SYNC",
-            "description": "Wallet sync",
-            "amount": 0.0,
-            "timestamp": datetime.utcnow().isoformat() + "Z"
-        }
-        sync_transaction_to_supabase(dummy_tx, wallet)
-    except Exception:
-        pass
-
     # 2. Save to Cloudflare R2
     safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', wallet.get("userEmail", "").strip().lower())
     try:

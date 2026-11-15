@@ -7,7 +7,7 @@ import { repositoryConfig } from './repositoryConfig';
  * daily platform usage fees, and insufficient balance gatekeeping.
  */
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || repositoryConfig.backendUrl;
+const BACKEND_URL = repositoryConfig.backendUrl;
 import {
   storeUsagePriceInRedis,
   getCachedPricingConfigFromRedis,
@@ -311,89 +311,14 @@ function saveTopupRequests(list: TopupRequest[]) {
 /**
  * Persists a transaction and wallet state directly to Supabase Database & Auth metadata for 100% durable storage.
  */
+/** Financial persistence is performed by backend ledger operations, never Auth metadata. */
 export async function syncTransactionToSupabase(tx: BillingTransaction, wallet: UserWallet): Promise<void> {
-  try {
-    // 1. Direct PostgreSQL Table Insert (if table exists)
-    try {
-      await supabaseAdmin.from('billing_transactions').upsert({
-        id: tx.id,
-        user_id: tx.userId,
-        user_email: tx.userEmail,
-        amount: tx.amount,
-        type: tx.type,
-        category: tx.category,
-        description: tx.description,
-        balance_after: tx.balanceAfter,
-        timestamp: tx.timestamp
-      });
-    } catch {}
-
-    // 2. Direct Auth User Metadata Sync
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    if (!usersData?.users) return;
-
-    const user = usersData.users.find(u => (u.email || '').toLowerCase() === (wallet.userEmail || '').toLowerCase());
-    if (!user) return;
-
-    const existingMeta = user.user_metadata || {};
-    const existingTx: BillingTransaction[] = Array.isArray(existingMeta.billing_transactions) ? existingMeta.billing_transactions : [];
-    const updatedTx = [tx, ...existingTx.filter(t => t.id !== tx.id)].slice(0, 500);
-
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        ...existingMeta,
-        billing_wallet: wallet,
-        billing_transactions: updatedTx
-      }
-    });
-  } catch (err) {
-    console.warn('[Supabase Transaction Sync Notice]:', err);
-  }
+  void tx; void wallet;
 }
-
-/**
- * Persists top-up request to Supabase Database & Auth metadata for 100% durable storage.
- */
 export async function syncTopupToSupabase(topup: TopupRequest): Promise<void> {
-  try {
-    // 1. Direct PostgreSQL Table Insert
-    try {
-      await supabaseAdmin.from('topup_requests').upsert({
-        id: topup.id,
-        user_id: topup.userId,
-        user_email: topup.userEmail,
-        amount: topup.amount,
-        transaction_id: topup.transactionId,
-        status: topup.status,
-        created_at: topup.createdAt
-      });
-    } catch {}
-
-    // 2. Direct Auth User Metadata Sync
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    if (!usersData?.users) return;
-
-    const user = usersData.users.find(u => (u.email || '').toLowerCase() === (topup.userEmail || '').toLowerCase());
-    if (!user) return;
-
-    const existingMeta = user.user_metadata || {};
-    const existingTopups: TopupRequest[] = Array.isArray(existingMeta.billing_topups) ? existingMeta.billing_topups : [];
-    const updatedTopups = [topup, ...existingTopups.filter(t => t.id !== topup.id)];
-
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        ...existingMeta,
-        billing_topups: updatedTopups
-      }
-    });
-  } catch (err) {
-    console.warn('[Supabase Topup Sync Notice]:', err);
-  }
+  void topup;
 }
 
-/**
- * Fetches durable transactions directly from Supabase for the current user.
- */
 export async function fetchTransactionsFromSupabase(email?: string): Promise<BillingTransaction[]> {
   const userEmail = getActiveEmail(email);
   try {

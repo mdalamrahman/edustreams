@@ -46,3 +46,13 @@ class RestoreTests(unittest.TestCase):
     def test_unknown_schema_columns_are_rejected(self):
         snapshot = {'version': 1, 'tables': {'user_wallets': [{'untrusted_column': 'x'}]}}
         with self.assertRaises(ValueError): restore_ledger(self.path, snapshot)
+
+    def test_legacy_colliding_wallet_ids_do_not_drop_accounts(self):
+        original = {'wallets': [
+            {'userId': 'legacy-shared-id', 'userEmail': 'first@example.com', 'balance': 8},
+            {'userId': 'legacy-shared-id', 'userEmail': 'second@example.com', 'balance': 12}],
+            'transactions': [], 'topups': []}
+        self.assertTrue(restore_billing_snapshot(self.path, original))
+        with closing(sqlite3.connect(self.path)) as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM user_wallets').fetchone()[0], 2)
+            self.assertEqual(conn.execute('SELECT balance FROM user_wallets WHERE user_email=?', ('second@example.com',)).fetchone()[0], 12)
