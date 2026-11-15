@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 /**
  * GitHub REST API Client for fetching curated open-source LLD and HLD System Design markdown materials
  */

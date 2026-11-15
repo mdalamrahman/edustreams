@@ -2,7 +2,7 @@
 // Bot must be admin of the channels
 const https = require('https');
 
-const BOT_TOKEN = '8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNELS = {
   'Striver DSA': -1004390749731,
   'STRIVER LLD': -1004329144420,

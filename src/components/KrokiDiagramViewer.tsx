@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Layers, 
@@ -227,7 +228,7 @@ export const KrokiDiagramViewer: React.FC<KrokiDiagramViewerProps> = ({
                   transition: 'transform 0.15s ease-out' 
                 }}
                 className="w-auto max-w-full flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 rounded-2xl border border-slate-800/60 shadow-2xl [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:block"
-                dangerouslySetInnerHTML={{ __html: svgContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svgContent, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
               />
             ) : null}
           </div>

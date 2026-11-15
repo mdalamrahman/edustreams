@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Sparkles, 
@@ -447,7 +448,7 @@ Keep response under 150 words.`;
               <div
                 style={{ transform: `scale(${diagramZoom})`, transformOrigin: 'center center' }}
                 className="transition-transform duration-150"
-                dangerouslySetInnerHTML={{ __html: svgContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svgContent, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
               />
             ) : (
               <div className="text-center text-slate-500 text-xs">

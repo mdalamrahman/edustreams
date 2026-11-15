@@ -41,7 +41,9 @@ def _load_env_fallback():
             except Exception:
                 pass
 
-_load_env_fallback()
+# Production configuration comes from the process environment. Local file loading is opt-in.
+if os.getenv('LOAD_LOCAL_ENV') == '1':
+    _load_env_fallback()
 
 career_router = APIRouter(prefix="/api/career", tags=["Career & Salary Engine"])
 

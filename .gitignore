@@ -11,3 +11,8 @@ scratch/
 *.xlsx
 backend/company_problems_raw/
 .wrangler
+
+session_string.txt
+!.env.example
+!admin-portal/.env.example
+!backend/.env.example

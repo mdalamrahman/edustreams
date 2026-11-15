@@ -1,3 +1,4 @@
+import { repositoryConfig } from './lib/repositoryConfig';
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
@@ -70,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Route any direct admin requests to dedicated Vercel Admin Portal
   useEffect(() => {
     if (location.pathname.startsWith('/admin')) {
-      window.location.href = 'https://sdetube.vercel.app/';
+      window.location.href = `${repositoryConfig.studentUrl}/`;
     }
   }, [location.pathname]);
 

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript' | 'sql' | 'go' | 'rust';

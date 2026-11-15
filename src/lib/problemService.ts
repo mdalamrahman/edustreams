@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 import { SupportedLanguage, isDriverHarnessValid, executeCode } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
@@ -3228,7 +3230,7 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
   // 1. Try Local Cloudflare Pages Function Proxy & Backend LeetCode API Proxy
   const endpoints = [
     `/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
-    `https://sdetube.pages.dev/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
+    `${repositoryConfig.studentUrl}/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
     `/api/leetcode/${encodeURIComponent(slug)}`,
     `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`,
     `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`
@@ -3811,7 +3813,7 @@ export async function resolveReferenceSolution(
     const endpoints = [
       `/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
       `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`,
-      `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`
+      `${repositoryConfig.studentUrl}/api/problem/${encodeURIComponent(slug)}/solution/${encodeURIComponent(language)}`
     ];
     for (const url of endpoints) {
       try {
@@ -8816,7 +8818,7 @@ export async function fetchOrGenerateDriverCode(
   const endpoints = [
     `/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`,
     `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`,
-    `https://sdetube.pages.dev/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`
+    `${repositoryConfig.studentUrl}/api/problem/${encodeURIComponent(slug)}/driver/${encodeURIComponent(lang)}`
   ];
   for (const url of endpoints) {
     try {

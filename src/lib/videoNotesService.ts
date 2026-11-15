@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { getCurrentStudent } from './auth';
 

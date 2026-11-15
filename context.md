@@ -377,3 +377,17 @@ curl -I https://sdetube.pages.dev/api/potd/leetcode
 3. **Handle LeetCode Submission Privacy**: Never rely solely on `recentAcSubmissionList` when verifying POTDs. The edge handler must check `userCalendar.submissionCalendar` for today's epoch day timestamp to account for private profiles.
 4. **Enforce Single Report Button**: Do not add multiple fragmented repair buttons to the workspace UI. Keep all diagnostic and reporting actions routed through `<UnifiedReportModal>`.
 5. **Always Verify Builds Before Push**: Run `npm run build` or `npx tsc --noEmit` before triggering wrangler deploys to catch missing exports or type discrepancies early.
+
+---
+
+## 12. Current Security and Configuration Requirements
+
+These requirements supersede older implementation descriptions above where they differ. See `SECURITY.md`, `security_best_practices_report.md`, and `edustream-threat-model.md` for release steps and remaining risks.
+
+- Keep Vercel for the admin portal, Cloudflare Pages for students, and Render for FastAPI. Configure Vercel `BACKEND_URL`, Pages `RENDER_BACKEND_URL`, and the public browser values shown in `.env.example`; do not embed deployment URLs or private credentials in application code.
+- All privileged actions require a server-verified Supabase bearer session and server-controlled `app_metadata.role = "admin"`. Browser flags, editable user metadata, invitation codes and localStorage are not authorization. Administrators sign in with Supabase email OTP.
+- AI and privileged database calls go through authenticated backend proxies. Public browser keys remain subject to RLS. Apply the supplied security migration before releasing these changes; review other live policies for permissive grants.
+- Use the SQLite transaction ledger for financial writes. Preserve idempotency keys through proxies. Cache telemetry must never create an additional debit. Balance recovery must not trust user-editable Auth metadata. Bounty credits and shared artifact repairs require administrator approval.
+- Restrict CORS to configured origins. Keep authenticated responses and media private/no-store. Video tickets are temporary path-bound credentials; do not log or share their URLs. Tickets currently establish authenticated media access, not purchase entitlement.
+- Rotate previously exposed keys and revoke tracked Telegram sessions. Removing source literals does not invalidate credentials or remove Git history. Keep session and scratch files local and ignored.
+- Run `npm test` against production module imports, backend tests with Python 3.11 and installed requirements, both production builds, dependency audits, and `python scripts/check_secrets.py`. Include authorization failures, cross-user access, malicious rendering and concurrent/repeated ledger operations in regression checks.

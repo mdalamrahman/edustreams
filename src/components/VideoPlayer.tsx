@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../lib/apiFetch';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Play, 
@@ -29,7 +30,7 @@ import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { StudentVideoNotesTab } from './StudentVideoNotesTab';
 import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
-import { getStreamUrl, getDirectStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { getAuthorizedStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
 import { getCurrentStudent } from '../lib/auth';
 import { getRealtimeTranscriptStatus, setRealtimeTranscriptStatus, sanitizeKey } from '../lib/redis';
 
@@ -277,8 +278,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   // Primary stream URL (Cloudflare Pages edge proxy) & Fallback URL (direct Render backend)
-  const primaryStreamSrc = getStreamUrl(video.channel_id, video.telegram_message_id || 0);
-  const fallbackDirectStreamSrc = getDirectStreamUrl(video.channel_id, video.telegram_message_id || 0);
+  const [primaryStreamSrc, setPrimaryStreamSrc] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    setPrimaryStreamSrc('');
+    const refresh = (renew = false) => getAuthorizedStreamUrl(video.channel_id, video.telegram_message_id || 0)
+      .then(url => {
+        if (cancelled) return;
+        const player = videoRef.current;
+        if (renew && player) {
+          const position = player.currentTime;
+          const wasPlaying = !player.paused;
+          player.addEventListener('loadedmetadata', () => {
+            player.currentTime = position;
+            if (wasPlaying) void player.play().catch(() => {});
+          }, { once: true });
+        }
+        setPrimaryStreamSrc(url);
+      })
+      .catch(() => { if (!cancelled) setStreamError(true); });
+    void refresh();
+    const timer = setInterval(() => { void refresh(true); }, 20 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [video.channel_id, video.telegram_message_id]);
+  const fallbackDirectStreamSrc = primaryStreamSrc;
   const [activeStreamSrc, setActiveStreamSrc] = useState<string>(primaryStreamSrc);
   const [triedFallback, setTriedFallback] = useState<boolean>(false);
   const [isBuffering, setIsBuffering] = useState<boolean>(false);
@@ -389,7 +412,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
 
     console.warn(`[EduStream] Telegram stream error for: ${video.title} (msg #${video.telegram_message_id})`);
-    console.warn(`[EduStream] Stream URL: ${activeStreamSrc}`);
+    console.warn('[EduStream] Stream request failed');
     setStreamError(true);
     setIsLoadingStream(false);
     setIsBuffering(false);

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 /**
  * companyProblemsData.ts
  * Manages loading, caching, and filtering of the 3,400+ LeetCode Company-Wise & Timeframe-Wise DSA dataset.

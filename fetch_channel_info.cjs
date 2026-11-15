@@ -1,6 +1,6 @@
 const https = require('https');
 
-const BOT_TOKEN = '8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 function apiCall(method, params = {}) {
   return new Promise((resolve, reject) => {

@@ -66,7 +66,7 @@ export default async function handler(req, res) {
 
   // 2. Fallback to Cloudflare Pages edge proxy
   try {
-    const edgeRes = await fetch('https://sdetube.pages.dev/api/potd/leetcode', { signal: AbortSignal.timeout(6000) });
+    const edgeRes = await fetch(`${process.env.STUDENT_URL || ""}/api/potd/leetcode`, { signal: AbortSignal.timeout(6000) });
     if (edgeRes.ok) {
       const data = await edgeRes.json();
       if (data && data.title) {

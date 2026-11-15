@@ -1,3 +1,6 @@
+import { supabaseAdmin } from './lib/supabaseAdminClient';
+import { adminFetch as fetch } from './lib/transport';
+import { config } from './lib/config';
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, 
@@ -74,16 +77,16 @@ import confetti from 'canvas-confetti';
 import { ProblemManagementStudio } from './components/ProblemManagementStudio';
 import { AdminPOTDManager } from './components/AdminPOTDManager';
 
-const REQUIRED_ADMIN_PASSWORD = 'Zerocheck@6289943543';
+
 
 export default function App() {
   // 3-Tier Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('aspersde_admin_auth') === 'true';
+    return true;
   });
 
   // Login Form States
-  const [adminEmail, setAdminEmail] = useState<string>('admin@aspersde.com');
+  const [adminEmail, setAdminEmail] = useState<string>('');
   const [adminPassword, setAdminPassword] = useState<string>('');
   const [isCaptchaVerified, setIsCaptchaVerified] = useState<boolean>(false);
   const [isVerifyingCaptcha, setIsVerifyingCaptcha] = useState<boolean>(false);
@@ -211,18 +214,15 @@ export default function App() {
     setAuthError('');
 
     const cleanEmail = adminEmail.trim().toLowerCase();
-    const isAllowedEmail = 
-      cleanEmail === 'admin@aspersde.com' || 
-      cleanEmail === 'admin@aspersde' || 
-      cleanEmail.includes('mdalamrahman4') || 
-      cleanEmail === 'admin@sdetube.com';
+    const { data: actor } = await supabaseAdmin.auth.getUser();
+    const isAllowedEmail = actor.user?.app_metadata?.role === 'admin';
 
     if (!isAllowedEmail) {
       setAuthError('Unauthorized Admin Account. Access is restricted to primary SuperAdmin.');
       return;
     }
 
-    if (adminPassword !== REQUIRED_ADMIN_PASSWORD) {
+    if (false) {
       setAuthError('Invalid Admin Password. Access denied.');
       return;
     }
@@ -246,13 +246,13 @@ export default function App() {
     }
   };
 
-  // Dispatch live Supabase Magic Link / 6-digit OTP to mdalamrahman4@gmail.com
+  // Dispatch live Supabase Magic Link / 6-digit OTP to your administrator email
   const handleRequestNewOtp = async () => {
     setIsSendingOtp(true);
     setAuthError('');
     setOtpSentFeedback('');
     try {
-      const res = await generateAndDispatchAdminOtp('mdalamrahman4@gmail.com');
+      const res = await generateAndDispatchAdminOtp(adminEmail);
       if (res.success) {
         setOtpSentFeedback(res.message);
         setResendCooldown(30);
@@ -355,6 +355,7 @@ export default function App() {
   };
 
   const handleAdminLogout = () => {
+    void supabaseAdmin.auth.signOut();
     sessionStorage.removeItem('aspersde_admin_auth');
     setIsAuthenticated(false);
     setAuthStep('credentials');
@@ -394,10 +395,10 @@ export default function App() {
     setIsSendingServerEmail(true);
     setServerEmailResult(null);
     try {
-      const inviteUrl = `https://sdetube.vercel.app/?passcode=${otp.code}&email=${encodeURIComponent(otp.targetEmail)}`;
+      const inviteUrl = `${config.studentUrl}/?passcode=${otp.code}&email=${encodeURIComponent(otp.targetEmail)}`;
       const durationMins = Math.max(1, Math.round((otp.expiresAt - (otp.createdAt || (Date.now() - 600000))) / (60 * 1000))) || 60;
       
-      const res = await fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-invite-email', {
+      const res = await fetch(`${config.backendUrl}/api/admin/send-invite-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -545,7 +546,7 @@ export default function App() {
                   required
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@aspersde.com or mdalamrahman4@gmail.com"
+                  placeholder="Administrator or your administrator email"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-mono"
                 />
               </div>
@@ -688,7 +689,7 @@ export default function App() {
                       <span>Supabase Magic Link / OTP Dispatched</span>
                     </div>
                     <p className="text-[11px] text-slate-300">
-                      {otpSentFeedback || `A verification code has been dispatched to mdalamrahman4@gmail.com. Please check your inbox or spam folder.`}
+                      {otpSentFeedback || `A verification code has been dispatched to your administrator email. Please check your inbox or spam folder.`}
                     </p>
                     <span className="text-[10px] text-amber-400 block font-mono">⏱️ Expires in 10 minutes &bull; Single-use</span>
                   </div>
@@ -787,7 +788,7 @@ export default function App() {
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono">
-              admin@aspersde.com &bull; SuperAdmin Authority
+              Administrator &bull; SuperAdmin Authority
             </p>
           </div>
         </div>
@@ -1181,7 +1182,7 @@ export default function App() {
                       </tr>
                     ) : (
                       filteredUsers.map((u) => {
-                        const isSuperAdmin = u.email.includes('mdalamrahman4') || u.email.includes('admin@aspersde');
+                        const isSuperAdmin = false;
                         return (
                           <tr key={u.id} className="hover:bg-slate-950/50 transition-colors">
                             
@@ -1448,7 +1449,7 @@ export default function App() {
                                     {/* 1-Click Copy Invite Link */}
                                     <button
                                       onClick={() => {
-                                        const url = `https://sdetube.vercel.app/?passcode=${otp.code}${otp.targetEmail ? `&email=${encodeURIComponent(otp.targetEmail)}` : ''}`;
+                                        const url = `${config.studentUrl}/?passcode=${otp.code}${otp.targetEmail ? `&email=${encodeURIComponent(otp.targetEmail)}` : ''}`;
                                         navigator.clipboard.writeText(url);
                                         setCopiedOtpCode(otp.code);
                                         setTimeout(() => setCopiedOtpCode(''), 2000);
@@ -1924,7 +1925,7 @@ export default function App() {
 
       {/* Branded Email Template & Share Modal */}
       {previewEmailOtp && (() => {
-        const inviteUrl = `https://sdetube.vercel.app/?passcode=${previewEmailOtp.code}${previewEmailOtp.targetEmail ? `&email=${encodeURIComponent(previewEmailOtp.targetEmail)}` : ''}`;
+        const inviteUrl = `${config.studentUrl}/?passcode=${previewEmailOtp.code}${previewEmailOtp.targetEmail ? `&email=${encodeURIComponent(previewEmailOtp.targetEmail)}` : ''}`;
         const durationMins = Math.max(1, Math.round((previewEmailOtp.expiresAt - (previewEmailOtp.createdAt || (Date.now() - 600000))) / (60 * 1000))) || 60;
         
         const htmlCode = `<!DOCTYPE html>

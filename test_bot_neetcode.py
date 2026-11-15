@@ -1,3 +1,4 @@
+import os
 import sys
 import asyncio
 from telethon import TelegramClient
@@ -6,8 +7,8 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 API_ID = 37503742
-API_HASH = 'e9418514754885f7a01050ca1d2997b1'
-BOT_TOKEN = '8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI'
+API_HASH = os.environ["TELEGRAM_API_HASH"]
+BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 
 async def main():
     bot = TelegramClient('test_bot_session', API_ID, API_HASH)

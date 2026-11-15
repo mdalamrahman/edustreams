@@ -1,10 +1,12 @@
+import { adminFetch as fetch } from './transport';
+import { config } from './config';
 /**
  * AsperSDE SuperAdmin Problem API Client
  * Connects to Render Backend and Cloudflare R2 for Problem Specs,
  * Drivers, Reference Solutions, and Compiler Execution.
  */
 
-export const BACKEND_FALLBACK = 'https://edustream-backend-90vm.onrender.com';
+export const BACKEND_FALLBACK = config.backendUrl;
 
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   // Normalize path

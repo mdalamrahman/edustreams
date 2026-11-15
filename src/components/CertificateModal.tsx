@@ -1,3 +1,4 @@
+import { repositoryConfig } from '../lib/repositoryConfig';
 import React, { useRef } from 'react';
 import {
   X,
@@ -46,7 +47,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
     const text = encodeURIComponent(
       `🎉 Excited to share that I have earned the Official Certificate of Mastery in "${certificate.trackTitle}" from SDETube! Verified ID: ${certificate.verificationCode}. Check out my software engineering portfolio!`
     );
-    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://sdetube.vercel.app')}&summary=${text}`;
+    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(repositoryConfig.studentUrl)}&summary=${text}`;
     window.open(url, '_blank', 'width=600,height=600');
   };
 

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { SQLProblem, PREDEFINED_SQL_PROBLEMS } from './sqlJudge';
 import rawCatalog from '../data/leetcodeSqlCatalog.json';
 

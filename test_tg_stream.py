@@ -1,11 +1,12 @@
+import os
 import json
 import asyncio
 import requests
 from telethon import TelegramClient
 
 API_ID = 37503742
-API_HASH = 'e9418514754885f7a01050ca1d2997b1'
-BOT_TOKEN = '8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI'
+API_HASH = os.environ["TELEGRAM_API_HASH"]
+BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 SESSION_NAME = "edustream_telethon_user"
 
 async def main():

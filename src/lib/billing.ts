@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 /**
  * SDETube Comprehensive Billing & Credits System
  * Synchronized with Database (SQLite backend on Render + client fallback cache)
@@ -5,7 +7,7 @@
  * daily platform usage fees, and insufficient balance gatekeeping.
  */
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || repositoryConfig.backendUrl;
 import {
   storeUsagePriceInRedis,
   getCachedPricingConfigFromRedis,
@@ -50,8 +52,8 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
     }
 
     // 2. Fetch from database (Supabase)
-    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
-    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
+    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || repositoryConfig.supabaseUrl;
+    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
     const res = await fetch(`${sbUrl}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
         'apikey': sbKey,
@@ -90,11 +92,12 @@ export async function fetchLivePlatformPricing(): Promise<typeof PRICING_CONFIG>
 export async function isUserAllowedToDownloadVideo(userEmail?: string | null): Promise<boolean> {
   if (!userEmail) return false;
   const cleanEmail = userEmail.toLowerCase().trim();
-  if (cleanEmail.includes('mdalamrahman4') || cleanEmail.includes('admin@aspersde')) return true;
+  const { data: actor } = await supabaseAdmin.auth.getUser();
+  if (actor.user?.app_metadata?.role === 'admin') return true;
 
   try {
-    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
-    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
+    const sbUrl = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || repositoryConfig.supabaseUrl;
+    const sbKey = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_ANON_KEY)) || '';
     const res = await fetch(`${sbUrl}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
         'apikey': sbKey,
@@ -463,29 +466,6 @@ export async function syncWalletWithDatabase(email?: string): Promise<UserWallet
 
   // 1. Sync directly from Supabase first
   try {
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    if (usersData?.users) {
-      const user = usersData.users.find(u => u.email?.toLowerCase() === userEmail);
-      if (user?.user_metadata?.billing_wallet) {
-        const cloudWallet = user.user_metadata.billing_wallet as UserWallet;
-        const wallets = getAllWallets();
-        const prevBal = wallets[userEmail]?.balance;
-        wallets[userEmail] = cloudWallet;
-        saveAllWallets(wallets);
-        if (prevBal !== cloudWallet.balance) {
-          emitWalletUpdate(cloudWallet);
-        }
-        if (Array.isArray(user.user_metadata.billing_transactions)) {
-          localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(user.user_metadata.billing_transactions));
-        }
-        return cloudWallet;
-      }
-    }
-  } catch (err) {
-    console.warn('[Supabase Wallet Sync Notice]:', err);
-  }
-
-  try {
     const res = await fetch(`${BACKEND_URL}/api/billing/wallet?email=${encodeURIComponent(userEmail)}`);
     if (res.ok) {
       const data = await res.json();
@@ -828,113 +808,6 @@ export function adminAddCredits(
  * Automatically credits bounty reward (e.g. ₹1.00 for verified testcase issue reports)
  * to user wallet and syncs atomically with SQLite and cloud.
  */
-export function creditUserReward(
-  amount: number = 1.00,
-  description: string = '🎉 Verified Issue Bounty: ₹1.00 credited for finding and resolving testcase issue',
-  email?: string
-): { success: boolean; newBalance: number; wallet: UserWallet } {
-  const userEmail = getActiveEmail(email);
-  const wallets = getAllWallets();
-  let wallet = wallets[userEmail] || getUserWallet(userEmail);
-
-  const newBalance = Math.round((wallet.balance + amount) * 10000) / 10000;
-  wallet.balance = newBalance;
-  wallet.updatedAt = new Date().toISOString();
-
-  wallets[userEmail] = wallet;
-  saveAllWallets(wallets);
-
-  const tx: BillingTransaction = {
-    id: `tx-bounty-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    userId: wallet.userId,
-    userEmail,
-    amount,
-    type: 'CREDIT',
-    category: 'BUG_BOUNTY',
-    description,
-    balanceAfter: newBalance,
-    timestamp: new Date().toISOString()
-  };
-
-  const allTx = getAllTransactions();
-  allTx.unshift(tx);
-  saveTransactions(allTx, wallet);
-  emitWalletUpdate(wallet);
-
-  // Sync to database
-  fetch(`${BACKEND_URL}/api/billing/credit`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: userEmail,
-      amount,
-      category: 'BUG_BOUNTY',
-      description
-    })
-  }).catch((e) => console.warn('[Credit Reward DB Notice]:', e));
-
-  return { success: true, newBalance, wallet };
-}
-
-/**
- * Consolidated idempotent bug bounty claim for problem / testcase / driver repairs.
- * Ensures reward is credited only once per problem per user across all report channels.
- */
-export function claimReportBounty(
-  problemSlug: string,
-  problemTitle: string,
-  issueType: 'testcase' | 'driver' | 'problem' = 'testcase',
-  email?: string
-): { success: boolean; rewardedAmount: number; newBalance?: number; alreadyClaimed: boolean } {
-  const activeEmail = getActiveEmail(email);
-  const bountyClaimKey = `edustream_bounty_claimed_${problemSlug}_${activeEmail}`;
-  const legacyTestcaseKey = `edustream_bounty_claimed_testcase_${problemSlug}_${activeEmail}`;
-  const legacyDriverKey = `edustream_bounty_claimed_driver_${problemSlug}_${activeEmail}`;
-
-  try {
-    if (
-      localStorage.getItem(bountyClaimKey) ||
-      localStorage.getItem(legacyTestcaseKey) ||
-      localStorage.getItem(legacyDriverKey)
-    ) {
-      return { success: true, rewardedAmount: 0, alreadyClaimed: true };
-    }
-  } catch {}
-
-  const description = `🎉 Bug Bounty: ₹1.00 credited for finding and auto-resolving ${issueType} issue in ${problemTitle}`;
-  const credit = creditUserReward(1.00, description, activeEmail);
-
-  try {
-    localStorage.setItem(bountyClaimKey, '1');
-    localStorage.setItem(legacyTestcaseKey, '1');
-    localStorage.setItem(legacyDriverKey, '1');
-  } catch {}
-
-  // Sync claim with server ledger in background
-  try {
-    fetch(`${BACKEND_URL}/api/bounty/claim`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        problem_slug: problemSlug,
-        category: issueType,
-        email: activeEmail,
-        problem_title: problemTitle
-      })
-    }).catch(() => {});
-  } catch {}
-
-  return {
-    success: true,
-    rewardedAmount: 1.00,
-    newBalance: credit.newBalance,
-    alreadyClaimed: false
-  };
-}
-
-/**
- * Server-authenticated bug bounty claim with dual-scope defect and rate locks.
- */
 export async function claimReportBountyServer(
   problemSlug: string,
   problemTitle: string,
@@ -977,7 +850,7 @@ export async function claimReportBountyServer(
     }
   } catch {}
 
-  return claimReportBounty(problemSlug, problemTitle, issueType, email);
+  return { success: false, rewardedAmount: 0, alreadyClaimed: false };
 }
 
 /**
@@ -1201,26 +1074,17 @@ export async function deductCreditsAtomic(
   idempotencyKey?: string
 ): Promise<{ success: boolean; balance?: number; error?: string }> {
   try {
-    const { data, error } = await supabaseAdmin.rpc('deduct_wallet_credits', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_action_type: actionType,
-      p_description: description,
-      p_idempotency_key: idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tx-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    const { data } = await supabaseAdmin.auth.getSession();
+    const email = data.session?.user.email;
+    if (!email || data.session?.user.id !== userId) return { success: false, error: 'Authentication required' };
+    const response = await fetch(`${BACKEND_URL}/api/billing/deduct`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey || crypto.randomUUID() },
+      body: JSON.stringify({ email, amount, category: actionType, description })
     });
-
-    if (error) {
-      console.warn('[Supabase deduct_wallet_credits RPC Error]:', error);
-      return { success: false, error: error.message };
-    }
-
-    if (!data || data.success !== true) {
-      return { success: false, error: data?.error || 'Payment failed', balance: data?.balance };
-    }
-
-    return { success: true, balance: data.balance };
-  } catch (err: any) {
-    console.warn('[Supabase RPC Exception]:', err);
-    return { success: false, error: String(err?.message || err) };
+    if (!response.ok) return { success: false, error: 'Payment request rejected' };
+    const result = await response.json();
+    return { success: result.success === true, balance: result.newBalance, error: result.error };
+  } catch {
+    return { success: false, error: 'Payment service unavailable' };
   }
 }

@@ -9,6 +9,7 @@ import threading
 import sqlite3
 import secrets
 import hashlib
+from contextlib import contextmanager, closing
 from datetime import datetime, timezone, timedelta
 import asyncio
 import subprocess
@@ -19,12 +20,12 @@ import requests
 import urllib.request
 import urllib.error
 from bs4 import BeautifulSoup
-from typing import Optional, List, Any, Union, Dict, Tuple, Set, Callable
+from typing import Optional, List, Any, Union, Dict, Tuple, Set, Callable, Literal
 from fastapi import FastAPI, Header, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.tl.types import (
@@ -36,21 +37,21 @@ from telethon.tl.types import (
 from telethon.tl.functions.channels import GetFullChannelRequest
 
 # Environment Variables
-API_ID = int(os.getenv("TELEGRAM_API_ID", "37503742"))
-API_HASH = os.getenv("TELEGRAM_API_HASH", "e9418514754885f7a01050ca1d2997b1")
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI")
+API_ID = int(os.getenv("TELEGRAM_API_ID", "0"))
+API_HASH = os.getenv("TELEGRAM_API_HASH", "")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ONLINE_COMPILER_API_KEY = os.getenv("ONLINE_COMPILER_API_KEY", "")
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
 
 # Supabase Configuration for Multi-User Global Persistence
-SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("VITE_SUPABASE_URL") or "https://bbxwgezqiqjbmxthchfn.supabase.co"
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("VITE_SUPABASE_ANON_KEY") or ""
 
 # Upstash Redis Global Realtime & Billing Cache
-UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL") or os.getenv("VITE_UPSTASH_REDIS_REST_URL") or "https://organic-tahr-192308.upstash.io"
-UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN") or os.getenv("VITE_UPSTASH_REDIS_REST_TOKEN") or "gQAAAAAAAu80AAIgcDI0MDVlNzYxY2RlMDE0MmUzYTBkMTc5MzU4ZDI1YTJlMA"
+UPSTASH_REDIS_REST_URL = os.getenv("UPSTASH_REDIS_REST_URL", "")
+UPSTASH_REDIS_REST_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", "")
 USAGE_PRICE_TTL_SECONDS = 300  # 5 minutes strict TTL
 
 def upstash_redis_set(key: str, value: Any, ex: Optional[int] = None) -> bool:
@@ -150,7 +151,7 @@ def update_transcript_status_in_redis(chat_id: str, msg_id: Union[int, str], sta
 
 
 # Media Storage Directory (saves downloaded videos locally for instant range seeking)
-MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", r"C:\Users\User\Desktop\edustreamfiles")
+MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", os.path.join(os.path.dirname(__file__), "media_storage"))
 try:
     os.makedirs(MEDIA_STORAGE_DIR, exist_ok=True)
 except Exception:
@@ -163,7 +164,7 @@ print(f"[Media Storage] Active video storage directory: {MEDIA_STORAGE_DIR}")
 AI_CACHE_FILE = os.path.join(MEDIA_STORAGE_DIR, "ai_cache.json")
 BACKUP_CACHE_FILE = os.path.join(os.path.dirname(__file__), "ai_cache.json")
 ATTEMPTS_HISTORY_FILE = os.path.join(MEDIA_STORAGE_DIR, "attempts_history.json")
-SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "edustream_artifacts.db")
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", os.path.join(os.path.dirname(__file__), "edustream_artifacts.db"))
 
 def get_sqlite_conn(timeout: float = 30.0) -> sqlite3.Connection:
     """Thread-safe SQLite connection manager with WAL mode and 30s busy timeout."""
@@ -230,10 +231,11 @@ class DatabaseManager:
         self._init_db()
         self._initialized = True
 
+    @contextmanager
     def get_connection(self):
-        conn = sqlite3.connect(self._db_path, timeout=30.0)
-        conn.execute("PRAGMA journal_mode=WAL;")
-        return conn
+        with closing(sqlite3.connect(self._db_path, timeout=30.0)) as conn, conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            yield conn
 
     def _init_db(self):
         try:
@@ -975,6 +977,23 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     """Pre-warms Telethon client connection, dialogs, and channel entities into memory upon boot."""
+    ledger_key = os.getenv('LEDGER_SNAPSHOT_KEY', '')
+    snapshot_key = os.getenv('BILLING_SNAPSHOT_KEY', '')
+    if ledger_key or snapshot_key:
+        from billing_restore import restore_billing_snapshot, restore_ledger, persist_ledger
+        snapshot = r2_storage.fetch_json(ledger_key) if ledger_key else None
+        if snapshot is not None:
+            restore_ledger(SQLITE_DB_PATH, snapshot)
+        elif snapshot_key:
+            snapshot = r2_storage.fetch_json(snapshot_key)
+            if snapshot is None:
+                raise RuntimeError('Configured billing recovery snapshot is unavailable')
+            restore_billing_snapshot(SQLITE_DB_PATH, snapshot)
+        else:
+            raise RuntimeError('Configured durable ledger is unavailable')
+        if ledger_key:
+            persist_ledger(SQLITE_DB_PATH, r2_storage, ledger_key)
+        print('[Startup] Durable billing recovery checked')
     try:
         print("[Startup] Pre-warming Telethon MTProto client and channel entities...")
         client = await get_client()
@@ -1004,9 +1023,16 @@ async def add_cors_and_caching_headers_middleware(request: Request, call_next):
     else:
         try:
             response = await call_next(request)
+            ledger_key = os.getenv('LEDGER_SNAPSHOT_KEY', '')
+            is_billing = request.url.path.startswith(('/api/billing/', '/api/bounty/'))
+            is_repair = request.url.path.endswith(('/correct-driver', '/correct-testcase')) or (
+                request.method == 'POST' and request.url.path.startswith('/api/problem/') and '/driver/' in request.url.path)
+            if ledger_key and response.status_code < 300 and (is_billing or is_repair):
+                from billing_restore import persist_ledger
+                persist_ledger(SQLITE_DB_PATH, r2_storage, ledger_key)
         except Exception as exc:
             print(f"[Unhandled Exception] {exc}")
-            response = JSONResponse(status_code=500, content={"detail": str(exc)})
+            response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     response.headers["Access-Control-Allow-Origin"] = origin
     response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -1063,7 +1089,7 @@ class SendInviteEmailRequest(BaseModel):
 
 
 class SendAdminAuthOtpRequest(BaseModel):
-    admin_email: Optional[str] = "mdalamrahman4@gmail.com"
+    admin_email: Optional[str] = None
     otp_code: Optional[str] = None
     expires_in_mins: Optional[int] = 10
 
@@ -1075,7 +1101,7 @@ active_background_tasks = {}
 
 @app.post("/api/admin/send-admin-auth-otp")
 async def send_admin_auth_otp_endpoint(payload: SendAdminAuthOtpRequest, request: Request):
-    recipient = "mdalamrahman4@gmail.com"
+    recipient = request.state.user["email"]
     otp_code = payload.otp_code
     if not otp_code or len(otp_code.strip()) != 6:
         otp_code = str(secrets.randbelow(900000) + 100000)
@@ -1204,7 +1230,7 @@ async def send_admin_auth_otp_endpoint(payload: SendAdminAuthOtpRequest, request
 
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = smtp_user or "admin@aspersde.com"
+            msg["From"] = smtp_user or os.getenv("SMTP_FROM", "")
             msg["To"] = recipient
 
             text_part = MIMEText(f"Your AsperSDE SuperAdmin verification code is: {otp_code}. Valid for {expires_in_mins} minutes.", "plain")
@@ -1375,7 +1401,7 @@ async def send_invite_email_endpoint(payload: SendInviteEmailRequest):
 
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = smtp_user or "admin@aspersde.com"
+            msg["From"] = smtp_user or os.getenv("SMTP_FROM", "")
             msg["To"] = recipient
 
             text_part = MIMEText(f"Your AsperSDE passcode is {passcode}. Direct registration link: {invite_url}", "plain")
@@ -3450,7 +3476,11 @@ async def save_interview_session_route(req: Request):
         if not payload or not isinstance(payload, dict):
             return JSONResponse(status_code=400, content={"error": "Invalid interview payload"})
         
-        interview_id = payload.get("id") or f"interview_{int(time.time())}_{random.randint(1000, 9999)}"
+        payload["user_email"] = req.state.user["email"]
+        owner_prefix = req.state.user["id"] + "_"
+        supplied_id = str(payload.get("id") or secrets.token_hex(16))
+        supplied_id = re.sub(r'[^a-zA-Z0-9_\-]', '', supplied_id)[:180]
+        interview_id = supplied_id if supplied_id.startswith(owner_prefix) else owner_prefix + supplied_id
         payload["id"] = interview_id
         if "created_at" not in payload:
             payload["created_at"] = datetime.utcnow().isoformat() + "Z"
@@ -3536,7 +3566,7 @@ async def get_interview_history_route(user_email: Optional[str] = "guest_candida
 
 
 @app.get("/api/interview/{interview_id}")
-async def get_interview_session_route(interview_id: str):
+async def get_interview_session_route(interview_id: str, request: Request):
     """
     Fetches the complete session transcript & details from Cloudflare R2.
     """
@@ -3544,6 +3574,9 @@ async def get_interview_session_route(interview_id: str):
     r2_key = f"interviews/{clean_id}.json"
     session_data = r2_storage.fetch_json(r2_key)
     if session_data:
+        actor = request.state.user
+        if actor.get("app_metadata", {}).get("role") != "admin" and session_data.get("user_email", "").lower() != actor["email"].lower():
+            raise HTTPException(404, "Interview not found")
         return {"success": True, "interview": session_data}
     return JSONResponse(status_code=404, content={"error": f"Interview session '{clean_id}' not found in R2"})
 
@@ -3828,12 +3861,9 @@ async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
             bounty_key = f"driver-{clean_lang}"
             already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
             if not already_claimed:
-                claim_recorded = claim_bounty(clean_email, clean_slug, bounty_key)
-                if claim_recorded:
-                    prob_title = payload.problemTitle or clean_slug
-                    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_lang.upper()} boilerplate code in {prob_title}"
-                    credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
-                    credited = credit_res.get("success", False)
+                credit_res = approve_bounty_reward(clean_email, clean_slug, bounty_key)
+                if credit_res.get("rewardedAmount", 0) > 0:
+                    credited = True
                     new_balance = credit_res.get("newBalance")
         except Exception as e:
             print(f"[Credit Driver Bounty Error]: {e}")
@@ -3881,12 +3911,9 @@ async def save_problem_driver_code(slug: str, lang: str, req: Request):
                     bounty_key = f"driver-{clean_lang}"
                     already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
                     if not already_claimed:
-                        claim_recorded = claim_bounty(clean_email, clean_slug, bounty_key)
-                        if claim_recorded:
-                            prob_title = body.get("problemTitle") or clean_slug
-                            reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for correcting {clean_lang.upper()} driver code harness in {prob_title}"
-                            credit_res = credit_user_wallet_db(email, 1.0, "BUG_BOUNTY", reward_desc)
-                            credited = credit_res.get("success", False)
+                        credit_res = approve_bounty_reward(clean_email, clean_slug, bounty_key)
+                        if credit_res.get("rewardedAmount", 0) > 0:
+                            credited = True
                             new_balance = credit_res.get("newBalance")
                 except Exception as e:
                     print(f"[Credit Driver Bounty Error]: {e}")
@@ -4385,12 +4412,9 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
             already_claimed = has_claimed_bounty(clean_email, clean_slug, "testcase")
             if not already_claimed:
                 # Atomically record claim with defect lock key then credit — avoids Sybil farming & double-credit
-                claim_recorded = claim_bounty(clean_email, clean_slug, "testcase", str(payload.correctedInput))
-                if claim_recorded:
-                    prob_title = payload.problemTitle or problem.get("name") or clean_slug
-                    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for finding and resolving testcase issue in {prob_title}"
-                    credit_res = credit_user_wallet_db(payload.email, 1.0, "BUG_BOUNTY", reward_desc)
-                    credited = credit_res.get("success", False)
+                credit_res = approve_bounty_reward(clean_email, clean_slug, "testcase", str(payload.correctedInput))
+                if credit_res.get("rewardedAmount", 0) > 0:
+                    credited = True
                     new_balance = credit_res.get("newBalance")
         except Exception as e:
             print(f"[Credit Bounty Error]: {e}")
@@ -4422,7 +4446,7 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
 
 class UserCodePayload(BaseModel):
     email: str
-    language: str
+    language: Literal["cpp", "python", "java", "javascript", "sql", "go", "rust"]
     code: str
     problemTitle: Optional[str] = ""
 
@@ -4433,28 +4457,29 @@ async def save_user_code(slug: str, payload: UserCodePayload):
     Persistently stores the user's solution code in Cloudflare R2 as a .txt file.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-]', '_', (payload.email or "anonymous").lower())
+    safe_email = hashlib.sha256(payload.email.strip().lower().encode()).hexdigest()
     lang = (payload.language or "python").lower()
     
     txt_key = f"user_code/{safe_email}/{clean_slug}_{lang}.txt"
     try:
-        r2_storage.save_note(txt_key, payload.code)
+        if not r2_storage.save_note(txt_key, payload.code):
+            return JSONResponse(status_code=503, content={"success": False, "error": "Code storage is unavailable"})
         return {"success": True, "key": txt_key, "status": "ok"}
     except Exception as e:
         print(f"[R2 save user code notice]: {e}")
-        return {"success": True, "status": "ok", "cached": False}
+        return JSONResponse(status_code=503, content={"success": False, "error": "Code storage is unavailable"})
 
 
 @app.get("/api/problem/{slug}/user-code")
-async def get_user_code(slug: str, email: str = "anonymous", language: str = "python"):
+async def get_user_code(slug: str, email: str = "anonymous", language: Literal["cpp", "python", "java", "javascript", "sql", "go", "rust"] = "python"):
     """
     Fetches the user's autosaved solution code from Cloudflare R2.
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
-    safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "anonymous").lower())
+    safe_email = hashlib.sha256(email.strip().lower().encode()).hexdigest()
     lang = (language or "python").lower()
     
-    txt_key = f"user_code/{safe_email}_{clean_slug}_{lang}.txt"
+    txt_key = f"user_code/{safe_email}/{clean_slug}_{lang}.txt"
     try:
         code_bytes = r2_storage.fetch_file(txt_key)
         if code_bytes:
@@ -5289,7 +5314,6 @@ class StoreSolutionRequest(BaseModel):
     explanation: Optional[str] = ""
 
 
-@app.post("/api/problem/{slug}/solution")
 async def store_validated_solution(slug: str, req: StoreSolutionRequest):
     """
     Validates a generated solution against all stored test cases for the problem,
@@ -6586,7 +6610,7 @@ async def get_leetcode_problem_raw_endpoint(slug: str):
     raise HTTPException(status_code=404, detail=f"LeetCode problem '{clean_slug}' not found")
 
 
-@app.get("/api/gfg/{slug}")
+@app.get("/api/gfg/question/{slug}")
 async def get_gfg_problem_endpoint(slug: str):
     """
     Fetches full problem details from GeeksforGeeks Practice API.
@@ -7496,7 +7520,8 @@ async def save_quiz_cache(req: CacheQuizRequest):
     return {"status": "ok", "message": f"Quiz cached for {req.video_id}"}
 
 @app.post("/api/attempts/log")
-async def log_student_attempt(req: LogAttemptRequest):
+async def log_student_attempt(req: LogAttemptRequest, request: Request):
+    req.user_id = request.state.user["id"]
     attempts = []
     if os.path.exists(ATTEMPTS_HISTORY_FILE):
         try:
@@ -7527,11 +7552,11 @@ async def log_student_attempt(req: LogAttemptRequest):
     return {"status": "ok", "entry": entry}
 
 @app.get("/api/attempts/history")
-async def get_attempts_history(user_id: Optional[str] = "student-1"):
+async def get_attempts_history(request: Request):
     if os.path.exists(ATTEMPTS_HISTORY_FILE):
         try:
             with open(ATTEMPTS_HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                return [item for item in json.load(f) if item.get("user_id") == request.state.user["id"]]
         except Exception:
             pass
     return []
@@ -7577,7 +7602,7 @@ ACTIVE_PASSKEY_FILE = os.path.join(DATA_DIR, "active_passkey.json")
 @app.post("/api/passkey/generate")
 async def generate_admin_passkey(payload: dict):
     """Generates a dynamic 10-minute passkey stored centrally on the server."""
-    admin_email = payload.get("admin_email", "mdalamrahman4@gmail.com")
+    admin_email = payload.get("admin_email", "")
     random_num = random.randint(100000, 999999)
     code = f"SDE-{random_num}"
     now_ms = time.time() * 1000
@@ -7622,8 +7647,6 @@ async def get_active_passkey():
 async def verify_passkey_endpoint(payload: dict):
     """Verifies passkey globally across any student device."""
     entered_code = (payload.get("code") or "").strip().upper()
-    if entered_code == "ZEROCHECK@8100648132":
-        return {"valid": True}
     if os.path.exists(ACTIVE_PASSKEY_FILE):
         try:
             with open(ACTIVE_PASSKEY_FILE, "r", encoding="utf-8") as f:
@@ -7786,7 +7809,7 @@ async def clear_all_ai_cache():
 
 class DeductCreditsPayload(BaseModel):
     email: str
-    amount: float
+    amount: float = Field(gt=0, le=100000, allow_inf_nan=False)
     category: str
     description: str
 
@@ -7798,7 +7821,7 @@ class VideoViewBillingPayload(BaseModel):
 class TopupSubmissionPayload(BaseModel):
     email: str
     user_name: Optional[str] = None
-    amount: float
+    amount: float = Field(gt=0, le=100000, allow_inf_nan=False)
     transaction_id: str
     payee_details: str
     screenshot_url: Optional[str] = None
@@ -7815,7 +7838,7 @@ class AdminReviewTopupPayload(BaseModel):
     admin_email: Optional[str] = None
 
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://bbxwgezqiqjbmxthchfn.supabase.co")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
@@ -7855,26 +7878,7 @@ def sync_transaction_to_supabase(tx: dict, wallet: dict):
 def load_wallet_from_cloud(email: str) -> Optional[dict]:
     """Retrieves user wallet from durable Supabase Auth metadata or Cloudflare R2 if local SQLite was reset."""
     import re
-    # 1. Check Supabase first
-    try:
-        url = f"{SUPABASE_URL}/auth/v1/admin/users"
-        headers = {
-            "apikey": SUPABASE_SERVICE_ROLE_KEY,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-            "Content-Type": "application/json"
-        }
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            users = res.json().get("users", [])
-            target_email = (email or "").strip().lower()
-            matching_user = next((u for u in users if (u.get("email") or "").strip().lower() == target_email), None)
-            if matching_user:
-                meta = matching_user.get("user_metadata") or {}
-                if "billing_wallet" in meta and isinstance(meta["billing_wallet"], dict):
-                    return meta["billing_wallet"]
-    except Exception as e:
-        print(f"[Supabase Wallet Load Notice]: {e}")
-
+    # User-editable Auth metadata is never a financial source of truth.
     # 2. Fallback to Cloudflare R2
     safe_email = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', (email or "").strip().lower())
     try:
@@ -7920,6 +7924,7 @@ def get_or_create_wallet_db(email: str) -> dict:
     import sqlite3
     conn = sqlite3.connect(SQLITE_DB_PATH)
     cursor = conn.cursor()
+    cursor.execute("BEGIN IMMEDIATE")
     
     cursor.execute("SELECT user_id, user_email, balance, last_daily_charge_date, viewed_video_ids_json, studio_used_today, created_at, updated_at FROM user_wallets WHERE user_email = ?", (clean_email,))
     row = cursor.fetchone()
@@ -8031,7 +8036,7 @@ async def get_wallet_endpoint(email: str = "student@edustream.io"):
 
 class CreditCreditsPayload(BaseModel):
     email: str = "student@edustream.io"
-    amount: float = 1.0
+    amount: float = Field(default=1.0, gt=0, le=100000, allow_inf_nan=False)
     category: str = "BUG_BOUNTY"
     description: str = "🎉 Verified Issue Report Bounty"
 
@@ -8062,139 +8067,26 @@ def has_claimed_bounty(email: str, slug: str, bounty_type: str = None) -> bool:
         return False
 
 
-def claim_bounty(email: str, slug: str, bounty_type: str = "bounty", test_input: str = "") -> bool:
-    """Records a bounty claim with dual-scope idempotency check (defect lock + user lock)."""
-    try:
-        clean_email = email.lower().strip()
-        clean_slug = slug.lower().strip()
-        clean_type = (bounty_type or "bounty").lower().strip()
-        norm_input = test_input.strip()
-
-        defect_lock_key = hashlib.sha256(f"{clean_slug}:{clean_type}:{norm_input}".encode()).hexdigest()
-
-        conn = get_sqlite_conn()
-        cursor = conn.cursor()
-
-        # Check global defect lock if test_input is provided
-        if norm_input:
-            cursor.execute("SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ? LIMIT 1", (defect_lock_key,))
-            if cursor.fetchone():
-                conn.close()
-                return False
-
-        # Check per-user claim key
-        cursor.execute(
-            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ? LIMIT 1",
-            (clean_email, clean_slug, clean_type)
-        )
-        if cursor.fetchone():
-            conn.close()
-            return False
-
-        if norm_input:
-            cursor.execute(
-                "INSERT OR IGNORE INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, 1.0)",
-                (defect_lock_key, clean_slug, clean_type, clean_email)
-            )
-
-        cursor.execute(
-            "INSERT OR IGNORE INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)",
-            (clean_email, clean_slug, clean_type)
-        )
-        inserted = cursor.rowcount > 0
-        conn.commit()
-        conn.close()
-        return inserted
-    except Exception as e:
-        print(f"[BountyClaim Notice]: {e}")
-        return False
+def approve_bounty_reward(email: str, slug: str, category: str, test_input: str = "") -> dict:
+    from wallet_ledger import award_bounty
+    get_or_create_wallet_db(email)
+    return award_bounty(SQLITE_DB_PATH, email, slug, category, test_input)
 
 
-def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "🎉 Verified Issue Report Bounty") -> dict:
-    """Atomically credits funds to user wallet in SQLite database and syncs to Cloudflare R2."""
-    clean_email = (email or "student@edustream.io").lower().strip()
-    wallet = get_or_create_wallet_db(clean_email)
-    new_balance = round(wallet["balance"] + amount, 4)
-    tx_id = f"tx-bounty-{int(time.time()*1000)}-{random.randint(100, 999)}"
-
-    conn = get_sqlite_conn()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE user_wallets 
-        SET balance = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE user_email = ?
-    """, (new_balance, wallet["userEmail"]))
-
-    cursor.execute("""
-        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (tx_id, wallet["userId"], wallet["userEmail"], amount, "CREDIT", category, description, new_balance))
-
-    conn.commit()
-    conn.close()
-
-    wallet["balance"] = new_balance
-    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
-    save_wallet_to_cloud(wallet)
-    return {"success": True, "newBalance": new_balance, "wallet": wallet, "txId": tx_id}
+def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "Verified report reward") -> dict:
+    from wallet_ledger import change_balance
+    clean_email = email.strip().lower()
+    get_or_create_wallet_db(clean_email)
+    return change_balance(SQLITE_DB_PATH, clean_email, amount, category, description)
 
 
 @app.post("/api/bounty/claim")
 async def claim_bug_bounty_endpoint(payload: BountyClaimRequest):
-    """
-    Server-side hardened bug bounty claiming:
-    1. Enforces global defect lock key SHA256(slug + category + test_input) to prevent Sybil bounty farming.
-    2. Enforces per-user claim key SHA256(user + slug + category) to prevent duplicate claims.
-    3. Atomically credits ₹1.00 directly to the database wallet ledger.
-    """
-    clean_email = (payload.email or "student@edustream.io").lower().strip()
-    clean_slug = payload.problem_slug.lower().strip()
-    clean_cat = payload.category.lower().strip()
-    norm_input = payload.test_input.strip()
-
-    defect_lock_key = hashlib.sha256(f"{clean_slug}:{clean_cat}:{norm_input}".encode()).hexdigest()
-
-    conn = get_sqlite_conn()
-    cur = conn.cursor()
-
-    # 1. Check if defect already resolved globally
-    if norm_input:
-        cur.execute("SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ? LIMIT 1", (defect_lock_key,))
-        if cur.fetchone():
-            conn.close()
-            return JSONResponse(status_code=409, content={"status": "already_resolved", "detail": "This issue has already been resolved globally."})
-
-    # 2. Check if user already claimed for this problem & category
-    cur.execute("SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ? LIMIT 1", (clean_email, clean_slug, clean_cat))
-    if cur.fetchone():
-        conn.close()
-        return {"status": "already_claimed", "alreadyClaimed": True, "rewardedAmount": 0}
-
-    # Record locks
-    if norm_input:
-        cur.execute(
-            "INSERT OR IGNORE INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, 1.0)",
-            (defect_lock_key, clean_slug, clean_cat, clean_email)
-        )
-    cur.execute(
-        "INSERT OR IGNORE INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)",
-        (clean_email, clean_slug, clean_cat)
-    )
-    conn.commit()
-    conn.close()
-
-    prob_label = payload.problem_title or clean_slug
-    reward_desc = f"🎉 Verified Issue Report Bounty: ₹1.00 credited for reporting & auto-resolving {clean_cat} in {prob_label}"
-    credit_res = credit_user_wallet_db(clean_email, 1.0, "BUG_BOUNTY", reward_desc)
-
-    return {
-        "status": "verified",
-        "reward_inr": 1.0,
-        "rewardedAmount": 1.0,
-        "defect_lock_key": defect_lock_key,
-        "newBalance": credit_res.get("newBalance"),
-        "alreadyClaimed": False
-    }
+    from wallet_ledger import award_bounty
+    email = payload.email.strip().lower()
+    get_or_create_wallet_db(email)
+    return award_bounty(SQLITE_DB_PATH, email, payload.problem_slug.strip().lower(),
+                        payload.category.strip().lower(), payload.test_input.strip())
 
 
 @app.post("/api/billing/credit")
@@ -8205,55 +8097,12 @@ async def credit_credits_endpoint(payload: CreditCreditsPayload):
 
 
 @app.post("/api/billing/deduct")
-async def deduct_credits_endpoint(payload: DeductCreditsPayload):
-    """Atomically deducts credits in the database and records transaction."""
-    import sqlite3
-    wallet = get_or_create_wallet_db(payload.email)
-    
-    if wallet["balance"] < payload.amount:
-        return {
-            "success": False,
-            "newBalance": wallet["balance"],
-            "error": "INSUFFICIENT_CREDITS"
-        }
-    
-    new_balance = round(wallet["balance"] - payload.amount, 4)
-    tx_id = f"tx-{int(time.time()*1000)}-{random.randint(100, 999)}"
-    
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE user_wallets 
-        SET balance = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE user_email = ?
-    """, (new_balance, wallet["userEmail"]))
-    
-    cursor.execute("""
-        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (tx_id, wallet["userId"], wallet["userEmail"], -payload.amount, "DEBIT", payload.category, payload.description, new_balance))
-    
-    conn.commit()
-    conn.close()
-    
-    wallet["balance"] = new_balance
-    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
-    save_wallet_to_cloud(wallet)
-    
-    # Store price of this usage in Upstash Redis with 5-min TTL (keeping sync with DB)
-    store_usage_price_in_redis(
-        user_email=wallet["userEmail"],
-        category=payload.category,
-        price=payload.amount,
-        description=payload.description,
-        balance_after=new_balance
-    )
-
-    return {
-        "success": True,
-        "newBalance": new_balance,
-        "wallet": wallet
-    }
+async def deduct_credits_endpoint(payload: DeductCreditsPayload, request: Request):
+    from wallet_ledger import change_balance
+    clean_email = payload.email.strip().lower()
+    get_or_create_wallet_db(clean_email)
+    return change_balance(SQLITE_DB_PATH, clean_email, -payload.amount, payload.category,
+                          payload.description, request.headers.get("Idempotency-Key"))
 
 
 @app.post("/api/billing/video-view")
@@ -8262,6 +8111,14 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     import sqlite3
     wallet = get_or_create_wallet_db(payload.email)
     
+    conn = sqlite3.connect(SQLITE_DB_PATH, timeout=30)
+    cursor = conn.cursor()
+    cursor.execute("BEGIN IMMEDIATE")
+    row = cursor.execute("SELECT balance, viewed_video_ids_json FROM user_wallets WHERE user_email = ?", (wallet["userEmail"],)).fetchone()
+    wallet["balance"] = row[0]
+    raw_passes = json.loads(row[1] or "{}")
+    wallet["videoAccessPasses"] = raw_passes if isinstance(raw_passes, dict) else {}
+    wallet["viewedVideoIds"] = list(raw_passes)
     video_id = str(payload.video_id)
     passes = wallet.get("videoAccessPasses", {})
     viewed_ids = set(wallet.get("viewedVideoIds", []))
@@ -8275,6 +8132,7 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     # 1. If video was unlocked within the last 24 hours -> 100% FREE!
     if 0 <= elapsed_ms < twenty_four_hours_ms:
         remaining_hours = round((twenty_four_hours_ms - elapsed_ms) / (3600 * 1000), 1)
+        conn.close()
         return {
             "success": True,
             "newBalance": wallet["balance"],
@@ -8290,6 +8148,7 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     cost = 2.0 if is_first_time else 1.0
     
     if wallet["balance"] < cost:
+        conn.close()
         return {
             "success": False,
             "newBalance": wallet["balance"],
@@ -8307,8 +8166,6 @@ async def video_view_billing_endpoint(payload: VideoViewBillingPayload):
     cat = "VIDEO_FIRST_TIME" if is_first_time else "VIDEO_SUBSEQUENT"
     desc = f"📺 {'First-time Video Access (24h Pass)' if is_first_time else 'Video Re-watch (24h Pass)'}: {payload.video_title[:40]}"
     
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    cursor = conn.cursor()
     cursor.execute("""
         UPDATE user_wallets 
         SET balance = ?, viewed_video_ids_json = ?, updated_at = CURRENT_TIMESTAMP 
@@ -8619,85 +8476,24 @@ async def get_admin_billing_data_endpoint():
 
 
 @app.post("/api/billing/admin/adjust")
-async def admin_adjust_credits_endpoint(payload: AdminAdjustCreditsPayload):
-    """Admin manually adds or removes credits in the database."""
-    import sqlite3
-    wallet = get_or_create_wallet_db(payload.email)
-    new_balance = max(0.0, round(wallet["balance"] + payload.amount, 4))
-    
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?", (new_balance, wallet["userEmail"]))
-    
-    tx_id = f"tx-admin-{int(time.time()*1000)}"
-    tx_type = "CREDIT" if payload.amount >= 0 else "DEBIT"
-    cursor.execute("""
-        INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
-        VALUES (?, ?, ?, ?, ?, 'ADMIN_MANUAL_GRANT', ?, ?)
-    """, (tx_id, wallet["userId"], wallet["userEmail"], payload.amount, tx_type, f"🛡️ Admin Credit Adjustment: {payload.admin_notes}", new_balance))
-    
-    conn.commit()
-    conn.close()
-    
-    wallet["balance"] = new_balance
-    wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
-    save_wallet_to_cloud(wallet)
-    return {"status": "ok", "wallet": wallet}
+async def admin_adjust_credits_endpoint(payload: AdminAdjustCreditsPayload, request: Request):
+    from wallet_ledger import change_balance
+    clean_email = payload.email.strip().lower()
+    get_or_create_wallet_db(clean_email)
+    try:
+        return change_balance(SQLITE_DB_PATH, clean_email, payload.amount, "ADMIN_MANUAL_GRANT",
+                              payload.admin_notes or "Admin adjustment", request.headers.get("Idempotency-Key"))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 @app.post("/api/billing/admin/review-topup")
 async def admin_review_topup_endpoint(payload: AdminReviewTopupPayload):
-    """Admin reviews and approves/rejects topup recharge in database."""
-    import sqlite3
-    conn = sqlite3.connect(SQLITE_DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT id, user_email, amount, transaction_id, status FROM topup_requests WHERE id = ?", (payload.request_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return {"status": "error", "message": "Topup request not found"}
-        
-    _, user_email, amount, txn_id, curr_status = row
-    if curr_status != "PENDING":
-        conn.close()
-        return {"status": "error", "message": f"Request already processed ({curr_status})"}
-        
-    status_val = payload.status.upper()
-    admin_note = payload.admin_notes or (f"Approved by {payload.admin_email or 'Admin'}" if status_val == "APPROVED" else "Payment verification rejected")
-    
-    cursor.execute("""
-        UPDATE topup_requests 
-        SET status = ?, admin_notes = ?, reviewed_at = CURRENT_TIMESTAMP 
-        WHERE id = ?
-    """, (status_val, admin_note, payload.request_id))
-    
-    conn.commit()
-    conn.close()
-    
-    if status_val == "APPROVED":
-        # Credit user's wallet
-        wallet = get_or_create_wallet_db(user_email)
-        new_balance = round(wallet["balance"] + amount, 4)
-        
-        conn = sqlite3.connect(SQLITE_DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?", (new_balance, user_email))
-        
-        tx_id = f"tx-topup-{int(time.time()*1000)}"
-        cursor.execute("""
-            INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after)
-            VALUES (?, ?, ?, ?, 'CREDIT', 'UPI_TOPUP', ?, ?)
-        """, (tx_id, wallet["userId"], user_email, amount, f"💳 UPI Recharge Approved (Txn ID: {txn_id})", new_balance))
-        
-        conn.commit()
-        conn.close()
-        
-        wallet["balance"] = new_balance
-        wallet["updatedAt"] = datetime.utcnow().isoformat() + "Z"
-        save_wallet_to_cloud(wallet)
-        
-    return {"status": "ok", "message": f"Topup {status_val} successfully"}
+    from wallet_ledger import review_topup
+    try:
+        return review_topup(SQLITE_DB_PATH, payload.request_id, payload.status.upper(), payload.admin_notes or "Admin review")
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 # =========================================================================
@@ -8892,7 +8688,6 @@ async def remove_user_endpoint(req: Request):
 
 
 
-@app.post("/api/problem/{slug}/upload")
 async def upload_problem_endpoint(slug: str, request: Request):
     """Uploads problem definition to Cloudflare R2 and memory cache."""
     clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
@@ -8912,7 +8707,6 @@ async def upload_problem_endpoint(slug: str, request: Request):
         return {"status": "ok", "message": str(e), "cached": True}
 
 
-@app.post("/api/problem/{slug}/user-code")
 async def save_user_code_endpoint(slug: str, request: Request):
     """Saves student user code backup to Cloudflare R2."""
     clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
@@ -8930,7 +8724,6 @@ async def save_user_code_endpoint(slug: str, request: Request):
         return {"status": "ok", "cached": False, "success": True}
 
 
-@app.get("/api/problem/{slug}/user-code")
 async def get_user_code_endpoint(slug: str, email: str = "student@edustream.io", language: str = "cpp"):
     """Fetches student user code backup from Cloudflare R2."""
     clean_slug = re.sub(r'[^a-zA-Z0-9_\-]', '', slug.strip().lower())
@@ -9049,8 +8842,6 @@ async def get_all_users_progress_endpoint():
     return {"status": "ok", "users": users}
 
 
-@app.get("/api/leetcode/{slug}")
-@app.get("/leetcode/{slug}")
 async def get_leetcode_problem_proxy(slug: str):
     """Fetches authentic LeetCode problem data server-side to bypass browser CORS restrictions."""
     clean_slug = slug.strip().lower()
@@ -9552,3 +9343,10 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "7860"))
     uvicorn.run(app, host="0.0.0.0", port=port)
 
+
+
+# Install last so this policy wraps legacy middleware and all mounted routes.
+from security import SecurityMiddleware
+from secure_routes import router as secure_router
+app.include_router(secure_router)
+app.add_middleware(SecurityMiddleware)

@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 /**
  * EduStream — Telegram HF Backend API Client
  * 
@@ -7,10 +9,10 @@
  */
 
 // Render / Backend base URL (default to relative path in browser for zero-CORS proxying via Vercel/Vite)
-const BACKEND_URL = (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_URL as string || import.meta.env.VITE_RENDER_BACKEND_URL as string) : '') || 'https://edustream-backend-90vm.onrender.com';
+const BACKEND_URL = (typeof import.meta !== 'undefined' && import.meta.env ? (import.meta.env.VITE_BACKEND_URL as string || import.meta.env.VITE_RENDER_BACKEND_URL as string) : '') || repositoryConfig.backendUrl;
 
 // Remove trailing slash if present
-const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : 'https://edustream-backend-90vm.onrender.com';
+const BACKEND_BASE = BACKEND_URL ? BACKEND_URL.replace(/\/+$/, '') : repositoryConfig.backendUrl;
 
 /**
  * Mapping from internal frontend channel IDs to Telegram Bot API channel IDs.
@@ -55,7 +57,7 @@ export function getStreamUrl(channelId: string, messageId: number): string {
 export function getDirectStreamUrl(channelId: string, messageId: number): string {
   const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
   if (!chatId || !messageId) return '';
-  return `https://edustream-backend-90vm.onrender.com/stream/${chatId}/${messageId}`;
+  return `${repositoryConfig.backendUrl}/stream/${chatId}/${messageId}`;
 }
 
 /**
@@ -113,3 +115,14 @@ export async function checkBackendHealth(): Promise<{ online: boolean; details?:
 
 /** Expose the base URL for debugging / display */
 export const TELEGRAM_BACKEND_URL = BACKEND_BASE;
+
+export async function getAuthorizedStreamUrl(channelId: string, messageId: number): Promise<string> {
+  const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
+  const path = `/stream/${chatId}/${messageId}`;
+  const response = await fetch(`${repositoryConfig.backendUrl}/api/media/ticket`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path })
+  });
+  if (!response.ok) throw new Error('Unable to authorize video playback');
+  const ticket = await response.json();
+  return `${repositoryConfig.backendUrl}${path}?expires=${ticket.expires}&signature=${encodeURIComponent(ticket.signature)}`;
+}

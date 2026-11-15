@@ -1,28 +1,29 @@
+import DOMPurify from 'dompurify';
 import React, { useState, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
-import { 
-  Cpu, 
-  Layers, 
-  Sparkles, 
-  CheckCircle2, 
-  Code, 
-  Eye, 
-  Download, 
-  RefreshCw, 
-  ExternalLink, 
-  Search, 
-  Building2, 
-  ArrowRight, 
+import {
+  Cpu,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  Code,
+  Eye,
+  Download,
+  RefreshCw,
+  ExternalLink,
+  Search,
+  Building2,
+  ArrowRight,
   ArrowLeft,
-  Zap, 
-  Check, 
-  Maximize2, 
-  Minimize2, 
-  FileCode, 
-  Github, 
-  Award, 
-  Play, 
-  ZoomIn, 
+  Zap,
+  Check,
+  Maximize2,
+  Minimize2,
+  FileCode,
+  Github,
+  Award,
+  Play,
+  ZoomIn,
   ZoomOut,
   X,
   PlusCircle,
@@ -437,8 +438,8 @@ Provide:
   const filteredProblems = useMemo(() => {
     return LLD_PROBLEMS.filter((p) => {
       const matchesCat = selectedCategory === 'ALL' || p.category === selectedCategory;
-      const matchesSearch = !searchQuery || 
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch = !searchQuery ||
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.companies.some(c => c.toLowerCase().includes(searchQuery.toLowerCase())) ||
         p.designPatternsUsed.some(d => d.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchesCat && matchesSearch;
@@ -447,19 +448,19 @@ Provide:
 
   const filteredHldProblems = useMemo(() => {
     return HLD_PRACTICE_PROBLEMS.filter((p) => {
-      return !searchQuery || 
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      return !searchQuery ||
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.companies.some(c => c.toLowerCase().includes(searchQuery.toLowerCase()));
     });
   }, [searchQuery]);
 
   return (
     <div className="w-full space-y-6 animate-fadeIn pb-12">
-      
+
       {/* ═══ 1. LLD STUDIO VIEW (In-Page, 2-Panel, Diagram Popup) ═══ */}
       {activeProblem ? (
         <div className="w-full space-y-4 animate-fadeIn">
-          
+
           {/* Breadcrumb Header & Action Bar */}
           <div className="p-4 sm:p-5 rounded-3xl bg-slate-950 border border-purple-500/30 shadow-xl flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center space-x-3">
@@ -560,7 +561,7 @@ Provide:
 
           {/* 2-Panel Layout: Requirements + Code Editor */}
           <div className="w-full flex flex-col lg:flex-row gap-4 min-h-[700px]">
-            
+
             {/* LEFT PANEL: Problem Requirements */}
             <div className="w-full lg:w-[28%] glass-panel p-5 rounded-3xl border border-slate-800/80 bg-slate-950/80 overflow-y-auto space-y-5 custom-scrollbar">
               <div>
@@ -727,13 +728,13 @@ Provide:
                     </div>
                   ) : diagramSvg ? (
                     <div className="min-w-full flex justify-center p-4">
-                      <div 
-                        style={{ 
-                          transform: `scale(${diagramZoom})`, 
-                          transformOrigin: 'top center', 
-                          transition: 'transform 0.15s ease-out' 
+                      <div
+                        style={{
+                          transform: `scale(${diagramZoom})`,
+                          transformOrigin: 'top center',
+                          transition: 'transform 0.15s ease-out'
                         }}
-                        dangerouslySetInnerHTML={{ __html: diagramSvg }} 
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(diagramSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
                         className="filter drop-shadow-2xl select-none [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:block"
                       />
                     </div>
@@ -765,9 +766,9 @@ Provide:
                     Evaluating OOP architecture against SOLID principles...
                   </div>
                 ) : aiEvaluation ? (
-                  <MarkdownRenderer 
-                    content={aiEvaluation} 
-                    className="p-5 rounded-2xl bg-slate-900/90 border border-purple-900/50 shadow-xl" 
+                  <MarkdownRenderer
+                    content={aiEvaluation}
+                    className="p-5 rounded-2xl bg-slate-900/90 border border-purple-900/50 shadow-xl"
                   />
                 ) : null}
               </div>
@@ -789,7 +790,7 @@ Provide:
       ) : (
         /* ═══ 3. MAIN HUB VIEW (LLD Problems, HLD Problems, Design Primers) ═══ */
         <div className="space-y-6">
-          
+
           {/* Hub Header Banner */}
           <div className="w-full p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/50 border border-purple-500/30 shadow-2xl relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -957,7 +958,7 @@ Provide:
 
                     <h3 className="text-base font-bold text-slate-100 group-hover:text-amber-300 transition-colors mb-2">{prob.title}</h3>
                     <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">{prob.description}</p>
-                    
+
                     <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 mb-4 text-[11px]">
                       <p className="text-amber-400 font-bold mb-1">Scale Target:</p>
                       <p className="text-slate-300 font-mono text-[10px] line-clamp-2">{prob.expectedScale}</p>

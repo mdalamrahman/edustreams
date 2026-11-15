@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
@@ -175,7 +176,7 @@ export const AINotesAndSimulation: React.FC<AINotesAndSimulationProps> = ({
 </body>
 </html>`;
 
-    printWindow.document.write(htmlContent);
+    printWindow.document.write(DOMPurify.sanitize(htmlContent, { WHOLE_DOCUMENT: true }));
     printWindow.document.close();
     setTimeout(() => setIsDownloadingPDF(false), 2000);
   };

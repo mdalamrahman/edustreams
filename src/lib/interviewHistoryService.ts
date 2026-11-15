@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 import { supabaseAdmin, supabase } from './supabase';
 import { InterviewMessage, InterviewContext } from './interviewService';
 import { InterviewScorecard } from './interviewEvaluator';
@@ -35,7 +37,7 @@ export interface FullInterviewSessionPayload {
 }
 
 const LOCAL_STORAGE_KEY = 'sdetube_mock_interview_history';
-const API_BASE = (import.meta.env.VITE_API_URL || 'https://edustream-backend.onrender.com').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_URL || repositoryConfig.backendUrl).replace(/\/$/, '');
 
 /**
  * Persists full interview session to Cloudflare R2 + Supabase and updates local storage.

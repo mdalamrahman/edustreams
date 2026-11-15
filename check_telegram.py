@@ -1,7 +1,8 @@
+import os
 import requests
 import json
 
-BOT_TOKEN = "8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI"
+BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 BASE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
 channels = {

@@ -17,7 +17,7 @@ from telethon.tl.types import (
 )
 
 API_ID = 37503742
-API_HASH = 'e9418514754885f7a01050ca1d2997b1'
+API_HASH = os.environ["TELEGRAM_API_HASH"]
 
 CHANNELS = [
     {"name": "Striver DSA", "id": -1004390749731, "category": "DSA"},

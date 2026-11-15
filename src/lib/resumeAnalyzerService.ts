@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { executeAIChatCascade, MISTRAL_API_KEY, GROQ_API_KEY } from './mistral';
 import {
   buildResumeAnalysisCacheKey,
@@ -2209,10 +2210,8 @@ export async function verifyAndExtractResumeWithLLM(
   }
 
   const groqKey =
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GROQ_API_KEY) ||
     GROQ_API_KEY;
   const mistralKey =
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_MISTRAL_API_KEY) ||
     MISTRAL_API_KEY;
 
   if (!groqKey && !mistralKey) return null;

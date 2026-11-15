@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 /**
  * SDETube Official Daily Challenge (POTD) API Client
  * Multi-layer resilient fetching for LeetCode & GeeksforGeeks POTD with live authentic GraphQL & REST proxies.
@@ -101,8 +103,8 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
   const endpoints = [
     '/api/potd/leetcode',
     '/api/leetcode/potd',
-    'https://sdetube.pages.dev/api/potd/leetcode',
-    'https://edustream-backend-90vm.onrender.com/api/potd/leetcode'
+    `${repositoryConfig.studentUrl}/api/potd/leetcode`,
+    `${repositoryConfig.backendUrl}/api/potd/leetcode`
   ];
 
   for (const ep of endpoints) {
@@ -253,8 +255,8 @@ export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuesti
     `/api/potd/gfg?t=${t}`,
     `/api/gfg/potd?t=${t}`,
     `/api/gfg-potd?t=${t}`,
-    `https://sdetube.pages.dev/api/potd/gfg?t=${t}`,
-    `https://edustream-backend-90vm.onrender.com/api/potd/gfg?force_refresh=true&t=${t}`
+    `${repositoryConfig.studentUrl}/api/potd/gfg?t=${t}`,
+    `${repositoryConfig.backendUrl}/api/potd/gfg?force_refresh=true&t=${t}`
   ];
 
   for (const ep of endpoints) {
@@ -347,8 +349,8 @@ export async function fetchLeetCodeMonthlyPOTD(
   // 1. Try internal edge proxy endpoints
   const endpoints = [
     `/api/potd/leetcode-month?year=${y}&month=${m}`,
-    `https://sdetube.pages.dev/api/potd/leetcode-month?year=${y}&month=${m}`,
-    `https://edustream-backend-90vm.onrender.com/api/potd/leetcode-month?year=${y}&month=${m}`,
+    `${repositoryConfig.studentUrl}/api/potd/leetcode-month?year=${y}&month=${m}`,
+    `${repositoryConfig.backendUrl}/api/potd/leetcode-month?year=${y}&month=${m}`,
     `/api/potd/leetcode?month=${m}&year=${y}`
   ];
 
@@ -524,8 +526,8 @@ export async function fetchLeetCodeQuestionData(titleSlug: string): Promise<Leet
   const endpoints = [
     `/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
     `/api/leetcode/${encodeURIComponent(cleanSlug)}`,
-    `https://sdetube.pages.dev/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
-    `https://sdetube.pages.dev/api/leetcode/${encodeURIComponent(cleanSlug)}`
+    `${repositoryConfig.studentUrl}/api/leetcode/question?slug=${encodeURIComponent(cleanSlug)}`,
+    `${repositoryConfig.studentUrl}/api/leetcode/${encodeURIComponent(cleanSlug)}`
   ];
 
   for (const ep of endpoints) {

@@ -1,66 +1,18 @@
-import { test, describe } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-
-// Interview stages definition
-const InterviewStage = {
-  INTRO: 'INTRO',
-  PROBLEM_PRESENTATION: 'PROBLEM_PRESENTATION',
-  CLARIFICATION: 'CLARIFICATION',
-  APPROACH_DISCUSSION: 'APPROACH_DISCUSSION',
-  CODING: 'CODING',
-  DRY_RUN: 'DRY_RUN',
-  OPTIMIZATION: 'OPTIMIZATION',
-  FEEDBACK: 'FEEDBACK',
-  COMPLETE: 'COMPLETE'
-};
-
-function getNextStage(current, userAction) {
-  switch (current) {
-    case InterviewStage.INTRO:
-      return InterviewStage.PROBLEM_PRESENTATION;
-    case InterviewStage.PROBLEM_PRESENTATION:
-      return userAction === 'ASK_CLARIFICATION' 
-        ? InterviewStage.CLARIFICATION 
-        : InterviewStage.APPROACH_DISCUSSION;
-    case InterviewStage.CLARIFICATION:
-      return InterviewStage.APPROACH_DISCUSSION;
-    case InterviewStage.APPROACH_DISCUSSION:
-      return userAction === 'APPROACH_ACCEPTED' 
-        ? InterviewStage.CODING 
-        : InterviewStage.APPROACH_DISCUSSION;
-    case InterviewStage.CODING:
-      return userAction === 'CODE_SUBMITTED' 
-        ? InterviewStage.DRY_RUN 
-        : InterviewStage.CODING;
-    case InterviewStage.DRY_RUN:
-      return InterviewStage.OPTIMIZATION;
-    case InterviewStage.OPTIMIZATION:
-      return InterviewStage.FEEDBACK;
-    case InterviewStage.FEEDBACK:
-      return InterviewStage.COMPLETE;
-    default:
-      return InterviewStage.COMPLETE;
-  }
-}
-
-describe('Interview State Machine Transitions', () => {
-  test('Transitions from Intro to Problem Presentation', () => {
-    assert.equal(getNextStage(InterviewStage.INTRO, 'PROCEED'), InterviewStage.PROBLEM_PRESENTATION);
-  });
-
-  test('Transitions to Clarification when user asks question', () => {
-    assert.equal(getNextStage(InterviewStage.PROBLEM_PRESENTATION, 'ASK_CLARIFICATION'), InterviewStage.CLARIFICATION);
-  });
-
-  test('Transitions from Approach to Coding once accepted', () => {
-    assert.equal(getNextStage(InterviewStage.APPROACH_DISCUSSION, 'APPROACH_ACCEPTED'), InterviewStage.CODING);
-  });
-
-  test('Transitions from Coding to Dry Run upon submission', () => {
-    assert.equal(getNextStage(InterviewStage.CODING, 'CODE_SUBMITTED'), InterviewStage.DRY_RUN);
-  });
-
-  test('Completes the interview loop through Feedback', () => {
-    assert.equal(getNextStage(InterviewStage.FEEDBACK, 'FINISH'), InterviewStage.COMPLETE);
-  });
+import { InterviewStateMachine } from '../src/lib/interviewStateMachine.ts';
+test('Production interview machine starts locked and unlocks at coding', () => {
+  const machine = new InterviewStateMachine();
+  assert.equal(machine.getCurrentStage(), 'CLARIFICATION');
+  assert.equal(machine.isEditorLocked(), true);
+  machine.transitionTo('CODING');
+  assert.equal(machine.isEditorLocked(), false);
+});
+test('Hint penalties are capped and reset clears the round', () => {
+  const machine = new InterviewStateMachine();
+  for (let i=0; i<4; i++) machine.recordHint(3, 'hint');
+  assert.equal(machine.calculateTotalPenaltyPercent(), 60);
+  machine.reset();
+  assert.equal(machine.calculateTotalPenaltyPercent(), 0);
+  assert.equal(machine.getCurrentStage(), 'CLARIFICATION');
 });

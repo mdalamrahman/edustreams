@@ -13,7 +13,7 @@ export const onRequest: PagesFunction = async (context) => {
   const endpoints = [
     'https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/',
     'https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/',
-    'https://edustream-backend-90vm.onrender.com/api/potd/gfg'
+    `${context.env.RENDER_BACKEND_URL || ''}/api/potd/gfg`
   ];
 
   for (const ep of endpoints) {

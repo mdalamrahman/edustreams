@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../lib/apiFetch';
 import React from 'react';
 import { FileText, Download, FileArchive, FileCode, Paperclip } from 'lucide-react';
 import { Attachment } from '../lib/types';
@@ -57,6 +58,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
    * If channelId and messageId are provided, constructs a proper URL.
    * Falls back to the attachment's original download_url field otherwise.
    */
+  const [downloadError, setDownloadError] = React.useState('');
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
   const resolveDownloadUrl = (att: Attachment): string => {
@@ -71,9 +73,11 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
     const url = resolveDownloadUrl(att);
     if (!url || url === '#') return;
 
+    setDownloadError('');
     setDownloadingId(att.id);
     try {
       const response = await fetch(url);
+      if (!response.ok) throw new Error('Download request rejected');
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -84,13 +88,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      // Fallback: direct anchor trigger without page redirection
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = att.file_name || 'document';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      setDownloadError('Unable to download this resource. Sign in and try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -102,6 +100,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ attachments, channel
         <div className="flex items-center space-x-2">
           <Paperclip className="w-5 h-5 text-indigo-400" />
           <h3 className="text-sm font-bold text-slate-100">SDETube Study Attachments & Notes</h3>
+          {downloadError && <p role="alert">{downloadError}</p>}
         </div>
         <span className="text-xs font-mono text-slate-300 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
           {attachments.length} Resources

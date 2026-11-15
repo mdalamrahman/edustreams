@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 /**
  * Kroki API Client for unified UML, PlantUML, Mermaid, and Architecture Diagrams
  * Docs: https://kroki.io/

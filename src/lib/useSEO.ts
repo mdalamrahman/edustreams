@@ -1,3 +1,4 @@
+import { repositoryConfig } from './repositoryConfig';
 import { useEffect } from 'react';
 import { Video } from './types';
 import { SDEProblem, DSAProblem } from './dsaSheetsData';
@@ -10,7 +11,7 @@ interface SEOProps {
   customDescription?: string;
 }
 
-const BASE_URL = 'https://sdetube.pages.dev';
+const BASE_URL = repositoryConfig.studentUrl;
 const DEFAULT_OG_IMAGE = `${BASE_URL}/og-image.png`;
 
 const TAB_METADATA: Record<string, { title: string; description: string; keywords: string }> = {

@@ -7,10 +7,10 @@ import requests
 from typing import Optional, Dict, Any
 
 # Cloudflare R2 S3-Compatible Credentials
-R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID") or "5697077f3da2f1f6a397e0d611c7c11f"
-R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID") or "31fe5558fa570aa676182056112da919"
-R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY") or "86d9990053336ad5120b38c292da47d4df08ed94c7a8d1a25a1f3fd52236da16"
-R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME") or "sdestream"
+R2_ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "")
 R2_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL") or f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
 def _sign(key: bytes, msg: str) -> bytes:

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { executeCode, SupportedLanguage, compareOutputs, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from './compiler';
 import { getDefaultDriverForProblem, fetchOrGenerateDriverCode, toSlug, resolveReferenceSolution } from './problemService';
 import { executeAIChatCascade } from './mistral';

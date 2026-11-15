@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import React, { useState, useEffect, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import { 
@@ -723,7 +724,7 @@ Provide structured Markdown feedback with badges, code diffs, and score out of 1
                 <div 
                   style={{ transform: `scale(${diagramZoom})`, transformOrigin: 'center center' }}
                   className="transition-transform duration-200"
-                  dangerouslySetInnerHTML={{ __html: diagramSvg }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(diagramSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
                 />
               ) : (
                 <div className="text-center text-slate-500 text-xs font-mono">

@@ -5,14 +5,10 @@ import path from 'path';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const backendUrl = env.VITE_BACKEND_URL || env.VITE_RENDER_BACKEND_URL || 'https://edustream-backend-90vm.onrender.com';
-  const authSecret = env.VITE_AUTH_SECRET_CODE || 'Zerocheck@8100648132';
+  const backendUrl = env.VITE_BACKEND_URL || env.VITE_RENDER_BACKEND_URL || 'http://localhost:8000';
 
   return {
     plugins: [react()],
-    define: {
-      'import.meta.env.VITE_AUTH_SECRET_CODE': JSON.stringify(authSecret),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -26,12 +22,6 @@ export default defineConfig(({ mode }) => {
         '/stream': {
           target: backendUrl,
           changeOrigin: true,
-        },
-        // Proxy Fish Audio TTS requests to avoid browser CORS issues
-        '/api/fish-tts': {
-          target: 'https://api.fish.audio/v1/tts',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/fish-tts/, ''),
         },
         // Proxy all API requests to backend
         '/api': {

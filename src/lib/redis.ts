@@ -1,26 +1,21 @@
-import { Redis } from '@upstash/redis';
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 import { supabaseAdmin } from './supabase';
-
-export const UPSTASH_REDIS_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_UPSTASH_REDIS_REST_URL) ||
-  'https://organic-tahr-192308.upstash.io';
-
-export const UPSTASH_REDIS_TOKEN =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_UPSTASH_REDIS_REST_TOKEN) ||
-  'gQAAAAAAAu80AAIgcDI0MDVlNzYxY2RlMDE0MmUzYTBkMTc5MzU4ZDI1YTJlMA';
-
-/**
- * Global Upstash Redis REST Client instance.
- * Safe for use in browser, edge workers, and Node environments.
- */
-export const redis = new Redis({
-  url: UPSTASH_REDIS_URL,
-  token: UPSTASH_REDIS_TOKEN,
-});
+const cache = new Map<string, { value: unknown; expires: number }>();
+export const redis = {
+  async get<T>(key: string): Promise<T | null> {
+    const item = cache.get(key);
+    if (!item || item.expires <= Date.now()) { cache.delete(key); return null; }
+    return item.value as T;
+  },
+  async set(key: string, value: unknown, options?: { ex?: number }): Promise<void> {
+    cache.set(key, { value, expires: Date.now() + (options?.ex || 300) * 1000 });
+  }
+};
 
 const BACKEND_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) ||
-  'https://edustream-backend-90vm.onrender.com';
+  repositoryConfig.backendUrl;
 
 // 5 minutes TTL in seconds (300s)
 export const USAGE_PRICE_TTL_SECONDS = 300;
@@ -336,19 +331,7 @@ export async function storeUsagePriceInRedis(params: {
       await redis.set(indexKey, updatedList, { ex: USAGE_PRICE_TTL_SECONDS });
     } catch (_) {}
 
-    // 4. Synchronize with database if requested (default: true)
-    if (params.syncWithDb !== false) {
-      syncUsageWithDb(record).then((synced) => {
-        if (synced) {
-          record.syncedWithDb = true;
-          // Refresh Redis record with synced flag
-          redis.set(itemKey, record, { ex: USAGE_PRICE_TTL_SECONDS }).catch(() => {});
-        }
-      }).catch((e) => {
-        console.warn('[Usage DB Sync Notice]:', e);
-      });
-    }
-
+    // Telemetry cache writes never perform a second financial debit.
     return record;
   } catch (err) {
     console.warn('[Upstash Redis storeUsagePriceInRedis Error]:', err);
@@ -430,40 +413,6 @@ export async function getCachedPricingConfigFromRedis(): Promise<Record<string, 
  * 1. Backend SQLite database (`/api/billing/deduct`)
  * 2. Supabase (`user_dsa_progress` / audit logs)
  */
-async function syncUsageWithDb(record: UsagePriceRecord): Promise<boolean> {
-  try {
-    // 1. Sync with backend SQLite
-    const res = await fetch(`${BACKEND_URL}/api/billing/deduct`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: record.userEmail,
-        amount: record.price,
-        category: record.category,
-        description: record.description
-      })
-    }).catch(() => null);
-
-    if (res && res.ok) {
-      return true;
-    }
-  } catch (_) {}
-
-  // 2. Secondary fallback sync to Supabase progress/wallet if available
-  try {
-    const { error } = await supabaseAdmin
-      .from('user_dsa_progress')
-      .upsert({
-        user_email: record.userEmail,
-        last_active_at: new Date().toISOString()
-      }, { onConflict: 'user_email' });
-
-    return !error;
-  } catch (_) {
-    return false;
-  }
-}
-
 /**
  * Diagnostic utility to test and benchmark the Upstash Redis connection.
  */

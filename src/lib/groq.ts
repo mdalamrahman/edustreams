@@ -1,5 +1,6 @@
+import { apiFetch as fetch } from './apiFetch';
 // Groq STT Speech-to-Text API Client
-const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '';
+const GROQ_API_KEY = 'server-managed';
 
 export interface GroqTranscriptionResponse {
   text: string;

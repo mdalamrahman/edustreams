@@ -11,8 +11,8 @@ const path = require('path');
 
 // Telegram API Credentials
 const API_ID = 37503742;
-const API_HASH = 'e9418514754885f7a01050ca1d2997b1';
-const BOT_TOKEN = '8931548931:AAEZgRPOngvCGNHa9cfZSb4B2dtyf_IS2vI';
+const API_HASH = process.env.TELEGRAM_API_HASH;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 const CHANNELS = [
   { name: 'Striver DSA', id: -1004390749731, category: 'DSA' },

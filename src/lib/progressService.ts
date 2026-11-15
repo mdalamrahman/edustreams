@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 /**
  * Central Supabase-backed DSA Progress Service
  * Manages solved problems, bookmarks/revision list, active sheet, LLD solved problems,

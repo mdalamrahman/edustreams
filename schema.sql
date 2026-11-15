@@ -94,10 +94,10 @@ DROP POLICY IF EXISTS "Allow read attachments" ON public.attachments;
 CREATE POLICY "Allow read attachments" ON public.attachments FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Users manage own attempts" ON public.question_attempts;
-CREATE POLICY "Users manage own attempts" ON public.question_attempts FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
+CREATE POLICY "Users manage own attempts" ON public.question_attempts FOR ALL USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users manage own analytics" ON public.user_analytics;
-CREATE POLICY "Users manage own analytics" ON public.user_analytics FOR ALL USING (auth.uid() = user_id OR auth.uid() IS NULL);
+CREATE POLICY "Users manage own analytics" ON public.user_analytics FOR ALL USING (auth.uid() = user_id);
 
 -- 6. User DSA Progress & Multi-Sheet Tracker
 CREATE TABLE IF NOT EXISTS public.user_dsa_progress (
@@ -132,8 +132,10 @@ ALTER TABLE public.user_dsa_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_transactions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow full access to user_dsa_progress" ON public.user_dsa_progress;
-CREATE POLICY "Allow full access to user_dsa_progress" ON public.user_dsa_progress FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Users manage own progress" ON public.user_dsa_progress FOR ALL TO authenticated
+USING (lower(user_email) = lower(auth.jwt()->>'email')) WITH CHECK (lower(user_email) = lower(auth.jwt()->>'email'));
 
 DROP POLICY IF EXISTS "Allow full access to billing_transactions" ON public.billing_transactions;
-CREATE POLICY "Allow full access to billing_transactions" ON public.billing_transactions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Users read own billing" ON public.billing_transactions FOR SELECT TO authenticated
+USING (lower(user_email) = lower(auth.jwt()->>'email'));
 

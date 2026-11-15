@@ -1,3 +1,5 @@
+import { adminFetch as fetch } from './transport';
+import { config } from './config';
 /**
  * AsperSDE SuperAdmin Problem Catalog
  * Unified database of 660+ DSA Problems (across SDE, A2Z, 79, Blind75, CodeStoryWithMIK)
@@ -14708,7 +14710,7 @@ export async function fetchExtendedCatalog(): Promise<AdminProblemItem[]> {
     // 2. Try sdetube CDN fallback
     if (!companyProblemsData) {
       try {
-        const resp = await fetch('https://sdetube.pages.dev/data/company_problems.json');
+        const resp = await fetch(`${config.studentUrl}/data/company_problems.json`);
         if (resp.ok) {
           companyProblemsData = await resp.json();
         }

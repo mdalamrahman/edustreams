@@ -1,9 +1,11 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 import { AIDiagnosticReport, QuizQuestion } from './types';
 import { executeCode, compareOutputs, SupportedLanguage, isDriverHarnessValid } from './compiler';
 
-export const MISTRAL_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_MISTRAL_API_KEY) || '';
-export const GROQ_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '';
+export const MISTRAL_API_KEY = 'server-managed';
+export const GROQ_API_KEY = 'server-managed';
 
 export interface CodeTAReview {
   time_complexity: string;
@@ -1381,8 +1383,8 @@ export async function verifyAndCorrectTestCaseAI(payload: TestCaseVerificationPa
   const verifyEndpoints = [
     `/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
     `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
-    `https://sdetube.pages.dev/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
-    `https://edustream-backend-90vm.onrender.com/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`
+    `${repositoryConfig.studentUrl}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`,
+    `${repositoryConfig.backendUrl}/api/problem/${encodeURIComponent(cleanSlug)}/verify-testcase`
   ];
 
   for (const ep of verifyEndpoints) {

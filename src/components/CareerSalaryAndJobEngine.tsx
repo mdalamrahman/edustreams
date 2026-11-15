@@ -1,3 +1,5 @@
+import { apiFetch as fetch } from '../lib/apiFetch';
+import { repositoryConfig } from '../lib/repositoryConfig';
 // src/components/CareerSalaryAndJobEngine.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -36,7 +38,7 @@ import { useNavigate } from 'react-router-dom';
 const BACKEND_BASE = (
   (typeof import.meta !== 'undefined' && import.meta.env
     ? (import.meta.env.VITE_BACKEND_URL as string) || (import.meta.env.VITE_RENDER_BACKEND_URL as string)
-    : '') || 'https://edustream-backend-90vm.onrender.com'
+    : '') || repositoryConfig.backendUrl
 ).replace(/\/+$/, '');
 
 export interface LearningPath {

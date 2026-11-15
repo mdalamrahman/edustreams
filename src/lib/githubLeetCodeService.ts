@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { ProblemTemplate, repairAndHardenProblem, generateDefaultStarters, toSlug, getCleanTitle } from './problemService';
 import { SupportedLanguage } from './compiler';
 

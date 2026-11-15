@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import { Client } from "@gradio/client";
 import { MISTRAL_API_KEY, executeAIChatCascade } from './mistral';
 import { SdeLevel, InterviewRound, TestStyle, CuratedInterviewQuestion } from './githubInterviewData';
@@ -605,7 +606,7 @@ export async function generateAndBufferChunk(
 ): Promise<boolean> {
   if (!sentenceText || !sentenceText.trim()) return false;
 
-  const apiKey = ((import.meta as any).env?.VITE_FISH_AUDIO_API_KEY || (typeof process !== 'undefined' ? (process as any)?.env?.NEXT_PUBLIC_FISH_AUDIO_API_KEY : '')) || "";
+  const apiKey = 'server-managed';
   if (!apiKey) return false;
 
   try {

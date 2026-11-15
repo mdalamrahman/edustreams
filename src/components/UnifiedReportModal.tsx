@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../lib/apiFetch';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
@@ -23,7 +24,7 @@ import {
   DriverCorrectionResult
 } from '../lib/mistral';
 import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
-import { claimReportBounty, claimReportBountyServer } from '../lib/billing';
+import { claimReportBountyServer } from '../lib/billing';
 import { getCurrentStudent } from '../lib/auth';
 import { resolveReferenceSolution } from '../lib/problemService';
 import { executeCode, SupportedLanguage } from '../lib/compiler';

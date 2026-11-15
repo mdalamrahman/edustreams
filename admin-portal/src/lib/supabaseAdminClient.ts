@@ -1,20 +1,15 @@
+import { adminFetch as fetch } from './transport';
 import { createClient } from '@supabase/supabase-js';
-
-export const SUPABASE_URL = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_SUPABASE_URL) || 'https://bbxwgezqiqjbmxthchfn.supabase.co';
-const FALLBACK_KEY = (typeof atob !== 'undefined')
-  ? atob('ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1KaWVIZG5aWHB4YVhGcVltMTRkR2hqYUdadUlpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzT0RVMU5qZzJNVFVzSW1WNGNDSTZNakV3TVRFME5EWXhOWDAuX21BbmRCcXBuSmRvVGRUZkFTNGJ4MF9YUUt0ckM1bjRHZXZ3QlpXcjl1TQ==')
-  : '';
-
-export const SERVICE_ROLE_KEY = (typeof import.meta !== 'undefined' && (import.meta?.env?.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta?.env?.SUPABASE_SERVICE_ROLE_KEY)) || FALLBACK_KEY;
-
-// Direct zero-browser-cache Supabase Admin Client
-export const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
+import { config } from './config';
+import { adminFetch, setTokenProvider } from './transport';
+export const SUPABASE_URL = config.supabaseUrl;
+// This is a public key. Privileged REST operations go through the authenticated backend.
+export const PUBLIC_ANON_KEY = config.supabaseKey;
+export const supabaseAdmin = createClient(SUPABASE_URL, PUBLIC_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  global: { fetch: adminFetch }
 });
+setTokenProvider(async () => (await supabaseAdmin.auth.getSession()).data.session?.access_token);
 
 export interface DynamicSignupOtp {
   code: string;
@@ -156,8 +151,8 @@ export async function fetchSystemRates(): Promise<SystemPlatformRates> {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.system_platform_config&select=*`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache'
       },
@@ -185,8 +180,8 @@ export async function saveSystemRates(rates: SystemPlatformRates): Promise<boole
     const res = await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress`, {
       method: 'POST',
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates'
       },
@@ -207,7 +202,7 @@ export async function saveSystemRates(rates: SystemPlatformRates): Promise<boole
  * Generate a new Signup OTP / Passcode stored in Supabase
  */
 export async function generateAdminSignupOtp(
-  adminEmail: string = 'admin@aspersde.com',
+  adminEmail: string = '',
   expiryMinutes: number = 60,
   targetStudentEmail?: string
 ): Promise<DynamicSignupOtp | null> {
@@ -274,19 +269,20 @@ export async function revokeSignupOtp(code: string): Promise<boolean> {
 
 /**
  * Dispatch a secure Supabase Magic Link / 6-digit OTP email directly
- * to mdalamrahman4@gmail.com using Supabase Auth.
+ * to the signed-in administrator using Supabase Auth.
  */
 export async function generateAndDispatchAdminOtp(
-  targetEmail: string = 'mdalamrahman4@gmail.com'
+  targetEmail: string = ''
 ): Promise<{ success: boolean; message: string; expiresInMins: number }> {
   try {
-    const cleanEmail = 'mdalamrahman4@gmail.com';
+    const cleanEmail = (await supabaseAdmin.auth.getUser()).data.user?.email || targetEmail;
+    if (!cleanEmail) throw new Error('Authentication required');
     const now = Date.now();
     const expiresInMins = 10;
     const expiresAt = now + (expiresInMins * 60 * 1000);
     const redirectUrl = typeof window !== 'undefined' && window.location.origin 
       ? window.location.origin 
-      : 'https://sdetube.vercel.app';
+      : config.studentUrl;
 
     // 1. Dispatch Supabase Magic Link / OTP via Supabase Auth custom SMTP
     let supabaseTriggered = false;
@@ -312,8 +308,8 @@ export async function generateAndDispatchAdminOtp(
       const directRes = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
         method: 'POST',
         headers: {
-          'apikey': SERVICE_ROLE_KEY,
-          'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+          'apikey': PUBLIC_ANON_KEY,
+          'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -345,7 +341,7 @@ export async function generateAndDispatchAdminOtp(
 
     // 4. Notify Render backend mailer if running
     try {
-      fetch('https://edustream-backend-90vm.onrender.com/api/admin/send-admin-auth-otp', {
+      fetch(`${config.backendUrl}/api/admin/send-admin-auth-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -387,7 +383,7 @@ export async function verifyAdminOtp(
     // 1. Verify via Supabase Auth verifyOtp (supports 6 or 8-digit email tokens)
     try {
       const { data: sbData, error: sbError } = await supabaseAdmin.auth.verifyOtp({
-        email: 'mdalamrahman4@gmail.com',
+        email: (await supabaseAdmin.auth.getUser()).data.user?.email || '',
         token: cleanInput,
         type: 'email'
       });
@@ -397,7 +393,7 @@ export async function verifyAdminOtp(
       if (sbError) {
         // Also try magiclink type if email type rejected
         const { data: mlData, error: mlError } = await supabaseAdmin.auth.verifyOtp({
-          email: 'mdalamrahman4@gmail.com',
+          email: (await supabaseAdmin.auth.getUser()).data.user?.email || '',
           token: cleanInput,
           type: 'magiclink'
         });
@@ -497,7 +493,7 @@ export async function registerWebAuthnPasskey(deviceLabel: string): Promise<Admi
       },
       user: {
         id: userId,
-        name: 'mdalamrahman4@gmail.com',
+        name: 'Administrator',
         displayName: 'MD ALAM RAHMAN (SuperAdmin)'
       },
       pubKeyCredParams: [
@@ -614,8 +610,8 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress?select=*`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       },
       cache: 'no-store'
@@ -633,7 +629,7 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
         usersMap.set(email, {
           id: r.user_id || `usr-${email.replace(/[^a-z0-9]/g, '')}`,
           email: email,
-          name: email.includes('mdalamrahman4') ? 'SuperAdmin (MD ALAM RAHMAN)' : (r.linked_profiles?.name || email.split('@')[0]),
+          name: r.linked_profiles?.name || email.split('@')[0],
           createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Active',
           solvedCount: dsaSolved + lldSolved,
           solvedDsa: dsaSolved,
@@ -641,7 +637,7 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
           activeMinutes: Math.round(r.active_mins || 0),
           walletBalance: 0,
           totalSpent: 0,
-          canDownloadVideos: downloadSet.has(email) || email.includes('mdalamrahman4'),
+          canDownloadVideos: downloadSet.has(email),
           isSuspended: suspendedSet.has(email),
           isBanned: bannedSet.has(email),
           lastActive: r.updated_at ? new Date(r.updated_at).toLocaleString() : undefined
@@ -656,8 +652,8 @@ export async function fetchAllAdminUsers(): Promise<AdminUserRecord[]> {
   try {
     const txRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?select=*&order=created_at.desc`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       },
       cache: 'no-store'
@@ -743,8 +739,8 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress?select=*`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       },
       cache: 'no-store'
@@ -772,8 +768,8 @@ export async function fetchPlatformTelemetryAndRevenue(): Promise<PlatformAnalyt
   try {
     const txRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?select=*&order=created_at.desc`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate'
       },
       cache: 'no-store'
@@ -914,16 +910,16 @@ export async function deleteUserFromSupabase(email: string): Promise<boolean> {
     await fetch(`${SUPABASE_URL}/rest/v1/user_dsa_progress?user_email=eq.${cleanEmail}`, {
       method: 'DELETE',
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`
       }
     });
 
     await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?user_email=eq.${cleanEmail}`, {
       method: 'DELETE',
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`
       }
     });
 
@@ -954,8 +950,8 @@ export async function adjustUserCreditsInSupabase(
     let currentBalance = 0;
     const txRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions?user_email=eq.${cleanEmail}&select=balance_after&order=created_at.desc&limit=1`, {
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`
       }
     });
     if (txRes.ok) {
@@ -972,8 +968,8 @@ export async function adjustUserCreditsInSupabase(
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/billing_transactions`, {
       method: 'POST',
       headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'apikey': PUBLIC_ANON_KEY,
+        'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({

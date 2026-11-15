@@ -1,9 +1,11 @@
+import { apiFetch as fetch } from './apiFetch';
+import { repositoryConfig } from './repositoryConfig';
 /**
  * EduStream Device Session Manager
  * Enforces strict 1-active-session-per-user concurrency policy across all devices.
  */
 
-const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || 'https://edustream-backend-90vm.onrender.com';
+const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL as string) || repositoryConfig.backendUrl;
 const SESSION_STORAGE_KEY = 'edustream_device_session_id';
 
 /**

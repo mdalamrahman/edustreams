@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from './apiFetch';
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Video, QuizQuestion } from './types';
 import { MOCK_CHANNELS, MOCK_VIDEOS, supabase } from './supabase';
