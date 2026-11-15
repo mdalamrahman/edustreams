@@ -56,3 +56,15 @@ class RestoreTests(unittest.TestCase):
         with closing(sqlite3.connect(self.path)) as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM user_wallets').fetchone()[0], 2)
             self.assertEqual(conn.execute('SELECT balance FROM user_wallets WHERE user_email=?', ('second@example.com',)).fetchone()[0], 12)
+
+    def test_durable_recovery_adds_missing_accounts_without_reverting_live_balances(self):
+        restore_billing_snapshot(self.path, {'wallets': [{'userId': '1', 'userEmail': 'first@example.com', 'balance': 7}]})
+        with closing(sqlite3.connect(self.path)) as conn:
+            conn.row_factory = sqlite3.Row
+            first = dict(conn.execute('SELECT * FROM user_wallets').fetchone())
+        first['balance'] = 8  # Older backup must not revert a live debit.
+        second = {**first, 'user_id': '2', 'user_email': 'second@example.com', 'balance': 12}
+        restore_ledger(self.path, {'version': 1, 'tables': {'user_wallets': [first, second]}})
+        with closing(sqlite3.connect(self.path)) as conn:
+            self.assertEqual(conn.execute('SELECT balance FROM user_wallets WHERE user_id=?', ('1',)).fetchone()[0], 7)
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM user_wallets').fetchone()[0], 2)

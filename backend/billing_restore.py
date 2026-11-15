@@ -30,7 +30,7 @@ def restore_ledger(db_path, snapshot):
         raise ValueError('Invalid durable ledger snapshot')
     with closing(sqlite3.connect(db_path, timeout=30)) as conn, conn:
         conn.execute('BEGIN IMMEDIATE')
-        if conn.execute('SELECT COUNT(*) FROM user_wallets').fetchone()[0]: return False
+        # Existing balances remain authoritative; merge only absent rows during recovery.
         conn.execute('CREATE TABLE IF NOT EXISTS billing_idempotency (request_id TEXT PRIMARY KEY, email TEXT NOT NULL, amount REAL NOT NULL, balance REAL NOT NULL)')
         for table in TABLES:
             columns = [row[1] for row in conn.execute(f'PRAGMA table_info({table})')]
@@ -42,7 +42,7 @@ def restore_ledger(db_path, snapshot):
                 conn.execute(f'INSERT OR IGNORE INTO {table} ({names}) VALUES ({placeholders})', values)
         expected = {row['user_email'] for row in snapshot['tables'].get('user_wallets', [])}
         actual = {row[0] for row in conn.execute('SELECT user_email FROM user_wallets')}
-        if expected != actual:
+        if not expected <= actual:
             raise ValueError('Durable ledger restore omitted wallet accounts')
         return True
 
