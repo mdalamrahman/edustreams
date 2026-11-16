@@ -3,6 +3,17 @@ import { expect, test, Page } from '@playwright/test';
 async function mockServices(page: Page) {
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
+    if (url.hostname === 'challenges.cloudflare.com') return route.fulfill({ contentType: 'application/javascript', body: `
+      window.turnstile = {
+        render(element, options) {
+          window.__captcha = options;
+          element.textContent = 'Security verification';
+          if (!window.__holdCaptcha) setTimeout(() => options.callback('test-captcha-token'), 0);
+          return 'test-widget';
+        },
+        remove() {}
+      };
+    ` });
     if (url.pathname.startsWith('/api/')) {
       if (url.pathname.startsWith('/api/leetcode/question')) return route.fulfill({ json: { data: { question: {
         title: 'Two Sum', titleSlug: 'two-sum', difficulty: 'Easy', content: '<p>Return the indices of two numbers that add up to the target.</p>',
@@ -115,4 +126,42 @@ test('SQL arena is a preview and does not open a query runner', async ({ page })
   await expect(page.getByRole('button', { name: /Explore as recruiter/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Sign in to practice SQL' }).click();
   await expect(page.getByRole('button', { name: /Explore as recruiter/ })).toBeVisible();
+});
+
+
+test('Admin OTP sends the CAPTCHA token and requires a new token after rejection or expiry', async ({ page }) => {
+  await page.addInitScript(() => { (window as any).__holdCaptcha = true; });
+  const payloads: any[] = [];
+  await page.route('**/auth/v1/otp**', async route => {
+    payloads.push(route.request().postDataJSON());
+    return route.fulfill({ status: 400, json: { msg: 'Please try again' } });
+  });
+  await page.goto('http://127.0.0.1:4174');
+  await page.getByLabel('Email address').fill('admin@example.com');
+  const send = page.getByRole('button', { name: 'Send sign-in email' });
+  await expect(send).toBeDisabled();
+  await page.waitForFunction(() => Boolean((window as any).__captcha));
+  await page.evaluate(() => (window as any).__captcha.callback('fresh-token'));
+  await expect(send).toBeEnabled();
+  await page.evaluate(() => (window as any).__captcha['expired-callback']());
+  await expect(send).toBeDisabled();
+  await page.getByRole('button', { name: 'Retry security verification' }).click();
+  await page.waitForTimeout(200);
+  await page.evaluate(() => (window as any).__captcha.callback('replacement-token'));
+  await send.click();
+  await expect(page.getByRole('alert')).toContainText('Please try again');
+  expect(payloads).toHaveLength(1);
+  expect(payloads[0].gotrue_meta_security.captcha_token).toBe('replacement-token');
+  await expect(send).toBeDisabled();
+  await page.waitForTimeout(200);
+  await page.evaluate(() => (window as any).__captcha.callback('retry-token'));
+  await expect(send).toBeEnabled();
+});
+
+test('Admin CAPTCHA script failure can be retried without sending an OTP', async ({ page }) => {
+  await page.route('https://challenges.cloudflare.com/**', route => route.abort());
+  await page.goto('http://127.0.0.1:4174');
+  await expect(page.getByRole('alert')).toContainText('Security verification failed');
+  await expect(page.getByRole('button', { name: 'Send sign-in email' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Retry security verification' })).toBeVisible();
 });

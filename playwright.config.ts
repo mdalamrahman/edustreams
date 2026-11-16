@@ -5,6 +5,7 @@ const env = {
   VITE_SUPABASE_ANON_KEY: 'public-browser-test-key',
   VITE_BACKEND_URL: 'https://backend.example.test',
   VITE_STUDENT_URL: 'http://127.0.0.1:4173',
+  VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
 };
 
 export default defineConfig({

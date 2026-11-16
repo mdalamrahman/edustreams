@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, Mail, ShieldCheck } from 'lucide-react';
+import { AdminCaptcha } from './AdminCaptcha';
 import { supabaseAdmin } from './lib/supabaseAdminClient';
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -11,6 +12,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [pending, setPending] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
   useEffect(() => {
     let active = true;
     const check = async () => {
@@ -33,12 +36,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (pending) return;
+    if (!sent && !captchaToken) {
+      setHasError(true); setMessage('Please complete security verification first.'); return;
+    }
     setPending(true); setHasError(false); setMessage('');
     try {
       if (!sent) {
         const { error } = await supabaseAdmin.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
-          options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+          options: { shouldCreateUser: false, emailRedirectTo: window.location.origin, captchaToken },
         });
         if (error) throw error;
         setSent(true); setMessage('Sign-in email sent. Use the secure link or enter the verification code below.');
@@ -55,6 +61,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setHasError(true);
       setMessage(error instanceof Error ? error.message : 'Sign-in failed. Please try again.');
     } finally {
+      if (!sent) { setCaptchaToken(''); setCaptchaAttempt(value => value + 1); }
       setPending(false);
     }
   }
@@ -73,8 +80,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </div>
         </div>
         {sent && <div><label htmlFor="admin-code" className="mb-2 block text-sm font-semibold text-slate-200">Verification code</label><input id="admin-code" required autoComplete="one-time-code" inputMode="numeric" autoFocus disabled={pending} value={code} onChange={e => setCode(e.target.value)} placeholder="Enter your email code" className="min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400" /></div>}
+        {!sent && <AdminCaptcha key={captchaAttempt} onToken={setCaptchaToken} />}
         {message && <p role={hasError ? 'alert' : 'status'} className={`rounded-xl border p-3 text-sm leading-6 ${hasError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-200'}`}>{message}</p>}
-        <button disabled={pending} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60">{pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{pending ? 'Please wait…' : sent ? 'Verify and sign in' : 'Send sign-in email'}{!pending && <ArrowRight className="h-4 w-4" aria-hidden="true" />}</button>
+        <button disabled={pending || (!sent && !captchaToken)} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60">{pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{pending ? 'Please wait…' : sent ? 'Verify and sign in' : 'Send sign-in email'}{!pending && <ArrowRight className="h-4 w-4" aria-hidden="true" />}</button>
         {sent && <button type="button" disabled={pending} onClick={() => { setSent(false); setCode(''); setMessage(''); setHasError(false); }} className="flex w-full items-center justify-center gap-2 py-2 text-sm text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Use a different email</button>}
       </form>}
       <p className="mt-7 border-t border-slate-800 pt-5 text-xs leading-5 text-slate-500">Access is limited to authorized administrators. Your permissions are verified securely after sign-in.</p>
