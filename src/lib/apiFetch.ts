@@ -1,4 +1,5 @@
 import { repositoryConfig } from './repositoryConfig';
+import { isRecruiterPreviewEnabled } from './recruiterPreview';
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 let sessionToken: () => Promise<string | undefined> = async () => undefined;
@@ -27,6 +28,13 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   if (!owned) return nativeFetch(input, init);
   const headers = new Headers(init?.headers || original.headers);
   const token = await sessionToken();
+  const method = (init?.method || original.method).toUpperCase();
+  const isPublicSignUpVerification = url.pathname === '/api/passkey/verify';
+  if (!token && isRecruiterPreviewEnabled() && !isPublicSignUpVerification && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+    return new Response(JSON.stringify({ detail: 'Sign in to use this feature.' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    });
+  }
   // Never forward a caller-provided provider/service key to our API.
   headers.delete('Authorization');
   if (token) headers.set('Authorization', `Bearer ${token}`);

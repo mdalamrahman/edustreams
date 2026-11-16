@@ -3,6 +3,7 @@ import { repositoryConfig } from './repositoryConfig';
 import { supabase, supabaseAdmin } from './supabase';
 import { isWebAuthnSupported, registerWebAuthnPasskey } from './webauthn';
 import { registerDeviceSession, terminateDeviceSession } from './session';
+import { isRecruiterDemoUser, setRecruiterPreviewEnabled } from './recruiterPreview';
 
 export interface StudentUser {
   id: string;
@@ -308,7 +309,8 @@ export async function signInStudent(email: string, password: string, captchaToke
 export function getCurrentStudent(): StudentUser | null {
   try {
     const sessionJson = localStorage.getItem(AUTH_STORAGE_KEY);
-    return sessionJson ? JSON.parse(sessionJson) : null;
+    const session = sessionJson ? JSON.parse(sessionJson) : null;
+    return isRecruiterDemoUser(session) ? null : session;
   } catch {
     return null;
   }
@@ -393,8 +395,8 @@ export async function addPasskeyToSupabase(user: StudentUser): Promise<{ success
 }
 
 /**
- * Instant Recruiter & Guest Demo login without requiring OTP or passkey.
- * Gives portfolio visitors immediate hands-on access to test all features.
+ * Starts the recruiter preview without signing into a student account.
+ * Opens a view-only tour. The returned marker is not an authenticated session.
  */
 export function signInAsGuestDemo(): StudentUser {
   const demoUser: StudentUser = {
@@ -404,7 +406,8 @@ export function signInAsGuestDemo(): StudentUser {
   };
   if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(demoUser));
+      setRecruiterPreviewEnabled(true);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     } catch {}
   }
   return demoUser;

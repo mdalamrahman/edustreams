@@ -11,6 +11,8 @@ scratch/
 *.xlsx
 backend/company_problems_raw/
 .wrangler
+test-results/
+playwright-report/
 
 session_string.txt
 !.env.example

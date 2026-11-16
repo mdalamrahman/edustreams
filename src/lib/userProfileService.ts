@@ -1,3 +1,4 @@
+import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { apiFetch as fetch } from './apiFetch';
 /**
  * Comprehensive Developer Profile Service
@@ -278,6 +279,7 @@ export function getLinkedProfiles(email?: string): LinkedProfilesConfig {
 }
 
 export function saveLinkedProfiles(config: LinkedProfilesConfig, email?: string): void {
+  if (isRecruiterPreviewEnabled()) return;
   saveLinkedProfilesToService(config, email).catch(() => {});
 }
 

@@ -1,4 +1,5 @@
 import { apiFetch as fetch } from './apiFetch';
+import { requestSignInForPreview } from './recruiterPreview';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export interface ProblemNote {
@@ -32,6 +33,7 @@ export async function saveProblemNote(
   content: string,
   userEmail?: string
 ): Promise<{ success: boolean; syncedToCloudflare: boolean; error?: string }> {
+  if (requestSignInForPreview()) return { success: false, syncedToCloudflare: false, error: 'Sign in to save notes.' };
   if (!slug) return { success: false, syncedToCloudflare: false, error: 'Invalid slug' };
 
   // 1. Save to local storage

@@ -1,3 +1,4 @@
+import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { apiFetch as fetch } from './apiFetch';
 /**
  * Central Supabase-backed DSA Progress Service
@@ -270,6 +271,7 @@ export function getUserProgressSync(targetEmail?: string): UserDSAProgress {
  * Saves and syncs progress to Supabase and Backend
  */
 export async function saveUserProgress(patch: Partial<UserDSAProgress>, targetEmail?: string): Promise<void> {
+  if (isRecruiterPreviewEnabled()) return;
   const email = (targetEmail || getCurrentUserEmail()).trim().toLowerCase();
   const current = getUserProgressSync(email);
 
@@ -397,6 +399,7 @@ export async function setSolvedIds(sheet: string, ids: number[], email?: string)
  * Toggles a problem's solved state for a sheet
  */
 export async function toggleProblemSolved(sheet: string, problemId: number, email?: string, slug?: string): Promise<boolean> {
+  if (requestSignInForPreview()) return false;
   const currentIds = getSolvedIds(sheet, email);
   const exists = currentIds.includes(problemId);
   const nextIds = exists ? currentIds.filter(id => id !== problemId) : [...currentIds, problemId];
@@ -432,6 +435,7 @@ export async function setRevisionIds(ids: string[], email?: string): Promise<voi
  * Toggles revision mark
  */
 export async function toggleRevisionId(id: string, email?: string): Promise<boolean> {
+  if (requestSignInForPreview()) return false;
   const current = getRevisionIds(email);
   const exists = current.includes(id);
   const next = exists ? current.filter(item => item !== id) : [...current, id];
@@ -457,6 +461,7 @@ export async function setLLDSolvedIds(ids: number[], email?: string): Promise<vo
  * Toggles LLD problem solved
  */
 export async function toggleLLDSolvedId(id: number, email?: string): Promise<boolean> {
+  if (requestSignInForPreview()) return false;
   const current = getLLDSolvedIds(email);
   const exists = current.includes(id);
   const next = exists ? current.filter(item => item !== id) : [...current, id];
@@ -489,6 +494,7 @@ export function getLinkedProfiles(email?: string): LinkedProfilesConfig {
  * Saves linked profiles config
  */
 export async function saveLinkedProfiles(config: LinkedProfilesConfig, email?: string): Promise<void> {
+  if (isRecruiterPreviewEnabled()) return;
   await saveUserProgress({ linked_profiles: config }, email);
 }
 

@@ -393,6 +393,7 @@ These requirements supersede older implementation descriptions above where they 
 - Restrict CORS to configured origins. Keep authenticated responses and media private/no-store. Video tickets are temporary path-bound credentials; do not log or share their URLs. Tickets currently establish authenticated media access, not purchase entitlement.
 - Rotate previously exposed keys and revoke tracked Telegram sessions. Removing source literals does not invalidate credentials or remove Git history. Keep session and scratch files local and ignored.
 - Run `npm test` against production module imports, backend tests with Python 3.11 and installed requirements, both production builds, dependency audits, and `python scripts/check_secrets.py`. Include authorization failures, cross-user access, malicious rendering and concurrent/repeated ledger operations in regression checks.
+- Recruiter exploration is a view-only preview stored separately from account authentication. Show public question content and labeled sample feature previews; require sign-in for code execution, interviews, notes, progress, uploads, and other mutations. Never create a fabricated student session for a preview visitor. Run `npm run test:browser` (with Google Chrome installed) for admin sign-in and recruiter preview regressions.
 
 
 ---

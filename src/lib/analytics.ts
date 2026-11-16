@@ -1,3 +1,4 @@
+import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug, getUniversalSdePotd } from './dsaSheetsData';
 import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
@@ -116,6 +117,7 @@ export function recordRealActivity(
   solvedIncrement: number = 0,
   isCorrect: boolean = true
 ) {
+  if (isRecruiterPreviewEnabled()) return;
   if (typeof window === 'undefined') return;
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -392,6 +394,7 @@ export function resetUnverifiedPotdToday(): void {
  * and updates analytics and activity heatmaps in real time.
  */
 export function markProblemSolved(identifier: string | number, timeMins: number = 5, problemSlug?: string): boolean {
+  if (requestSignInForPreview()) return false;
   if (typeof window === 'undefined') return false;
 
   const cleanSlug = normalizeCanonicalSlug(problemSlug || (typeof identifier === 'string' ? identifier : ''));

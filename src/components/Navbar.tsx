@@ -98,8 +98,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const onOpenPotd = propPotd || (() => appCtx.setIsPotdModalOpen(true));
   const onOpenSqlWorkspace = propSqlWorkspace || (() => navigate('/problem/sql-arena?type=sql'));
   const onOpenAskAI = propAskAI || (() => appCtx.openAskAIWithMode());
-  const onOpenWallet = propWallet || (() => appCtx.setIsWalletModalOpen(true));
-  const onOpenProfile = propProfile || (() => appCtx.setIsProfileModalOpen(true));
+  const onOpenWallet = () => {
+    if (!user) { onOpenAuthModal(); return; }
+    if (propWallet) propWallet(); else appCtx.setIsWalletModalOpen(true);
+  };
+  const onOpenProfile = () => {
+    if (appCtx.isRecruiterPreview) { navigate('/profile'); return; }
+    if (!user) { onOpenAuthModal(); return; }
+    if (propProfile) propProfile(); else appCtx.setIsProfileModalOpen(true);
+  };
   const onSignOut = propSignOut || (() => appCtx.signOut());
 
   const { isMobile } = useDevice();
@@ -109,12 +116,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number>(() => getUserWallet(user?.email).balance);
+  const [walletBalance, setWalletBalance] = useState<number>(() => user?.email ? getUserWallet(user.email).balance : 0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateBal = () => {
-      setWalletBalance(getUserWallet(user?.email).balance);
+      setWalletBalance(user?.email ? getUserWallet(user.email).balance : 0);
     };
     updateBal();
     window.addEventListener('sdetube_wallet_updated', updateBal);
@@ -385,7 +392,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0" ref={dropdownRef}>
             
             {/* Live Wallet Balance Pill */}
-            {onOpenWallet && (
+            {user && onOpenWallet && (
               <button
                 onClick={onOpenWallet}
                 className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-bold font-mono transition-all shadow-md cursor-pointer group flex-shrink-0"
@@ -463,7 +470,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl p-2 z-50 animate-fadeIn">
                     <div className="px-3 py-2 border-b border-slate-800/80 mb-1">
-                      <div className="text-xs font-bold text-slate-200 truncate">{user.user_metadata?.name || (user.email === 'recruiter.demo@sdetube.dev' ? 'Recruiter Demo Account' : 'SDETube Student')}</div>
+                      <div className="text-xs font-bold text-slate-200 truncate">{user.user_metadata?.name || (user.email === 'recruiter.demo@sdetube.dev' ? 'Recruiter Preview' : 'SDETube Student')}</div>
                       <div className="text-[11px] text-slate-400 font-mono truncate">{user.email}</div>
                     </div>
 
@@ -522,10 +529,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     appCtx.setUser(demoUser);
                   }}
                   className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/40 text-emerald-300 text-xs font-bold transition-all shadow-sm cursor-pointer"
-                  title="Explore with 1-Click Recruiter Demo Access"
+                  title="Explore the view-only recruiter tour"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                  <span>Demo Tour</span>
+                  <span>Recruiter tour</span>
                 </button>
                 <button
                   onClick={onOpenAuthModal}
@@ -616,7 +623,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Credits & Utilities
                 </div>
 
-                {onOpenWallet && (
+                {user && onOpenWallet && (
                   <button
                     onClick={() => {
                       setIsDrawerOpen(false);

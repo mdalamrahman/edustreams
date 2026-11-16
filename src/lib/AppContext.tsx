@@ -1,5 +1,6 @@
 import { apiFetch as fetch } from './apiFetch';
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { isRecruiterDemoUser, isRecruiterPreviewEnabled, setRecruiterPreviewEnabled, requestSignInForPreview } from './recruiterPreview';
 import { Video, QuizQuestion } from './types';
 import { MOCK_CHANNELS, MOCK_VIDEOS, supabase } from './supabase';
 import { checkAndAutoLogin, signOutStudent } from './auth';
@@ -43,6 +44,8 @@ export interface AppContextValue {
   // Auth
   user: any;
   setUser: (u: any) => void;
+  isRecruiterPreview: boolean;
+  exitRecruiterPreview: () => void;
   authChecking: boolean;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (v: boolean) => void;
@@ -126,7 +129,19 @@ export const useAppContext = useApp;
 
 export function AppContextProvider({ children }: { children: ReactNode }) {
   // Auth State
-  const [user, setUser] = useState<any>(null);
+  const [user, setAuthenticatedUser] = useState<any>(null);
+  const [isRecruiterPreview, setPreview] = useState(isRecruiterPreviewEnabled);
+  const setUser = useCallback((incoming: any) => {
+    if (isRecruiterDemoUser(incoming)) {
+      setRecruiterPreviewEnabled(true);
+      setPreview(true);
+      setAuthenticatedUser(null);
+    } else {
+      setAuthenticatedUser(incoming);
+      if (incoming) { setRecruiterPreviewEnabled(false); setPreview(false); }
+    }
+  }, []);
+  const exitRecruiterPreview = () => { setRecruiterPreviewEnabled(false); setPreview(false); };
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [revokedSessionMessage, setRevokedSessionMessage] = useState<string>('');
@@ -171,6 +186,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   });
 
   const toggleLectureComplete = (videoId: string) => {
+    if (requestSignInForPreview()) return;
     setCompletedLectures((prev) => {
       const next = new Set(prev);
       if (next.has(videoId)) next.delete(videoId);
@@ -258,6 +274,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleQuizSubmitted = (timeTakenSeconds: number, isCorrect: boolean) => {
+    if (requestSignInForPreview()) return;
     if (isCorrect) {
       setCorrectAttempts((prev) => prev + 1);
       setTotalSolved((prev) => prev + 1);
@@ -271,6 +288,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleQuestionSolved = (timeTakenSeconds?: number, isCorrect?: boolean) => {
+    if (requestSignInForPreview()) return;
     const mins = Math.max(0.5, Number(((timeTakenSeconds || 60) / 60).toFixed(1)));
     const correct = isCorrect !== false;
 
@@ -563,6 +581,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   const openAskAIWithMode = (mode?: 'video' | 'notes' | 'quiz' | 'code', timestamp?: number) => {
+    if (requestSignInForPreview()) return;
     window.dispatchEvent(new CustomEvent('sdetube_pause_video'));
     setAskAIMode(mode);
     setAskAITimestamp(timestamp);
@@ -570,6 +589,7 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   };
 
   const openVideoWithBilling = (v: Video, destination: 'channels' | 'sde_sheet' = 'channels'): boolean => {
+    if (requestSignInForPreview()) return false;
     const billRes = handleVideoViewBilling(v.id, v.title, user?.email);
     if (!billRes.success) {
       setInsufficientMeta({
@@ -592,6 +612,8 @@ export function AppContextProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     user,
     setUser,
+    isRecruiterPreview,
+    exitRecruiterPreview,
     authChecking,
     isAuthModalOpen,
     setIsAuthModalOpen,

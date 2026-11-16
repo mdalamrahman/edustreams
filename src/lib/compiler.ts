@@ -1,4 +1,5 @@
 import { apiFetch as fetch } from './apiFetch';
+import { requestSignInForPreview } from './recruiterPreview';
 import { TELEGRAM_BACKEND_URL } from './telegram';
 
 export type SupportedLanguage = 'cpp' | 'python' | 'java' | 'javascript' | 'sql' | 'go' | 'rust';
@@ -1935,6 +1936,7 @@ export async function executeCode(
   problemTitle: string = '',
   preloadedDriver?: string
 ): Promise<CodeExecutionResult> {
+  if (requestSignInForPreview()) return { stdout: '', stderr: 'Sign in to run or submit code.', exit_code: 1, execution_time_ms: 0, memory_used_kb: 0, status: 'ERROR' };
   const startTime = performance.now();
   const normLang = (language || 'python').toLowerCase() as SupportedLanguage;
   const executableCode = wrapLeetCodeExecutableCode(code, normLang, testInput, problemTitle, preloadedDriver);

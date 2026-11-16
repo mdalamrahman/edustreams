@@ -37,6 +37,8 @@ const PUBLIC_ROUTES = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const {
     user,
+    isRecruiterPreview,
+    exitRecruiterPreview,
     setUser,
     authChecking,
     isAuthModalOpen,
@@ -88,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Global custom event listeners
   useEffect(() => {
-    const onOpenWallet = () => setIsWalletModalOpen(true);
+    const onOpenWallet = () => { if (user) setIsWalletModalOpen(true); else setIsAuthModalOpen(true); };
     const onOpenAuth = () => setIsAuthModalOpen(true);
     const onOpenPotd = () => setIsPotdModalOpen(true);
 
@@ -101,7 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener('sdetube_open_auth', onOpenAuth);
       window.removeEventListener('sdetube_open_potd', onOpenPotd);
     };
-  }, [setIsWalletModalOpen, setIsAuthModalOpen, setIsPotdModalOpen]);
+  }, [user, setIsWalletModalOpen, setIsAuthModalOpen, setIsPotdModalOpen]);
 
   const isPublicRoute = PUBLIC_ROUTES.some(
     (route) => location.pathname === route || location.pathname.startsWith(`${route}/`)
@@ -113,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // 2. Strict Route Protection: gate unauthenticated access to all non-public pages
-  if (!user && !isPublicRoute) {
+  if (!user && !isRecruiterPreview && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
         <AuthModal
@@ -137,6 +139,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       <Navbar />
 
+      {isRecruiterPreview && <aside aria-label="Recruiter preview" className="mx-auto mt-3 flex w-[96%] flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-400/25 bg-cyan-950/40 px-4 py-3 text-sm text-cyan-100">
+        <p><strong>Recruiter preview</strong><span className="ml-2 text-cyan-100/75">View-only tour. Sign in to solve questions, start interviews, and save your progress.</span></p>
+        <div className="flex shrink-0 items-center gap-3"><button onClick={() => setIsAuthModalOpen(true)} className="rounded-lg bg-cyan-300 px-3 py-2 font-bold text-slate-950">Sign in to participate</button><button onClick={() => { exitRecruiterPreview(); navigate('/'); }} className="px-2 py-2 text-cyan-100 underline underline-offset-4">Exit preview</button></div>
+      </aside>}
+
       <main className="flex-1 max-w-[98%] mx-auto w-full px-2 sm:px-4 lg:px-6 py-4 pb-20 sm:pb-6">
         {children}
       </main>
@@ -158,13 +165,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
       />
 
-      <WalletTopupModal
+      {user && <WalletTopupModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
         initialAmount={50}
-      />
+      />}
 
-      <InsufficientCreditsModal
+      {user && <InsufficientCreditsModal
         isOpen={isInsufficientCreditsOpen}
         onClose={() => setIsInsufficientCreditsOpen(false)}
         onOpenRecharge={() => {
@@ -173,9 +180,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }}
         requiredCost={insufficientMeta.cost}
         actionName={insufficientMeta.action}
-      />
+      />}
 
-      <UserProfileModal
+      {user && <UserProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         user={user}
@@ -183,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           setIsProfileModalOpen(false);
           setIsWalletModalOpen(true);
         }}
-      />
+      />}
 
       {isPotdModalOpen && (
         <POTDModal
@@ -196,7 +203,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <AskAIChatModal
+      {user && <AskAIChatModal
         isOpen={isAskAIOpen}
         onClose={() => {
           setIsAskAIOpen(false);
@@ -208,7 +215,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         currentTimestamp={askAITimestamp}
         activeMCQ={activeVideoQuiz && activeVideoQuiz.length > 0 ? activeVideoQuiz[0] : undefined}
         codingProblem={videoArtifacts?.coding_problem}
-      />
+      />}
 
       {showMobileGating && (
         <MobileGatedOverlay

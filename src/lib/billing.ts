@@ -1,5 +1,6 @@
 import { apiFetch as fetch } from './apiFetch';
 import { repositoryConfig } from './repositoryConfig';
+import { requestSignInForPreview } from './recruiterPreview';
 /**
  * SDETube Comprehensive Billing & Credits System
  * Synchronized with Database (SQLite backend on Render + client fallback cache)
@@ -483,6 +484,7 @@ export function deductCredits(
   description: string,
   email?: string
 ): { success: boolean; newBalance: number; error?: string } {
+  if (requestSignInForPreview()) return { success: false, newBalance: 0, error: 'SIGN_IN_REQUIRED' };
   const userEmail = getActiveEmail(email);
   const wallets = getAllWallets();
   const wallet = getUserWallet(userEmail);
@@ -571,6 +573,7 @@ export function handleVideoViewBilling(
   videoTitle: string, 
   email?: string
 ): { success: boolean; newBalance: number; cost: number; isFreeWithin24h?: boolean; remainingHours?: number; error?: string } {
+  if (requestSignInForPreview()) return { success: false, newBalance: 0, cost: 0, error: 'SIGN_IN_REQUIRED' };
   const userEmail = getActiveEmail(email);
   const wallets = getAllWallets();
   const wallet = getUserWallet(userEmail);

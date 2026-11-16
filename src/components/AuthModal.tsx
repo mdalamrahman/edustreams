@@ -442,7 +442,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={() => {
                   const demoUser = signInAsGuestDemo();
-                  setSuccessMsg('✨ Welcome to the SDETube Live Demo!');
+                  setSuccessMsg('✨ Welcome to the SDETube Recruiter Preview!');
                   setTimeout(() => {
                     onSuccess(demoUser);
                     if (onClose) onClose();
@@ -451,7 +451,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:via-cyan-500/30 hover:to-indigo-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-emerald-500/20"
               >
                 <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>Explore as Recruiter / Instant Demo</span>
+                <span>Explore as recruiter (view-only tour)</span>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">1-Click</span>
               </button>
             </div>
@@ -683,7 +683,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={() => {
                   const demoUser = signInAsGuestDemo();
-                  setSuccessMsg('✨ Welcome to the SDETube Live Demo!');
+                  setSuccessMsg('✨ Welcome to the SDETube Recruiter Preview!');
                   setTimeout(() => {
                     onSuccess(demoUser);
                     if (onClose) onClose();
@@ -692,7 +692,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:via-cyan-500/30 hover:to-indigo-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-emerald-500/20"
               >
                 <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>Explore as Recruiter / Instant Demo</span>
+                <span>Explore as recruiter (view-only tour)</span>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">1-Click</span>
               </button>
             </div>
