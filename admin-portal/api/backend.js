@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     if (key !== 'path' && typeof value === 'string') target.searchParams.set(key, value);
   }
   const headers = {};
-  for (const name of ['authorization', 'content-type', 'range', 'origin', 'idempotency-key']) {
+  for (const name of ['authorization', 'content-type', 'range', 'origin', 'idempotency-key', 'prefer', 'accept', 'accept-profile', 'content-profile']) {
     if (typeof req.headers[name] === 'string') headers[name] = req.headers[name];
   }
   try {

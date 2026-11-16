@@ -4,7 +4,7 @@
 
 Student builds require the public Supabase URL and anon/publishable key. Set `VITE_BACKEND_URL` and `VITE_STUDENT_URL` for the deployment. Only public configuration belongs in browser environment variables. Copy the placeholder examples before local development; never copy server secrets into browser configuration.
 
-The backend requires `SUPABASE_URL` and `SUPABASE_ANON_KEY` to validate sessions. Set server-only `SUPABASE_SERVICE_ROLE_KEY` for administration. Provision administrators through a trusted Supabase administrative process with `app_metadata.role = "admin"`; user metadata and email substrings do not grant privileges. The admin portal signs in through Supabase email OTP before loading the dashboard.
+The backend requires `SUPABASE_URL` and `SUPABASE_ANON_KEY` to validate sessions. Set server-only `SUPABASE_SERVICE_ROLE_KEY` for administration. Provision administrators through a trusted Supabase administrative process with `app_metadata.role = "admin"`; user metadata and email substrings do not grant privileges. The admin portal signs in through Supabase email OTP or server-verified Supabase Auth passkeys before loading the dashboard. Both methods still require a verified administrator role. Enable passkeys in Supabase Auth with the stable admin hostname as relying-party ID and its HTTPS URL as an allowed origin. Legacy browser-created credential IDs in shared settings are not valid Auth passkeys; register devices again.
 
 Set `ALLOWED_ORIGINS` to a comma-separated list of exact student and admin origins, including local origins when developing. Generate `MEDIA_SIGNING_KEY` with at least 32 random characters. Video tickets expire after 30 minutes and are bound to one media path. Treat ticket URLs as temporary credentials.
 

@@ -60,7 +60,6 @@ import {
   generateAndDispatchAdminOtp,
   verifyAdminOtp,
   fetchAdminPasskey,
-  saveAdminPasskey,
   removeAdminPasskey,
   registerWebAuthnPasskey,
   verifyWebAuthnPasskey,
@@ -176,12 +175,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchAdminPasskey().then((pk) => {
-      setRegisteredPasskey(pk);
-      if (!pk) {
-        setMfaMethod('otp');
-      }
-    });
+    fetchAdminPasskey().then(setRegisteredPasskey).catch((error) => setPasskeyModalStatus({ success: false, message: error.message }));
   }, []);
 
   useEffect(() => {
@@ -194,7 +188,6 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       loadAllData();
-      fetchAdminPasskey().then((pk) => setRegisteredPasskey(pk));
     }
   }, [isAuthenticated]);
 
@@ -324,7 +317,7 @@ export default function App() {
         setRegisteredPasskey(newPasskey);
         setPasskeyModalStatus({
           success: true,
-          message: 'Hardware Passkey successfully registered and secured in Supabase vault!'
+          message: 'Hardware passkey registered and verified by Supabase Auth.'
         });
         confetti({ particleCount: 50, spread: 60, origin: { y: 0.5 } });
       }
@@ -345,13 +338,13 @@ export default function App() {
       return;
     }
     setIsProcessingAction(true);
-    await removeAdminPasskey();
-    setRegisteredPasskey(null);
-    setPasskeyModalStatus({
-      success: true,
-      message: 'Hardware passkey successfully revoked from Supabase vault.'
-    });
-    setIsProcessingAction(false);
+    try {
+      await removeAdminPasskey(registeredPasskey?.credentialId);
+      setRegisteredPasskey(await fetchAdminPasskey());
+      setPasskeyModalStatus({ success: true, message: 'Selected passkey revoked from your Supabase Auth account.' });
+    } catch (error) {
+      setPasskeyModalStatus({ success: false, message: error instanceof Error ? error.message : 'Passkey revocation failed. Please retry.' });
+    } finally { setIsProcessingAction(false); }
   };
 
   const handleAdminLogout = () => {
@@ -2243,7 +2236,7 @@ export default function App() {
                     </div>
                     <div className="flex items-center justify-between text-slate-300">
                       <span className="text-slate-400">Sync Target:</span>
-                      <span className="text-emerald-400">Supabase Platform Vault</span>
+                      <span className="text-emerald-400">Your Supabase Auth account</span>
                     </div>
                   </div>
                 </div>
@@ -2258,7 +2251,7 @@ export default function App() {
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-300">
-                  {registeredPasskey ? 'Update / Replace Device Label:' : 'Device Identifier Label:'}
+                  {registeredPasskey ? 'New Device Label:' : 'Device Identifier Label:'}
                 </label>
                 <input
                   type="text"
@@ -2291,7 +2284,7 @@ export default function App() {
                   className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/30 disabled:opacity-50"
                 >
                   <Fingerprint className={`w-4 h-4 ${isRegisteringPasskey ? 'animate-spin' : ''}`} />
-                  <span>{isRegisteringPasskey ? 'Registering Biometrics...' : registeredPasskey ? 'Update Hardware Passkey' : 'Register Hardware Passkey'}</span>
+                  <span>{isRegisteringPasskey ? 'Registering Biometrics...' : registeredPasskey ? 'Add Hardware Passkey' : 'Register Hardware Passkey'}</span>
                 </button>
 
                 {registeredPasskey && (

@@ -6,7 +6,7 @@ export const SUPABASE_URL = config.supabaseUrl;
 // This is a public key. Privileged REST operations go through the authenticated backend.
 export const PUBLIC_ANON_KEY = config.supabaseKey;
 export const supabaseAdmin = createClient(SUPABASE_URL, PUBLIC_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, experimental: { passkey: true } },
   global: { fetch: adminFetch }
 });
 setTokenProvider(async () => (await supabaseAdmin.auth.getSession()).data.session?.access_token);
@@ -430,150 +430,45 @@ export async function verifyAdminOtp(
   }
 }
 
-/**
- * Fetch the registered SuperAdmin Passkey from Supabase
- */
+/** Passkeys belong to the signed-in Auth user, never shared platform settings. */
+function passkeyError(error: { message: string; code?: string }): Error {
+  if (error.code === 'passkey_disabled') return new Error('Enable passkey authentication in Supabase Authentication > Passkeys and configure this admin portal origin before registering.');
+  return new Error(error.message);
+}
+function toAdminPasskey(item: { id: string; friendly_name?: string; created_at: string }): AdminPasskeyRecord {
+  return { credentialId: item.id, deviceLabel: item.friendly_name || 'Hardware Passkey', registeredAt: Date.parse(item.created_at) };
+}
 export async function fetchAdminPasskey(): Promise<AdminPasskeyRecord | null> {
-  try {
-    const rates = await fetchSystemRates();
-    return rates.admin_passkey || null;
-  } catch {
-    return null;
-  }
+  const { data, error } = await supabaseAdmin.auth.passkey.list();
+  if (error) throw passkeyError(error);
+  return data?.length ? toAdminPasskey(data[data.length - 1]) : null;
 }
-
-/**
- * Save / Update the SuperAdmin Passkey in Supabase
- */
-export async function saveAdminPasskey(passkey: AdminPasskeyRecord): Promise<boolean> {
-  try {
-    const rates = await fetchSystemRates();
-    rates.admin_passkey = passkey;
-    return await saveSystemRates(rates);
-  } catch (err) {
-    console.error('Failed to save passkey in Supabase:', err);
-    return false;
-  }
+export async function removeAdminPasskey(passkeyId?: string): Promise<boolean> {
+  if (!passkeyId) throw new Error('Select a registered passkey to revoke.');
+  const { error } = await supabaseAdmin.auth.passkey.delete({ passkeyId });
+  if (error) throw passkeyError(error);
+  return true;
 }
-
-/**
- * Remove / Revoke the SuperAdmin Passkey from Supabase
- */
-export async function removeAdminPasskey(): Promise<boolean> {
-  try {
-    const rates = await fetchSystemRates();
-    delete rates.admin_passkey;
-    return await saveSystemRates(rates);
-  } catch (err) {
-    console.error('Failed to remove passkey from Supabase:', err);
-    return false;
-  }
+export async function registerWebAuthnPasskey(deviceLabel: string): Promise<AdminPasskeyRecord> {
+  if (!window.PublicKeyCredential) throw new Error('Passkeys are not supported by this browser.');
+  // The server issues a challenge and verifies attestation before persisting the key.
+  const { data, error } = await supabaseAdmin.auth.registerPasskey();
+  if (error) throw passkeyError(error);
+  if (!data) throw new Error('Passkey registration was not confirmed by Supabase.');
+  const label = deviceLabel.trim().slice(0, 120) || 'Hardware Passkey';
+  const renamed = await supabaseAdmin.auth.passkey.update({ passkeyId: data.id, friendlyName: label });
+  // Registration already succeeded even if the optional label update fails.
+  return toAdminPasskey(renamed.data || data);
 }
-
-/**
- * Register a new Hardware Biometric Passkey using WebAuthn standard
- */
-export async function registerWebAuthnPasskey(deviceLabel: string): Promise<AdminPasskeyRecord | null> {
-  if (typeof window === 'undefined' || !window.PublicKeyCredential) {
-    throw new Error('WebAuthn biometrics is not supported on this browser or platform.');
+export async function verifyWebAuthnPasskey(_registeredPasskey?: AdminPasskeyRecord | null, captchaToken?: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.auth.signInWithPasskey({ options: { captchaToken } });
+  if (error) throw passkeyError(error);
+  const { data: verified, error: userError } = await supabaseAdmin.auth.getUser();
+  if (userError || !data.session || verified.user?.app_metadata?.role !== 'admin') {
+    await supabaseAdmin.auth.signOut({ scope: 'local' });
+    throw new Error('This account does not have administrator access.');
   }
-
-  const challenge = new Uint8Array(32);
-  window.crypto.getRandomValues(challenge);
-
-  const userId = new Uint8Array(16);
-  window.crypto.getRandomValues(userId);
-
-  const createOptions: CredentialCreationOptions = {
-    publicKey: {
-      challenge,
-      rp: {
-        name: 'AsperSDE SuperAdmin Security',
-        id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
-      },
-      user: {
-        id: userId,
-        name: 'Administrator',
-        displayName: 'MD ALAM RAHMAN (SuperAdmin)'
-      },
-      pubKeyCredParams: [
-        { alg: -7, type: 'public-key' },
-        { alg: -257, type: 'public-key' }
-      ],
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'preferred',
-        residentKey: 'preferred'
-      },
-      timeout: 60000,
-      attestation: 'none'
-    }
-  };
-
-  const credential = (await navigator.credentials.create(createOptions)) as PublicKeyCredential;
-  if (!credential) return null;
-
-  const rawIdBytes = new Uint8Array(credential.rawId);
-  let binary = '';
-  for (let i = 0; i < rawIdBytes.byteLength; i++) {
-    binary += String.fromCharCode(rawIdBytes[i]);
-  }
-  const credentialId = btoa(binary);
-
-  const passkeyRecord: AdminPasskeyRecord = {
-    credentialId,
-    deviceLabel: deviceLabel || 'Hardware Passkey (Windows Hello / Touch ID / Face ID)',
-    registeredAt: Date.now()
-  };
-
-  const saved = await saveAdminPasskey(passkeyRecord);
-  if (!saved) {
-    throw new Error('Passkey created but failed to persist to Supabase.');
-  }
-
-  return passkeyRecord;
-}
-
-/**
- * Authenticate using WebAuthn Hardware Passkey
- */
-export async function verifyWebAuthnPasskey(registeredPasskey?: AdminPasskeyRecord | null): Promise<boolean> {
-  if (typeof window === 'undefined' || !window.PublicKeyCredential) {
-    throw new Error('WebAuthn biometrics is not supported on this browser.');
-  }
-
-  const challenge = new Uint8Array(32);
-  window.crypto.getRandomValues(challenge);
-
-  let allowCredentials: PublicKeyCredentialDescriptor[] | undefined = undefined;
-  if (registeredPasskey?.credentialId) {
-    try {
-      const binary = atob(registeredPasskey.credentialId);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      allowCredentials = [
-        {
-          id: bytes,
-          type: 'public-key'
-        }
-      ];
-    } catch {}
-  }
-
-  const requestOptions: CredentialRequestOptions = {
-    publicKey: {
-      challenge,
-      rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
-      userVerification: 'preferred',
-      timeout: 60000,
-      allowCredentials
-    }
-  };
-
-  const assertion = await navigator.credentials.get(requestOptions);
-  return !!assertion;
+  return true;
 }
 
 /**

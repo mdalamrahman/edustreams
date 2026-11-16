@@ -1,7 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, Mail, ShieldCheck } from 'lucide-react';
 import { AdminCaptcha } from './AdminCaptcha';
-import { supabaseAdmin } from './lib/supabaseAdminClient';
+import { supabaseAdmin, verifyWebAuthnPasskey } from './lib/supabaseAdminClient';
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const [allowed, setAllowed] = useState(false);
@@ -65,6 +65,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setPending(false);
     }
   }
+  async function signInWithPasskey() {
+    if (pending || !captchaToken) return;
+    setPending(true); setHasError(false); setMessage('');
+    try {
+      await verifyWebAuthnPasskey(null, captchaToken);
+      setAllowed(true);
+    } catch (error) {
+      setHasError(true);
+      setMessage(error instanceof Error ? error.message : 'Passkey sign-in failed. Try email sign-in.');
+    } finally {
+      setPending(false); setCaptchaToken(''); setCaptchaAttempt(value => value + 1);
+    }
+  }
   if (allowed) return <>{children}</>;
   return <main className="min-h-screen w-full flex items-center justify-center bg-slate-950 px-4 py-12 text-slate-100 font-sans">
     <section className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-9 shadow-2xl" aria-labelledby="admin-sign-in-heading">
@@ -81,6 +94,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         </div>
         {sent && <div><label htmlFor="admin-code" className="mb-2 block text-sm font-semibold text-slate-200">Verification code</label><input id="admin-code" required autoComplete="one-time-code" inputMode="numeric" autoFocus disabled={pending} value={code} onChange={e => setCode(e.target.value)} placeholder="Enter your email code" className="min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-base text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400" /></div>}
         {!sent && <AdminCaptcha key={captchaAttempt} onToken={setCaptchaToken} />}
+        {!sent && <button type="button" onClick={() => { void signInWithPasskey(); }} disabled={pending || !captchaToken} className="min-h-12 w-full rounded-xl border border-indigo-400 px-4 py-3 text-sm font-bold text-indigo-200 disabled:opacity-60">Sign in with a passkey</button>}
         {message && <p role={hasError ? 'alert' : 'status'} className={`rounded-xl border p-3 text-sm leading-6 ${hasError ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-200'}`}>{message}</p>}
         <button disabled={pending || (!sent && !captchaToken)} type="submit" className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-wait disabled:opacity-60">{pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}{pending ? 'Please wait…' : sent ? 'Verify and sign in' : 'Send sign-in email'}{!pending && <ArrowRight className="h-4 w-4" aria-hidden="true" />}</button>
         {sent && <button type="button" disabled={pending} onClick={() => { setSent(false); setCode(''); setMessage(''); setHasError(false); }} className="flex w-full items-center justify-center gap-2 py-2 text-sm text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" aria-hidden="true" />Use a different email</button>}

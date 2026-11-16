@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { expect, test, Page } from '@playwright/test';
 
 async function mockServices(page: Page) {
@@ -164,4 +165,102 @@ test('Admin CAPTCHA script failure can be retried without sending an OTP', async
   await expect(page.getByRole('alert')).toContainText('Security verification failed');
   await expect(page.getByRole('button', { name: 'Send sign-in email' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Retry security verification' })).toBeVisible();
+});
+
+
+async function openPasskeyVault(page: Page) {
+  const user = { id: '00000000-0000-4000-8000-000000000002', email: 'admin@example.com', aud: 'authenticated', created_at: new Date().toISOString(), app_metadata: { role: 'admin' }, user_metadata: {} };
+  const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'test-signature'].join('.');
+  await page.addInitScript(session => localStorage.setItem('sb-preview-test-auth-token', JSON.stringify(session)), { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'test-refresh', user });
+  await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
+  await page.goto('http://localhost:4174');
+  await page.getByRole('button', { name: 'Passkey Security' }).click();
+}
+
+test('Passkey registration uses server challenge and verified Auth persistence', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const record = { id: '00000000-0000-4000-8000-000000000003', created_at: new Date().toISOString(), friendly_name: 'Work laptop' };
+  let registered = false;
+  let verified = false;
+  await page.route('**/auth/v1/passkeys**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/registration/options')) return route.fulfill({ json: { challenge_id: 'test-challenge', options: { challenge: Buffer.alloc(32, 7).toString('base64url'), rp: { id: 'localhost', name: 'Test admin' }, user: { id: Buffer.alloc(16, 1).toString('base64url'), name: 'admin@example.com', displayName: 'Administrator' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }], authenticatorSelection: { residentKey: 'required', userVerification: 'required' } } } });
+    if (path.endsWith('/registration/verify')) {
+      const body = request.postDataJSON();
+      expect(body.challenge_id).toBe('test-challenge');
+      expect(body.credential.response.attestationObject).toBeTruthy();
+      verified = true; registered = true;
+      return route.fulfill({ json: record });
+    }
+    if (request.method() === 'PATCH') {
+      expect(verified).toBe(true);
+      expect(request.postDataJSON().friendly_name).toBe('SuperAdmin Hardware Authenticator');
+      return route.fulfill({ json: record });
+    }
+    if (request.method() === 'DELETE') { registered = false; return route.fulfill({ status: 204 }); }
+    return route.fulfill({ json: registered ? [record] : [] });
+  });
+  await openPasskeyVault(page);
+  await page.getByRole('button', { name: 'Register Hardware Passkey', exact: true }).click();
+  await expect(page.getByText('Hardware passkey registered and verified by Supabase Auth.')).toBeVisible();
+  expect(verified).toBe(true);
+  await page.reload();
+  await page.getByRole('button', { name: 'Passkey Security' }).click();
+  await expect(page.getByText('Work laptop', { exact: true })).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Revoke', exact: true }).click();
+  await expect(page.getByText('Selected passkey revoked from your Supabase Auth account.')).toBeVisible();
+  await expect(page.getByText('No Passkey Configured', { exact: true })).toBeVisible();
+});
+
+test('Disabled passkey service reports setup requirements before creating a device credential', async ({ page }) => {
+  await page.route('**/auth/v1/passkeys**', route => route.fulfill({ status: 400, json: { code: 'passkey_disabled', error_code: 'passkey_disabled', msg: 'Passkeys disabled' } }));
+  await openPasskeyVault(page);
+  await page.getByRole('button', { name: 'Register Hardware Passkey', exact: true }).click();
+  await expect(page.getByText(/Enable passkey authentication in Supabase Authentication/)).toBeVisible();
+  await expect(page.getByText('No Passkey Configured', { exact: true })).toBeVisible();
+});
+
+test('Failed passkey revocation keeps the registered device visible', async ({ page }) => {
+  await page.route('**/auth/v1/passkeys**', route => route.request().method() === 'DELETE'
+    ? route.fulfill({ status: 403, json: { msg: 'Revocation rejected' } })
+    : route.fulfill({ json: [{ id: 'test-passkey', friendly_name: 'Retained device', created_at: new Date().toISOString() }] }));
+  await openPasskeyVault(page);
+  await expect(page.getByText('Retained device', { exact: true })).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Revoke', exact: true }).click();
+  await expect(page.getByText('Revocation rejected', { exact: true })).toBeVisible();
+  await expect(page.getByText('Retained device', { exact: true })).toBeVisible();
+});
+
+
+test('Passkey sign-in verifies the server role and rejects a student account', async ({ page }) => {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const credentialId = Buffer.alloc(32, 3);
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  await cdp.send('WebAuthn.addCredential', { authenticatorId, credential: { credentialId: credentialId.toString('base64'), isResidentCredential: true, rpId: 'localhost', privateKey: privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64'), userHandle: Buffer.alloc(16, 1).toString('base64'), signCount: 0 } });
+  const user = { id: 'student-id', email: 'student@example.com', aud: 'authenticated', created_at: new Date().toISOString(), app_metadata: { role: 'student' }, user_metadata: {} };
+  const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now()/1000)+3600 })).toString('base64url'), 'test-signature'].join('.');
+  let assertionVerified = false;
+  await page.route('**/auth/v1/passkeys/authentication/options', route => {
+    expect(route.request().postDataJSON().gotrue_meta_security.captcha_token).toBe('test-captcha-token');
+    return route.fulfill({ json: { challenge_id: 'login-challenge', options: { challenge: Buffer.alloc(32, 8).toString('base64url'), rpId: 'localhost', allowCredentials: [{ id: credentialId.toString('base64url'), type: 'public-key' }], userVerification: 'required' } } });
+  });
+  await page.route('**/auth/v1/passkeys/authentication/verify', route => {
+    expect(route.request().postDataJSON().credential.response.signature).toBeTruthy();
+    assertionVerified = true;
+    return route.fulfill({ json: { access_token: token, refresh_token: 'student-refresh', expires_in: 3600, token_type: 'bearer', user } });
+  });
+  await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
+  await page.goto('http://localhost:4174');
+  await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
+  await expect(page.getByRole('alert')).toContainText('does not have administrator access');
+  expect(assertionVerified).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AsperSDE SuperAdmin Control' })).toHaveCount(0);
 });

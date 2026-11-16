@@ -52,6 +52,15 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await self.request('/api/health', origin='https://evil.example.com'))[0], 403)
             self.assertEqual((await self.request('/api/health', origin='https://student.example.com'))[1][b'access-control-allow-origin'], b'https://student.example.com')
 
+    async def test_admin_database_preflight_allows_postgrest_headers(self):
+        with patch.dict(os.environ, {'ALLOWED_ORIGINS': 'https://admin.example.com'}):
+            status, headers = await self.request('/api/admin/supabase/rest/v1/user_dsa_progress', method='OPTIONS', origin='https://admin.example.com')
+            self.assertEqual(status, 204)
+            permitted = headers[b'access-control-allow-headers'].decode().lower()
+            for name in ('prefer', 'cache-control', 'pragma', 'accept-profile', 'content-profile'):
+                self.assertIn(name, permitted)
+            self.assertEqual((await self.request('/api/admin/supabase/rest/v1/user_dsa_progress', token='student'))[0], 403)
+
     async def test_unauthenticated_mutation_and_stream_blocked(self):
         for path in ['/api/problem/example/upload', '/api/provider/groq/chat/completions', '/stream/-100/42']:
             self.assertEqual((await self.request(path, 'POST'))[0], 401)

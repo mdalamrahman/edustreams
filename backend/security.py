@@ -41,7 +41,7 @@ class SecurityMiddleware:
             if origin in allowed:
                 response_headers += [(b'access-control-allow-origin', origin.encode()),
                                      (b'access-control-allow-methods', b'GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS'),
-                                     (b'access-control-allow-headers', b'Authorization, Content-Type, Range, Idempotency-Key')]
+                                     (b'access-control-allow-headers', b'Authorization, Content-Type, Range, Idempotency-Key, Prefer, Accept-Profile, Content-Profile, Cache-Control, Pragma')]
             await send({'type': 'http.response.start', 'status': 204, 'headers': response_headers})
             return await send({'type': 'http.response.body', 'body': b''})
 

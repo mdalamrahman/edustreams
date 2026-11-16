@@ -387,6 +387,7 @@ curl -I https://sdetube.pages.dev/api/potd/leetcode
 These requirements supersede older implementation descriptions above where they differ. See `SECURITY.md`, `security_best_practices_report.md`, and `edustream-threat-model.md` for release steps and remaining risks.
 
 - Keep Vercel for the admin portal, Cloudflare Pages for students, and Render for FastAPI. Configure Vercel `BACKEND_URL`, Pages `RENDER_BACKEND_URL`, and the public browser values shown in `.env.example`; do not embed deployment URLs or private credentials in application code.
+- Admin passkeys use Supabase Auth WebAuthn challenge/verification, never credential IDs in shared rates or local browser flags. Enable passkeys in Supabase and configure the stable admin hostname as RP ID and HTTPS origin. Legacy device registrations must be registered again.
 - Admin email sign-in requires Cloudflare Turnstile. Configure `VITE_TURNSTILE_SITE_KEY` in the admin build and allow its production hostname in the widget; pass fresh tokens to Supabase OTP and keep CAPTCHA protection enabled.
 - All privileged actions require a server-verified Supabase bearer session and server-controlled `app_metadata.role = "admin"`. Browser flags, editable user metadata, invitation codes and localStorage are not authorization. Administrators sign in with Supabase email OTP.
 - AI and privileged database calls go through authenticated backend proxies. Public browser keys remain subject to RLS. Apply the supplied security migration before releasing these changes; review other live policies for permissive grants.
