@@ -1951,16 +1951,10 @@ export const LeetCodeSQLWorkspaceModal: React.FC<LeetCodeSQLWorkspaceModalProps>
         onClose={() => setIsReportTestCaseOpen(false)}
         problemTitle={sqlProblem.title || cleanTitle}
         problemSlug={toSlug(sqlProblem.title || cleanTitle)}
-        problemStatement={sqlProblem.description}
-        methodSignature={sqlProblem.setupSql}
-        testCaseIndex={reportTestCaseIdx}
         currentInput={currentTestCase?.tables?.map(t => `${t.tableName}:\n${t.schema.map(c => c.column).join('\t')}\n` + t.rows.map(r => r.join('\t')).join('\n')).join('\n\n') || sqlProblem.setupSql}
         currentExpectedOutput={judgeResult ? JSON.stringify(judgeResult.expectedRows || []) : ''}
         userActualOutput={judgeResult ? JSON.stringify(judgeResult.rows || judgeResult.errorMessage || '') : undefined}
         language="sql"
-        onApplyTestCaseCorrection={(correctedInput, correctedExpected) => {
-          // SQL testcase correction handled
-        }}
       />
 
 

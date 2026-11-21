@@ -1027,9 +1027,10 @@ async def add_cors_and_caching_headers_middleware(request: Request, call_next):
             is_billing = request.url.path.startswith(('/api/billing/', '/api/bounty/'))
             is_repair = request.url.path.endswith(('/correct-driver', '/correct-testcase')) or (
                 request.method == 'POST' and request.url.path.startswith('/api/problem/') and '/driver/' in request.url.path)
-            if ledger_key and response.status_code < 300 and (is_billing or is_repair):
+            is_report_write = request.method == 'POST' and request.url.path.startswith(('/api/problem-reports', '/api/admin/bounties/'))
+            if ledger_key and response.status_code < 300 and (is_billing or is_repair or is_report_write):
                 from billing_restore import persist_ledger
-                persist_ledger(SQLITE_DB_PATH, r2_storage, ledger_key)
+                await asyncio.to_thread(persist_ledger, SQLITE_DB_PATH, r2_storage, ledger_key)
         except Exception as exc:
             print(f"[Unhandled Exception] {exc}")
             response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
@@ -3585,29 +3586,8 @@ async def correct_problem_driver_code(slug: str, payload: CorrectDriverPayload):
                 _PROBLEM_CACHE[clean_slug]["solutions"] = {}
             _PROBLEM_CACHE[clean_slug]["solutions"][clean_lang] = solution_code
 
-    # 4. Auto-credit ₹1.00 bounty to user's wallet if email provided (once per user per problem+lang)
-    credited = False
-    new_balance = None
-    already_claimed = False
-    if payload.email:
-        try:
-            clean_email = (payload.email or "").lower().strip()
-            bounty_key = f"driver-{clean_lang}"
-            already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
-            if not already_claimed:
-                credit_res = approve_bounty_reward(clean_email, clean_slug, bounty_key)
-                if credit_res.get("rewardedAmount", 0) > 0:
-                    credited = True
-                    new_balance = credit_res.get("newBalance")
-        except Exception as e:
-            print(f"[Credit Driver Bounty Error]: {e}")
-
-    if already_claimed:
-        message = f"Boilerplate code for {clean_lang.upper()} corrected in Cloudflare R2! (Bounty already claimed for this problem.)"
-    elif credited:
-        message = f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2! ₹1.00 has been credited to your balance."
-    else:
-        message = f"Boilerplate code & solution for {clean_lang.upper()} were successfully corrected and replaced in Cloudflare R2!"
+    credited, new_balance, already_claimed = False, None, False
+    message = f"Boilerplate code for {clean_lang.upper()} corrected. Bounties are reviewed in the admin queue."
 
     return {
         "success": True,
@@ -3636,28 +3616,8 @@ async def save_problem_driver_code(slug: str, lang: str, req: Request):
         email = body.get("email")
         if driver_code:
             stored = r2_storage.save_driver_to_problem(clean_slug, clean_lang, driver_code)
-            credited = False
-            new_balance = None
-            already_claimed = False
-            if email:
-                try:
-                    clean_email = (email or "").lower().strip()
-                    bounty_key = f"driver-{clean_lang}"
-                    already_claimed = has_claimed_bounty(clean_email, clean_slug, bounty_key)
-                    if not already_claimed:
-                        credit_res = approve_bounty_reward(clean_email, clean_slug, bounty_key)
-                        if credit_res.get("rewardedAmount", 0) > 0:
-                            credited = True
-                            new_balance = credit_res.get("newBalance")
-                except Exception as e:
-                    print(f"[Credit Driver Bounty Error]: {e}")
-
-            if already_claimed:
-                message = f"Driver harness for {clean_lang.upper()} updated in R2! (Bounty already claimed for this problem.)"
-            elif credited:
-                message = f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2! ₹1.00 has been credited to your balance."
-            else:
-                message = f"Driver harness for {clean_lang.upper()} was successfully updated in Cloudflare R2!"
+            credited, new_balance, already_claimed = False, None, False
+            message = f"Driver harness for {clean_lang.upper()} saved. Bounties are reviewed in the admin queue."
             return {
                 "success": True,
                 "slug": clean_slug,
@@ -3691,118 +3651,80 @@ async def delete_all_problem_drivers(slug: str):
 
 
 class ProblemReportPayload(BaseModel):
-    id: Optional[str] = None
-    slug: str
-    problemTitle: Optional[str] = ""
-    issueType: str  # 'testcases' | 'driver' | 'solution' | 'problem'
-    note: Optional[str] = ""
-    language: Optional[str] = "cpp"
-    studentCode: Optional[str] = ""
-    testInput: Optional[str] = ""
-    expectedOutput: Optional[str] = ""
-    status: Optional[str] = "open"  # 'open' | 'auto_healed' | 'resolved'
-    autoHealDetails: Optional[str] = ""
-    timestamp: Optional[str] = None
-    userEmail: Optional[str] = None
+    slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,179}$")
+    problemTitle: str = Field(max_length=220)
+    issueType: Literal["testcase", "driver", "problem", "solution"]
+    language: Literal["cpp", "python", "java", "javascript", "go", "rust", "sql"]
+    note: str = Field(max_length=2000)
+    studentCode: str = Field(default="", max_length=6000)
+    testInput: str = Field(default="", max_length=3000)
+    expectedOutput: str = Field(default="", max_length=3000)
+    actualOutput: str = Field(default="", max_length=3000)
+    executionError: str = Field(default="", max_length=3000)
+    requestId: str | None = Field(default=None, max_length=64)
 
-_PROBLEM_REPORTS_CACHE: List[dict] = []
-_REPORTS_LOADED = False
 
-def _ensure_reports_loaded():
-    global _PROBLEM_REPORTS_CACHE, _REPORTS_LOADED
-    if not _REPORTS_LOADED:
-        try:
-            stored = r2_storage.fetch_json("reports/all_reports.json")
-            if isinstance(stored, list):
-                _PROBLEM_REPORTS_CACHE = stored
-            elif isinstance(stored, dict) and "reports" in stored:
-                _PROBLEM_REPORTS_CACHE = stored["reports"]
-        except Exception as e:
-            print(f"[R2 Reports Load Notice]: {e}")
-        _REPORTS_LOADED = True
+class BountyDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: str = Field(min_length=1, max_length=2000)
 
-@app.post("/api/problem-reports")
-async def create_problem_report(payload: ProblemReportPayload):
-    """
-    Logs an issue report for a problem.
-    If issueType is 'testcases' or 'driver', it can be auto-healed.
-    If 'solution' or 'problem', it is saved for admin review in Admin Portal.
-    """
-    _ensure_reports_loaded()
-    rep_id = payload.id or f"rep_{int(time.time() * 1000)}"
-    ts = payload.timestamp or datetime.utcnow().isoformat() + "Z"
-    
-    clean_slug = re.sub(r'[^a-z0-9]+', '-', payload.slug.lower()).strip('-')
-    report_dict = {
-        "id": rep_id,
-        "slug": clean_slug,
-        "problemTitle": payload.problemTitle or clean_slug,
-        "issueType": payload.issueType,
-        "note": payload.note or "",
-        "language": payload.language or "cpp",
-        "studentCode": (payload.studentCode or "")[:5000],
-        "testInput": payload.testInput or "",
-        "expectedOutput": payload.expectedOutput or "",
-        "status": payload.status or "open",
-        "autoHealDetails": payload.autoHealDetails or "",
-        "timestamp": ts,
-        "userEmail": payload.userEmail or "student@sdetube.io"
-    }
 
-    _PROBLEM_REPORTS_CACHE.insert(0, report_dict)
-    if len(_PROBLEM_REPORTS_CACHE) > 500:
-        _PROBLEM_REPORTS_CACHE.pop()
+@app.post("/api/problem-reports", status_code=201)
+async def create_problem_report(payload: ProblemReportPayload, request: Request):
+    from bounty_review import create_report
 
+    data = payload.model_dump(exclude={"requestId", "slug", "issueType"})
+    data["note"] = data["note"].strip()
+    if not data["note"]:
+        raise HTTPException(422, "Describe the issue and how to reproduce it")
     try:
-        r2_storage.upload_json(f"reports/{rep_id}.json", report_dict)
-        r2_storage.upload_json("reports/all_reports.json", _PROBLEM_REPORTS_CACHE)
-    except Exception as e:
-        print(f"[R2 Report Save Error]: {e}")
+        report = await asyncio.to_thread(create_report, SQLITE_DB_PATH, request.state.user, payload.slug, payload.issueType, data, payload.requestId)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    return {"success": True, "id": report["id"], "status": report["status"]}
 
-    return {
-        "success": True,
-        "id": rep_id,
-        "status": report_dict["status"],
-        "message": "Report logged successfully in Admin Portal"
-    }
 
 @app.get("/api/problem-reports")
-async def get_problem_reports():
-    """Returns all student problem issue reports for Admin Portal."""
-    _ensure_reports_loaded()
-    return {
-        "success": True,
-        "reports": _PROBLEM_REPORTS_CACHE,
-        "total": len(_PROBLEM_REPORTS_CACHE)
-    }
+@app.get("/api/admin/bounties")
+async def get_problem_reports(status: Literal["pending", "approved", "rejected", "duplicate", "all", "legacy"] = "pending", offset: int = 0, limit: int = 15):
+    from bounty_review import list_reports
+    from wallet_ledger import BOUNTY_REWARD
+
+    if not 0 <= offset <= 100_000 or not 1 <= limit <= 50:
+        raise HTTPException(422, "Invalid report pagination")
+    if status == "legacy":
+        stored = await asyncio.to_thread(r2_storage.fetch_json, "reports/all_reports.json")
+        archive = stored if isinstance(stored, list) else stored.get("reports", []) if isinstance(stored, dict) else []
+        archive = [item for item in archive if isinstance(item, dict)] if isinstance(archive, list) else []
+        reports = [{**item, "status": "legacy", "archivedStatus": item.get("status"), "rewardedAmount": 0}
+                   for item in archive[offset:offset + limit]]
+        return {"success": True, "reports": reports, "total": len(archive), "rewardAmount": BOUNTY_REWARD}
+    result = await asyncio.to_thread(list_reports, SQLITE_DB_PATH, None if status == "all" else status, limit, offset)
+    return {"success": True, **result, "rewardAmount": BOUNTY_REWARD}
+
 
 @app.post("/api/problem-reports/{report_id}/resolve")
-async def resolve_problem_report(report_id: str, req: Request):
-    """Marks a student problem report as resolved."""
-    _ensure_reports_loaded()
-    body = {}
+@app.post("/api/admin/bounties/{report_id}/review")
+async def resolve_problem_report(report_id: str, payload: BountyDecision, request: Request):
+    from bounty_review import review_report, pending_wallet_recipient
+
+    note = payload.note.strip()
+    if not note:
+        raise HTTPException(422, "Provide verification or rejection notes")
     try:
-        body = await req.json()
-    except Exception:
-        pass
-    
-    resolution_note = body.get("resolutionNote", "Resolved by Admin")
-    found = False
-    for rep in _PROBLEM_REPORTS_CACHE:
-        if rep.get("id") == report_id:
-            rep["status"] = "resolved"
-            rep["resolvedAt"] = datetime.utcnow().isoformat() + "Z"
-            rep["resolutionNote"] = resolution_note
-            found = True
-            break
-
-    if found:
-        try:
-            r2_storage.upload_json("reports/all_reports.json", _PROBLEM_REPORTS_CACHE)
-        except Exception as e:
-            print(f"[R2 Reports Save Error]: {e}")
-
-    return {"success": found, "reportId": report_id, "status": "resolved"}
+        actor = request.state.user
+        if payload.decision == "approve":
+            recipient = await asyncio.to_thread(pending_wallet_recipient, SQLITE_DB_PATH, report_id, actor)
+            if recipient:
+                await asyncio.to_thread(get_or_create_wallet_db, recipient, False)
+        report = await asyncio.to_thread(review_report, SQLITE_DB_PATH, report_id, actor, payload.decision, note)
+    except PermissionError as error:
+        raise HTTPException(403, str(error)) from error
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error
+    return {"success": True, "report": report}
 
 
 class VerifyTestCasePayload(BaseModel):
@@ -4136,29 +4058,8 @@ async def apply_problem_testcase_correction(slug: str, payload: CorrectTestCaseP
     _PROBLEM_CACHE[clean_slug] = problem
     r2_storage.upload_problem(clean_slug, problem)
 
-    # Auto-credit ₹1.00 bounty to user's wallet if email provided (once per user per problem)
-    credited = False
-    new_balance = None
-    already_claimed = False
-    if payload.email:
-        try:
-            clean_email = (payload.email or "").lower().strip()
-            already_claimed = has_claimed_bounty(clean_email, clean_slug, "testcase")
-            if not already_claimed:
-                # Atomically record claim with defect lock key then credit — avoids Sybil farming & double-credit
-                credit_res = approve_bounty_reward(clean_email, clean_slug, "testcase", str(payload.correctedInput))
-                if credit_res.get("rewardedAmount", 0) > 0:
-                    credited = True
-                    new_balance = credit_res.get("newBalance")
-        except Exception as e:
-            print(f"[Credit Bounty Error]: {e}")
-
-    if already_claimed:
-        message = "Your reported issue was found correct! It has been resolved. (Bounty already claimed for this problem.) Please resubmit to verify the fix."
-    elif credited:
-        message = "Your reported issue was found correct! It has been resolved. ₹1 has been credited to your balance. Please resubmit to resolve the issue."
-    else:
-        message = "Your reported issue was found correct! It has been resolved. Please resubmit to resolve the issue."
+    credited, new_balance, already_claimed = False, None, False
+    message = "Test case correction saved. Bounties are reviewed in the admin queue."
 
     return {
         "success": True,
@@ -7573,7 +7474,7 @@ def save_wallet_to_cloud(wallet: dict):
         print(f"[R2 Save Wallet Notice]: {e}")
 
 
-def get_or_create_wallet_db(email: str) -> dict:
+def get_or_create_wallet_db(email: str, charge_daily: bool = True) -> dict:
     clean_email = (email or "").strip().lower()
     if not clean_email:
         clean_email = "student@edustream.io"
@@ -7605,7 +7506,7 @@ def get_or_create_wallet_db(email: str) -> dict:
             viewed_ids = []
             
         # Check daily platform charge (₹1.00)
-        if last_daily_charge != today_str:
+        if charge_daily and last_daily_charge != today_str:
             if balance >= 1.0:
                 balance = round(balance - 1.0, 4)
                 cursor.execute("""
@@ -7699,38 +7600,6 @@ class CreditCreditsPayload(BaseModel):
     description: str = "🎉 Verified Issue Report Bounty"
 
 
-class BountyClaimRequest(BaseModel):
-    problem_slug: str
-    category: str = "testcase"
-    test_input: str = ""
-    proposed_expected_output: str = ""
-    email: Optional[str] = None
-    problem_title: Optional[str] = None
-
-
-def has_claimed_bounty(email: str, slug: str, bounty_type: str = None) -> bool:
-    """Returns True if the user has already claimed a bounty for this problem (1 bounty per problem per user)."""
-    try:
-        conn = get_sqlite_conn()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? LIMIT 1",
-            (email.lower().strip(), slug.lower().strip())
-        )
-        row = cursor.fetchone()
-        conn.close()
-        return row is not None
-    except Exception as e:
-        print(f"[BountyCheck Notice]: {e}")
-        return False
-
-
-def approve_bounty_reward(email: str, slug: str, category: str, test_input: str = "") -> dict:
-    from wallet_ledger import award_bounty
-    get_or_create_wallet_db(email)
-    return award_bounty(SQLITE_DB_PATH, email, slug, category, test_input)
-
-
 def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_BOUNTY", description: str = "Verified report reward") -> dict:
     from wallet_ledger import change_balance
     clean_email = email.strip().lower()
@@ -7739,12 +7608,8 @@ def credit_user_wallet_db(email: str, amount: float = 1.0, category: str = "BUG_
 
 
 @app.post("/api/bounty/claim")
-async def claim_bug_bounty_endpoint(payload: BountyClaimRequest):
-    from wallet_ledger import award_bounty
-    email = payload.email.strip().lower()
-    get_or_create_wallet_db(email)
-    return award_bounty(SQLITE_DB_PATH, email, payload.problem_slug.strip().lower(),
-                        payload.category.strip().lower(), payload.test_input.strip())
+async def claim_bug_bounty_endpoint():
+    raise HTTPException(410, "Approve a submitted report in the administrator bounty queue")
 
 
 @app.post("/api/billing/credit")

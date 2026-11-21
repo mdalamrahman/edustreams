@@ -7,6 +7,7 @@ import tempfile
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from billing_restore import persist_ledger, restore_ledger, restore_billing_snapshot
+from bounty_review import create_report, list_reports
 
 
 class RestoreTests(unittest.TestCase):
@@ -28,15 +29,19 @@ class RestoreTests(unittest.TestCase):
                     'videoAccessPasses': {'video': 100}}], 'transactions': [], 'topups': []}
         self.assertTrue(restore_billing_snapshot(self.path, original))
         self.assertFalse(restore_billing_snapshot(self.path, original))
+        report = create_report(self.path, {'id': '1', 'email': 'student@example.com'},
+                               'two-sum', 'testcase', {'testInput': 'nums = [1, 2]'}, 'snapshot-report')
         class Storage:
             def upload_json(self, key, value): self.value = json.loads(json.dumps(value)); return key
         storage = Storage()
         persist_ledger(self.path, storage, 'private/ledger')
         with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute('DELETE FROM user_wallets')
+            conn.execute('DROP TABLE bounty_reports')
         self.assertTrue(restore_ledger(self.path, storage.value))
         with closing(sqlite3.connect(self.path)) as conn:
             self.assertEqual(conn.execute('SELECT balance FROM user_wallets').fetchone()[0], 8)
+        self.assertEqual(list_reports(self.path, 'pending', 15, 0)['reports'], [report])
 
     def test_durable_upload_failure_is_not_reported_as_success(self):
         class Storage:

@@ -59,6 +59,55 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.post('/api/billing/admin/adjust', json={})).status_code, 401)
         self.assertEqual((await self.client.post('/api/billing/admin/adjust', json={}, headers={'Authorization': 'Bearer student'})).status_code, 403)
 
+    async def test_admin_bounty_review_credits_once_and_ignores_client_identity(self):
+        import asyncio
+        import sqlite3
+
+        student = {'Authorization': 'Bearer student'}
+        admin = {'Authorization': 'Bearer admin'}
+        payload = {'slug': 'bounty-test', 'problemTitle': 'Bounty test', 'issueType': 'testcase',
+                   'language': 'python', 'note': 'The published expectation disagrees with the example.',
+                   'testInput': 'nums = [1, 2]', 'requestId': 'app-report-1',
+                   'status': 'approved', 'rewardedAmount': 100}
+        self.assertEqual((await self.client.get('/api/admin/bounties')).status_code, 401)
+        self.assertEqual((await self.client.get('/api/admin/bounties', headers=student)).status_code, 403)
+        spoof = await self.client.post('/api/problem-reports', headers=student, json={**payload, 'userEmail': 'another@example.com'})
+        self.assertEqual(spoof.status_code, 403)
+        first = await self.client.post('/api/problem-reports', headers=student, json=payload)
+        self.assertEqual(first.status_code, 201, first.text)
+        replay = await self.client.post('/api/problem-reports', headers=student, json=payload)
+        self.assertEqual(first.json(), replay.json())
+        self.assertEqual(first.json()['status'], 'pending')
+        queue = await self.client.get('/api/admin/bounties', headers=admin)
+        [pending] = queue.json()['reports']
+        self.assertEqual(pending['userEmail'], 'student@example.com')
+        self.assertEqual(pending['rewardedAmount'], 0)
+        endpoint = '/api/admin/bounties/' + pending['id'] + '/review'
+        decision = {'decision': 'approve', 'note': 'Reproduced against the canonical example.'}
+        self.assertEqual((await self.client.post(endpoint, headers=student, json=decision)).status_code, 403)
+        self.assertEqual((await self.client.post(endpoint, headers=admin, json={**decision, 'note': ' '})).status_code, 422)
+        results = await asyncio.gather(*(self.client.post(endpoint, headers=admin, json=decision) for _ in range(2)))
+        for result in results:
+            self.assertEqual(result.status_code, 200, result.text)
+            self.assertEqual(result.json()['report']['rewardedAmount'], 1)
+        report, repeated = (result.json()['report'] for result in results)
+        self.assertEqual(report['transactionId'], repeated['transactionId'])
+
+        duplicate = await self.client.post('/api/problem-reports', headers=student, json={
+            **payload, 'testInput': 'nums=[1,2]', 'requestId': 'app-report-2'})
+        resolution = await self.client.post('/api/admin/bounties/' + duplicate.json()['id'] + '/review', headers=admin, json=decision)
+        self.assertEqual(resolution.json()['report']['status'], 'duplicate')
+        with sqlite3.connect(self.main.SQLITE_DB_PATH) as ledger:
+            self.assertEqual(ledger.execute('SELECT amount FROM billing_transactions WHERE id = ? AND user_email = ?',
+                                            (report['transactionId'], 'student@example.com')).fetchone(), (1,))
+
+        with patch.object(self.main.r2_storage, 'fetch_json', return_value=[{'id': 'legacy-rep', 'status': 'open'}]):
+            archive = await self.client.get('/api/admin/bounties?status=legacy', headers=admin)
+        self.assertEqual(archive.json()['reports'], [
+            {'id': 'legacy-rep', 'status': 'legacy', 'archivedStatus': 'open', 'rewardedAmount': 0}])
+        legacy_credit = await self.client.post('/api/admin/bounties/legacy-rep/review', headers=admin, json=decision)
+        self.assertEqual(legacy_credit.status_code, 404)
+
     async def test_routes_have_no_shadowed_method_path_pairs(self):
         import re
         seen = set()

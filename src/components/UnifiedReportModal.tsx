@@ -1,601 +1,79 @@
-import { apiFetch as fetch } from '../lib/apiFetch';
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  RefreshCw,
-  ArrowRight,
-  ShieldCheck,
-  Send,
-  Wand2,
-  Code2,
-  Check,
-  Coins,
-  Cpu,
-  Layers
-} from 'lucide-react';
-import {
-  verifyAndCorrectTestCaseAI,
-  verifyAndCorrectDriverCodeAI,
-  TestCaseVerificationResult,
-  DriverCorrectionResult
-} from '../lib/mistral';
-import { TELEGRAM_BACKEND_URL } from '../lib/telegram';
-import { claimReportBountyServer } from '../lib/billing';
-import { getCurrentStudent } from '../lib/auth';
-import { resolveReferenceSolution } from '../lib/problemService';
-import { executeCode, SupportedLanguage } from '../lib/compiler';
+﻿import { useEffect, useRef, useState } from 'react';
+import { Flag, X } from 'lucide-react';
+import { apiFetch } from '../lib/apiFetch';
+import { repositoryConfig } from '../lib/repositoryConfig';
 
-export interface UnifiedReportModalProps {
+interface ReportProps {
   isOpen: boolean;
   onClose: () => void;
   problemTitle: string;
   problemSlug: string;
-  problemStatement?: string;
   language: string;
-  methodSignature?: string;
-  starterCode?: string;
-  currentDriverCode?: string;
   userCode?: string;
-  testCaseIndex?: number;
   currentInput?: string;
   currentExpectedOutput?: string;
   userActualOutput?: string;
   executionError?: string;
-  allProblemTestCases?: string[];
-  allProblemExpectedOutputs?: string[];
-  onApplyTestCaseCorrection?: (correctedInput: string, correctedExpectedOutput: string) => any;
-  onApplyDriverCorrection?: (correctedDriver: string) => void;
-  onResubmit?: (updatedTemplate?: any) => void;
 }
 
-export const UnifiedReportModal: React.FC<UnifiedReportModalProps> = ({
-  isOpen,
-  onClose,
-  problemTitle,
-  problemSlug,
-  problemStatement = '',
-  language,
-  methodSignature = '',
-  starterCode = '',
-  currentDriverCode = '',
-  userCode = '',
-  testCaseIndex = 0,
-  currentInput = '',
-  currentExpectedOutput = '',
-  userActualOutput = '',
-  executionError = '',
-  allProblemTestCases,
-  allProblemExpectedOutputs,
-  onApplyTestCaseCorrection,
-  onApplyDriverCorrection,
-  onResubmit
-}) => {
-  const [activeTab, setActiveTab] = useState<'auto_diagnose' | 'manual_feedback'>('auto_diagnose');
-  const [issueCategory, setIssueCategory] = useState<'testcase' | 'driver' | 'general'>(() => {
-    if (executionError && executionError.trim().length > 0) return 'driver';
-    return 'testcase';
-  });
+type Category = 'testcase' | 'driver' | 'problem' | 'solution';
 
-  const [userComment, setUserComment] = useState('');
-  const [isDiagnosing, setIsDiagnosing] = useState(false);
-  const [testcaseResult, setTestcaseResult] = useState<TestCaseVerificationResult | null>(null);
-  const [driverResult, setDriverResult] = useState<DriverCorrectionResult | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Correction application state
-  const [isApplying, setIsApplying] = useState(false);
-  const [appliedMessage, setAppliedMessage] = useState<string | null>(null);
-  const [rewardClaimed, setRewardClaimed] = useState(false);
+export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug, language, userCode, currentInput, currentExpectedOutput, userActualOutput, executionError }: ReportProps) {
+  const [category, setCategory] = useState<Category>('problem');
+  const [testInput, setTestInput] = useState('');
+  const [note, setNote] = useState('');
+  const [shareCode, setShareCode] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [reportId, setReportId] = useState('');
+  const [error, setError] = useState('');
+  const requestId = useRef('');
 
   useEffect(() => {
-    if (isOpen) {
-      setUserComment('');
-      setTestcaseResult(null);
-      setDriverResult(null);
-      setErrorMessage(null);
-      setAppliedMessage(null);
-      setRewardClaimed(false);
-
-      if (executionError && executionError.trim().length > 0) {
-        setIssueCategory('driver');
-      } else {
-        setIssueCategory('testcase');
-      }
-    }
-  }, [isOpen, executionError]);
+    if (!isOpen) return;
+    setCategory(executionError ? 'driver' : currentInput ? 'testcase' : 'problem');
+    setTestInput(currentInput || '');
+    setNote('');
+    setShareCode(false);
+    setReportId('');
+    setError('');
+    requestId.current = crypto.randomUUID();
+  }, [isOpen, problemSlug]);
 
   if (!isOpen) return null;
 
-  const activeEmail = getCurrentStudent()?.email || 'student@edustream.io';
-
-  const handleRunDiagnosis = async () => {
-    setIsDiagnosing(true);
-    setErrorMessage(null);
-    setAppliedMessage(null);
-
-    try {
-      if (issueCategory === 'driver') {
-        const result = await verifyAndCorrectDriverCodeAI({
-          problemTitle,
-          slug: problemSlug,
-          language,
-          starterCode: starterCode || methodSignature,
-          currentDriverCode,
-          userCode,
-          sampleTestInput: currentInput,
-          sampleExpectedOutput: currentExpectedOutput,
-          executionError: executionError || userComment
-        });
-
-        if (result && result.correctedDriverCode) {
-          setDriverResult(result);
-          handleApplyDriverFix(result.correctedDriverCode, false);
-        } else {
-          setErrorMessage('AI could not automatically correct the driver harness. Our engineering team has been notified.');
-        }
-      } else {
-        // Fast-path Execution Verification: Run canonical reference solution against currentInput
-        let referenceExecutionOutput: string | null = null;
+  return <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/80 p-4">
+    <section role="dialog" aria-modal="true" aria-labelledby="report-issue-title" className="max-h-[90dvh] w-full max-w-xl overflow-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 text-slate-200 sm:p-6">
+      <header className="flex items-start justify-between gap-3">
+        <div><h2 id="report-issue-title" className="flex items-center gap-2 text-xl font-semibold text-white"><Flag className="h-5 w-5 text-amber-300" />Report an issue</h2><p className="mt-1 text-sm text-slate-400">{problemTitle}</p></div>
+        <button type="button" aria-label="Close report" disabled={pending} onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800"><X className="h-5 w-5" /></button>
+      </header>
+      {reportId ? <div className="mt-5 space-y-3"><p role="status" className="rounded-xl bg-emerald-950/70 p-3 text-emerald-200">Report submitted for review. An approved bounty will be credited to your wallet.</p><p className="break-all text-xs text-slate-400">Report ID {reportId}</p><button onClick={onClose} className="rounded-lg bg-slate-700 px-4 py-2">Done</button></div> : <form className="mt-5 space-y-4" onSubmit={async event => {
+        event.preventDefault();
+        if (pending || !note.trim()) return;
+        setPending(true);
+        setError('');
         try {
-          const normLang = (language || 'python').toLowerCase() as SupportedLanguage;
-          const refSol = await resolveReferenceSolution(
-            problemSlug,
-            problemTitle,
-            normLang,
-            starterCode,
-            undefined,
-            problemStatement
-          );
-          if (refSol && refSol.length > 20) {
-            const execRes = await executeCode(
-              refSol,
-              normLang,
-              currentInput,
-              problemTitle,
-              currentDriverCode
-            );
-            if (execRes && execRes.status === 'SUCCESS' && execRes.stdout && execRes.stdout.trim().length > 0) {
-              referenceExecutionOutput = execRes.stdout.trim();
-            }
-          }
-        } catch (_) {}
-
-        // If reference solution output matches user's output and differs from testsuite expected output:
-        // Then this is 100% mathematical proof of an incorrect testcase expected output!
-        if (
-          referenceExecutionOutput &&
-          userActualOutput &&
-          userActualOutput.trim() === referenceExecutionOutput &&
-          referenceExecutionOutput !== (currentExpectedOutput || '').trim()
-        ) {
-          const resObj: TestCaseVerificationResult = {
-            isIncorrect: true,
-            verdict: 'INCORRECT_EXPECTED',
-            correctedInput: currentInput,
-            correctedExpectedOutput: referenceExecutionOutput,
-            analysis: `Verified by Execution: Canonical reference solution executed on SDETube Sandbox and produced "${referenceExecutionOutput}".`,
-            explanation: `Execution Verification Passed: The official platform reference solution was executed and produced "${referenceExecutionOutput}", which exactly matches your actual output. The testcase expected output ("${currentExpectedOutput}") is verified to be incorrect and has been automatically resolved.`,
-            suggestedAction: 'Verified reference output applied & bounty claimed'
-          };
-          setTestcaseResult(resObj);
-          handleApplyTestCaseFix(currentInput, referenceExecutionOutput, false);
-          setIsDiagnosing(false);
-          return;
-        }
-
-        const noteContext = referenceExecutionOutput
-          ? `${userComment}\n[GROUND_TRUTH_EXECUTION: Official reference solution executed on this input and produced: "${referenceExecutionOutput}"]`
-          : userComment;
-
-        const result = await verifyAndCorrectTestCaseAI({
-          problemTitle,
-          slug: problemSlug,
-          problemStatement,
-          methodSignature,
-          currentInput,
-          currentExpectedOutput,
-          userActualOutput,
-          userNote: noteContext,
-          language,
-          allProblemTestCases,
-          allProblemExpectedOutputs
-        });
-
-        if (result) {
-          setTestcaseResult(result);
-          if (result.isIncorrect && result.correctedExpectedOutput) {
-            handleApplyTestCaseFix(result.correctedInput || currentInput, result.correctedExpectedOutput, false);
-          }
-        } else {
-          setErrorMessage('Could not verify testcase with AI. Please try again or submit manual feedback.');
-        }
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Diagnostic failed. Please check network connection.');
-    } finally {
-      setIsDiagnosing(false);
-    }
-  };
-
-  const handleApplyTestCaseFix = async (correctedIn: string, correctedOut: string, autoClose: boolean = false) => {
-    setIsApplying(true);
-    try {
-      // 1. Apply in UI immediately (never blocked by network errors)
-      let nextTemplate: any = undefined;
-      if (onApplyTestCaseCorrection) {
-        nextTemplate = onApplyTestCaseCorrection(correctedIn, correctedOut);
-      }
-
-      setAppliedMessage(
-        `Issue automatically resolved! Testcase #${testCaseIndex + 1} expected output updated to "${correctedOut}". You can now run or submit again.`
-      );
-
-      // 2. Claim bounty & sync to R2 in the background (failures are non-fatal)
-      claimReportBountyServer(problemSlug, problemTitle, 'testcase', correctedIn, correctedOut, activeEmail)
-        .then(bounty => {
-          if (bounty?.rewardedAmount > 0) {
-            setRewardClaimed(true);
-            setAppliedMessage(
-              `Issue resolved & ₹1.00 bounty credited! Expected output updated to "${correctedOut}". You can now run or submit again.`
-            );
-          }
-        })
-        .catch(() => {});
-
-      const endpoints = [
-        `/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`,
-        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/correct-testcase`
-      ];
-
-      for (const ep of endpoints) {
-        fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            testCaseIndex,
-            correctedInput: correctedIn,
-            correctedExpectedOutput: correctedOut,
-            email: activeEmail,
-            problemTitle
-          })
-        }).catch(() => {});
-      }
-
-      if (autoClose) {
-        setTimeout(() => {
-          onClose();
-          if (onResubmit) onResubmit(nextTemplate);
-        }, 1200);
-      }
-    } catch (err: any) {
-      setErrorMessage('Failed to apply fix: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setIsApplying(false);
-    }
-  };
-
-  const handleApplyDriverFix = async (newDriver: string, autoClose: boolean = false) => {
-    setIsApplying(true);
-    try {
-      // 1. Apply in UI immediately
-      try {
-        localStorage.setItem(`edustream_driver_${problemSlug}_${language}`, newDriver);
-      } catch {}
-
-      if (onApplyDriverCorrection) {
-        onApplyDriverCorrection(newDriver);
-      }
-
-      setAppliedMessage('Driver boilerplate harness updated successfully! You can now recompile and run.');
-
-      // 2. Claim bounty & sync in background
-      claimReportBountyServer(problemSlug, problemTitle, 'driver', '', newDriver, activeEmail)
-        .then(bounty => {
-          if (bounty?.rewardedAmount > 0) {
-            setRewardClaimed(true);
-            setAppliedMessage('Boilerplate updated & ₹1.00 bounty credited! You can now recompile and run.');
-          }
-        })
-        .catch(() => {});
-
-      const endpoints = [
-        `/api/problem/${encodeURIComponent(problemSlug)}/save-driver`,
-        `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(problemSlug)}/save-driver`
-      ];
-
-      for (const ep of endpoints) {
-        fetch(ep, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            language,
-            driverCode: newDriver,
-            email: activeEmail
-          })
-        }).catch(() => {});
-      }
-
-      if (autoClose) {
-        setTimeout(() => {
-          onClose();
-          if (onResubmit) onResubmit();
-        }, 1200);
-      }
-    } catch (err: any) {
-      setErrorMessage('Failed to apply driver fix: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setIsApplying(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl glass-panel rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950/30 shadow-2xl p-6 sm:p-7 overflow-hidden max-h-[92vh] flex flex-col">
-        {/* Glow ambient */}
-        <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full blur-3xl bg-indigo-500/10 pointer-events-none" />
-
-        {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
-              <AlertTriangle className="w-5 h-5 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-100">Report & Auto-Resolve Issue</h3>
-                <span className="px-2 py-0.5 rounded-md bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono text-[10px] uppercase font-bold">
-                  {language}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 line-clamp-1">{problemTitle}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Category Selector */}
-        <div className="flex items-center gap-2 pt-4 flex-shrink-0">
-          <button
-            onClick={() => {
-              setIssueCategory('testcase');
-              setTestcaseResult(null);
-              setDriverResult(null);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              issueCategory === 'testcase'
-                ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 shadow-sm'
-                : 'bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Wand2 className="w-3.5 h-3.5" />
-            <span>Testcase Data Issue</span>
-          </button>
-          <button
-            onClick={() => {
-              setIssueCategory('driver');
-              setTestcaseResult(null);
-              setDriverResult(null);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              issueCategory === 'driver'
-                ? 'bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 shadow-sm'
-                : 'bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span>Driver / Boilerplate Issue</span>
-          </button>
-          <div className="ml-auto flex items-center gap-1 text-[11px] text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-700/50 px-2.5 py-1 rounded-xl">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span>₹1.00 Bounty on Valid Fix</span>
-          </div>
-        </div>
-
-        {/* Body content */}
-        <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1 text-xs">
-          {/* Active Context Card */}
-          <div className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
-            {issueCategory === 'testcase' ? (
-              <>
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="font-semibold text-slate-300">Testcase #{testCaseIndex + 1}</span>
-                  <span className="font-mono text-slate-400 truncate max-w-[200px]">{currentInput}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Current Expected</span>
-                    <span className="text-amber-400 font-bold break-all">{currentExpectedOutput || 'None'}</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Your Actual Output</span>
-                    <span className="text-cyan-400 font-bold break-all">{userActualOutput || 'None'}</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-[11px] text-slate-400">
-                  <span className="font-semibold text-slate-300">Compiler / Boilerplate Harness</span>
-                </div>
-                {executionError && (
-                  <div className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/60 font-mono text-[11px] text-rose-300 break-all max-h-24 overflow-y-auto">
-                    {executionError}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* User note */}
-          <div>
-            <label className="block text-[11px] text-slate-400 font-medium mb-1">
-              Optional Note / Explanation:
-            </label>
-            <input
-              type="text"
-              value={userComment}
-              onChange={(e) => setUserComment(e.target.value)}
-              placeholder={
-                issueCategory === 'testcase'
-                  ? 'e.g. Expected output for this case should be true because...'
-                  : 'e.g. Tree deserialization driver crashes on negative numbers...'
-              }
-              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-slate-200 placeholder:text-slate-500 text-xs focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          {/* Diagnosis Action */}
-          {!testcaseResult && !driverResult && (
-            <button
-              onClick={handleRunDiagnosis}
-              disabled={isDiagnosing}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-60"
-            >
-              {isDiagnosing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Running AI Diagnostics & Verifying...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Diagnose & Fix with AI</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Results: Testcase Result */}
-          {testcaseResult && (
-            <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-3">
-              <div className="flex items-center gap-2 text-indigo-300 font-bold">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Diagnosis Result</span>
-              </div>
-              <p className="text-slate-300 leading-relaxed text-[11px]">{testcaseResult.explanation}</p>
-
-              {testcaseResult.isIncorrect && (
-                <div className="p-3 rounded-xl bg-slate-950 border border-emerald-600/40 font-mono text-[11px] space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-slate-500 block text-[10px] font-bold">AUTOMATICALLY RESOLVED OUTPUT</span>
-                      <span className="text-emerald-400 font-bold text-xs">{testcaseResult.correctedExpectedOutput}</span>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[10px] font-bold">
-                      ✓ Fixed & Applied
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
-                    <button
-                      onClick={() => {
-                        onClose();
-                        if (onResubmit) onResubmit();
-                      }}
-                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                    >
-                      <ArrowRight className="w-3.5 h-3.5" />
-                      <span>Run / Submit Code Now</span>
-                    </button>
-                    <button
-                      onClick={onClose}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
-                    >
-                      Done
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!testcaseResult.isIncorrect && userActualOutput && (
-                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400">
-                  <span>The testcase appears correct. If your code output is intended as an alternative valid representation:</span>
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={() => handleApplyTestCaseFix(currentInput, userActualOutput, true)}
-                      disabled={isApplying}
-                      className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Accept My Output & Run</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Results: Driver Result */}
-          {driverResult && (
-            <div className="p-3.5 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 space-y-3">
-              <div className="flex items-center gap-2 text-cyan-300 font-bold">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-                <span>Driver Harness Fixed</span>
-              </div>
-              <p className="text-slate-300 leading-relaxed text-[11px]">{driverResult.explanation}</p>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/60 text-cyan-300 text-[10px] font-bold">
-                  ✓ Boilerplate Updated
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      onClose();
-                      if (onResubmit) onResubmit();
-                    }}
-                    className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 shadow transition-all cursor-pointer"
-                  >
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    <span>Recompile & Run Now</span>
-                  </button>
-                  <button
-                    onClick={onClose}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all cursor-pointer"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {errorMessage && (
-            <div className="p-2.5 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
-              <XCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Applied Success */}
-          {appliedMessage && (
-            <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-600 text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-              <span>{appliedMessage}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
-          <span>SDETube Self-Healing Diagnostic Engine</span>
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+          const attachesRun = testInput.trim() === (currentInput || '').trim();
+          const response = await apiFetch(`${repositoryConfig.backendUrl}/api/problem-reports`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(30000),
+            body: JSON.stringify({ slug: problemSlug, problemTitle: problemTitle.slice(0, 220), issueType: category, language, note: note.trim(), requestId: requestId.current,
+              testInput: testInput.slice(0, 3000), expectedOutput: attachesRun ? (currentExpectedOutput || '').slice(0, 3000) : '',
+              actualOutput: attachesRun ? (userActualOutput || '').slice(0, 3000) : '',
+              executionError: attachesRun ? (executionError || '').slice(0, 3000) : '', studentCode: shareCode ? (userCode || '').slice(0, 6000) : '' }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.id) throw new Error(typeof data.detail === 'string' ? data.detail : 'The report could not be saved. Try again.');
+          setReportId(data.id);
+        } catch (failure) { setError(failure instanceof Error ? failure.message : 'The report could not be saved.'); }
+        finally { setPending(false); }
+      }}>
+        <label className="block space-y-1 text-sm"><span>Issue type</span><select value={category} onChange={e => setCategory(e.target.value as Category)} className="block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5"><option value="testcase">Test case or expected output</option><option value="driver">Compiler harness</option><option value="problem">Problem statement</option><option value="solution">Reference solution</option></select></label>
+        <label className="block space-y-1 text-sm"><span>Steps to reproduce</span><textarea required maxLength={2000} rows={3} value={note} onChange={e => setNote(e.target.value)} className="block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5" /></label>
+        {(category === 'testcase' || testInput) && <label className="block space-y-1 text-sm"><span>Test input</span><textarea required={category === 'testcase'} maxLength={3000} rows={2} value={testInput} onChange={e => setTestInput(e.target.value)} className="block w-full rounded-lg border border-slate-700 bg-slate-950 p-2.5 font-mono" /></label>}
+        {userCode && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={shareCode} onChange={e => setShareCode(e.target.checked)} /> Include my code for the reviewer</label>}
+        {error && <p role="alert" className="text-sm text-rose-300">{error}</p>}
+        <button type="submit" disabled={pending || !note.trim()} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{pending ? 'Submitting...' : 'Submit for review'}</button>
+      </form>}
+    </section>
+  </div>;
+}

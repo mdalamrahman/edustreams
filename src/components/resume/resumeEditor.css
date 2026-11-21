@@ -1,0 +1,22 @@
+@media print {
+  @page { margin: 15mm; }
+  body:has(.resume-draft-paper) *:not(.resume-draft-paper):not(.resume-draft-paper *):not(:has(.resume-draft-paper)) {
+    display: none !important;
+  }
+  body:has(.resume-draft-paper), body :has(.resume-draft-paper), .resume-draft-paper {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  .resume-draft-paper {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+}

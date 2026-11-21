@@ -60,20 +60,30 @@ def review_topup(db_path, request_id, status, notes):
 
 def award_bounty(db_path, email, slug, category, test_input):
     """Called only after an administrator approves a defect; lock and reward are atomic."""
-    defect = hashlib.sha256(f'{slug}:{category}:{test_input}'.encode()).hexdigest()
     with closing(sqlite3.connect(db_path, timeout=30)) as conn, conn:
         conn.execute('BEGIN IMMEDIATE')
-        if conn.execute('SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ?', (defect,)).fetchone():
-            return {'status': 'already_claimed', 'alreadyClaimed': True, 'rewardedAmount': 0}
-        if conn.execute('SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ?', (email, slug, category)).fetchone():
-            return {'status': 'already_claimed', 'alreadyClaimed': True, 'rewardedAmount': 0}
-        row = conn.execute('SELECT user_id, balance FROM user_wallets WHERE user_email = ?', (email,)).fetchone()
-        if not row:
-            raise ValueError('Wallet not found')
-        balance = round(row[1] + 1, 4)
-        conn.execute('INSERT INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, 1)', (defect, slug, category, email))
-        conn.execute('INSERT INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)', (email, slug, category))
-        conn.execute('UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?', (balance, email))
-        conn.execute('INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after) VALUES (?, ?, ?, 1, ?, ?, ?, ?)',
-                     ('bounty-' + defect, row[0], email, 'CREDIT', 'BUG_BOUNTY', 'Approved defect reward', balance))
-        return {'status': 'verified', 'rewardedAmount': 1, 'newBalance': balance, 'alreadyClaimed': False}
+        return credit_bounty(conn, email, slug, category, test_input)
+
+
+BOUNTY_REWARD = 1
+
+
+def credit_bounty(conn, email, slug, category, test_input, report_id=None):
+    defect = hashlib.sha256(f'{slug}:{category}:{test_input}'.encode()).hexdigest()
+    if conn.execute('SELECT 1 FROM global_bounty_defect_locks WHERE defect_lock_key = ?', (defect,)).fetchone():
+        return {'status': 'already_claimed', 'alreadyClaimed': True, 'rewardedAmount': 0}
+    if conn.execute('SELECT 1 FROM problem_bounty_claims WHERE user_email = ? AND problem_slug = ? AND bounty_type = ?', (email, slug, category)).fetchone():
+        return {'status': 'already_claimed', 'alreadyClaimed': True, 'rewardedAmount': 0}
+    row = conn.execute('SELECT user_id, balance FROM user_wallets WHERE user_email = ?', (email,)).fetchone()
+    if not row:
+        raise ValueError('Wallet not found')
+    balance = round(row[1] + BOUNTY_REWARD, 4)
+    conn.execute('INSERT INTO global_bounty_defect_locks (defect_lock_key, problem_slug, category, claimed_by, reward_inr) VALUES (?, ?, ?, ?, ?)',
+                 (defect, slug, category, email, BOUNTY_REWARD))
+    conn.execute('INSERT INTO problem_bounty_claims (user_email, problem_slug, bounty_type) VALUES (?, ?, ?)', (email, slug, category))
+    conn.execute('UPDATE user_wallets SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE user_email = ?', (balance, email))
+    tx_id = 'bounty-' + defect
+    description = f'Approved defect reward ({report_id})' if report_id else 'Approved defect reward'
+    conn.execute('INSERT INTO billing_transactions (id, user_id, user_email, amount, type, category, description, balance_after) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                 (tx_id, row[0], email, BOUNTY_REWARD, 'CREDIT', 'BUG_BOUNTY', description, balance))
+    return {'status': 'verified', 'rewardedAmount': BOUNTY_REWARD, 'newBalance': balance, 'alreadyClaimed': False, 'txId': tx_id}

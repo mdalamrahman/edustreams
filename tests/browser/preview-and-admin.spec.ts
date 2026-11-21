@@ -48,28 +48,58 @@ async function studentSession(page: Page) {
 test('Resume and in-country value wait for a readable upload', async ({ page }) => {
   await studentSession(page);
   let modelRequests = 0;
+  let listingRequests = 0;
   await page.route('**/api/provider/**', async route => {
     modelRequests++;
     await route.fulfill({ status: 503, json: { detail: 'Offline test provider' } });
   });
+  await page.route('**/api/freehire-jobs?**', async route => {
+    listingRequests++;
+    const params = new URL(route.request().url()).searchParams;
+    expect(params.get('country')).toBe('US');
+    expect(params.toString()).not.toContain('Taylor');
+    await route.fulfill({ json: { jobs: params.get('lane') === 'global' ? [] : [0, 1, 2].map(index => ({
+      id: 'job-' + index, companyKey: 'employer-' + index, company: 'Test employer ' + index, title: 'Software Engineer',
+      postedAt: new Date(Date.now() - 86400_000).toISOString(), applyUrl: 'https://example.com', employment: 'full_time',
+      salary: { min: 100_000 + index * 1000, max: 130_000 + index * 1000, period: 'year', currency: 'USD' },
+    })) } });
+  });
   await page.goto('http://127.0.0.1:4173/resume-analyst?tab=ats_scanner');
   const upload = page.locator('input[type="file"]');
-  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
-  await page.locator('select').first().selectOption('US');
+  await expect(page.getByText('Upload a readable resume to use this tool.')).toBeVisible();
+  await page.getByRole('button', { name: 'Market pay' }).click();
+  await page.getByRole('combobox', { name: 'Country', exact: true }).selectOption('US');
   await upload.setInputFiles({ name: 'empty.txt', mimeType: 'text/plain', buffer: Buffer.alloc(0) });
   await expect(page.getByText(/Could not read this resume/)).toBeVisible();
   expect(modelRequests).toBe(0);
-  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
+  expect(listingRequests).toBe(0);
+  await expect(page.getByText('Upload a readable resume to use this tool.')).toBeVisible();
   await upload.setInputFiles({ name: 'actual-resume.txt', mimeType: 'text/plain', buffer: Buffer.from('Taylor Example\nExperience\nEngineer 2020 - 2025\nReduced latency by 25% using Python.\nSkills\nPython, SQL, React.') });
+  await expect(page.getByText(/Median lower and upper pay from 3 employers/)).toBeVisible();
+  await expect(page.getByText(/Insufficient salary data/)).toBeVisible();
+  await page.getByRole('button', { name: 'ATS review', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Resume parseability and quality' })).toBeVisible();
-  await expect(page.getByText('Estimated range', { exact: false })).toBeVisible();
-  await expect(page.getByText(/Estimated job requirement coverage/)).toHaveCount(0);
+  await expect(page.getByText(/recognized terms found/)).toHaveCount(0);
   await page.getByLabel('Job description (optional)').fill('Experience with Python and Kubernetes.');
-  await expect(page.getByText('Estimated job requirement coverage: 50%')).toBeVisible();
+  await expect(page.getByText('1 of 2 recognized terms found')).toBeVisible();
   await expect(page.getByText('Evidence not found', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Skill roadmap' }).click();
+  await expect(page.getByRole('heading', { name: 'Kubernetes' })).toBeVisible();
+  await page.getByRole('button', { name: 'Role transitions' }).click();
+  await expect(page.getByRole('heading', { name: 'QA Automation Engineer' })).toBeVisible();
+  await page.getByRole('button', { name: 'Resume editor' }).click();
+  const draft = page.getByLabel('Resume draft');
+  await expect(draft).toHaveValue(/Taylor Example/);
+  await draft.fill('Taylor Example\nExperience\n- Wrote SQL queries\n- Reduced latency by 25% with Python');
+  await page.getByRole('button', { name: 'Prioritize relevant bullets' }).click();
+  await expect(draft).toHaveValue(/with Python\n- Wrote SQL queries/);
+  await page.getByRole('button', { name: 'Undo last change' }).click();
+  await expect(draft).toHaveValue(/SQL queries\n- Reduced/);
+  await page.setViewportSize({ width: 375, height: 850 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
   await page.getByRole('button', { name: 'Remove resume' }).click();
-  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
-  await expect(page.getByText(/Estimated job requirement coverage/)).toHaveCount(0);
+  await expect(page.getByText('Upload a readable resume to use this tool.')).toBeVisible();
+  await expect(draft).toHaveCount(0);
 });
 
 test('Same Tree preserves source, Monaco caret and sample-only submit status', async ({ page }) => {
@@ -110,6 +140,26 @@ test('Same Tree preserves source, Monaco caret and sample-only submit status', a
   await expect(page.getByText('Samples passed · Hidden tests unavailable', { exact: true })).toBeVisible();
   expect(samplesRun).toBe(3);
   await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
+
+  let reportSent = false;
+  await page.route('**/api/problem-reports', async route => {
+    expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    const report = route.request().postDataJSON();
+    expect(report.slug).toBe('same-tree');
+    expect(report.issueType).toBe('problem');
+    expect(report.studentCode).toBe('');
+    expect(report.note).toBe('The statement omits the allowed tree size.');
+    expect(report.requestId).toBeTruthy();
+    reportSent = true;
+    await route.fulfill({ status: 201, json: { id: 'rep-test-student', status: 'pending' } });
+  });
+  await page.getByRole('button', { name: 'Report issue with problem, driver, testcases, or solution' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Report an issue' });
+  await dialog.getByRole('combobox', { name: 'Issue type' }).selectOption('problem');
+  await dialog.getByLabel('Steps to reproduce').fill('The statement omits the allowed tree size.');
+  await dialog.getByRole('button', { name: 'Submit for review' }).click();
+  await expect(dialog.getByText('Report ID rep-test-student')).toBeVisible();
+  expect(reportSent).toBe(true);
 });
 
 test('Admin sign-in fields are visible, usable, and recover after an invalid code', async ({ page }, testInfo) => {
@@ -246,14 +296,51 @@ test('Admin CAPTCHA script failure can be retried without sending an OTP', async
 });
 
 
-async function openPasskeyVault(page: Page) {
+async function openAdmin(page: Page) {
   const user = { id: '00000000-0000-4000-8000-000000000002', email: 'admin@example.com', aud: 'authenticated', created_at: new Date().toISOString(), app_metadata: { role: 'admin' }, user_metadata: {} };
   const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'test-signature'].join('.');
   await page.addInitScript(session => localStorage.setItem('sb-preview-test-auth-token', JSON.stringify(session)), { access_token: token, token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'test-refresh', user });
   await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
   await page.goto('http://localhost:4174');
+}
+
+async function openPasskeyVault(page: Page) {
+  await openAdmin(page);
   await page.getByRole('button', { name: 'Passkey Security' }).click();
 }
+
+test('Admin opens bounty evidence and records the approval and wallet credit', async ({ page }) => {
+  const report = {
+    id: 'rep-browser', slug: 'same-tree', issueType: 'testcase', timestamp: new Date().toISOString(),
+    userEmail: 'reporter@example.com', status: 'pending', testInput: 'p = [1], q = []',
+    actualOutput: 'true', expectedOutput: 'false', note: 'The oracle and provider disagree.', rewardedAmount: 0,
+    studentCode: '<script>window.untrustedBountyCode = true</script>',
+  };
+  let credited = false;
+  await page.route('**/api/admin/bounties**', async route => {
+    expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ json: { reports: credited ? [] : [report], total: credited ? 0 : 1, rewardAmount: 1 } });
+    }
+    expect(route.request().postDataJSON()).toEqual({ decision: 'approve', note: 'Reproduced using the published example.' });
+    credited = true;
+    return route.fulfill({ json: { success: true, report: {
+      ...report, status: 'approved', rewardedAmount: 1, transactionId: 'wallet-tx-browser',
+      resolutionNote: 'Reproduced using the published example.',
+    } } });
+  });
+  await openAdmin(page);
+  await page.getByRole('button', { name: 'Bounty Review', exact: true }).click();
+  await page.getByRole('button', { name: /same-tree/ }).click();
+  await expect(page.getByText(report.studentCode, { exact: true })).toBeVisible();
+  const approve = page.getByRole('button', { name: 'Approve and credit wallet' });
+  await expect(approve).toBeDisabled();
+  await page.getByLabel('Verification note (required)').fill('Reproduced using the published example.');
+  await approve.click();
+  await expect(page.getByText('Approved. Wallet credit recorded.')).toBeVisible();
+  await expect(page.getByText(/wallet-tx-browser/)).toBeVisible();
+  expect(credited).toBe(true);
+});
 
 test('Passkey registration uses server challenge and verified Auth persistence', async ({ page }) => {
   const cdp = await page.context().newCDPSession(page);

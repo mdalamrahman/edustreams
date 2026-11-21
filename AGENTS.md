@@ -19,7 +19,7 @@ Welcome to the central architectural specification, codebase context, and operat
 6. **Telegram-Backed Video Streaming CDN**: Telegram cloud integration using Telethon/MTProto to stream multi-gigabyte video lectures with HTTP byte-range seekability.
 7. **AI Mock Interviewer & Resume Engine**: Real-time conversational interview simulations, rubric-based evaluation scoring, FAANG offer letter generation, and ATS resume scanning.
 8. **Automated Verification & Self-Healing Pipeline**: Execution-first verification that tests algorithms on Judge0 before persisting test cases or driver harnesses, eliminating LLM hallucinations.
-9. **Micro-Billing & Bug Bounty Ecosystem**: Integrated wallet supporting Razorpay, Cashfree, and UPI payments, with automatic ₹1.00 bounty credits when users successfully report and repair defective test cases or driver code.
+9. **Micro-Billing & Bug Bounty Ecosystem**: Integrated wallet supporting Razorpay, Cashfree, and UPI payments, with ₹1.00 wallet credits for verified defects approved by an administrator.
 
 ---
 
@@ -124,10 +124,9 @@ graph TD
   5. The dashboard and POTD modal automatically execute proactive background verification on mount.
 
 ### 3.5. Single Unified Report & Bug Bounty Engine
-- **Implementation Files**: `src/components/UnifiedReportModal.tsx`, `src/lib/billing.ts`
-- **Button Consolidation**: Replaced fragmented legacy buttons (*Fix Testcase*, *Report Boilerplate*, *Problem Report*) with a single, streamlined `"Report"` button in the workspace toolbar and contextual triggers in failure states.
-- **Fast-Path Verification**: When a user reports that their solution output differs from the test suite's expected output, `UnifiedReportModal` automatically executes the platform's reference solution against the reported input. If the reference solution output matches the student's output, it provides 100% mathematical proof of an incorrect test case, allows 1-click application of the fix, and awards a ₹1.00 bounty.
-- **Idempotent Rewards**: `claimReportBounty()` tracks claims by `problemSlug + category + email` in localStorage and remote backend to prevent duplicate rewards.
+- **Implementation Files**: `src/components/UnifiedReportModal.tsx`, `admin-portal/src/components/BountyReview.tsx`, `backend/bounty_review.py`.
+- Students submit reproduction notes and optional solution code for administrator review. The server identifies the reporting account from the authenticated session.
+- Open **Bounty Review** in the admin portal to inspect evidence and record an approval or rejection. Approval credits the reporting wallet once. The report decision and credit share a SQLite transaction and the durable ledger snapshot. The **Archived reports** filter preserves older evidence for reference.
 
 ### 3.6. Interactive SQL Arena
 - **Implementation File**: `src/components/LeetCodeSQLWorkspaceModal.tsx`
@@ -147,8 +146,9 @@ graph TD
   - Scores responses against rubrics: Problem Solving, Code Quality, Communication, and Behavioral Alignment.
   - Generates downloadable, glassmorphic FAANG Offer Letters upon passing scores.
 - **Resume Scanner & Creator**:
-  - Live ATS score analysis based on keyword density, action verbs, and quantifiable impact metrics.
-  - Generates tailored resumes aligned with user-selected target roles (SDET, SDE-1, SDE-2, QA Lead).
+  - Resume Analyst requires a readable upload. Extraction, ATS evidence checks, job comparison, and draft editing run in the browser. The job search sends only selected filters.
+  - Market pay uses recent salary disclosures from distinct employers. Configure the licensed FreeHire API key as the server-side Pages secret `FREEHIRE_API_KEY`. When listings are unavailable, students can paste a posting into ATS review.
+  - The editor can reorganize existing bullets and export Markdown, plain text, or PDF through the browser. Skill and transition views use resume excerpts and selected job requirements.
 
 ### 3.8. Telegram Video Streaming CDN
 - **Implementation File**: `backend/main.py`, `backend/telegram_ingest.py`

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './lib/supabaseAdminClient';
 import { adminFetch as fetch } from './lib/transport';
+import { BountyReview } from './components/BountyReview';
 import { config } from './lib/config';
 import React, { useState, useEffect } from 'react';
 import { 
@@ -107,7 +108,7 @@ export default function App() {
   const [passkeyModalStatus, setPasskeyModalStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   // Active Hub Tab
-  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits' | 'questions' | 'potd'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'users' | 'otps' | 'pricing' | 'credits' | 'questions' | 'potd' | 'bounties'>('analytics');
 
   // Live Data States (Direct from Supabase)
   const [rates, setRates] = useState<SystemPlatformRates>({
@@ -899,6 +900,15 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('bounties')}
+          className={`px-4 py-2.5 rounded-t-2xl border-t border-x transition-colors ${
+            activeTab === 'bounties' ? 'bg-slate-900 border-slate-800 text-teal-400' : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          Bounty Review
+        </button>
+
+        <button
           onClick={() => setActiveTab('potd')}
           className={`px-4 py-2.5 rounded-t-2xl transition-all cursor-pointer flex items-center space-x-2 border-t border-x ${
             activeTab === 'potd'
@@ -917,6 +927,7 @@ export default function App() {
         {/* ===================================================================
             TAB: PROBLEM OF THE DAY (POTD) MISSION CONTROL
             =================================================================== */}
+        {activeTab === 'bounties' && <BountyReview />}
         {activeTab === 'potd' && (
           <AdminPOTDManager
             onOpenInStudio={(slug) => {

@@ -3598,7 +3598,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                             setIsReportModalOpen(true);
                           }}
                           className="px-2.5 py-1 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-600/50 text-amber-300 hover:text-amber-200 text-[10px] font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                          title="Report and auto-resolve testcase, driver, or problem issues with AI"
+                          title="Send a test case, compiler, or problem issue for review"
                         >
                           <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                           <span>Report Issue</span>
@@ -3752,7 +3752,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 setIsReportModalOpen(true);
                               }}
                               className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold font-sans flex items-center gap-1.5 transition-all cursor-pointer shadow-md flex-shrink-0"
-                              title="Report and auto-resolve issue with AI"
+                              title="Send this result for administrator review"
                             >
                               <AlertTriangle className="w-3.5 h-3.5" />
                               <span>Report Issue</span>
@@ -4137,71 +4137,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       <UnifiedReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        problemTitle={cleanTitle}
-        problemSlug={currentProblemSlug}
-        problemStatement={problemTemplate.description}
+        problemTitle={problemTemplate.name || cleanTitle}
+        problemSlug={problemTemplate.sourceSlug || currentProblemSlug}
         language={language}
-        methodSignature={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
-        starterCode={problemTemplate.starters?.[language] || problemTemplate.starters?.cpp || ''}
-        currentDriverCode={problemTemplate.driverCode?.[language]}
         userCode={code}
-        testCaseIndex={reportTestCaseIdx}
-        currentInput={problemTemplate.testCases?.[reportTestCaseIdx] || testInput}
-        currentExpectedOutput={problemTemplate.expectedOutputs?.[reportTestCaseIdx]}
-        userActualOutput={submissionResult?.failedOutput || executionResult?.stdout}
-        executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
-        allProblemTestCases={problemTemplate.testCases}
-        allProblemExpectedOutputs={problemTemplate.expectedOutputs}
-        onApplyTestCaseCorrection={problemTemplate.sourceSlug ? undefined : (correctedInput, correctedExpected) => {
-          let finalInput = (correctedInput || '').trim();
-          const pNames = extractParamNames(problemTemplate.starters, problemTemplate.examples);
-          if (pNames.length === 1 && !finalInput.includes('=')) {
-            finalInput = `${pNames[0]} = ${finalInput}`;
-          }
-
-          const updatedCases = [...(problemTemplate.testCases || [])];
-          const updatedExp = [...(problemTemplate.expectedOutputs || [])];
-          updatedCases[reportTestCaseIdx] = finalInput;
-          if (correctedExpected) updatedExp[reportTestCaseIdx] = correctedExpected.trim();
-          
-          const next = { ...problemTemplate, testCases: updatedCases, expectedOutputs: updatedExp };
-          try {
-            const slug = currentProblemSlug;
-            localStorage.setItem(`edustream_testcase_override_${slug}`, JSON.stringify(next));
-            localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(next));
-            const langs = ['cpp', 'python', 'javascript', 'java', 'go', 'rust'];
-            langs.forEach(l => localStorage.removeItem(`edustream_driver_${slug}_${l}`));
-          } catch {}
-
-          setProblemTemplate(next);
-          if (reportTestCaseIdx === activeTestCaseIdx) {
-            setTestInput(finalInput);
-          }
-          setSubmissionResult(null);
-          setExecutionResult(null);
-          return next;
-        }}
-        onApplyDriverCorrection={problemTemplate.sourceSlug ? undefined : (correctedDriver) => {
-          setProblemTemplate((prev) => {
-            const next = {
-              ...prev,
-              driverCode: {
-                ...(prev.driverCode || {}),
-                [language]: correctedDriver
-              } as Record<SupportedLanguage, string>
-            };
-            try {
-              localStorage.setItem(`edustream_driver_${currentProblemSlug}_${language}`, correctedDriver);
-            } catch {}
-            return next;
-          });
-          setDriverUpdatedBadge(true);
-          setTimeout(() => setDriverUpdatedBadge(false), 5000);
-        }}
-        onResubmit={(updatedTemplate) => {
-          setIsReportModalOpen(false);
-          handleExecute(true, updatedTemplate);
-        }}
+        currentInput={submissionResult?.failedInput ?? problemStatementExamples[reportTestCaseIdx]?.input ?? testInput}
+        currentExpectedOutput={submissionResult?.failedExpected ?? problemStatementExamples[reportTestCaseIdx]?.output}
+        userActualOutput={submissionResult?.failedOutput ?? executionResult?.stdout}
+        executionError={submissionResult?.failedStderr ?? executionResult?.stderr}
       />
 
       {/* Problem Diagram Fullscreen Zoom Lightbox */}

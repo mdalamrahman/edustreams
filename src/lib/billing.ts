@@ -733,55 +733,6 @@ export function adminAddCredits(
 }
 
 /**
- * Automatically credits bounty reward (e.g. ₹1.00 for verified testcase issue reports)
- * to user wallet and syncs atomically with SQLite and cloud.
- */
-export async function claimReportBountyServer(
-  problemSlug: string,
-  problemTitle: string,
-  issueType: 'testcase' | 'driver' | 'problem' = 'testcase',
-  testInput: string = '',
-  proposedOutput: string = '',
-  email?: string
-): Promise<{ success: boolean; rewardedAmount: number; newBalance?: number; alreadyClaimed: boolean }> {
-  const activeEmail = getActiveEmail(email);
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/bounty/claim`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        problem_slug: problemSlug,
-        category: issueType,
-        test_input: testInput,
-        proposed_expected_output: proposedOutput,
-        problem_title: problemTitle,
-        email: activeEmail
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.newBalance !== undefined) {
-        const wallets = getAllWallets();
-        if (wallets[activeEmail]) {
-          wallets[activeEmail].balance = data.newBalance;
-          saveAllWallets(wallets);
-        }
-      }
-      return {
-        success: true,
-        rewardedAmount: data.rewardedAmount !== undefined ? data.rewardedAmount : 1.0,
-        newBalance: data.newBalance,
-        alreadyClaimed: Boolean(data.alreadyClaimed)
-      };
-    } else if (res.status === 409) {
-      return { success: true, rewardedAmount: 0, alreadyClaimed: true };
-    }
-  } catch {}
-
-  return { success: false, rewardedAmount: 0, alreadyClaimed: false };
-}
-
-/**
  * Submits a new UPI recharge top-up request to Database.
  */
 export function submitTopupRequest(payload: {

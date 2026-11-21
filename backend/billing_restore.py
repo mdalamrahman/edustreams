@@ -7,7 +7,7 @@ import threading
 import hashlib
 
 TABLES = ('user_wallets', 'billing_transactions', 'topup_requests',
-          'problem_bounty_claims', 'global_bounty_defect_locks', 'billing_idempotency')
+          'problem_bounty_claims', 'global_bounty_defect_locks', 'billing_idempotency', 'bounty_reports')
 _snapshot_lock = threading.Lock()
 
 
@@ -32,6 +32,8 @@ def restore_ledger(db_path, snapshot):
         conn.execute('BEGIN IMMEDIATE')
         # Existing balances remain authoritative; merge only absent rows during recovery.
         conn.execute('CREATE TABLE IF NOT EXISTS billing_idempotency (request_id TEXT PRIMARY KEY, email TEXT NOT NULL, amount REAL NOT NULL, balance REAL NOT NULL)')
+        from bounty_review import ensure_schema
+        ensure_schema(conn)
         for table in TABLES:
             columns = [row[1] for row in conn.execute(f'PRAGMA table_info({table})')]
             for row in snapshot['tables'].get(table, []):
