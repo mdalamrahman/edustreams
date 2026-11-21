@@ -102,6 +102,51 @@ test('Resume and in-country value wait for a readable upload', async ({ page }) 
   await expect(draft).toHaveCount(0);
 });
 
+test('Lesson retries a failed media ticket and renews it after real sign-in', async ({ page }) => {
+  await studentSession(page);
+  const user = { id: '00000000-0000-4000-8000-000000000004', email: 'student@example.com', aud: 'authenticated',
+    created_at: new Date().toISOString(), email_confirmed_at: new Date().toISOString(), app_metadata: {}, user_metadata: {} };
+  const token = [
+    Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'),
+    Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'),
+    'new-session',
+  ].join('.');
+  let attempts = 0;
+  await page.route('**/api/media/ticket', async route => {
+    attempts++;
+    const { path } = route.request().postDataJSON();
+    if (!path.endsWith('/6001')) {
+      attempts--;
+      return route.fulfill({ status: 503, json: {} });
+    }
+    if (attempts === 1) return route.fulfill({ status: 503, json: {} });
+    if (attempts === 2) return route.fulfill({ status: 401, json: { detail: 'Invalid or expired session' } });
+    expect(route.request().headers().authorization).toBe('Bearer ' + token);
+    return route.fulfill({ json: { path, expires: 100, signature: 'test-signed-media' } });
+  });
+  await page.route('**/auth/v1/otp**', route => {
+    expect(route.request().postDataJSON().gotrue_meta_security.captcha_token).toBe('test-captcha-token');
+    return route.fulfill({ json: {} });
+  });
+  await page.route('**/auth/v1/verify', route => route.fulfill({ json: {
+    access_token: token, refresh_token: 'new-refresh', token_type: 'bearer', expires_in: 3600, user,
+  } }));
+  await page.route('**/stream/**', route => route.abort());
+
+  await page.goto('http://127.0.0.1:4173/lesson/tg-ch-sd-02-6001');
+  await page.getByRole('button', { name: 'Retry Connection' }).click();
+  await expect(page.getByText('Your session is missing or expired. Sign in again to play this lesson.')).toBeVisible();
+  await page.getByRole('button', { name: 'Sign in again', exact: true }).click();
+  await expect(page.getByText('Instant Passkey Sign-In')).toHaveCount(0);
+  await page.getByLabel('Email Address', { exact: true }).fill(user.email);
+  await page.getByRole('button', { name: /Sign In via Email Magic Link/ }).click();
+  await page.getByPlaceholder('e.g. 123456').fill('123456');
+  const stream = page.waitForRequest('**/stream/**?expires=100&signature=test-signed-media');
+  await page.getByRole('button', { name: 'Verify Email & Activate Account' }).click();
+  expect(new URL((await stream).url()).pathname).toBe('/stream/-1004329144420/6001');
+  expect(attempts).toBe(3);
+});
+
 test('Same Tree preserves source, Monaco caret and sample-only submit status', async ({ page }) => {
   await studentSession(page);
   await page.route('https://cdn.jsdelivr.net/npm/monaco-editor@*/min/vs/**', async route => {

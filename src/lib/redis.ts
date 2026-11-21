@@ -178,36 +178,6 @@ export async function getRealtimeTranscriptStatus(
       return cached;
     }
 
-    // 4. Fallback to Supabase video table
-    try {
-      const { data } = await supabaseAdmin
-        .from('videos')
-        .select('id, title, transcript')
-        .or(`id.eq.${cleanId},telegram_message_id.eq.${msgId || -1}`)
-        .limit(1)
-        .maybeSingle();
-
-      if (data && data.transcript && data.transcript.length > 50) {
-        const fromDb: RealtimeTranscriptStatus = {
-          key: cleanId,
-          videoId: String(data.id),
-          title: data.title,
-          status: 'completed',
-          progressPercent: 100,
-          currentPart: 30,
-          totalParts: 30,
-          stage: 'Completed (Synchronized from DB)',
-          hasArtifacts: true,
-          estimatedSecondsLeft: 0,
-          transcriptSnippet: data.transcript.slice(0, 200),
-          lastUpdated: new Date().toISOString(),
-          source: 'db'
-        };
-        await redis.set(redisKey, fromDb, { ex: 86400 }).catch(() => {});
-        return fromDb;
-      }
-    } catch (_) {}
-
     return null;
   } catch (err) {
     console.warn('[Upstash Redis getRealtimeTranscriptStatus Error]:', err);

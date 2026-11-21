@@ -1,4 +1,5 @@
 """Real app smoke tests: isolated storage, no lifespan jobs, no external requests."""
+from contextlib import closing
 import importlib.util
 import os
 from pathlib import Path
@@ -97,7 +98,7 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
             **payload, 'testInput': 'nums=[1,2]', 'requestId': 'app-report-2'})
         resolution = await self.client.post('/api/admin/bounties/' + duplicate.json()['id'] + '/review', headers=admin, json=decision)
         self.assertEqual(resolution.json()['report']['status'], 'duplicate')
-        with sqlite3.connect(self.main.SQLITE_DB_PATH) as ledger:
+        with closing(sqlite3.connect(self.main.SQLITE_DB_PATH)) as ledger:
             self.assertEqual(ledger.execute('SELECT amount FROM billing_transactions WHERE id = ? AND user_email = ?',
                                             (report['transactionId'], 'student@example.com')).fetchone(), (1,))
 
@@ -142,6 +143,17 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_provider_configuration_does_not_contact_upstream(self):
         response = await self.client.post('/api/provider/groq/chat/completions', json={}, headers={'Authorization': 'Bearer student'})
         self.assertEqual(response.status_code, 503)
+
+    async def test_progress_uses_verified_account_identity(self):
+        headers = {'Authorization': 'Bearer student'}
+        saved = await self.client.post('/api/user-progress', headers=headers, json={
+            'user_email': 'student@example.com', 'user_id': 'browser-provided-id', 'solved_sde': [123]})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        loaded = await self.client.get('/api/user-progress/student@example.com', headers=headers)
+        self.assertEqual(loaded.json()['progress']['user_id'], 'student-id')
+        self.assertEqual(loaded.json()['progress']['solved_sde'], [123])
+        denied = await self.client.post('/api/user-progress', headers=headers, json={'user_email': 'other@example.com'})
+        self.assertEqual(denied.status_code, 403)
 
     async def test_financial_backup_never_expands_auth_metadata(self):
         with patch.object(self.main.r2_storage, 'upload_json', return_value='saved') as upload, patch(

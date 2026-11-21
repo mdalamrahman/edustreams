@@ -37,13 +37,12 @@ export const LessonPage: React.FC = () => {
   useEffect(() => {
     if (!videoId) return;
     const decoded = decodeURIComponent(videoId);
-    const list = dynamicVideos.length > 0 ? dynamicVideos : MOCK_VIDEOS;
-    const found = list.find(
-      (v) =>
-        v.id === decoded ||
-        v.title === decoded ||
-        String(v.telegram_message_id) === decoded
-    );
+    const matchesLesson = (v: (typeof MOCK_VIDEOS)[number]) =>
+      v.id === decoded ||
+      v.title === decoded ||
+      (v.telegram_message_id !== undefined &&
+        (String(v.telegram_message_id) === decoded || `tg-${v.channel_id}-${v.telegram_message_id}` === decoded));
+    const found = dynamicVideos.find(matchesLesson) ?? MOCK_VIDEOS.find(matchesLesson);
     if (found && found.id !== selectedVideo.id) {
       setSelectedVideo(found);
     }

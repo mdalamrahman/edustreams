@@ -71,7 +71,7 @@ const mikProblemMap = new Map<number, any>();
  * Gets the active logged-in user email
  */
 export function getCurrentUserEmail(): string {
-  if (typeof window === 'undefined') return 'mdalamrahman4@gmail.com';
+  if (typeof window === 'undefined') return '';
   try {
     const rawSession = localStorage.getItem('edustream_student_session');
     if (rawSession) {
@@ -79,7 +79,7 @@ export function getCurrentUserEmail(): string {
       if (parsed?.email) return parsed.email.trim().toLowerCase();
     }
   } catch {}
-  return 'mdalamrahman4@gmail.com';
+  return '';
 }
 
 /**
@@ -179,6 +179,9 @@ export async function loadUserProgress(targetEmail?: string): Promise<UserDSAPro
     return progressCache.get(email)!;
   }
 
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!email || session?.user.email?.trim().toLowerCase() !== email) return scanLegacyLocalStorage(email);
+
   // 2. Direct Supabase Query
   let supaProgress: UserDSAProgress | null = null;
   try {
@@ -229,8 +232,6 @@ export async function loadUserProgress(targetEmail?: string): Promise<UserDSAPro
   // 4. If still no record, perform seamless one-time migration from local storage
   if (!supaProgress) {
     supaProgress = scanLegacyLocalStorage(email);
-    // Push migrated data up to Supabase in background
-    saveUserProgress(supaProgress, email).catch(() => {});
   }
 
   // 5. Populate caches and heal/sanitize any contaminated local storage keys
@@ -310,37 +311,15 @@ export async function saveUserProgress(patch: Partial<UserDSAProgress>, targetEm
     window.dispatchEvent(new CustomEvent('sdetube_problem_solved', { detail: updated }));
   }
 
-  // 1. Direct Supabase Upsert
-  try {
-    await supabaseAdmin
-      .from('user_dsa_progress')
-      .upsert({
-        user_email: email,
-        user_id: updated.user_id || '',
-        active_sheet: updated.active_sheet || 'sde',
-        solved_sde: updated.solved_sde || [],
-        solved_a2z: updated.solved_a2z || [],
-        solved_79: updated.solved_79 || [],
-        solved_blind75: updated.solved_blind75 || [],
-        solved_mik: updated.solved_mik || [],
-        lld_solved_ids: updated.lld_solved_ids || [],
-        revision_ids: updated.revision_ids || [],
-        linked_profiles: updated.linked_profiles || DEFAULT_LINKED_PROFILES,
-        active_mins: updated.active_mins || 0,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_email' });
-  } catch (err) {
-    console.warn('[Supabase Progress Save Notice]:', err);
-  }
+  // The backend persists progress and mirrors it to Supabase.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!email || session?.user.email?.trim().toLowerCase() !== email) return;
+  await fetch(`${TELEGRAM_BACKEND_URL}/api/user-progress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...updated, user_id: session.user.id })
+  }).catch(() => {});
 
-  // 2. Backend API Backup
-  try {
-    fetch(`${TELEGRAM_BACKEND_URL}/api/user-progress`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
-    }).catch(() => {});
-  } catch {}
 }
 
 /**

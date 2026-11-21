@@ -24,9 +24,22 @@ class SecurityMiddleware:
         origin = headers.get(b'origin', b'').decode()
         allowed = {v.strip() for v in os.getenv('ALLOWED_ORIGINS', '').split(',') if v.strip()}
 
+        async def secure_send(message):
+            if message['type'] == 'http.response.start':
+                # Override legacy CORS/cache headers centrally.
+                response_headers = [(k, v) for k, v in message.get('headers', [])
+                                    if not k.lower().startswith(b'access-control-') and k.lower() != b'cache-control']
+                response_headers += [(b'cache-control', b'private, no-store'), (b'vary', b'Origin'),
+                                     (b'x-content-type-options', b'nosniff')]
+                if origin in allowed:
+                    response_headers += [(b'access-control-allow-origin', origin.encode()),
+                                         (b'access-control-expose-headers', b'Content-Range, Content-Length, Accept-Ranges')]
+                message = {**message, 'headers': response_headers}
+            await send(message)
+
         async def respond(status, message):
-            await send({'type': 'http.response.start', 'status': status,
-                        'headers': [(b'content-type', b'application/json'), (b'cache-control', b'no-store')]})
+            await secure_send({'type': 'http.response.start', 'status': status,
+                               'headers': [(b'content-type', b'application/json')]})
             await send({'type': 'http.response.body', 'body': json.dumps({'detail': message}).encode()})
 
         if origin and origin not in allowed:
@@ -131,18 +144,6 @@ class SecurityMiddleware:
             if not is_admin and (path in {'/api/billing/wallet', '/api/billing/transactions', '/api/billing/topups', '/api/interview/history'} or path.endswith(('/user-code', '/submissions'))) and method == 'GET' and not identities:
                 return await respond(400, 'User email is required')
 
-        async def secure_send(message):
-            if message['type'] == 'http.response.start':
-                # Override legacy CORS/cache headers centrally.
-                response_headers = [(k, v) for k, v in message.get('headers', [])
-                                    if not k.lower().startswith(b'access-control-') and k.lower() != b'cache-control']
-                response_headers += [(b'cache-control', b'private, no-store'), (b'vary', b'Origin'),
-                                     (b'x-content-type-options', b'nosniff')]
-                if origin in allowed:
-                    response_headers += [(b'access-control-allow-origin', origin.encode()),
-                                         (b'access-control-expose-headers', b'Content-Range, Content-Length, Accept-Ranges')]
-                message = {**message, 'headers': response_headers}
-            await send(message)
         await self.app(scope, receive, secure_send)
 
 

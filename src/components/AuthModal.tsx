@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { KeyRound, Mail, Lock, UserPlus, LogIn, ShieldAlert, X, CheckCircle2, Tv, Sparkles, Clock, Fingerprint, ShieldCheck, Zap, Shield, ArrowRight, RefreshCw, Smartphone, Laptop } from 'lucide-react';
 import { signUpStudent, signInStudent, verifyEmailOtp, resendVerificationEmail, signInWithGoogle, signInWithEmailOtp, signInAsGuestDemo } from '../lib/auth';
 import { verifyStudentPasskey } from '../lib/passkey';
-import { isWebAuthnSupported, authenticateWithWebAuthn } from '../lib/webauthn';
-import { registerDeviceSession } from '../lib/session';
 import { TurnstileCaptcha } from './TurnstileCaptcha';
 
 interface AuthModalProps {
@@ -22,16 +20,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   revokedMessage = ''
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'verify_otp'>('signin');
-  const [authMethod, setAuthMethod] = useState<'passkey' | 'password'>('passkey');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authCode, setAuthCode] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
+  const [isLoginCode, setIsLoginCode] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  const [supportsBiometrics, setSupportsBiometrics] = useState(false);
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,59 +70,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (inviteCode) {
           setAuthCode(inviteCode.toUpperCase());
           setMode('signup');
-          setAuthMethod('password');
           if (urlEmail) setEmail(urlEmail);
         }
       }
 
-      const bio = isWebAuthnSupported();
-      setSupportsBiometrics(bio);
-      if (!authCode) {
-        if (bio) {
-          setAuthMethod('passkey');
-        } else {
-          setAuthMethod('password');
-        }
-      }
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleWebAuthnBiometricLogin = async () => {
-    setLoading(true);
-    setError('');
-    setSuccessMsg('Touch your sensor / scan Face ID or Windows Hello...');
-
-    try {
-      const result = await authenticateWithWebAuthn(email.trim() || undefined);
-      if (!result.success) {
-        setLoading(false);
-        setError(result.error || 'Biometric verification failed.');
-        return;
-      }
-
-      const matchedEmail = result.email || email || 'mdalamrahman4@gmail.com';
-      const studentUser = {
-        id: `usr-${matchedEmail.replace(/[^a-z0-9]/g, '')}`,
-        email: matchedEmail,
-        created_at: new Date().toISOString()
-      };
-
-      try {
-        localStorage.setItem('edustream_student_session', JSON.stringify(studentUser));
-        registerDeviceSession(studentUser.email, studentUser.id).catch(() => {});
-      } catch {}
-
-      setSuccessMsg(`🛡️ Authenticated via Supabase Passkey!`);
-      setTimeout(() => {
-        onSuccess(studentUser);
-        if (onClose) onClose();
-      }, 500);
-    } catch (err: any) {
-      setLoading(false);
-      setError(err?.message || 'Passkey verification failed.');
-    }
+  const resetCaptcha = () => {
+    setCaptchaToken('');
+    setCaptchaAttempt(attempt => attempt + 1);
   };
 
   const handleGoogleLogin = async () => {
@@ -187,12 +144,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Please enter your email address above to receive a Magic Link / OTP code.');
       return;
     }
+    if (!captchaToken) return;
     setLoading(true);
     setError('');
     setSuccessMsg('');
     try {
-      const res = await signInWithEmailOtp(email.trim());
+      const res = await signInWithEmailOtp(email.trim(), captchaToken);
       if (res.success) {
+        setIsLoginCode(true);
         setMode('verify_otp');
         setSuccessMsg(`We sent a login Magic Link and OTP to ${email.trim()}. Enter the code below or click the link in your email.`);
       } else {
@@ -201,12 +160,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     } catch (err: any) {
       setError(err?.message || 'Failed to dispatch email OTP.');
     } finally {
+      resetCaptcha();
       setLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captchaToken) return;
     setError('');
     setSuccessMsg('');
 
@@ -229,6 +190,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         if (signUpErr) {
           setError(signUpErr);
         } else if (needsEmailVerification) {
+          setIsLoginCode(false);
           setMode('verify_otp');
           setSuccessMsg(`Confirmation email sent to ${email.trim()}. Please enter the 6-digit OTP code below or click the link in your inbox.`);
         } else if (user) {
@@ -241,6 +203,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred during signup.');
       } finally {
+        resetCaptcha();
         setLoading(false);
       }
     } else {
@@ -250,6 +213,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         if (signInErr) {
           if (signInErr.toLowerCase().includes('email not confirmed')) {
+            setIsLoginCode(false);
             setMode('verify_otp');
             setError('Your email is not confirmed yet. Please enter the OTP code sent to your email or click Resend.');
           } else if (signInErr.toLowerCase().includes('invalid login credentials')) {
@@ -267,6 +231,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } catch (err: any) {
         setError(err.message || 'An unexpected error occurred during sign in.');
       } finally {
+        resetCaptcha();
         setLoading(false);
       }
     }
@@ -371,7 +336,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-red-950/80 border border-red-800/80 text-xs text-red-200 flex items-start gap-2 animate-shake">
+          <div role="alert" className="mb-4 p-3 rounded-2xl bg-red-950/80 border border-red-800/80 text-xs text-red-200 flex items-start gap-2 animate-shake">
             <ShieldAlert className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -385,91 +350,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* VIEW 1: PASSKEY-FIRST INSTANT SIGN-IN VIEW                                */}
-        {/* ========================================================================= */}
-        {mode === 'signin' && supportsBiometrics && authMethod === 'passkey' ? (
-          <div className="space-y-4 text-center animate-fadeIn">
-            
-            {/* Glowing Biometric Scanner Emblem */}
-            <div className="py-2 flex flex-col items-center justify-center">
-              <div className="relative p-4 rounded-3xl bg-gradient-to-b from-indigo-950 to-purple-950 border border-indigo-500/40 shadow-2xl shadow-indigo-600/20 group">
-                <div className="absolute inset-0 rounded-3xl bg-indigo-500/10 animate-ping opacity-30 pointer-events-none" />
-                <Fingerprint className="w-12 h-12 text-indigo-300 group-hover:scale-110 transition-transform duration-300" />
-              </div>
-              <h3 className="text-base font-bold text-slate-100 mt-3">Instant Passkey Sign-In</h3>
-              <p className="text-xs text-slate-400 mt-0.5 max-w-xs leading-relaxed">
-                Biometric verification via Windows Hello, Touch ID, or Face ID.
-              </p>
-            </div>
-
-            {/* Primary Passkey Trigger */}
-            <button
-              type="button"
-              onClick={handleWebAuthnBiometricLogin}
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
-            >
-              {loading ? (
-                <span className="animate-spin font-mono text-xs">Awaiting Biometric Sensor...</span>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4 text-amber-300 fill-current animate-pulse" />
-                  <span>Scan Passkey / Windows Hello</span>
-                </>
-              )}
-            </button>
-
-            {/* Google OAuth Button */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full py-2.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-
-            {/* Recruiter / Portfolio Demo 1-Click Access */}
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const demoUser = signInAsGuestDemo();
-                  setSuccessMsg('✨ Welcome to the SDETube Recruiter Preview!');
-                  setTimeout(() => {
-                    onSuccess(demoUser);
-                    if (onClose) onClose();
-                  }, 400);
-                }}
-                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-cyan-500/20 to-indigo-500/20 hover:from-emerald-500/30 hover:via-cyan-500/30 hover:to-indigo-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-emerald-500/20"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>Explore as recruiter (view-only tour)</span>
-                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">1-Click</span>
-              </button>
-            </div>
-
-            {/* Switch to Password Option */}
-            <div className="pt-2 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => { setAuthMethod('password'); setError(''); }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Use password or email sign in instead →</span>
-              </button>
-            </div>
-
-          </div>
-        ) : mode === 'verify_otp' ? (
+        {mode === 'verify_otp' ? (
           /* ========================================================================= */
           /* VIEW 2: EMAIL OTP VERIFICATION                                            */
           /* ========================================================================= */
@@ -514,12 +395,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="pt-2 text-center">
               <button
                 type="button"
-                onClick={handleResendOtp}
+                onClick={isLoginCode ? () => { setMode('signin'); setEmailOtp(''); setSuccessMsg(''); setError(''); } : handleResendOtp}
                 disabled={loading}
                 className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Didn't receive code? Resend Email OTP</span>
+                <span>{isLoginCode ? 'Request another sign-in code' : "Didn't receive code? Resend Email OTP"}</span>
               </button>
             </div>
           </form>
@@ -529,25 +410,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="space-y-3.5 animate-fadeIn">
             
-            {/* Switch back to Passkey if available */}
-            {mode === 'signin' && supportsBiometrics && (
-              <div className="flex justify-between items-center pb-1">
-                <button
-                  type="button"
-                  onClick={() => { setAuthMethod('passkey'); setError(''); }}
-                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <Fingerprint className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>← Switch to Instant Biometric Passkey</span>
-                </button>
-              </div>
-            )}
-
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <label htmlFor="student-auth-email" className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
+                  id="student-auth-email"
+                  autoComplete="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -559,10 +428,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
+              <label htmlFor="student-auth-password" className="block text-xs font-semibold text-slate-300 mb-1">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
+                  id="student-auth-password"
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -579,7 +450,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={handleSendLoginOtp}
-                  disabled={loading}
+                  disabled={loading || !captchaToken}
                   className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <Mail className="w-3.5 h-3.5 text-indigo-400" />
@@ -627,14 +498,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {/* Compact Turnstile Captcha Widget */}
-            <TurnstileCaptcha 
+            <TurnstileCaptcha
+              key={captchaAttempt}
               onVerify={(token) => setCaptchaToken(token)} 
               onExpire={() => setCaptchaToken('')}
             />
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !captchaToken}
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 mt-1 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
@@ -705,7 +577,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {/* Footer Credentials Info */}
       <div className="mt-5 text-center text-[11px] text-slate-500 font-mono flex items-center justify-center gap-1.5 z-10 select-none">
         <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-        <span>Supabase Auth &bull; WebAuthn Biometrics &bull; Turnstile Defended</span>
+        <span>Supabase Auth &bull; Turnstile verification</span>
       </div>
 
     </div>

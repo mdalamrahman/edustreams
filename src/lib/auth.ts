@@ -1,7 +1,5 @@
-import { apiFetch as fetch } from './apiFetch';
 import { repositoryConfig } from './repositoryConfig';
-import { supabase, supabaseAdmin } from './supabase';
-import { isWebAuthnSupported, registerWebAuthnPasskey } from './webauthn';
+import { supabase } from './supabase';
 import { registerDeviceSession, terminateDeviceSession } from './session';
 import { isRecruiterDemoUser, setRecruiterPreviewEnabled } from './recruiterPreview';
 
@@ -154,8 +152,6 @@ const getRedirectUrl = (): string => {
   return repositoryConfig.studentUrl;
 };
 
-const PUBLIC_ANON_KEY = repositoryConfig.supabaseKey;
-
 /**
  * Signs up a student via Supabase Auth, generates a 6-digit OTP and direct verification link,
  * and triggers confirmation email directly via Supabase Auth using the custom SMTP configuration.
@@ -179,8 +175,7 @@ function rememberUser(user: { id: string; email?: string; created_at: string }):
 
 export async function verifyEmailOtp(email: string, token: string): Promise<{ user: StudentUser | null; error: string | null }> {
   const credentials = { email: email.trim().toLowerCase(), token: token.trim() };
-  let result = await supabase.auth.verifyOtp({ ...credentials, type: 'signup' });
-  if (result.error) result = await supabase.auth.verifyOtp({ ...credentials, type: 'email' });
+  const result = await supabase.auth.verifyOtp({ ...credentials, type: 'email' });
   if (result.error || !result.data.session || !result.data.user) {
     return { user: null, error: result.error?.message || 'Invalid verification code' };
   }
@@ -192,48 +187,15 @@ export async function resendEmailOtp(email: string): Promise<{ success: boolean;
   return { success: !error, error: error?.message };
 }
 
-export async function signInWithEmailOtp(email: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const cleanEmail = email.trim().toLowerCase();
-    const redirectUrl = getRedirectUrl();
-
-    // 1. Dispatch via supabaseAdmin.auth.signInWithOtp (bypasses captcha, triggers custom SMTP)
-    const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: redirectUrl
-      }
-    });
-
-    if (otpErr) {
-      // Direct REST fallback
-      const res = await fetch(`${repositoryConfig.supabaseUrl}/auth/v1/otp`, {
-        method: 'POST',
-        headers: {
-          'apikey': PUBLIC_ANON_KEY,
-          'Authorization': `Bearer ${PUBLIC_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: cleanEmail,
-          create_user: false,
-          data: { emailRedirectTo: redirectUrl }
-        })
-      });
-      if (!res.ok) {
-        return { success: false, error: otpErr.message };
-      }
-    }
-
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('pending_verify_email', cleanEmail);
-    }
-
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to dispatch email OTP.' };
-  }
+export async function signInWithEmailOtp(email: string, captchaToken: string): Promise<{ success: boolean; error?: string }> {
+  const cleanEmail = email.trim().toLowerCase();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: cleanEmail,
+    options: { shouldCreateUser: false, emailRedirectTo: getRedirectUrl(), captchaToken },
+  });
+  if (error) return { success: false, error: error.message };
+  sessionStorage.setItem('pending_verify_email', cleanEmail);
+  return { success: true };
 }
 
 /**
@@ -286,7 +248,7 @@ export async function signInStudent(email: string, password: string, captchaToke
       return { user: null, error: error.message };
     }
 
-    if (data?.user) {
+    if (data?.session && data.user) {
       const studentUser: StudentUser = {
         id: data.user.id,
         email: data.user.email || email.trim().toLowerCase(),
@@ -348,49 +310,6 @@ export async function signOutStudent() {
     await supabase.auth.signOut();
   } catch (err) {
     console.warn('[SDETube Auth] supabase signOut error:', err);
-  }
-}
-
-/**
- * Registers a WebAuthn biometric passkey and records it in Supabase Auth user metadata.
- */
-export async function addPasskeyToSupabase(user: StudentUser): Promise<{ success: boolean; message: string; isWebAuthn?: boolean }> {
-  try {
-    let webAuthnSuccess = false;
-
-    // 1. If WebAuthn biometric is supported, register hardware credential
-    if (isWebAuthnSupported()) {
-      const reg = await registerWebAuthnPasskey(user.email, user.id);
-      if (reg.success) {
-        webAuthnSuccess = true;
-      } else if (reg.error) {
-        return { success: false, message: reg.error };
-      }
-    }
-
-    // 2. Update Supabase user_metadata directly in Supabase
-    try {
-      await supabase.auth.updateUser({
-        data: {
-          has_passkey: true,
-          passkey_type: webAuthnSuccess ? 'WebAuthn_Biometric' : 'Supabase_Passkey',
-          last_passkey_registered: new Date().toISOString()
-        }
-      });
-    } catch {}
-
-    return {
-      success: true,
-      isWebAuthn: webAuthnSuccess,
-      message: webAuthnSuccess
-        ? `Windows Hello / Biometric Passkey successfully linked to ${user.email} in Supabase!`
-        : `Passkey successfully registered and bound to ${user.email} in Supabase!`
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: err?.message || 'Failed to register passkey in Supabase.'
-    };
   }
 }
 

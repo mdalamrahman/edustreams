@@ -11,7 +11,6 @@ import {
   ChevronDown, 
   Sparkles, 
   Flame, 
-  Fingerprint, 
   Cpu, 
   LayoutDashboard, 
   Menu, 
@@ -34,7 +33,7 @@ import {
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDevice } from '../lib/device';
-import { addPasskeyToSupabase, signInAsGuestDemo } from '../lib/auth';
+import { signInAsGuestDemo } from '../lib/auth';
 import { getUserWallet } from '../lib/billing';
 import { isPotdSolvedToday } from '../lib/analytics';
 import { useAppContext } from '../lib/AppContext';
@@ -114,8 +113,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
-  const [passkeyLoading, setPasskeyLoading] = useState(false);
-  const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(() => user?.email ? getUserWallet(user.email).balance : 0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -129,25 +126,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [user?.email]);
 
 
-
-  const handleAddPasskey = async () => {
-    if (!user) return;
-    setPasskeyLoading(true);
-    setPasskeyNotice(null);
-
-    const res = await addPasskeyToSupabase(user);
-    setPasskeyLoading(false);
-
-    if (res.success) {
-      setPasskeyNotice('Hardware Biometric Passkey successfully linked to Supabase account.');
-    } else {
-      setPasskeyNotice(`Passkey registration notice: ${res.message}`);
-    }
-
-    setTimeout(() => {
-      setPasskeyNotice(null);
-    }, 6000);
-  };
 
   const [isPotdSolved, setIsPotdSolved] = useState<boolean>(() => isPotdSolvedToday('sdetube'));
 
@@ -304,22 +282,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      {/* Passkey Sync Toast Notification */}
-      {passkeyNotice && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-2xl bg-indigo-950/95 border border-indigo-500/80 shadow-2xl backdrop-blur-xl text-indigo-100 text-xs font-semibold flex items-center gap-3 animate-fadeIn">
-          <div className="p-2 rounded-xl bg-indigo-600/40 text-indigo-300 border border-indigo-400/40">
-            <Fingerprint className="w-5 h-5 text-indigo-300 animate-pulse" />
-          </div>
-          <div>
-            <div className="font-bold text-slate-100 flex items-center gap-1.5">
-              <span>Supabase Passkey Engine</span>
-              <span className="px-1.5 py-0.2 rounded bg-indigo-900 border border-indigo-600 text-indigo-200 text-[9px] font-mono">Linked</span>
-            </div>
-            <p className="text-[11px] text-slate-300 mt-0.5 max-w-xs">{passkeyNotice}</p>
-          </div>
-        </div>
-      )}
-
       {/* Main Sticky Navbar (Google Stitch Obsidian Command) */}
       <header className="sticky top-0 z-40 w-full border-b border-stitch-variant/50 bg-stitch-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.5)]">
         <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 h-16 flex items-center justify-between gap-1.5 sm:gap-4">
@@ -483,18 +445,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     >
                       <User className="w-4 h-4 text-purple-400" />
                       <span>Developer Profile & Heatmap</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        handleAddPasskey();
-                        setIsDropdownOpen(false);
-                      }}
-                      disabled={passkeyLoading}
-                      className="w-full px-3 py-2 rounded-xl text-left text-xs font-semibold text-indigo-300 hover:bg-indigo-950/50 flex items-center gap-2 transition-all cursor-pointer"
-                    >
-                      <Fingerprint className="w-4 h-4 text-indigo-400" />
-                      <span>{passkeyLoading ? 'Linking Hardware Passkey...' : 'Register Device Passkey'}</span>
                     </button>
 
                     <button

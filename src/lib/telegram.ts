@@ -116,13 +116,20 @@ export async function checkBackendHealth(): Promise<{ online: boolean; details?:
 /** Expose the base URL for debugging / display */
 export const TELEGRAM_BACKEND_URL = BACKEND_BASE;
 
+export class VideoPlaybackError extends Error {
+  constructor(readonly status: number) {
+    super('Unable to authorize video playback');
+  }
+}
+
 export async function getAuthorizedStreamUrl(channelId: string, messageId: number): Promise<string> {
   const chatId = CHANNEL_CHAT_ID_MAP[channelId] || channelId;
   const path = `/stream/${chatId}/${messageId}`;
   const response = await fetch(`${repositoryConfig.backendUrl}/api/media/ticket`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path })
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }),
+    signal: AbortSignal.timeout(15000)
   });
-  if (!response.ok) throw new Error('Unable to authorize video playback');
+  if (!response.ok) throw new VideoPlaybackError(response.status);
   const ticket = await response.json();
   return `${repositoryConfig.backendUrl}${path}?expires=${ticket.expires}&signature=${encodeURIComponent(ticket.signature)}`;
 }

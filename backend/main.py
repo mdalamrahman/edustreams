@@ -8319,12 +8319,12 @@ async def save_user_progress_endpoint(request: Request):
     """Saves DSA progress to both SQLite and Supabase for cross-device persistence."""
     try:
         body = await request.json()
-        email = body.get("user_email") or body.get("email")
-        if not email:
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Email is required"})
-        
-        clean_email = email.strip().lower()
-        res = db_manager.save_user_progress(clean_email, body)
+        user = request.state.user
+        clean_email = user["email"].strip().lower()
+        body["user_id"] = user["id"]
+        result = db_manager.save_user_progress(clean_email, body)
+        if not result["success"]:
+            return JSONResponse(status_code=500, content={"status": "error", "message": "Progress could not be saved"})
 
         # Async background sync to Supabase table
         if SUPABASE_URL and SUPABASE_KEY and "edustream-demo" not in SUPABASE_URL:
@@ -8349,7 +8349,9 @@ async def save_user_progress_endpoint(request: Request):
                     "active_mins": float(body.get("active_mins", 0))
                 }
                 url = f"{SUPABASE_URL}/rest/v1/user_dsa_progress"
-                session.post(url, headers=headers, json=supa_payload, timeout=5)
+                response = session.post(url, params={"on_conflict": "user_email"}, headers=headers, json=supa_payload, timeout=5)
+                if not response.ok:
+                    print(f"[Supabase User Progress Sync Notice]: HTTP {response.status_code}")
             except Exception as supa_err:
                 print(f"[Supabase User Progress Sync Notice]: {supa_err}")
 

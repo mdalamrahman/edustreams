@@ -51,6 +51,13 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         with patch.dict(os.environ, {'ALLOWED_ORIGINS': 'https://student.example.com'}):
             self.assertEqual((await self.request('/api/health', origin='https://evil.example.com'))[0], 403)
             self.assertEqual((await self.request('/api/health', origin='https://student.example.com'))[1][b'access-control-allow-origin'], b'https://student.example.com')
+            status, headers = await self.request('/api/media/ticket', method='POST', origin='https://student.example.com')
+            self.assertEqual(status, 401)
+            self.assertEqual(headers[b'access-control-allow-origin'], b'https://student.example.com')
+            self.assertEqual(headers[b'cache-control'], b'private, no-store')
+            status, headers = await self.request('/api/media/ticket', method='POST', origin='https://evil.example.com')
+            self.assertEqual(status, 403)
+            self.assertNotIn(b'access-control-allow-origin', headers)
 
     async def test_admin_database_preflight_allows_postgrest_headers(self):
         with patch.dict(os.environ, {'ALLOWED_ORIGINS': 'https://admin.example.com'}):

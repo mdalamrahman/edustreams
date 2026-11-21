@@ -30,7 +30,9 @@ import { AIProcessingStatusCard } from './AIProcessingStatusCard';
 import { StudentVideoNotesTab } from './StudentVideoNotesTab';
 import { FloatingVideoNotesOverlay } from './FloatingVideoNotesOverlay';
 import { Video } from '../lib/types';
-import { getAuthorizedStreamUrl, TELEGRAM_BACKEND_URL } from '../lib/telegram';
+import { getAuthorizedStreamUrl, TELEGRAM_BACKEND_URL, VideoPlaybackError } from '../lib/telegram';
+import { useApp } from '../lib/AppContext';
+import { supabase } from '../lib/supabase';
 import { getCurrentStudent } from '../lib/auth';
 import { getRealtimeTranscriptStatus, setRealtimeTranscriptStatus, sanitizeKey } from '../lib/redis';
 
@@ -56,6 +58,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onAutoComplete
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { setIsAuthModalOpen } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -85,6 +88,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isCaching, setIsCaching] = useState(false);
   const [activeTab, setActiveTab] = useState<'caption' | 'transcript' | 'student_notes'>('caption');
   const [streamError, setStreamError] = useState(false);
+  const [playbackNeedsSignIn, setPlaybackNeedsSignIn] = useState(false);
+  const [streamAttempt, setStreamAttempt] = useState(0);
   const [isLoadingStream, setIsLoadingStream] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const [dynamicTranscript, setDynamicTranscript] = useState<string>('');
@@ -277,11 +282,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Primary stream URL (Cloudflare Pages edge proxy) & Fallback URL (direct Render backend)
+  // Each playback attempt asks the backend for a fresh signed stream URL.
   const [primaryStreamSrc, setPrimaryStreamSrc] = useState('');
   useEffect(() => {
     let cancelled = false;
     setPrimaryStreamSrc('');
+    setPlaybackNeedsSignIn(false);
+    setStreamError(false);
+    setIsLoadingStream(true);
     const refresh = (renew = false) => getAuthorizedStreamUrl(video.channel_id, video.telegram_message_id || 0)
       .then(url => {
         if (cancelled) return;
@@ -296,14 +304,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         }
         setPrimaryStreamSrc(url);
       })
-      .catch(() => { if (!cancelled) setStreamError(true); });
+      .catch(error => {
+        if (cancelled || renew && !(error instanceof VideoPlaybackError && error.status === 401)) return;
+        setPlaybackNeedsSignIn(error instanceof VideoPlaybackError && error.status === 401);
+        setStreamError(true);
+        setIsLoadingStream(false);
+      });
     void refresh();
     const timer = setInterval(() => { void refresh(true); }, 20 * 60 * 1000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [video.channel_id, video.telegram_message_id]);
-  const fallbackDirectStreamSrc = primaryStreamSrc;
-  const [activeStreamSrc, setActiveStreamSrc] = useState<string>(primaryStreamSrc);
-  const [triedFallback, setTriedFallback] = useState<boolean>(false);
+  }, [video.channel_id, video.telegram_message_id, streamAttempt]);
+  useEffect(() => {
+    if (!playbackNeedsSignIn) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) setStreamAttempt(attempt => attempt + 1);
+    });
+    return () => subscription.unsubscribe();
+  }, [playbackNeedsSignIn]);
+  const activeStreamSrc = primaryStreamSrc;
   const [isBuffering, setIsBuffering] = useState<boolean>(false);
   const [showResumeToast, setShowResumeToast] = useState<boolean>(false);
   const [savedResumeTime, setSavedResumeTime] = useState<number>(0);
@@ -313,19 +331,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   // Reset player state strictly when video changes
   useEffect(() => {
-    setActiveStreamSrc(primaryStreamSrc);
-    setTriedFallback(false);
-    setStreamError(false);
-    setIsLoadingStream(true);
     setIsBuffering(false);
     setIsPlaying(false);
     setCurrentTime(0);
     setShowResumeToast(false);
     
-    if (videoRef.current) {
-      videoRef.current.load();
-    }
-
     return () => {
       if (bufferingWatchdogTimer.current) clearTimeout(bufferingWatchdogTimer.current);
       if (videoRef.current) {
@@ -398,19 +408,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleVideoError = () => {
-    // If edge proxy fails, attempt automatic failover to the direct Render backend before showing error screen
-    if (!triedFallback && fallbackDirectStreamSrc && activeStreamSrc !== fallbackDirectStreamSrc) {
-      console.warn(`[EduStream] Edge proxy stream failed, attempting direct backend failover: ${fallbackDirectStreamSrc}`);
-      setTriedFallback(true);
-      setActiveStreamSrc(fallbackDirectStreamSrc);
-      setIsLoadingStream(true);
-      if (videoRef.current) {
-        videoRef.current.load();
-        videoRef.current.play().catch(() => {});
-      }
-      return;
-    }
-
     console.warn(`[EduStream] Telegram stream error for: ${video.title} (msg #${video.telegram_message_id})`);
     console.warn('[EduStream] Stream request failed');
     setStreamError(true);
@@ -522,12 +519,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleReconnect = () => {
-    setStreamError(false);
-    setIsLoadingStream(true);
-    if (videoRef.current) {
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
-    }
+    setStreamAttempt(attempt => attempt + 1);
   };
 
   const formatTime = (seconds: number) => {
@@ -872,13 +864,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <p className="text-xs text-slate-400 mb-1 max-w-md">
               Lecture: <span className="font-mono text-indigo-300 font-bold">{video.title}</span>
             </p>
-            <button
-              onClick={handleReconnect}
-              className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Connection</span>
-            </button>
+            {streamError ? (
+              <>
+                {playbackNeedsSignIn && <p role="alert" className="mt-2 text-sm">Your session is missing or expired. Sign in again to play this lesson.</p>}
+                <button
+                  onClick={playbackNeedsSignIn ? () => setIsAuthModalOpen(true) : handleReconnect}
+                  className="mt-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{playbackNeedsSignIn ? 'Sign in again' : 'Retry Connection'}</span>
+                </button>
+              </>
+            ) : <p role="status" className="mt-2 text-sm">Connecting to the video stream…</p>}
           </div>
         ) : (
           <>
