@@ -105,8 +105,8 @@ graph TD
 
 ### 3.3. Pipeline Verifier & Execution-First Verification Engine
 - **Implementation Files**: `src/lib/pipelineVerifier.ts`, `src/lib/problemService.ts`
-- **Execution-First Rule**: AI-generated test cases often contain hallucinated expected outputs. `verifyExpectedOutputsByExecution()` takes the problem's canonical reference solution (in Python, JS, C++, or Java), runs it against newly generated inputs using Judge0, and extracts the *actual executed output* as the ground-truth expected output.
-- **Test Case Safeguard**: `guaranteeAtLeast10TestCases()` guarantees that if fewer than 10 test cases exist, it cycles known, verified input-output pairs rather than injecting unverified dummy arrays.
+- **Execution-First Rule**: Hidden suite preparation runs an approved reference and harness against every published example in Judge0. It then runs distinct reviewed inputs to obtain expected outputs.
+- **Test Case Safeguard**: Published examples remain paired and immutable in the workspace. Distinct hidden inputs use a separate server-only suite. Administrators review candidate constraints, then Judge0 verifies the reference against the public examples before publication.
 - **Automated Self-Healing**: `verifyAndHealPipeline()` runs the solution on all test cases. If discrepancies occur, it classifies the defect type (`solution`, `driver`, or `testcase`) and prompts Mistral AI with the error history to self-heal the broken component up to 3 attempts.
 
 ### 3.4. Zero-CORS POTD Auto-Verification Subsystem
@@ -374,7 +374,7 @@ curl -I https://sdetube.pages.dev/api/potd/leetcode
 
 ## 11. Operational Best Practices & Troubleshooting
 
-1. **Never Inject Unverified Test Cases**: Always use `verifyExpectedOutputsByExecution()` or repeat verified sample pairs. Do not allow LLMs to guess outputs for numeric, binary search tree, or string transformation questions.
+1. **Never Inject Unverified Test Cases**: Preserve published example outputs. Generate only candidate hidden inputs and derive outputs from the approved reference in Judge0. Deduplicate cases and keep hidden suites server-side.
 2. **Preserve User Solution Markers**: Driver code harnesses MUST contain either `// === USER SOLUTION ===` or `# === USER SOLUTION ===`. Without this exact sentinel, `isDriverHarnessValid()` will reject the driver.
 3. **Handle LeetCode Submission Privacy**: Never rely solely on `recentAcSubmissionList` when verifying POTDs. The edge handler must check `userCalendar.submissionCalendar` for today's epoch day timestamp to account for private profiles.
 4. **Enforce Single Report Button**: Do not add multiple fragmented repair buttons to the workspace UI. Keep all diagnostic and reporting actions routed through `<UnifiedReportModal>`.
@@ -395,6 +395,7 @@ These requirements supersede older implementation descriptions above where they 
 - Restrict CORS to configured origins. Keep authenticated responses and media private/no-store. Video tickets are temporary path-bound credentials; do not log or share their URLs. Tickets currently establish authenticated media access, not purchase entitlement.
 - Rotate previously exposed keys and revoke tracked Telegram sessions. Removing source literals does not invalidate credentials or remove Git history. Keep session and scratch files local and ignored.
 - Run `npm test` against production module imports, backend tests with Python 3.11 and installed requirements, both production builds, dependency audits, and `python scripts/check_secrets.py`. Include authorization failures, cross-user access, malicious rendering and concurrent/repeated ledger operations in regression checks.
+- The LeetCode workspace keeps the complete sanitized upstream statement and grades published samples separately from hidden cases. When no verified suite exists, report samples passed without solved credit. Runtime and memory come from the runner and complexity notes are estimates. GFG sync uses the published date and the Asia/Kolkata day boundary. Resume analysis and location-specific value estimates require a readable upload.
 - Recruiter exploration is a view-only preview stored separately from account authentication. Show public question content and labeled sample feature previews; require sign-in for code execution, interviews, notes, progress, uploads, and other mutations. Never create a fabricated student session for a preview visitor. Run `npm run test:browser` (with Google Chrome installed) for admin sign-in and recruiter preview regressions.
 
 

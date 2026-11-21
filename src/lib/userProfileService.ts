@@ -1,3 +1,4 @@
+import { getGfgDate } from './leetcodeApi';
 import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { apiFetch as fetch } from './apiFetch';
 /**
@@ -1571,81 +1572,16 @@ export function isLeetCodeProblemSolvedToday(
   return false;
 }
 
-/**
- * Checks if GFG POTD is solved today on official GeeksforGeeks platform or locally.
- * Checks (in order):
- * 1. Local sdetube_potd_gfg_solved_YYYY-MM-DD flag
- * 2. Local submission key for the problem slug (with today's timestamp)
- * 3. GFG profile current_streak >= 1 — GFG resets streak to 0 if you miss a day,
- *    so a streak of 1+ means the problem was solved on today's POTD cycle.
- */
-export function isGfgProblemSolvedToday(
-  gfgData?: GFGProfileData | null,
-  targetSlug?: string,
-  targetTitle?: string
-): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-
-  // 1. Direct local marks for today
-  if (typeof localStorage !== 'undefined') {
-    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-
-    const checkVariants = [
-      targetSlug,
-      '9999',
-      'gfgpotd',
-      targetTitle ? targetTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-') : '',
-      targetTitle ? targetTitle.toLowerCase().replace(/[^a-z0-9]/g, '') : '',
-      targetSlug ? targetSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-') : '',
-      targetSlug ? targetSlug.toLowerCase().replace(/[^a-z0-9]/g, '') : ''
-    ].filter(Boolean);
-
-    for (const key of checkVariants) {
-      const sub = localStorage.getItem(`edustream_submissions_${key}`);
-      if (sub) {
-        try {
-          const list = JSON.parse(sub);
-          if (Array.isArray(list)) {
-            const solvedToday = list.some(item => {
-              if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-              let isToday = false;
-              if (item.id) {
-                const ts = parseInt(item.id.split('_')[0], 10);
-                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-              }
-              if (!isToday && item.timestamp) {
-                const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
-                if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-              }
-              return isToday;
-            });
-            if (solvedToday) return true;
-          }
-        } catch {}
-      }
-    }
-  }
-
-  // 2. GFG public profile streak & date-verified check
-  if (gfgData) {
-    // If backend verified today's submission date via GFG submissions heatmap, trust it explicitly
-    if (gfgData.solved_today_verified === true) {
-      return true;
-    }
-    // If explicitly marked as not submitted today, do not carry over yesterday's streak
-    if (gfgData.solved_today_verified === false) {
-      return false;
-    }
-
-    // Fallback if older backend didn't return solved_today_verified
-    const rawStreak = gfgData.current_streak ?? (gfgData as any).pod_solved_current_streak ?? (gfgData as any).streak ?? 0;
-    const streak = typeof rawStreak === 'number' ? rawStreak : parseInt(String(rawStreak), 10);
-    if (!isNaN(streak) && streak >= 1) {
-      return true;
-    }
-  }
-
-  return false;
+/** The public activity calendar does not establish a problem-level verdict. */
+export function isGfgPotdAccepted(slug: string, day: string): boolean {
+  try {
+    const entries = JSON.parse(localStorage.getItem(`edustream_submissions_${slug}`) || '[]');
+    return Array.isArray(entries) && entries.some(entry => {
+      if (entry?.status !== 'Accepted' || entry.verifiedHidden !== true) return false;
+      const at = Number(entry.id?.split('_')[0]);
+      return Number.isFinite(at) && at > 0 && getGfgDate(new Date(at)) === day;
+    });
+  } catch { return false; }
 }
 
 export interface LeetCodePrivacyCheckResult {

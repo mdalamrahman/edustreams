@@ -1685,15 +1685,16 @@ export async function requestSubmissionCodeComplexityAnalysis(
 ): Promise<AIComplexityAnalysis | null> {
   const normLang = (language || 'cpp').toLowerCase();
   const cleanSlug = slug || problemTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const codeHash = `${code.length}_${code.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '')}`;
-  const localKey = `edustream_ai_complexity_${cleanSlug}_${normLang}_${codeHash}`;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code));
+  const codeHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  const localKey = `edustream_ai_complexity_v2_${cleanSlug}_${normLang}_${codeHash}`;
 
   // 1. Check local cache
   try {
     const cached = localStorage.getItem(localKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed?.timeComplexity && parsed?.spaceComplexity) {
+      if (parsed?.timeComplexity && parsed?.spaceComplexity && parsed?.timeExplanation && parsed?.spaceExplanation) {
         return parsed;
       }
     }
@@ -1714,7 +1715,7 @@ export async function requestSubmissionCodeComplexityAnalysis(
     });
     if (resp.ok) {
       const data = await resp.json();
-      if (data?.timeComplexity && data?.spaceComplexity) {
+      if (data?.timeComplexity && data?.spaceComplexity && data?.timeExplanation && data?.spaceExplanation) {
         const result: AIComplexityAnalysis = {
           timeComplexity: data.timeComplexity,
           spaceComplexity: data.spaceComplexity,
@@ -1762,7 +1763,7 @@ Respond strictly with a JSON object:
     if (rawJson) {
       const cleaned = rawJson.replace(/```json/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
-      if (parsed?.timeComplexity && parsed?.spaceComplexity) {
+      if (parsed?.timeComplexity && parsed?.spaceComplexity && parsed?.timeExplanation && parsed?.spaceExplanation) {
         const result: AIComplexityAnalysis = {
           timeComplexity: parsed.timeComplexity,
           spaceComplexity: parsed.spaceComplexity,

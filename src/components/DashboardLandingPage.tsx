@@ -41,7 +41,7 @@ import {
   Boxes
 } from 'lucide-react';
 import { getRealAnalytics, RealAnalyticsMetrics, isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
-import { fetchLeetCodePOTD, fetchGFGPOTD, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
+import { fetchLeetCodePOTD, fetchGFGPOTD, watchGfgPotd, isCurrentGfgPotd, LeetCodeDailyQuestion, GFGDailyQuestion, clearPOTDCache } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { getSolvedIds, getLinkedProfiles, LinkedProfilesConfig } from '../lib/progressService';
 import { 
@@ -50,7 +50,7 @@ import {
   LeetCodeFullProfileData, 
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
-  isGfgProblemSolvedToday,
+  isGfgPotdAccepted,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -227,10 +227,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     });
 
     setIsLoadingGfg(true);
-    fetchGFGPOTD().then((res) => {
-      setGfgPotd(res);
-      setIsLoadingGfg(false);
-    });
+    return watchGfgPotd(potd => { setGfgPotd(potd); setIsLoadingGfg(false); });
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -257,29 +254,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     }
   }, [lcPotd, linkedConfig.leetcodeUsername, today]);
 
-  // Proactive background auto-verification for GFG POTD
-  useEffect(() => {
-    const gfgUser = linkedConfig.gfgUsername?.trim();
-    if (gfgUser) {
-      const alreadySolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
-      if (!alreadySolved) {
-        fetchGFGProfile(gfgUser).then(profile => {
-          if (profile) {
-            setGfgProfile(profile);
-            if (isGfgProblemSolvedToday(profile, gfgPotd?.titleSlug, gfgPotd?.title)) {
-              localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-              localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
-              localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
-              localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-              if (gfgPotd) markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-              window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
-              setSolveEventCount(c => c + 1);
-            }
-          }
-        }).catch(() => {});
-      }
-    }
-  }, [gfgPotd, linkedConfig.gfgUsername, today]);
+
 
   // Check Card A: SDETube SDE POTD solved status TODAY
   const isSdePotdSolved = useMemo(() => {
@@ -369,66 +344,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   const isLcPotdSolved = isLcLocalSolved || isLcRemoteSolved;
 
   // Check Card C: GFG POTD solved status
-  const isGfgLocalSolved = useMemo(() => {
-    if (!gfgPotd) return false;
-    const subVariants = [
-      gfgPotd.titleSlug,
-      '9999',
-      'gfgpotd',
-      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
-      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-    ].filter(Boolean);
-
-    for (const v of subVariants) {
-      const sub = localStorage.getItem(`edustream_submissions_${v}`);
-      if (sub) {
-        try {
-          const list = JSON.parse(sub);
-          if (Array.isArray(list) && list.some(item => {
-            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-            const idStr = String(item.id || '');
-            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
-              return false;
-            }
-            let isToday = false;
-            if (item.id) {
-              const ts = parseInt(idStr.split('_')[0], 10);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            if (!isToday && item.timestamp) {
-              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            return isToday;
-          })) {
-            return true;
-          }
-        } catch {}
-      }
-    }
-    return false;
-  }, [gfgPotd, today, solveEventCount]);
-
-  const isGfgRemoteSolved = useMemo(() => {
-    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (gfgProfile && gfgPotd) {
-      const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
-      if (isRemoteSolved) {
-        try {
-          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-        } catch {}
-        return true;
-      }
-    }
-    return false;
-  }, [gfgPotd, gfgProfile, today, solveEventCount]);
-
+  const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgRemoteSolved = false;
   const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
 
   const handleSyncPlatformPotd = async () => {
@@ -487,32 +404,9 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   };
 
   const handleSyncGfgPotd = async () => {
-    const liveConfig = getLinkedProfiles(userEmail);
-    const gfgUser = (liveConfig.gfgUsername || linkedConfig.gfgUsername || localStorage.getItem('sdetube_gfg_username') || '').trim();
-    if (!gfgUser) { setGfgSyncMessage('Link your GFG username in Settings first.'); return; }
     setIsSyncingGfg(true);
-    setGfgSyncMessage('Checking GFG...');
-    try {
-      const freshProfile = await fetchGFGProfile(gfgUser, true);
-      if (freshProfile) {
-        setGfgProfile(freshProfile);
-        const solved = gfgPotd ? isGfgProblemSolvedToday(freshProfile, gfgPotd.titleSlug, gfgPotd.title) : false;
-        if (solved) {
-          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          if (gfgPotd) markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
-          setSolveEventCount(c => c + 1);
-          setGfgSyncMessage('✓ Verified on GFG!');
-        } else {
-          setGfgSyncMessage('Not yet solved on GFG today.');
-        }
-      } else {
-        setGfgSyncMessage('Could not fetch GFG profile.');
-      }
-    } catch { setGfgSyncMessage('Sync failed. Try again.'); }
+    const problem = await fetchGFGPOTD(true);
+    setGfgSyncMessage(isCurrentGfgPotd(problem) ? 'Daily problem updated.' : 'Today?s problem is unavailable. Try again shortly.');
     setIsSyncingGfg(false);
     setTimeout(() => setGfgSyncMessage(null), 4000);
   };
@@ -907,7 +801,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   gfgPotd?.difficulty === 'Medium' ? 'bg-amber-950 border-amber-700 text-amber-300' :
                   'bg-rose-950 border-rose-700 text-rose-300'
                 }`}>
-                  {gfgPotd?.difficulty || 'Medium'}
+                  {gfgPotd?.difficulty || '?'}
                 </span>
                 {isGfgRemoteSolved ? (
                   <span className="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
@@ -916,18 +810,18 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   </span>
                 ) : (
                   <span className="font-mono text-[10px] text-stitch-muted">
-                    {gfgPotd?.accuracy ? `Acc: ${gfgPotd.accuracy}%` : 'Acc: 64.2%'}
+                    {gfgPotd?.accuracy != null ? `Acc: ${gfgPotd.accuracy}%` : ''}
                   </span>
                 )}
               </div>
               <h3 className="text-base font-bold text-slate-100 mb-2">
-                {gfgPotd?.title || 'Distinct Subsequences in String Matrix'}
+                {gfgPotd?.title || 'GeeksforGeeks daily problem unavailable'}
               </h3>
               <p className="text-xs text-stitch-dim mb-4 leading-relaxed">
-                Find the total number of paths in an N x M character matrix matching target sequence S using memoized DP transitions modulo 1e9+7.
+                {gfgPotd ? `${isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last verified problem'} ? ${gfgPotd.date}` : 'Refresh to try again.'}
               </p>
               <div className="flex flex-wrap gap-1.5 mb-6">
-                {(gfgPotd?.topicTags || ['Dynamic Programming', 'Matrix DFS']).slice(0, 2).map((tag, i) => (
+                {(gfgPotd?.topicTags || []).slice(0, 2).map((tag, i) => (
                   <span key={i} className="px-2 py-0.5 rounded bg-stitch-container border border-stitch-variant/40 font-mono text-[10px] text-stitch-dim">
                     {tag}
                   </span>
@@ -956,6 +850,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   }
                 }}
                 className="w-full py-2.5 px-3 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-slate-200 hover:text-stitch-mint font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                disabled={!gfgPotd}
                 title="Solve in SDETube Monaco IDE"
               >
                 <Code className="w-3.5 h-3.5" />

@@ -316,7 +316,7 @@ export async function runTestSuiteAgainstCompiler(
           expectedOutput: tc.isHidden ? '[HIDDEN]' : tc.expectedOutput,
           actualOutput: res.stdout || '',
           timeMs: execTime,
-          memoryKb: res.memory_used_kb,
+          memoryKb: res.memory_used_kb ?? undefined,
           error: res.stderr || 'Runtime execution error',
           isHidden: tc.isHidden
         });
@@ -328,7 +328,7 @@ export async function runTestSuiteAgainstCompiler(
           expectedOutput: tc.isHidden ? '[HIDDEN]' : tc.expectedOutput,
           actualOutput: 'Time Limit Exceeded (> 3000ms)',
           timeMs: execTime,
-          memoryKb: res.memory_used_kb,
+          memoryKb: res.memory_used_kb ?? undefined,
           isHidden: tc.isHidden
         });
       } else {
@@ -340,7 +340,7 @@ export async function runTestSuiteAgainstCompiler(
           expectedOutput: tc.isHidden ? '[HIDDEN]' : tc.expectedOutput,
           actualOutput: res.stdout.trim(),
           timeMs: execTime,
-          memoryKb: res.memory_used_kb,
+          memoryKb: res.memory_used_kb ?? undefined,
           isHidden: tc.isHidden
         });
       }

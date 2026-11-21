@@ -1,6 +1,8 @@
+import DOMPurify from 'dompurify';
 import { apiFetch as fetch } from '../lib/apiFetch';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Editor, { OnMount } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
+import type { editor as MonacoEditor } from 'monaco-editor';
 import { 
   Play, 
   Sparkles, 
@@ -62,7 +64,7 @@ import {
 } from 'lucide-react';
 import { executeCode, compareOutputs, SupportedLanguage, isValidHeightBalancedBSTForNums, isDriverHarnessValid } from '../lib/compiler';
 import { requestMistralCodeReview, requestContextualAIChatResponse, requestAIOptimalSolution, OptimalSolutionResponse, CodeTAReview, ChatMessage, requestSubmissionCodeComplexityAnalysis } from '../lib/mistral';
-import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, guaranteeAtLeast10TestCases, PREDEFINED_SPECIAL_PROBLEMS, resolveReferenceSolution } from '../lib/problemService';
+import { fetchEnrichedProblem, fetchOrGenerateDriverCode, getDefaultDriverForProblem, ProblemTemplate, ProblemApproach, generateDefaultStarters, toSlug, getCleanTitle, extractParamNames, PREDEFINED_SPECIAL_PROBLEMS, resolveReferenceSolution } from '../lib/problemService';
 import { getCompaniesForProblem, fetchCompanyProblemsDataset } from '../lib/companyProblemsData';
 import { isCloudAutoSyncEnabled, setCloudAutoSyncEnabled } from '../lib/userProfileService';
 import { DSAProblem } from '../lib/dsaSheetsData';
@@ -75,7 +77,7 @@ import { getCurrentStudent } from '../lib/auth';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { getLocalProblemNote, saveProblemNote, downloadProblemNotesAsTxt } from '../lib/notesService';
 import { WalletTopupModal } from './WalletTopupModal';
-import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem } from './SubmissionVisualizer';
+import { SubmissionVisualizer, SubmissionAnalyticsData, TestCaseResultItem, summarizeMeasurements } from './SubmissionVisualizer';
 import { UnifiedReportModal } from './UnifiedReportModal';
 import { registerLeetCodeCompletionProviders } from '../lib/monacoEditorSuggestions';
 import { ProblemMultiOptionsModal } from './ProblemMultiOptionsModal';
@@ -314,6 +316,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     };
   });
 
+  const [statementError, setStatementError] = useState(false);
+  const [statementAttempt, retryStatement] = useState(0);
+  const draftModels = useRef(new Map<string, string>());
+  const activeModel = useRef('');
+  const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null);
+  const applyingCode = useRef(false);
   const [isLoadingEnriched, setIsLoadingEnriched] = useState<boolean>(true);
   const [zoomedDiagram, setZoomedDiagram] = useState<string | null>(null);
 
@@ -321,8 +329,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   useEffect(() => {
     let isCancelled = false;
     setIsLoadingEnriched(true);
+    setStatementError(false);
 
-    const rawTarget = effectiveCodingProblem?.slug && typeof effectiveCodingProblem.slug === 'string' && effectiveCodingProblem.slug.trim()
+    const rawTarget = effectiveCodingProblem?.id === 9999 && effectiveCodingProblem.gfg
+      ? effectiveCodingProblem.gfg
+      : effectiveCodingProblem?.slug && typeof effectiveCodingProblem.slug === 'string' && effectiveCodingProblem.slug.trim()
       ? effectiveCodingProblem.slug
       : PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug]
       ? currentProblemSlug
@@ -343,8 +354,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       notes
     ).then((enriched) => {
       if (!isCancelled && enriched) {
-        // Check for local testcase override
-        try {
+        // Overrides apply only to locally authored practice material.
+        if (!enriched.sourceSlug) try {
           const overrideStr = localStorage.getItem(`edustream_testcase_override_${targetSlug}`);
           if (overrideStr) {
             const overrideObj = JSON.parse(overrideStr);
@@ -384,40 +395,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         } catch {}
 
-        // Purge any corrupted SAMPLE testcases BEFORE padding hidden cases
-        // (e.g. nums = [] with k >= 1, or null expected output for scalar returns)
-        // IMPORTANT: run this filter FIRST so guaranteeAtLeast10TestCases pads from clean data,
-        // preventing the filter from accidentally stripping valid cycled hidden cases.
-        enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
-        enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
-
-        const isKth = targetSlug.includes('kth') || enriched.name.toLowerCase().includes('kth');
-        const startersStr = JSON.stringify(enriched.starters || {});
-        const isScalar = startersStr.includes('int ') || startersStr.includes('bool ') || startersStr.includes('double ');
-        const isPointer = startersStr.includes('TreeNode*') || startersStr.includes('ListNode*') || startersStr.includes('Node*');
-
-        if (enriched.testCases && enriched.expectedOutputs) {
-          const cleanPairs: { tc: string; eo: string }[] = [];
-          for (let idx = 0; idx < enriched.testCases.length; idx++) {
-            const tc = String(enriched.testCases[idx] || '').trim();
-            const eo = String(enriched.expectedOutputs[idx] || '').trim();
-            if (!tc) continue;
-            if (isKth && (tc.includes('nums = []') || tc.includes('nums = [ ]') || tc.includes('[]') || tc.startsWith('[],'))) continue;
-            if (isScalar && !isPointer && (eo.toLowerCase() === 'null' || eo.toLowerCase() === 'undefined' || eo === '')) continue;
-            cleanPairs.push({ tc, eo });
-          }
-          if (cleanPairs.length > 0) {
-            enriched.testCases = cleanPairs.map(p => p.tc);
-            enriched.expectedOutputs = cleanPairs.map(p => p.eo);
-          }
-        }
-
-        // NOW pad to at least 10 cases (hidden cases = total - sample cases).
-        // Cycled cases inherit correct outputs from originals, so the filter above won't touch them.
-        enriched = guaranteeAtLeast10TestCases(enriched);
-        enriched.testCases = (enriched.testCases || []).map(tc => String(tc ?? ''));
-        enriched.expectedOutputs = (enriched.expectedOutputs || []).map(eo => String(eo ?? ''));
-
         if (
           targetSlug.includes('kth-largest') ||
           targetSlug.includes('kth-smallest') ||
@@ -445,48 +422,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         setProblemTemplate(enriched);
         setIsLoadingEnriched(false);
 
-        // Check if user already has saved code in browser cache for this problem & language
-        try {
-          // Purge corrupted driver cache containing empty character constant '''
-          const drvKey = `edustream_driver_${targetSlug}_${language}`;
-          const cachedDrv = localStorage.getItem(drvKey);
-          if (cachedDrv && (cachedDrv.includes("'''") || cachedDrv.includes("t.front() == '''"))) {
-            localStorage.removeItem(drvKey);
-          }
-
-          const cached = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
-          if (cached !== null && cached.trim().length > 0) {
-            const isContaminated = (
-              ((targetSlug.includes('floor') || targetSlug.includes('closest-binary')) && cached.includes('argumentsLength')) ||
-              ((targetSlug.includes('serialize-and-deserialize-binary-tree') || targetSlug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec')) ||
-              ((targetSlug.includes('binary-tree-to-double-linkedlist') || targetSlug.includes('binary-tree-to-dll') || targetSlug.includes('tree-to-doubly-list')) && (cached.includes('TreeNode* prev') || cached.includes('Node* prev') || cached.includes('TreeNode *prev') || !cached.includes('treeToDoublyList'))) ||
-              (targetSlug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) ||
-              (targetSlug.includes('open-closed') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('solve(') || !cached.includes('calculateDiscount'))) ||
-              (targetSlug.includes('liskov') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('BankingSystem'))) ||
-              (targetSlug.includes('interface-segregation') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('Workstation'))) ||
-              (targetSlug.includes('dependency-inversion') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('NotificationEngine')))
-            );
-
-            if (isContaminated) {
-              localStorage.removeItem(`edustream_user_code_${targetSlug}_${language}`);
-              const cleanStarter = enriched.starters?.[language] || enriched.starters?.cpp || '';
-              setCode(cleanStarter);
-              if (enriched.testCases && enriched.testCases.length > 0) {
-                setActiveTestCaseIdx(0);
-                setTestInput(enriched.testCases[0]);
-              }
-              return;
-            } else {
-              setCode(cached);
-              if (enriched.testCases && enriched.testCases.length > 0) {
-                setActiveTestCaseIdx(0);
-                setTestInput(enriched.testCases[0]);
-              }
-              return;
-            }
-          }
-        } catch {}
-
         // Classify problem type (dsa vs sql vs javascript) via authentic LeetCode metadata + AI cascade
         detectProblemType({
           name: enriched.name,
@@ -498,29 +433,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           starters: enriched.starters,
           description: enriched.description
         }).then((domainType) => {
-          if (isCancelled) return;
-          if (domainType === 'sql') {
-            setLanguage('sql');
-            setCode(enriched.starters?.sql || '-- Write your SQL query here');
-          } else if (domainType === 'javascript') {
-            const hasExistingSavedCode = localStorage.getItem(`edustream_user_code_${targetSlug}_${language}`);
-            if (!hasExistingSavedCode && (!initialCode || initialCode.trim().length < 10)) {
-              setLanguage('javascript');
-              setCode(enriched.starters?.javascript || '');
-            }
-          } else {
-            // DSA problem: Always preserve user's preferred language (e.g. cpp, python, java)
-            // NEVER force JavaScript on DSA problems!
-            let curLang = language;
-            if (curLang === 'sql') {
-              const pref = (localStorage.getItem('sdetube_preferred_language') as SupportedLanguage) || 'cpp';
-              curLang = pref;
-              setLanguage(pref);
-            }
-            if (!initialCode || initialCode.trim().length < 10) {
-              setCode(enriched.starters?.[curLang] || enriched.starters?.cpp || '');
-            }
-          }
+          if (isCancelled || activeModel.current !== `${targetSlug}:${language}` || draftModels.current.has(activeModel.current)) return;
+          if (domainType === 'sql' && language !== 'sql') setLanguage('sql');
+          if (domainType === 'javascript' && language !== 'javascript') setLanguage('javascript');
         });
 
         if (enriched.testCases && enriched.testCases.length > 0) {
@@ -574,13 +489,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }).catch(() => {});
       }
     }).catch(() => {
-      if (!isCancelled) setIsLoadingEnriched(false);
+      if (!isCancelled) { setStatementError(true); setIsLoadingEnriched(false); }
     });
 
     return () => {
       isCancelled = true;
     };
-  }, [currentProblemSlug, effectiveCodingProblem, cleanTitle, effectiveTranscript, notes, language, initialCode]);
+  }, [currentProblemSlug, effectiveCodingProblem, cleanTitle, effectiveTranscript, notes, statementAttempt]);
 
   // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
@@ -590,7 +505,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   });
 
   // Code state with localStorage initial load
-  const [code, setCode] = useState<string>(() => {
+  const [code, setCodeState] = useState<string>(() => {
     if (initialCode && initialCode.trim().length > 10) return initialCode;
     try {
       const slug = currentProblemSlug;
@@ -614,6 +529,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     } catch {}
     return problemTemplate.starters[initialLanguage] || problemTemplate.starters.cpp || '';
   });
+
+  const [editorRevision, setEditorRevision] = useState(0);
+  const desiredCode = useRef(code);
+  const setCode = (value: string) => {
+    desiredCode.current = value;
+    setCodeState(value);
+    setEditorRevision(revision => revision + 1);
+  };
 
   const [codeSaveStatus, setCodeSaveStatus] = useState<'idle' | 'saved' | 'synced'>('idle');
   const [isAutoSyncEnabled, setIsAutoSyncEnabled] = useState<boolean>(() => isCloudAutoSyncEnabled(getCurrentStudent()?.email));
@@ -641,7 +564,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const [leftTab, setLeftTab] = useState<'description' | 'hints' | 'editorial' | 'notes' | 'video' | 'solutions' | 'submissions' | 'aireview' | 'diagram'>('description');
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState<number>(0);
-  const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || 'nums = [2, 7, 11, 15], target = 9');
+  const [testInput, setTestInput] = useState<string>(() => problemTemplate.testCases[0] || '');
   
   // Submission and Test Execution State
   const [submissionResult, setSubmissionResult] = useState<{
@@ -653,15 +576,12 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     failedOutput?: string;
     failedExpected?: string;
     failedStderr?: string;
+    verdictLabel?: string;
+    hiddenCount?: number;
     isSuccess: boolean;
   } | null>(null);
   
   const [submissionAnalytics, setSubmissionAnalytics] = useState<SubmissionAnalyticsData | null>(null);
-  const [userBenchmarks, setUserBenchmarks] = useState<{
-    runtimes: number[];
-    memoriesKb: number[];
-    userCount: number;
-  } | null>(null);
   const [isSubmissionVisualizerOpen, setIsSubmissionVisualizerOpen] = useState<boolean>(false);
   
   const [reportTestCaseIdx, setReportTestCaseIdx] = useState<number>(0);
@@ -725,66 +645,53 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   const hasVideoSolution = Boolean(youtubeEmbedUrl || validMatchingVideo?.stream_url);
 
-  // Sample test cases: Shown in problem statement examples and bottom console while running
-  // Hidden test cases: Edge / stress tests (minimum 10 total cases) computed only on Submit
-  const sampleCount = useMemo(() => {
-    const exLen = problemTemplate.examples?.length || 0;
-    const tcLen = problemTemplate.testCases?.length || 0;
-    if (tcLen === 0) return 0;
-    if (exLen > 0) return Math.min(exLen, tcLen);
-    return Math.min(3, tcLen);
-  }, [problemTemplate.examples, problemTemplate.testCases]);
+  const problemStatementExamples = useMemo<ProblemTemplate['examples']>(() => {
+    if (problemTemplate.examples.length || problemTemplate.sourceSlug) return problemTemplate.examples;
+    return (problemTemplate.testCases || []).slice(0, 3).flatMap((input, index) => {
+      const output = problemTemplate.expectedOutputs?.[index];
+      return output == null ? [] : [{ input, output }];
+    });
+  }, [problemTemplate.examples, problemTemplate.sourceSlug, problemTemplate.testCases, problemTemplate.expectedOutputs]);
+  const sampleCases = useMemo(() => problemStatementExamples.map(example => example.input), [problemStatementExamples]);
+  const sampleCount = sampleCases.length;
+  const hiddenCasesCount = submissionResult?.hiddenCount || 0;
 
-  const sampleCases = useMemo(() => {
-    return (problemTemplate.testCases || []).slice(0, sampleCount);
-  }, [problemTemplate.testCases, sampleCount]);
-
-  const hiddenCasesCount = useMemo(() => {
-    return Math.max(0, (problemTemplate.testCases?.length || 0) - sampleCount);
-  }, [problemTemplate.testCases, sampleCount]);
-
-  const problemStatementExamples = useMemo(() => {
-    if (problemTemplate.examples && problemTemplate.examples.length > 0) {
-      return problemTemplate.examples;
-    }
-    const limit = Math.min(3, problemTemplate.testCases?.length || 0);
-    const fallbackList = [];
-    for (let i = 0; i < limit; i++) {
-      fallbackList.push({
-        input: problemTemplate.testCases[i] || '',
-        output: problemTemplate.expectedOutputs?.[i] || ''
-      });
-    }
-    return fallbackList;
-  }, [problemTemplate.examples, problemTemplate.testCases, problemTemplate.expectedOutputs]);
-
-  // Sync code state whenever problem or language changes
+  const modelKey = `${currentProblemSlug}:${language}`;
+  activeModel.current = modelKey;
   useEffect(() => {
-    const slug = currentProblemSlug;
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model || model.uri.path !== `/workspace/${currentProblemSlug}/${language}` || model.getValue() === desiredCode.current) return;
+    applyingCode.current = true;
     try {
-      const cached = localStorage.getItem(`edustream_user_code_${slug}_${language}`);
-      if (cached !== null && cached.trim().length > 0) {
-        const isContaminated = (
-          (slug.includes('single-responsibility') && (cached.includes('solve(') || cached.includes('sumEven') || !cached.includes('parkVehicle'))) ||
-          (slug.includes('open-closed') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('solve(') || !cached.includes('calculateDiscount'))) ||
-          (slug.includes('liskov') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('BankingSystem'))) ||
-          (slug.includes('interface-segregation') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('Workstation'))) ||
-          (slug.includes('dependency-inversion') && (cached.includes('parkVehicle') || cached.includes('ParkingLot') || cached.includes('calculateDiscount') || cached.includes('solve(') || !cached.includes('NotificationEngine'))) ||
-          ((slug.includes('floor') || slug.includes('closest-binary')) && cached.includes('argumentsLength')) ||
-          ((slug.includes('serialize-and-deserialize-binary-tree') || slug.includes('serializeanddeserialize')) && cached.includes('class Solution') && !cached.includes('class Codec'))
-        );
-        if (!isContaminated) {
-          setCode(cached);
-          return;
-        } else {
-          localStorage.removeItem(`edustream_user_code_${slug}_${language}`);
-        }
-      }
-    } catch {}
-    if (problemTemplate.starters && problemTemplate.starters[language]) {
-      setCode(problemTemplate.starters[language]);
+      editor.pushUndoStop();
+      editor.executeEdits('workspace', [{ range: model.getFullModelRange(), text: desiredCode.current }]);
+      editor.pushUndoStop();
+    } finally { applyingCode.current = false; }
+  }, [editorRevision, currentProblemSlug, language]);
+
+  const starters = problemTemplate.starters;
+  useEffect(() => {
+    if (draftModels.current.has(modelKey)) {
+      setCode(draftModels.current.get(modelKey)!);
+      return;
     }
-  }, [currentProblemSlug, language, problemTemplate.starters]);
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(`edustream_user_code_${currentProblemSlug}_${language}`); } catch {}
+    if (saved !== null) {
+      draftModels.current.set(modelKey, saved);
+      setCode(saved);
+    } else {
+      setCode((language === initialLanguage ? initialCode : undefined) || starters[language] || '');
+    }
+  }, [modelKey, initialCode, initialLanguage, currentProblemSlug, language, starters]);
+
+  useEffect(() => {
+    if (sampleCases.length) {
+      setActiveTestCaseIdx(0);
+      setTestInput(sampleCases[0]);
+    }
+  }, [sampleCases]);
 
   // Problem Notes Studio state (.txt & Cloudflare sync)
   const [modalNotesContent, setModalNotesContent] = useState<string>(() => {
@@ -810,7 +717,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [executionResult, setExecutionResult] = useState<CodeExecutionResult | null>(null);
-  const [executionTime, setExecutionTime] = useState<number>(0);
+  const [executionTime, setExecutionTime] = useState<number | null>(null);
   
   // Resizable Horizontal Split Pane (Left vs Right)
   const [splitPercent, setSplitPercent] = useState<number>(42);
@@ -1351,21 +1258,43 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       .catch(() => {});
   }, [currentProblemSlug]);
 
-  // Instant Synchronous Autosave on every keystroke (like LeetCode)
-  const handleCodeChange = (newVal: string | undefined) => {
-    const nextCode = newVal ?? '';
-    setCode(nextCode);
-    const slug = currentProblemSlug;
-    try {
-      localStorage.setItem(`edustream_user_code_${slug}_${language}`, nextCode);
+  const draftSaves = useRef(new Map<string, { timer: ReturnType<typeof setTimeout>; value: string }>());
+  function saveDraft(key: string, value: string) {
+    try { localStorage.setItem(key, value); } catch {}
+  }
+  useEffect(() => () => {
+    for (const [key, pending] of draftSaves.current) {
+      clearTimeout(pending.timer);
+      saveDraft(key, pending.value);
+    }
+    draftSaves.current.clear();
+  }, []);
+
+  const handleCodeChange = (value: string | undefined) => {
+    if (value === undefined || applyingCode.current) return;
+    draftModels.current.set(modelKey, value);
+    desiredCode.current = value;
+    setCodeState(value);
+    const key = `edustream_user_code_${currentProblemSlug}_${language}`;
+    const pending = draftSaves.current.get(key);
+    if (pending) clearTimeout(pending.timer);
+    const timer = setTimeout(() => {
+      saveDraft(key, value);
+      draftSaves.current.delete(key);
       setCodeSaveStatus('saved');
-    } catch {}
+    }, 350);
+    draftSaves.current.set(key, { timer, value });
   };
 
   // Reset to default template (LeetCode reload button)
   const handleResetCode = () => {
     if (window.confirm('Reset code to default template? Any unsaved edits for this language will be discarded.')) {
       const starter = problemTemplate.starters[language] || problemTemplate.starters.cpp || '';
+      draftModels.current.set(modelKey, starter);
+      const draftKey = `edustream_user_code_${currentProblemSlug}_${language}`;
+      const pending = draftSaves.current.get(draftKey);
+      if (pending) clearTimeout(pending.timer);
+      draftSaves.current.delete(draftKey);
       setCode(starter);
       const slug = currentProblemSlug;
       try {
@@ -1503,47 +1432,20 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   };
 
   // Strict Output Validation Logic (Handles order-independent nested subsets, bools, ints, whitespace)
-  const currentExpectedOutput = useMemo(() => {
-    let raw: any = '';
-    if (submissionResult && !submissionResult.isSuccess && submissionResult.failedInput === testInput && submissionResult.failedExpected !== undefined && submissionResult.failedExpected !== null) {
-      raw = submissionResult.failedExpected;
-    } else {
-      raw = problemTemplate.expectedOutputs?.[activeTestCaseIdx] ?? problemTemplate.expectedOutputs?.[0] ?? '';
-    }
-    return raw !== null && raw !== undefined ? String(raw) : '';
-  }, [problemTemplate, activeTestCaseIdx, submissionResult, testInput]);
+  const currentExpectedOutput = problemStatementExamples.find(example => example.input === testInput)?.output;
 
-  const isOutputValid = (stdout: string, stderr: string, expectedOutput: string = currentExpectedOutput, caseInput?: string): boolean => {
-    // Only treat as fatal error if stderr contains genuine error/exception signatures (not harmless GCC compiler warnings)
-    const isFatalStderr = Boolean(
-      stderr && (
-        stderr.includes('error:') ||
-        stderr.includes('Runtime Error') ||
-        stderr.includes('Traceback') ||
-        stderr.includes('Exception') ||
-        stderr.includes('SyntaxError')
-      )
-    );
-    if (isFatalStderr) return false;
-    if (!stdout || !stdout.trim()) return false;
-
-    // Special judge for "Convert Sorted Array to Binary Search Tree" (LeetCode 108)
-    // Multiple height-balanced BSTs are valid for the same sorted array
-    const isBstProblem = currentProblemSlug.includes('convert-sorted-array-to-binary-search-tree') ||
-      cleanTitle.toLowerCase().includes('convert sorted array to');
-    if (isBstProblem && caseInput) {
-      if (isValidHeightBalancedBSTForNums(stdout, caseInput)) {
-        return true;
-      }
-    }
-
-    const expStr = String(expectedOutput ?? '');
-    if (!expStr || !expStr.trim()) return stdout.trim().length > 0;
-    return compareOutputs(stdout, expStr);
+  const isOutputValid = (stdout: string, expectedOutput: string, caseInput: string): boolean => {
+    if (currentProblemSlug === 'convert-sorted-array-to-binary-search-tree' && isValidHeightBalancedBSTForNums(stdout, caseInput)) return true;
+    return expectedOutput === '""' && stdout === '' || compareOutputs(stdout, expectedOutput);
   };
 
   // Run Code (First 3 Run Cases) vs Submit (All Hidden Cases)
   const handleExecute = async (isSubmission: boolean = false, templateOverride?: ProblemTemplate) => {
+    if (statementError || (isSubmission && !problemStatementExamples.length)) {
+      setConsoleTab('result');
+      setSubmissionResult({ isSubmission, passedCount: 0, totalCount: 0, isSuccess: false, verdictLabel: 'Official examples are unavailable for grading.' });
+      return;
+    }
     const cost = isSubmission ? PRICING_CONFIG.CODE_SUBMIT_DSA_LLD : PRICING_CONFIG.COMPILER_RUN_DSA_LLD;
     const actionLabel = isSubmission ? 'Submitting & Judging Solution (20 paise)' : 'Running Code via Compiler (5 paise)';
 
@@ -1580,10 +1482,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           preloadedDriver = undefined;
         }
       }
+      if (activeTemplate.sourceSlug) preloadedDriver = undefined;
       if (preloadedDriver && !isDriverHarnessValid(preloadedDriver, language, activeTemplate?.starters?.[language])) {
         preloadedDriver = undefined;
       }
-      if (!preloadedDriver) {
+      if (!activeTemplate.sourceSlug && !preloadedDriver) {
         const slug = currentProblemSlug;
         const sampleCase = testInput || activeTemplate?.testCases?.[0] || '';
         const fetchedDriver = await fetchOrGenerateDriverCode(slug, language, activeTemplate.starters?.[language], sampleCase);
@@ -1601,14 +1504,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         // RUN MODE: Execute the currently active testcase
         // ----------------------------------------------------
         const result = await executeCode(code, language, testInput, cleanTitle, preloadedDriver);
-        const elapsedMs = Date.now() - start;
-        setExecutionTime(elapsedMs);
+        setExecutionTime(result.execution_time_ms);
         setExecutionResult(result);
 
-        const isSuccess = result.status === 'SUCCESS' && isOutputValid(result.stdout, result.stderr, currentExpectedOutput, testInput);
+        const isSuccess = result.status === 'SUCCESS' && (currentExpectedOutput === undefined || isOutputValid(result.stdout, currentExpectedOutput, testInput));
 
         setSubmissionResult({
           isSubmission: false,
+          verdictLabel: result.runnerUnavailable ? 'Runner unavailable | Try again' : isSuccess && currentExpectedOutput === undefined ? 'Custom input ran successfully' : undefined,
           passedCount: isSuccess ? 1 : 0,
           totalCount: 1,
           failedCaseIdx: isSuccess ? undefined : activeTestCaseIdx,
@@ -1625,248 +1528,83 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
       } else {
         // ----------------------------------------------------
-        // SUBMISSION MODE: Ultra-Fast Parallel Execution
-        // ----------------------------------------------------
-        const allCases = activeTemplate.testCases && activeTemplate.testCases.length > 0 
-          ? activeTemplate.testCases 
-          : [testInput];
-        const allExpected = activeTemplate.expectedOutputs && activeTemplate.expectedOutputs.length > 0
-          ? activeTemplate.expectedOutputs
-          : [currentExpectedOutput];
-
-        // Run all test cases concurrently in parallel for lightning-fast results
-        const caseExecutionPromises = allCases.map(async (caseInput, i) => {
-          const expectedOut = allExpected[i] || '';
-          const caseStart = Date.now();
-          const res = await executeCode(code, language, caseInput, cleanTitle, preloadedDriver);
-          const caseLatency = Math.max(2, Date.now() - caseStart);
-          const casePass = res.status === 'SUCCESS' && isOutputValid(res.stdout, res.stderr, expectedOut, caseInput);
-          return {
-            caseIndex: i,
-            input: caseInput,
-            expectedOutput: expectedOut,
-            actualOutput: res.stdout,
-            passed: casePass,
-            runtimeMs: res.execution_time_ms || caseLatency,
-            memoryKb: res.memory_used_kb || (3400 + Math.floor(Math.random() * 400)),
-            errorMessage: casePass ? undefined : (res.stderr || undefined),
-            rawResult: res
-          };
-        });
-
-        const resolvedCases = await Promise.all(caseExecutionPromises);
-        resolvedCases.sort((a, b) => a.caseIndex - b.caseIndex);
-
-        let passed = 0;
-        let failedIdx = -1;
-        let failedIn = '';
-        let failedExp = '';
-        let failedOut = '';
-        let failedErr = '';
-        const caseResults: TestCaseResultItem[] = [];
-        let lastResult: CodeExecutionResult = resolvedCases[0]?.rawResult || {
-          stdout: '',
-          stderr: '',
-          status: 'SUCCESS',
-          exit_code: 0,
-          execution_time_ms: 0,
-          memory_used_kb: 3420
-        };
-
-        for (const item of resolvedCases) {
-          caseResults.push({
-            caseIndex: item.caseIndex,
-            input: item.input,
-            expectedOutput: item.expectedOutput,
-            actualOutput: item.actualOutput,
-            passed: item.passed,
-            runtimeMs: item.runtimeMs,
-            memoryKb: item.memoryKb,
-            errorMessage: item.errorMessage,
-            isSample: item.caseIndex < sampleCount
-          });
-
-          if (item.passed) {
-            passed++;
-          } else if (failedIdx === -1) {
-            failedIdx = item.caseIndex;
-            failedIn = item.input;
-            failedExp = item.expectedOutput;
-            failedOut = item.actualOutput;
-            failedErr = item.errorMessage || item.rawResult?.stderr || '';
-            lastResult = item.rawResult;
+        // Public examples are paired, and their outputs come from the statement.
+        const samples = await Promise.all(problemStatementExamples.map(async (example, index) => {
+          const run = await executeCode(code, language, example.input, cleanTitle, preloadedDriver);
+          return { example, index, run, passed: run.status === 'SUCCESS' && isOutputValid(run.stdout, example.output, example.input) };
+        }));
+        const failed = samples.find(item => !item.passed);
+        const samplePassed = samples.filter(item => item.passed).length;
+        const caseResults: TestCaseResultItem[] = samples.map(({ example, index, run, passed }) => ({
+          caseIndex: index, input: example.input, expectedOutput: example.output, actualOutput: run.stdout,
+          passed, runtimeMs: run.execution_time_ms, memoryKb: run.memory_used_kb, isSample: true,
+          errorMessage: passed ? undefined : run.stderr,
+        }));
+        let hidden: { verdict: string; totalCount: number; passedCount: number; measurements: { runtimeMs: number | null; memoryKb: number | null }[] } | undefined;
+        if (!failed && language !== 'sql') {
+          const judgeSlug = activeTemplate.sourceSlug || currentProblemSlug;
+          try {
+            const response = await fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(judgeSlug)}/grade`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code, language }), signal: AbortSignal.timeout(90000),
+            });
+            if (!response.ok) throw new Error('Grading service unavailable');
+            hidden = await response.json();
+          } catch {
+            hidden = { verdict: 'runner_unavailable', totalCount: 0, passedCount: 0, measurements: [] };
           }
         }
-
         const totalWallClockMs = Date.now() - start;
-        const normLang = (language || 'cpp').toLowerCase();
-        // Compute realistic CPU runtime from all testcases
-        const rawCpuMs = caseResults.reduce((acc, c) => acc + (c.runtimeMs || 0), 0);
-        const realisticRuntimeMs = rawCpuMs > 0 && rawCpuMs < 1000 
-          ? rawCpuMs 
-          : (normLang === 'cpp' || normLang === 'rust' ? Math.max(1, Math.floor(Math.random() * 3) + 1)
-            : normLang === 'java' ? Math.floor(Math.random() * 6) + 4
-            : normLang === 'python' ? Math.floor(Math.random() * 20) + 30
-            : Math.floor(Math.random() * 15) + 20);
-
-        setExecutionTime(realisticRuntimeMs);
-        setExecutionResult(lastResult);
-
-        const isAllSuccess = passed === allCases.length;
-
-        // Calculate realistic percentiles based on language benchmarks
-        let runtimePct = 85.0;
-        if (normLang === 'cpp' || normLang === 'rust') {
-          if (realisticRuntimeMs <= 2) runtimePct = 98.2;
-          else if (realisticRuntimeMs <= 4) runtimePct = 92.5;
-          else if (realisticRuntimeMs <= 8) runtimePct = 84.0;
-          else if (realisticRuntimeMs <= 15) runtimePct = 71.0;
-          else runtimePct = 48.0;
-        } else if (normLang === 'java') {
-          if (realisticRuntimeMs <= 4) runtimePct = 97.0;
-          else if (realisticRuntimeMs <= 10) runtimePct = 91.0;
-          else if (realisticRuntimeMs <= 20) runtimePct = 80.0;
-          else runtimePct = 52.0;
-        } else if (normLang === 'python') {
-          if (realisticRuntimeMs <= 32) runtimePct = 96.0;
-          else if (realisticRuntimeMs <= 48) runtimePct = 88.0;
-          else if (realisticRuntimeMs <= 70) runtimePct = 75.0;
-          else runtimePct = 45.0;
-        } else {
-          if (realisticRuntimeMs <= 25) runtimePct = 94.0;
-          else if (realisticRuntimeMs <= 50) runtimePct = 82.0;
-          else runtimePct = 55.0;
-        }
-
-        const rawMemKb = Math.max(...caseResults.map(c => c.memoryKb || 0), lastResult.memory_used_kb || 0);
-        const memoryKb = rawMemKb > 0 ? rawMemKb : (
-          normLang === 'cpp' || normLang === 'rust' ? 1160 :
-          normLang === 'python' ? 14600 :
-          normLang === 'java' ? 42500 : 16200
-        );
-
-        let memoryPct = 88.5;
-        if (normLang === 'cpp' || normLang === 'rust') {
-          if (memoryKb < 1300) memoryPct = 95.8;
-          else if (memoryKb < 2500) memoryPct = 89.0;
-          else memoryPct = 65.0;
-        } else if (normLang === 'python') {
-          if (memoryKb < 14500) memoryPct = 94.2;
-          else if (memoryKb < 16000) memoryPct = 87.5;
-          else memoryPct = 62.0;
-        } else {
-          if (memoryKb < 44000) memoryPct = 92.0;
-          else memoryPct = 75.0;
-        }
-
+        const isAllSuccess = !failed && hidden?.verdict === 'accepted' && hidden.totalCount > 0;
+        const verdictLabel = failed
+          ? failed.run.runnerUnavailable ? 'Runner unavailable | Try again'
+            : failed.run.status === 'ERROR' ? `Execution failed on sample ${failed.index + 1}` : `Wrong answer on sample ${failed.index + 1}`
+          : isAllSuccess ? 'Accepted'
+            : !hidden || hidden.verdict === 'hidden_unavailable' ? 'Samples passed · Hidden tests unavailable'
+              : hidden.verdict === 'runner_unavailable' ? 'Samples passed · Hidden test runner unavailable'
+                : hidden.verdict === 'wrong_answer' ? 'Wrong answer on hidden tests'
+                  : hidden.verdict === 'time_limit' ? 'Time limit exceeded on hidden tests' : 'Execution failed during server grading';
+        const metrics = [...caseResults, ...(hidden?.measurements || []).map((measurement, index) => ({
+          ...measurement, caseIndex: samples.length + index, input: '', expectedOutput: '', isSample: false,
+        }))];
+        const { runtimeMs, memoryKb } = summarizeMeasurements(metrics);
         const slug = currentProblemSlug;
         const student = getCurrentStudent();
         const email = student?.email || 'anonymous';
-
         const analytics: SubmissionAnalyticsData = {
-          isSuccess: isAllSuccess,
-          status: isAllSuccess ? 'Accepted' : failedErr ? 'Runtime Error' : 'Wrong Answer',
-          totalCases: allCases.length,
-          passedCases: passed,
-          runtimeMs: realisticRuntimeMs,
-          memoryKb: memoryKb,
-          runtimePercentile: runtimePct,
-          memoryPercentile: memoryPct,
-          timeComplexity: activeTemplate.approaches?.[0]?.timeComplexity || 'O(N)',
-          spaceComplexity: activeTemplate.approaches?.[0]?.spaceComplexity || 'O(N)',
-          timeExplanation: activeTemplate.approaches?.[0]?.description || 'Linear traversal with efficient element processing.',
-          spaceExplanation: `Auxiliary dynamic memory allocated (${(memoryKb / 1024).toFixed(1)} MB).`,
-          optimalTimeComplexity: 'O(N)',
-          optimalSpaceComplexity: 'O(1)',
-          testCasesResults: caseResults,
-          failedCase: isAllSuccess ? undefined : {
-            caseIndex: failedIdx >= 0 ? failedIdx : 0,
-            input: failedIn,
-            expectedOutput: failedExp,
-            actualOutput: failedOut,
-            stderr: failedErr
-          },
-          language,
-          problemTitle: cleanTitle,
-          submittedCode: code,
-          userBenchmarks: userBenchmarks || undefined,
-          isAiEvaluated: false
+          isSuccess: isAllSuccess, status: verdictLabel, totalCases: samples.length + (hidden?.totalCount || 0),
+          passedCases: samplePassed + (hidden?.passedCount || 0), runtimeMs, memoryKb,
+          timeComplexity: '', spaceComplexity: '', timeExplanation: '', spaceExplanation: '',
+          testCasesResults: caseResults, measurements: metrics, measurementVersion: 1,
+          language, problemTitle: cleanTitle, submittedCode: code, isAiEvaluated: false,
         };
-
+        setExecutionTime(runtimeMs);
+        setExecutionResult(failed?.run ?? samples.at(-1)?.run ?? null);
         setSubmissionAnalytics(analytics);
-        if (isAllSuccess) {
-          setIsSubmissionVisualizerOpen(true);
-        } else {
-          setIsSubmissionVisualizerOpen(false);
-          setConsoleTab('result');
-          setIsConsoleMinimized(false);
-        }
-
+        setIsSubmissionVisualizerOpen(isAllSuccess);
         setSubmissionResult({
-          isSubmission: true,
-          passedCount: passed,
-          totalCount: allCases.length,
-          failedCaseIdx: isAllSuccess ? undefined : failedIdx,
-          failedInput: isAllSuccess ? undefined : failedIn,
-          failedOutput: isAllSuccess ? undefined : failedOut,
-          failedExpected: isAllSuccess ? undefined : failedExp,
-          failedStderr: isAllSuccess ? undefined : failedErr,
-          isSuccess: isAllSuccess
+          isSubmission: true, passedCount: analytics.passedCases, totalCount: analytics.totalCases,
+          hiddenCount: hidden?.totalCount, verdictLabel, isSuccess: isAllSuccess,
+          failedCaseIdx: failed?.index, failedInput: failed?.example.input, failedOutput: failed?.run.stdout,
+          failedExpected: failed?.example.output, failedStderr: failed?.run.stderr,
         });
-
-        const isHiddenFailure = failedIdx >= sampleCount;
         const newSubItem = {
-          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          timestamp: new Date().toLocaleString(),
-          status: isAllSuccess 
-            ? 'Accepted' 
-            : failedErr 
-              ? 'Runtime Error' 
-              : isHiddenFailure 
-                ? `Wrong Answer (Hidden Case ${failedIdx + 1})`
-                : `Wrong Answer (${passed}/${allCases.length})`,
-          runtime: `${realisticRuntimeMs} ms`,
-          memory: `${(memoryKb / 1024).toFixed(1)} MB`,
-          lang: language.toUpperCase(),
-          code: code,
-          passedCount: passed,
-          totalCount: allCases.length,
-          analytics: analytics
+          id: `${Date.now()}_${crypto.randomUUID()}`,
+          timestamp: new Date().toLocaleString(), status: verdictLabel,
+          runtime: runtimeMs == null ? 'Unavailable' : `${runtimeMs} ms`,
+          memory: memoryKb == null ? 'Unavailable' : `${(memoryKb / 1024).toFixed(2)} MB`,
+          lang: language.toUpperCase(), code, passedCount: analytics.passedCases,
+          totalCount: analytics.totalCases, verifiedHidden: isAllSuccess, analytics,
         };
-
         setSubmissionsList(prev => {
           const updated = [newSubItem, ...prev];
-          try {
-            localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(updated));
-          } catch {}
+          try { localStorage.setItem(`edustream_submissions_${slug}`, JSON.stringify(updated)); } catch {}
           return updated;
         });
-
-        // Sync initial submission to backend Cloudflare R2
         fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/submissions`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            submission: newSubItem
-          })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, submission: newSubItem }),
         }).catch(() => {});
-
-        // Fetch real SDETube user benchmarks for this problem & language to compare against our own users
-        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/benchmarks?lang=${encodeURIComponent(language)}`)
-          .then(res => res.json())
-          .then(bData => {
-            if (bData && bData.status === 'ok') {
-              const bObj = {
-                runtimes: bData.runtimes || [],
-                memoriesKb: bData.memoriesKb || [],
-                userCount: bData.userCount || (bData.runtimes ? bData.runtimes.length : 0)
-              };
-              setUserBenchmarks(bObj);
-              setSubmissionAnalytics(prev => prev ? { ...prev, userBenchmarks: bObj } : null);
-            }
-          })
-          .catch(() => {});
 
         // AI-Powered Time and Space Complexity Analysis: Evaluates actual user code & stores in Cloudflare R2
         if (isAllSuccess) {
@@ -1874,7 +1612,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             .then(aiRes => {
               if (aiRes && aiRes.timeComplexity) {
                 setSubmissionAnalytics(prev => {
-                  if (!prev) return null;
+                  if (!prev || prev.submittedCode !== code || prev.language !== language) return prev;
                   const updatedAnalytics: SubmissionAnalyticsData = {
                     ...prev,
                     timeComplexity: aiRes.timeComplexity,
@@ -1889,7 +1627,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   // Update submission item in local state and browser cache
                   setSubmissionsList(currSubs => {
                     const nextSubs = currSubs.map((item, idx) => {
-                      if (idx === 0 || item.id === newSubItem.id) {
+                      if (item.id === newSubItem.id) {
                         return { ...item, analytics: updatedAnalytics };
                       }
                       return item;
@@ -1929,15 +1667,11 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           markProblemSolved(
             effectiveCodingProblem?.id || effectiveCodingProblem?.name || cleanTitle,
             Math.max(1, Math.round(totalWallClockMs / 60000)),
-            currentProblemSlug || effectiveCodingProblem?.slug || cleanTitle
+            currentProblemSlug || effectiveCodingProblem?.slug || cleanTitle,
+            true
           );
 
-          // Persist validated solution to Cloudflare R2
-          fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(currentProblemSlug)}/save-solution`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language, solution: code })
-          }).catch(() => {});
+
         }
 
         if (onCodeExecuted) {
@@ -1945,15 +1679,14 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         }
       }
     } catch (err: any) {
-      const elapsedMs = Date.now() - start;
-      setExecutionTime(elapsedMs);
+      setExecutionTime(null);
       const fallbackResult: CodeExecutionResult = {
         stdout: '',
         stderr: err?.message || 'Execution error on cloud compiler.',
         status: 'ERROR',
         exit_code: 1,
-        execution_time_ms: elapsedMs,
-        memory_used_kb: 0
+        execution_time_ms: null,
+        memory_used_kb: null
       };
       setExecutionResult(fallbackResult);
       setSubmissionResult({
@@ -2204,7 +1937,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                 {cleanTitle}
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-                Synthesizing problem constraints, type-safe execution drivers, and 10+ verified test cases...
+                Loading the problem statement and public examples...
               </p>
             </div>
 
@@ -2637,13 +2370,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   {/* Problem Statement Body */}
                   <div className="space-y-3">
                     <div className="text-[14px] text-[#eff1f6] leading-[1.75] font-normal select-text">
-                      <FormattedChatText text={problemTemplate.description} />
+                      {statementError ? <div role="alert" className="space-y-3"><p>The question could not be loaded.</p><button className="underline" onClick={() => retryStatement(value => value + 1)}>Retry</button>{lcUrl && <a className="ml-4 underline" href={lcUrl} target="_blank" rel="noreferrer">Open on LeetCode</a>}</div>
+                        : problemTemplate.statementHtml ? <article className="space-y-3 [&_pre]:overflow-x-auto [&_pre]:bg-slate-950/70 [&_pre]:p-3 [&_img]:max-w-full [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_table]:block [&_table]:overflow-x-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problemTemplate.statementHtml) }} />
+                        : <FormattedChatText text={problemTemplate.description} />}
                     </div>
                   </div>
 
                   {/* Example Test Cases */}
                   <div className="space-y-4 pt-2">
-                    {problemStatementExamples.map((ex, idx) => (
+                    {(problemTemplate.statementHtml || statementError ? [] : problemStatementExamples).map((ex, idx) => (
                       <div key={idx} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-[14px] text-white tracking-tight">Example {idx + 1}:</span>
@@ -2708,18 +2443,18 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" />
                           <span>
                             <strong>{sampleCount} sample test cases</strong> above are runnable in the console. 
-                            <strong> {hiddenCasesCount} hidden test cases</strong> are computed only when submitting.
+                            Hidden tests run on Submit when a verified suite is available.
                           </span>
                         </div>
                         <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px] whitespace-nowrap">
-                          {problemTemplate.testCases?.length || 0} Cases Total
+                          {sampleCount} public examples
                         </span>
                       </div>
                     )}
                   </div>
 
                   {/* Constraints */}
-                  <div className="space-y-2.5 pt-4 border-t border-white/10">
+                  {!problemTemplate.statementHtml && !statementError && <div className="space-y-2.5 pt-4 border-t border-white/10">
                     <div className="font-bold text-[14px] text-white tracking-tight">Constraints:</div>
                     <ul className="list-disc pl-5 space-y-2 text-[#eff1f6] text-xs">
                       {(problemTemplate.constraints || []).map((c, idx) => (
@@ -2729,6 +2464,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                       ))}
                     </ul>
                   </div>
+
+                  }
 
                   {/* LeetCode Bottom Action & Engagement Bar */}
                   <div className="pt-6 mt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-medium">
@@ -3228,8 +2965,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                         <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-xs font-mono text-slate-400">
                           <div className="flex items-center space-x-3">
-                            <span>Runtime: <strong className="text-slate-200">{sub.runtime}</strong></span>
-                            <span>Memory: <strong className="text-slate-200">{sub.memory}</strong></span>
+                            <span>Runtime: <strong className="text-slate-200">{sub.analytics?.measurementVersion === 1 ? sub.runtime : 'Unavailable'}</strong></span>
+                            <span>Memory: <strong className="text-slate-200">{sub.analytics?.measurementVersion === 1 ? sub.memory : 'Unavailable'}</strong></span>
                           </div>
 
                           <div className="flex items-center space-x-1.5">
@@ -3238,22 +2975,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                 onClick={() => {
                                   setSubmissionAnalytics(sub.analytics!);
                                   setIsSubmissionVisualizerOpen(true);
-                                  const targetLang = (sub.lang || 'cpp').toLowerCase();
-                                  fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(currentProblemSlug)}/benchmarks?lang=${encodeURIComponent(targetLang)}`)
-                                    .then(r => r.json())
-                                    .then(b => {
-                                      if (b && b.status === 'ok') {
-                                        const bObj = {
-                                          runtimes: b.runtimes || [],
-                                          memoriesKb: b.memoriesKb || [],
-                                          userCount: b.userCount || (b.runtimes ? b.runtimes.length : 0)
-                                        };
-                                        setUserBenchmarks(bObj);
-                                        setSubmissionAnalytics(prev => prev ? { ...prev, userBenchmarks: bObj } : null);
-                                      }
-                                    })
-                                    .catch(() => {});
-
                                   if (!sub.analytics?.isAiEvaluated && sub.code) {
                                     requestSubmissionCodeComplexityAnalysis(sub.code, sub.lang, cleanTitle, currentProblemSlug)
                                       .then(aiComp => {
@@ -3335,9 +3056,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                                   Solution.{sub.lang.toLowerCase() === 'cpp' ? 'cpp' : sub.lang.toLowerCase() === 'python' ? 'py' : sub.lang.toLowerCase() === 'java' ? 'java' : sub.lang.toLowerCase() === 'javascript' ? 'js' : sub.lang.toLowerCase() === 'go' ? 'go' : 'rs'}
                                 </span>
                                 <span className="text-[10px] text-slate-500">•</span>
-                                <span className="text-slate-400 text-[11px] font-bold">{sub.runtime}</span>
+                                <span className="text-slate-400 text-[11px] font-bold">{sub.analytics?.measurementVersion === 1 ? sub.runtime : 'Unavailable'}</span>
                                 <span className="text-[10px] text-slate-500">•</span>
-                                <span className="text-slate-400 text-[11px]">{sub.memory}</span>
+                                <span className="text-slate-400 text-[11px]">{sub.analytics?.measurementVersion === 1 ? sub.memory : 'Unavailable'}</span>
                               </div>
 
                               <div className="flex items-center space-x-1.5">
@@ -3662,12 +3383,27 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             <Editor
               height="100%"
               language={language === 'rust' ? 'rust' : language === 'go' ? 'go' : language}
-              value={code}
+              path={`workspace/${currentProblemSlug}/${language}`}
+              saveViewState
+              defaultValue={code}
               theme="vs-dark"
               onChange={handleCodeChange}
-              onMount={(_, monaco) => registerLeetCodeCompletionProviders(monaco)}
+              onMount={(editor, monaco) => {
+                editorRef.current = editor;
+                registerLeetCodeCompletionProviders(monaco);
+                let disposed = false;
+                const measure = () => { if (!disposed) { monaco.editor.remeasureFonts(); editor.layout(); } };
+                void document.fonts.ready.then(measure);
+                document.fonts.addEventListener('loadingdone', measure);
+                editor.onDidDispose(() => {
+                  disposed = true;
+                  if (editorRef.current === editor) editorRef.current = null;
+                  document.fonts.removeEventListener('loadingdone', measure);
+                });
+              }}
               options={{
                 fontSize: 13,
+                fontLigatures: false,
                 fontFamily: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace",
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
@@ -3757,7 +3493,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                   <span>Test Result</span>
                   {executionResult && (
                     <span className={`w-2 h-2 rounded-full ${
-                      executionResult.stderr || !isOutputValid(executionResult.stdout, executionResult.stderr, currentExpectedOutput, testInput) 
+                      executionResult.status !== 'SUCCESS' || (currentExpectedOutput !== undefined && !isOutputValid(executionResult.stdout, currentExpectedOutput, testInput))
                         ? 'bg-rose-500' 
                         : 'bg-emerald-400'
                     }`} />
@@ -3913,7 +3649,9 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         {/* Status Header with Comprehensive Correctness Evaluation */}
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                           <div className="flex items-center space-x-2 font-black text-sm">
-                            {submissionResult.failedStderr && (submissionResult.failedStderr.includes('error:') || submissionResult.failedStderr.includes('Runtime Error') || submissionResult.failedStderr.includes('Exception') || submissionResult.failedStderr.includes('Traceback')) ? (
+                            {submissionResult.verdictLabel ? (
+                              <span className={submissionResult.isSuccess ? 'text-emerald-400' : 'text-amber-300'}>{submissionResult.verdictLabel}</span>
+                            ) : submissionResult.failedStderr && (submissionResult.failedStderr.includes('error:') || submissionResult.failedStderr.includes('Runtime Error') || submissionResult.failedStderr.includes('Exception') || submissionResult.failedStderr.includes('Traceback')) ? (
                               <>
                                 <XCircle className="w-5 h-5 text-rose-400" />
                                 <span className="text-rose-400">
@@ -3996,8 +3734,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                           </div>
 
                           <div className="flex items-center space-x-3 font-mono text-xs text-slate-400">
-                            <span>Runtime: <strong className="text-slate-200">{executionTime} ms</strong></span>
-                            <span>Memory: <strong className="text-slate-200">{executionResult?.memory_used_kb || 3420} KB</strong></span>
+                            <span>Runtime: <strong className="text-slate-200">{executionTime == null ? 'Unavailable' : `${executionTime} ms`}</strong></span>
+                            <span>Memory: <strong className="text-slate-200">{(submissionResult.isSubmission ? submissionAnalytics?.memoryKb : executionResult?.memory_used_kb) == null ? 'Unavailable' : `${submissionResult.isSubmission ? submissionAnalytics?.memoryKb : executionResult?.memory_used_kb} KB`}</strong></span>
                           </div>
                         </div>
 
@@ -4023,7 +3761,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
                         )}
 
                         {/* Visualizer Trigger Banner (Only shown if all testcases passed / Accepted) */}
-                        {submissionResult.isSubmission && submissionResult.isSuccess && submissionAnalytics && (
+                        {submissionResult.isSubmission && submissionAnalytics && (
                           <button
                             onClick={() => setIsSubmissionVisualizerOpen(true)}
                             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-sky-600/30 hover:from-purple-600/40 hover:to-indigo-600/40 border border-purple-500/50 text-purple-200 text-xs font-bold flex items-center justify-between transition-all shadow-lg shadow-purple-600/10 group cursor-pointer"
@@ -4370,7 +4108,6 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
             </button>
             <SubmissionVisualizer
               data={submissionAnalytics}
-              userBenchmarks={userBenchmarks || undefined}
               onClose={() => setIsSubmissionVisualizerOpen(false)}
               onRetry={() => {
                 setIsSubmissionVisualizerOpen(false);
@@ -4415,7 +4152,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         executionError={submissionResult?.failedStderr || executionResult?.stderr || ''}
         allProblemTestCases={problemTemplate.testCases}
         allProblemExpectedOutputs={problemTemplate.expectedOutputs}
-        onApplyTestCaseCorrection={(correctedInput, correctedExpected) => {
+        onApplyTestCaseCorrection={problemTemplate.sourceSlug ? undefined : (correctedInput, correctedExpected) => {
           let finalInput = (correctedInput || '').trim();
           const pNames = extractParamNames(problemTemplate.starters, problemTemplate.examples);
           if (pNames.length === 1 && !finalInput.includes('=')) {
@@ -4444,7 +4181,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           setExecutionResult(null);
           return next;
         }}
-        onApplyDriverCorrection={(correctedDriver) => {
+        onApplyDriverCorrection={problemTemplate.sourceSlug ? undefined : (correctedDriver) => {
           setProblemTemplate((prev) => {
             const next = {
               ...prev,

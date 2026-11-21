@@ -78,8 +78,8 @@ export interface CodeExecutionResult {
   stdout: string;
   stderr: string;
   exit_code: number;
-  execution_time_ms: number;
-  memory_used_kb: number;
+  execution_time_ms: number | null;
+  memory_used_kb: number | null;
   status: 'SUCCESS' | 'ERROR' | 'TIMEOUT';
 }
 

@@ -68,6 +68,17 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn(key, seen, f'Shadowed route: {key}')
                 seen.add(key)
 
+    async def test_hidden_grading_and_publication_access(self):
+        payload = {'language': 'python', 'code': 'def solve(): return 42'}
+        self.assertEqual((await self.client.post('/api/problem/example/grade', json=payload)).status_code, 401)
+        headers = {'Authorization': 'Bearer student'}
+        self.assertEqual((await self.client.post('/api/admin/problems/example/hidden-suite', headers=headers, json={})).status_code, 403)
+        self.assertEqual((await self.client.post('/api/admin/problems/example/hidden-candidates', headers=headers, json={})).status_code, 403)
+        with patch.object(self.main, 'load_hidden_suite', return_value=None):
+            res = await self.client.post('/api/problem/example/grade', headers=headers, json=payload)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {'verdict': 'hidden_unavailable', 'passedCount': 0, 'totalCount': 0, 'measurements': []})
+
     async def test_real_wallet_validation_and_idempotency(self):
         headers = {'Authorization': 'Bearer student', 'Idempotency-Key': 'app-debit-1'}
         body = {'email': 'student@example.com', 'amount': -1, 'category': 'TEST', 'description': 'test'}

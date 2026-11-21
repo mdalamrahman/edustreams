@@ -1,10 +1,11 @@
+import { getCachedCurrentGfgPotd } from './leetcodeApi';
 import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { SDE_SHEET_DATA, SDE_SHEET_191_DATA, A2Z_DSA_SHEET_473_DATA, SDETUBE_79_SHEET_DATA, getLeetCodeSlug, getUniversalSdePotd } from './dsaSheetsData';
 import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
-import { getRealSheetSolvedBreakdown } from './userProfileService';
+import { getRealSheetSolvedBreakdown, isGfgPotdAccepted } from './userProfileService';
 
 // Dedicated per-sheet maps for accurate O(1) problem ID lookup (prevents cross-sheet ID collisions)
 const sdeProblemMap = new Map<number, any>();
@@ -316,16 +317,20 @@ export function isPotdSolvedToday(platform?: 'sdetube' | 'leetcode' | 'gfg'): bo
   }
 
   if (platform === 'gfg') {
-    return localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+    return isVerifiedGfgDailySolved();
   }
 
   // General check: only true if any platform was actually solved TODAY
   return (
     localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true' ||
     localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true' ||
-    localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true' ||
-    localStorage.getItem(`sdetube_potd_solved_${today}`) === 'true'
+    isVerifiedGfgDailySolved()
   );
+}
+
+function isVerifiedGfgDailySolved(): boolean {
+  const daily = getCachedCurrentGfgPotd();
+  return Boolean(daily && isGfgPotdAccepted(daily.titleSlug, daily.date));
 }
 
 /**
@@ -336,54 +341,10 @@ export function resetUnverifiedPotdToday(): void {
   if (typeof window === 'undefined') return;
   const today = new Date().toISOString().slice(0, 10);
 
-  // If GFG was marked solved today, verify whether there is an actual accepted submission today
-  // or if the user explicitly clicked manual solve. If neither is true, clear the falsely cached key.
-  const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
-  const gfgManual = localStorage.getItem(`sdetube_potd_gfg_manual_solved_${today}`) === 'true' ||
-                    localStorage.getItem(`sdetube_potd_gfg_synced_${today}`) === 'true';
-  if (gfgSolved && !gfgManual) {
-    let hasSubmissionToday = false;
-    try {
-      const keys = ['9999', 'gfgpotd'];
-      const rawGfg = localStorage.getItem(`sdetube_gfg_potd_${today}`) || localStorage.getItem('edustream_potd_cache_gfg');
-      if (rawGfg) {
-        const parsed = JSON.parse(rawGfg);
-        if (parsed.titleSlug) keys.push(parsed.titleSlug);
-        if (parsed.title) keys.push(parsed.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-      }
-      for (const k of keys) {
-        const sub = localStorage.getItem(`edustream_submissions_${k}`);
-        if (sub) {
-          const list = JSON.parse(sub);
-          if (Array.isArray(list) && list.some(item => {
-            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-            let isToday = false;
-            if (item.id) {
-              const ts = parseInt(item.id.split('_')[0], 10);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            if (!isToday && item.timestamp) {
-              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            return isToday;
-          })) {
-            hasSubmissionToday = true;
-            break;
-          }
-        }
-      }
-    } catch {}
-
-    if (!hasSubmissionToday) {
-      localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
-    }
-  }
-
   // If none of the platforms were solved today, clear today's aggregate potd flag
   const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
   const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
-  const gfgStillSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+  const gfgStillSolved = isVerifiedGfgDailySolved();
   if (!sdeSolved && !lcSolved && !gfgStillSolved) {
     localStorage.removeItem(`sdetube_potd_solved_${today}`);
   }
@@ -393,7 +354,7 @@ export function resetUnverifiedPotdToday(): void {
  * Marks any DSA problem as solved across all sheets, auto-ticks POTD if applicable,
  * and updates analytics and activity heatmaps in real time.
  */
-export function markProblemSolved(identifier: string | number, timeMins: number = 5, problemSlug?: string): boolean {
+export function markProblemSolved(identifier: string | number, timeMins: number = 5, problemSlug?: string, verifiedSubmission = false): boolean {
   if (requestSignInForPreview()) return false;
   if (typeof window === 'undefined') return false;
 
@@ -489,7 +450,8 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
     );
 
     let isLcPotd = strId === '8888' || strId === 'dailychallenge' || cleanSlug.includes('daily');
-    let isGfgPotd = strId === '9999' || strId === 'gfgpotd' || cleanSlug.includes('gfg');
+    const dailyGfg = getCachedCurrentGfgPotd();
+    const isGfgPotd = Boolean(verifiedSubmission && dailyGfg && problemSlug === dailyGfg.titleSlug);
 
     // Dynamic match against cached LeetCode & GFG POTDs
     try {
@@ -507,27 +469,14 @@ export function markProblemSolved(identifier: string | number, timeMins: number 
           isLcPotd = true;
         }
       }
-      const gfgRaw = localStorage.getItem(`sdetube_gfg_potd_${today}`) || localStorage.getItem('edustream_potd_cache_gfg');
-      if (gfgRaw) {
-        const gfgData = JSON.parse(gfgRaw);
-        const gSlug = (gfgData.titleSlug || gfgData.problemSlug || gfgData.slug || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const gTitle = (gfgData.title || gfgData.problem_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanCompact = cleanSlug.replace(/[^a-z0-9]/g, '');
-        const strCompact = strId.replace(/[^a-z0-9]/g, '');
-        if (gSlug && (cleanCompact === gSlug || strCompact === gSlug || cleanCompact.includes(gSlug) || gSlug.includes(cleanCompact))) {
-          isGfgPotd = true;
-        }
-        if (gTitle && (cleanCompact === gTitle || strCompact === gTitle || cleanCompact.includes(gTitle) || gTitle.includes(cleanCompact))) {
-          isGfgPotd = true;
-        }
-      }
+
     } catch {}
 
     if (isSdePotd || isLcPotd || isGfgPotd || strId === 'potd') {
       localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
       if (isSdePotd) localStorage.setItem(`sdetube_potd_sdetube_solved_${today}`, 'true');
       if (isLcPotd) localStorage.setItem(`sdetube_potd_leetcode_solved_${today}`, 'true');
-      if (isGfgPotd) localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
+      if (isGfgPotd && dailyGfg) localStorage.setItem(`sdetube_potd_gfg_solved_${dailyGfg.date}`, 'true');
       window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { date: today, problemId: matchedId } }));
     }
   } catch (err) {

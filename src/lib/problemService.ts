@@ -1,8 +1,10 @@
+import { fetchLeetCodeQuestionData } from './leetcodeApi';
+import { parseLeetCodeStatement } from './leetcodeStatement';
 import { apiFetch as fetch } from './apiFetch';
 import { repositoryConfig } from './repositoryConfig';
 import { SupportedLanguage, isDriverHarnessValid, executeCode } from './compiler';
 import { TELEGRAM_BACKEND_URL } from './telegram';
-import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade, requestMistralTestcaseExpansion } from './mistral';
+import { MISTRAL_API_KEY, requestAIDriverGeneration, executeAIChatCascade } from './mistral';
 import { fetchFromGitHubLeetCode } from './githubLeetCodeService';
 import { SOLID_PREDEFINED_PROBLEMS, getSolidDriver } from './solidProblems';
 import { DESIGN_PATTERN_PREDEFINED_PROBLEMS, getDesignPatternDriver } from './designPatternProblems';
@@ -32,6 +34,8 @@ export interface ProblemTemplate {
   category: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   description: string;
+  statementHtml?: string;
+  sourceSlug?: string;
   images?: string[];
   examples: {
     input: string;
@@ -3088,210 +3092,35 @@ export function isProblemValidAndAuthentic(p?: ProblemTemplate | null): boolean 
  * Fetches authentic problem data directly from the LeetCode GraphQL API via backend proxy or direct query.
  */
 export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
-  const { canonicalSlug } = canonicalizeSheetProblemSlug(slugOrUrl);
-  const slug = canonicalSlug || toSlug(slugOrUrl);
+  const slug = toSlug(slugOrUrl);
   if (!slug || slug === 'algorithm-problem') return null;
-
-  const parseLeetCodeQuestion = (q: any): ProblemTemplate | null => {
-    if (!q || !q.title || (!q.content && !q.description)) return null;
-
-    const contentHtml = q.content || q.description || '';
-
-    const normalizeImgUrl = (rawSrc: string): string => {
-      const src = (rawSrc || '').trim();
-      if (src.startsWith('/')) {
-        return `https://assets.leetcode.com${src}`;
-      } else if (!src.startsWith('http')) {
-        return `https://assets.leetcode.com/uploads/${src.replace(/^\//, '')}`;
-      }
-      return src;
-    };
-
-    // 1. Collect all diagrams in the HTML
-    const allImages: string[] = [];
-    const allImgMatches = Array.from(contentHtml.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)) as RegExpMatchArray[];
-    for (const im of allImgMatches) {
-      const u = normalizeImgUrl(im[1]);
-      if (u && !allImages.includes(u)) {
-        allImages.push(u);
-      }
-    }
-
-    // 2. Extract per-example blocks with associated diagrams
-    const examples: ProblemTemplate['examples'] = [];
-    const exPattern = /(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*(\d+):?<\/strong>)([\s\S]*?)(?=(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*\d+:?<\/strong>|<p><strong[^>]*>Constraints:|<p>&nbsp;<\/p>\s*<p><strong>Constraints:|$))/gi;
-    
-    const exMatches = Array.from(contentHtml.matchAll(exPattern)) as RegExpMatchArray[];
-    for (const m of exMatches) {
-      const body = m[3] || '';
-      const imgM = body.match(/<img[^>]+src=["']([^"']+)["']/i);
-      const imgUrl = imgM ? normalizeImgUrl(imgM[1]) : undefined;
-
-      const preM = body.match(/<pre>([\s\S]*?)<\/pre>/i);
-      const preText = preM ? preM[1] : body;
-      const text = decodeHtmlEntities(preText.replace(/<[^>]+>/g, '')).trim();
-
-      const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-      const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-      const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-      if (inM && outM) {
-        examples.push({
-          input: decodeHtmlEntities(inM[1].trim()),
-          output: decodeHtmlEntities(outM[1].trim()),
-          explanation: expM ? decodeHtmlEntities(expM[1].trim()) : undefined,
-          image: imgUrl
-        });
-      }
-    }
-
-    // Fallback if exPattern didn't find matches
-    if (examples.length === 0) {
-      const preMatches = Array.from(contentHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-      for (const m of preMatches) {
-        const text = decodeHtmlEntities((m[1] || '').replace(/<[^>]+>/g, '')).trim();
-        const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-        const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-        const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-        if (inM && outM) {
-          examples.push({
-            input: decodeHtmlEntities(inM[1].trim()),
-            output: decodeHtmlEntities(outM[1].trim()),
-            explanation: expM ? decodeHtmlEntities(expM[1].trim()) : undefined
-          });
-        }
-      }
-    }
-
-    if (examples.length > 0 && !examples[0].image && allImages.length > 0) {
-      examples[0].image = allImages[0];
-    }
-
-    // 3. Extract clean markdown-formatted description (Intro before Example 1)
-    const descParts = contentHtml.split(/(?:<p><strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong><\/p>|<strong[^>]*class=["']?example["']?[^>]*>Example\s*1:?<\/strong>|<pre>)/i);
-    const descRaw = descParts.length > 1 ? descParts[0] : contentHtml;
-
-    const cleanDesc = decodeHtmlEntities(descRaw
-      .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (_match: string, src: string) => `\n\n![Problem Diagram](${normalizeImgUrl(src)})\n\n`)
-      .replace(/<p><strong class="example">[\s\S]*?<\/p>/gi, '')
-      .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-      .replace(/<p><strong>Constraints:<\/strong><\/p>[\s\S]*?<\/ul>/gi, '')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<li>/gi, '• ')
-      .replace(/<\/li>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim());
-
-    const starters: Record<SupportedLanguage, string> = {} as any;
-    const snippets: any[] = q.codeSnippets || [];
-    snippets.forEach((s: any) => {
-      if (s.langSlug === 'cpp') starters.cpp = s.code;
-      else if (s.langSlug === 'python3' || s.langSlug === 'python') starters.python = s.code;
-      else if (s.langSlug === 'java') starters.java = s.code;
-      else if (s.langSlug === 'javascript') starters.javascript = s.code;
-      else if (s.langSlug === 'golang') starters.go = s.code;
-      else if (s.langSlug === 'rust') starters.rust = s.code;
-      else if (['mysql', 'mssql', 'postgresql', 'oraclesql', 'sql'].includes(s.langSlug)) starters.sql = s.code;
-    });
-
-    const constraints: string[] = [];
-    const cListMatch = contentHtml.match(/<p><strong>Constraints:<\/strong><\/p>\s*<ul>([\s\S]*?)<\/ul>/i) || contentHtml.match(/Constraints:[\s\S]*?<ul>([\s\S]*?)<\/ul>/i);
-    if (cListMatch && cListMatch[1]) {
-      const liMatches = Array.from(cListMatch[1].matchAll(/<li>([\s\S]*?)<\/li>/gi)) as RegExpMatchArray[];
-      for (const li of liMatches) {
-        const cStr = li[1].replace(/<[^>]+>/g, '').replace(/&le;/g, '<=').replace(/&ge;/g, '>=').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-        if (cStr) constraints.push(cStr);
-      }
-    }
-
-    const tcs = examples.map(e => e.input).filter(Boolean);
-    const eos = examples.map(e => e.output).filter(Boolean);
-    const defaultStarters = generateDefaultStarters(q.title);
-
-    const template: ProblemTemplate = {
-      name: q.title,
-      category: q.categoryTitle || q.topicTags?.[0]?.name || 'Algorithms',
-      difficulty: q.difficulty || 'Medium',
-      description: cleanDesc || q.title,
-      images: allImages,
-      examples,
-      constraints,
-      testCases: tcs.length > 0 ? tcs : ['nums = [1, 2, 3]'],
-      expectedOutputs: eos.length > 0 ? eos : ['0'],
-      hints: q.hints || [],
-      starters: { ...defaultStarters, ...starters },
-      solutions: defaultStarters
-    };
-
-    return repairAndHardenProblem(template);
+  const question = await fetchLeetCodeQuestionData(slug);
+  if (!question) return null;
+  const statement = parseLeetCodeStatement(question.content);
+  if (!statement.description) return null;
+  const languageMap: Record<string, SupportedLanguage> = {
+    cpp: 'cpp', python3: 'python', python: 'python', java: 'java', javascript: 'javascript',
+    golang: 'go', rust: 'rust', mysql: 'sql', mssql: 'sql', postgresql: 'sql', oraclesql: 'sql',
   };
-
-  // 1. Try Local Cloudflare Pages Function Proxy & Backend LeetCode API Proxy
-  const endpoints = [
-    `/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
-    `${repositoryConfig.studentUrl}/api/leetcode/question?slug=${encodeURIComponent(slug)}`,
-    `/api/leetcode/${encodeURIComponent(slug)}`,
-    `${TELEGRAM_BACKEND_URL}/api/leetcode/${encodeURIComponent(slug)}`,
-    `${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}`
-  ];
-
-  for (const ep of endpoints) {
-    try {
-      const resp = await fetch(ep, { signal: AbortSignal.timeout(8000) });
-      if (resp.ok) {
-        const data = await resp.json();
-        const q = data?.data?.question || data?.question || (data?.name ? data : null);
-        if (q && q.title && (q.content || q.description)) {
-          if (data.name && data.starters && data.testCases && data.description && !data.description.includes('An optimal algorithm is required')) {
-            return repairAndHardenProblem(data as ProblemTemplate);
-          }
-          const parsed = parseLeetCodeQuestion(q);
-          if (parsed) return parsed;
-        }
-      }
-    } catch {}
+  const starters: ProblemTemplate['starters'] = {};
+  for (const snippet of question.codeSnippets || []) {
+    const language = languageMap[snippet.langSlug];
+    if (language && (!starters[language] || snippet.langSlug === 'python3')) starters[language] = snippet.code;
   }
-
-  // 2. Direct LeetCode GraphQL query from client
-  try {
-    const query = `query questionData($titleSlug: String!) {
-      question(titleSlug: $titleSlug) {
-        questionId
-        questionFrontendId
-        title
-        titleSlug
-        content
-        difficulty
-        topicTags { name }
-        codeSnippets { lang langSlug code }
-        sampleTestCase
-        exampleTestcases
-        hints
-        categoryTitle
-      }
-    }`;
-    const gqlRes = await fetch('https://leetcode.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': `https://leetcode.com/problems/${slug}/`
-      },
-      body: JSON.stringify({ query, variables: { titleSlug: slug } }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (gqlRes.ok) {
-      const json = await gqlRes.json();
-      const q = json?.data?.question;
-      if (q && q.title && q.content) {
-        const parsed = parseLeetCodeQuestion(q);
-        if (parsed) return parsed;
-      }
-    }
-  } catch {}
-
-  return null;
+  return {
+    name: question.title,
+    sourceSlug: question.titleSlug,
+    category: question.categoryTitle || question.topicTags?.[0]?.name || 'Algorithms',
+    difficulty: question.difficulty === 'Hard' || question.difficulty === 'Easy' ? question.difficulty : 'Medium',
+    description: statement.description,
+    statementHtml: statement.html,
+    examples: statement.examples,
+    constraints: statement.constraints,
+    starters,
+    hints: question.hints || [],
+    testCases: statement.examples.map(example => example.input),
+    expectedOutputs: statement.examples.map(example => example.output),
+  };
 }
 
 /**
@@ -3865,125 +3694,6 @@ Respond with ONLY the raw code inside a single markdown code fence.`;
 }
 
 /**
- * Executes a canonical reference solution on all test cases of a problem using Judge0/compiler runner,
- * automatically replacing any hallucinated or unverified expected outputs with the real, executed ground truth.
- */
-export async function verifyExpectedOutputsByExecution(
-  prob: ProblemTemplate,
-  preferredLang: SupportedLanguage = 'python'
-): Promise<ProblemTemplate> {
-  if (!prob || !prob.testCases || prob.testCases.length === 0) return prob;
-
-  const slug = toSlug(prob.name);
-  const langOrder: SupportedLanguage[] = [preferredLang, 'python', 'javascript', 'cpp', 'java'];
-  let solutionCode = '';
-  let activeLang: SupportedLanguage = preferredLang;
-
-  for (const l of langOrder) {
-    const sol = prob.solutions?.[l] || prob.solutions?.[l as string];
-    if (sol && typeof sol === 'string' && sol.trim().length > 30 && sol !== prob.starters?.[l]) {
-      solutionCode = sol.trim();
-      activeLang = l;
-      break;
-    }
-  }
-
-  if (!solutionCode) {
-    try {
-      const resolved = await resolveReferenceSolution(
-        slug,
-        prob.name,
-        activeLang,
-        prob.starters?.[activeLang],
-        undefined,
-        prob.description
-      );
-      if (resolved && resolved.length > 30 && resolved !== prob.starters?.[activeLang]) {
-        solutionCode = resolved;
-      }
-    } catch (_) {}
-  }
-
-  if (!solutionCode) return prob;
-
-  const driver = (prob.driverCode?.[activeLang] || getDefaultDriverForProblem(slug, activeLang)) || undefined;
-  const updatedOutputs = [...(prob.expectedOutputs || [])];
-  let anyUpdated = false;
-
-  for (let i = 0; i < prob.testCases.length; i++) {
-    const tc = prob.testCases[i];
-    if (!tc) continue;
-    try {
-      const res = await executeCode(solutionCode, activeLang, tc, prob.name, driver);
-      if (res && res.status === 'SUCCESS' && res.stdout && res.stdout.trim().length > 0) {
-        const cleanActual = res.stdout.trim();
-        if (!updatedOutputs[i] || updatedOutputs[i] !== cleanActual) {
-          updatedOutputs[i] = cleanActual;
-          anyUpdated = true;
-        }
-      }
-    } catch (_) {}
-  }
-
-  if (anyUpdated) {
-    prob.expectedOutputs = updatedOutputs;
-    try {
-      localStorage.setItem(`edustream_problem_spec_${slug}`, JSON.stringify(prob));
-    } catch (_) {}
-  }
-
-  return prob;
-}
-
-export function guaranteeAtLeast10TestCases(prob: ProblemTemplate): ProblemTemplate {
-  if (!prob) return prob;
-  prob = repairAndHardenProblem(prob);
-  prob.testCases = (Array.isArray(prob.testCases) ? prob.testCases : [])
-    .map(tc => tc !== null && tc !== undefined ? String(tc).trim() : '')
-    .filter(Boolean);
-  prob.expectedOutputs = (Array.isArray(prob.expectedOutputs) ? prob.expectedOutputs : [])
-    .map(eo => eo !== null && eo !== undefined ? String(eo).trim() : '');
-  prob.examples = Array.isArray(prob.examples) ? prob.examples : [];
-
-  if (prob.testCases.length >= 10 && prob.expectedOutputs.length >= 10) {
-    return prob;
-  }
-
-  // 1. Incorporate missing examples from prob.examples if available
-  for (const ex of prob.examples) {
-    if (prob.testCases.length >= 10) break;
-    const exInput = String(ex.input || '').trim();
-    const exOutput = String(ex.output || '').trim();
-    if (exInput && !prob.testCases.includes(exInput)) {
-      prob.testCases.push(exInput);
-      prob.expectedOutputs.push(exOutput || prob.expectedOutputs[0] || '');
-    }
-  }
-
-  // 2. Ensure 1-to-1 parity between testCases and expectedOutputs
-  while (prob.expectedOutputs.length < prob.testCases.length) {
-    const idx = prob.expectedOutputs.length % Math.max(1, prob.testCases.length);
-    prob.expectedOutputs.push(prob.expectedOutputs[idx] || prob.expectedOutputs[0] || '');
-  }
-
-  // 3. If still under 10 cases, cycle through the verified existing pairs
-  // This guarantees mathematical consistency because every cloned input keeps its genuine matching output!
-  if (prob.testCases.length > 0 && prob.testCases.length < 10) {
-    const verifiedInputs = [...prob.testCases];
-    const verifiedOutputs = [...prob.expectedOutputs];
-    let cycleIdx = 0;
-    while (prob.testCases.length < 10 && verifiedInputs.length > 0) {
-      const pick = cycleIdx % verifiedInputs.length;
-      prob.testCases.push(verifiedInputs[pick]);
-      prob.expectedOutputs.push(verifiedOutputs[pick] !== undefined ? verifiedOutputs[pick] : (prob.expectedOutputs[0] || ''));
-      cycleIdx++;
-    }
-  }
-
-  return repairAndHardenProblem(prob);
-}
-
-/**
  * Main function to load a problem definition:
  * 1. Checks local cache / localStorage (if authentic & not placeholder)
  * 2. Fetches from Cloudflare R2 / backend API via /api/problem/{slug} (which handles LeetCode GraphQL directly)
@@ -4018,40 +3728,6 @@ export async function fetchEnrichedProblem(
       }
     } catch (_) {}
     return p;
-  };
-
-  const ensureAtLeast10Cases = async (prob: ProblemTemplate): Promise<ProblemTemplate> => {
-    if (!prob.testCases || prob.testCases.length < 10 || !prob.expectedOutputs || prob.expectedOutputs.length < 10) {
-      try {
-        const expanded = await requestMistralTestcaseExpansion(
-          prob.name,
-          prob.description,
-          prob.testCases || [],
-          prob.expectedOutputs || [],
-          slug
-        );
-        if (expanded && Array.isArray(expanded.testCases) && expanded.testCases.length >= 10) {
-          prob.testCases = expanded.testCases;
-          prob.expectedOutputs = expanded.expectedOutputs;
-        }
-      } catch (e) {
-        console.warn('[Auto-expand 10 testcases notice]:', e);
-      }
-      prob = guaranteeAtLeast10TestCases(prob);
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(prob));
-        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(prob));
-        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(prob)
-        }).catch(() => {});
-      } catch (_) {}
-
-      // Background verification of expected outputs by executing canonical reference solution
-      verifyExpectedOutputsByExecution(prob).catch(() => {});
-    }
-    return prob;
   };
 
   // 0. Check predefined special problems (Exact Match Only)
@@ -4205,6 +3881,27 @@ export async function fetchEnrichedProblem(
     return applyOverride(PREDEFINED_SPECIAL_PROBLEMS[slug]);
   }
 
+  const linkedLeetCodeSlug = sheetProb?.leetcode?.match(/leetcode\.com\/problems\/([a-z0-9-]+)/i)?.[1];
+  const leetCodeSlug = linkedLeetCodeSlug || slug;
+  if (!/geeksforgeeks\.org/i.test(slugOrTitle) && !/^GFG/i.test(category)) {
+    const officialKey = `edustream_leetcode_statement_v2_${leetCodeSlug}`;
+    try {
+      const raw = localStorage.getItem(officialKey);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached.problem?.statementHtml && cached.problem.sourceSlug === leetCodeSlug && Date.now() - cached.at < 86_400_000) return cached.problem;
+      }
+    } catch {}
+    const official = await fetchFromLeetCodeAPI(leetCodeSlug);
+    if (official) {
+      try { localStorage.setItem(officialKey, JSON.stringify({ at: Date.now(), problem: official })); } catch {}
+      return official;
+    }
+    if (linkedLeetCodeSlug || /leetcode\.com\/problems\//i.test(slugOrTitle)) {
+      throw new Error('The LeetCode statement could not be loaded.');
+    }
+  }
+
   // 1. Check local spec cache (IndexedDB async, fallback to localStorage)
   try {
     let parsed: ProblemTemplate | null = null;
@@ -4237,7 +3934,7 @@ export async function fetchEnrichedProblem(
           if (parsed.testCases && parsed.testCases.length >= 10) {
             return applyOverride(parsed);
           }
-          return applyOverride(await ensureAtLeast10Cases(parsed));
+          return applyOverride(parsed);
         } else {
           localStorage.removeItem(cacheKey);
           idbDel(cacheKey).catch(() => {});
@@ -4256,7 +3953,7 @@ export async function fetchEnrichedProblem(
       if (problemData && problemData.name && !data.error) {
         const problemObj = repairAndHardenProblem(problemData);
         if (isProblemValidAndAuthentic(problemObj)) {
-          const finalObj = await ensureAtLeast10Cases(problemObj);
+          const finalObj = problemObj;
           try {
             idbSet(cacheKey, finalObj).catch(() => {});
             idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalObj)).catch(() => {});
@@ -4275,37 +3972,11 @@ export async function fetchEnrichedProblem(
     console.warn(`[R2 Backend problem fetch notice for '${slug}']:`, err);
   }
 
-  // 3. Fetch from LeetCode GraphQL endpoint (/api/leetcode/{slug} or client-side fallback)
-  try {
-    const lcData = await fetchFromLeetCodeAPI(slug);
-    if (lcData && isProblemValidAndAuthentic(lcData)) {
-      const finalLc = await ensureAtLeast10Cases(lcData);
-      try {
-        idbSet(cacheKey, finalLc).catch(() => {});
-        idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc)).catch(() => {});
-        localStorage.setItem(cacheKey, JSON.stringify(finalLc));
-        localStorage.setItem(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalLc));
-        if (rawRequestedSlug && rawRequestedSlug !== slug) {
-          idbSet(`edustream_problem_spec_${rawRequestedSlug}`, finalLc).catch(() => {});
-          localStorage.setItem(`edustream_problem_spec_${rawRequestedSlug}`, JSON.stringify(finalLc));
-        }
-        fetch(`${TELEGRAM_BACKEND_URL}/api/problem/${encodeURIComponent(slug)}/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(finalLc)
-        }).catch(() => {});
-      } catch (_) {}
-      return applyOverride(finalLc);
-    }
-  } catch (err) {
-    console.warn(`[LeetCode API fetch notice for '${slug}']:`, err);
-  }
-
   // 3.5. Fetch from GitHub LeetCode Premium Repositories (AkashSingh3031 / doocs)
   try {
     const ghData = await fetchFromGitHubLeetCode(slug);
     if (ghData && isProblemValidAndAuthentic(ghData)) {
-      const finalGh = await ensureAtLeast10Cases(ghData);
+      const finalGh = ghData;
       try {
         idbSet(cacheKey, finalGh).catch(() => {});
         idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGh)).catch(() => {});
@@ -4332,7 +4003,7 @@ export async function fetchEnrichedProblem(
     const gfgTarget = (sheetProb?.gfg && sheetProb.gfg.includes('/problems/')) ? sheetProb.gfg : slugOrTitle;
     const gfgData = await fetchFromGFGAPI(gfgTarget);
     if (gfgData && isProblemValidAndAuthentic(gfgData)) {
-      const finalGfg = await ensureAtLeast10Cases(gfgData);
+      const finalGfg = gfgData;
       try {
         idbSet(cacheKey, finalGfg).catch(() => {});
         idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGfg)).catch(() => {});
@@ -4352,7 +4023,7 @@ export async function fetchEnrichedProblem(
   // 5. If not found on LeetCode or GFG (custom non-LeetCode problem), generate with Mistral AI
   let generated = await generateProblemWithMistral(slugOrTitle, effectiveCategory, effectiveDifficulty, transcript, notes);
   generated = repairAndHardenProblem(generated);
-  const finalGen = await ensureAtLeast10Cases(generated);
+  const finalGen = generated;
   try {
     idbSet(cacheKey, finalGen).catch(() => {});
     idbSet(`edustream_testcases_txt_${slug}`, formatProblemAsTxt(finalGen)).catch(() => {});

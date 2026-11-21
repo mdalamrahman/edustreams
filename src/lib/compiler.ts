@@ -8,9 +8,10 @@ export interface CodeExecutionResult {
   stdout: string;
   stderr: string;
   exit_code: number;
-  execution_time_ms: number;
-  memory_used_kb: number;
+  execution_time_ms: number | null;
+  memory_used_kb: number | null;
   status: 'SUCCESS' | 'ERROR';
+  runnerUnavailable?: boolean;
 }
 
 const JUDGE0_LANG_MAP: Record<string, number> = {
@@ -1929,6 +1930,12 @@ class Main {
   return userCode;
 }
 
+export function runnerMetric(value: unknown, scale = 1): number | null {
+  if ((typeof value !== 'string' && typeof value !== 'number') || String(value).trim() === '') return null;
+  const number = Number(value) * scale;
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
 export async function executeCode(
   code: string, 
   language: SupportedLanguage,
@@ -1936,7 +1943,7 @@ export async function executeCode(
   problemTitle: string = '',
   preloadedDriver?: string
 ): Promise<CodeExecutionResult> {
-  if (requestSignInForPreview()) return { stdout: '', stderr: 'Sign in to run or submit code.', exit_code: 1, execution_time_ms: 0, memory_used_kb: 0, status: 'ERROR' };
+  if (requestSignInForPreview()) return { stdout: '', stderr: 'Sign in to run or submit code.', exit_code: 1, execution_time_ms: null, memory_used_kb: null, status: 'ERROR' };
   const startTime = performance.now();
   const normLang = (language || 'python').toLowerCase() as SupportedLanguage;
   const executableCode = wrapLeetCodeExecutableCode(code, normLang, testInput, problemTitle, preloadedDriver);
@@ -2026,7 +2033,7 @@ export async function executeCode(
         (stderr && (stderr.includes('Segmentation fault') || stderr.includes('SIGSEGV') || stderr.includes('SIGFPE') || stderr.includes('SIGABRT')))
       );
       const isFatalErr = Boolean(
-        (data.status && data.status.id > 3) ||
+        (data.status?.id !== 3) ||
         (data.exit_code && data.exit_code !== 0) ||
         (stderr && (stderr.includes('Runtime Error:') || stderr.includes('Exception') || stderr.includes('Traceback'))) ||
         (compileOut && compileOut.includes('error:')) ||
@@ -2072,40 +2079,17 @@ export async function executeCode(
       const finalStdout = stdout.trim();
 
       // Authentic CPU execution time from Judge0 sandbox (data.time is in seconds, e.g. "0.002")
-      let cpuExecutionTimeMs = 0;
-      if (data.time !== undefined && data.time !== null) {
-        cpuExecutionTimeMs = Math.round(parseFloat(String(data.time)) * 1000);
-      }
-      if (!cpuExecutionTimeMs || cpuExecutionTimeMs <= 0) {
-        if (normLang === 'cpp' || normLang === 'rust') {
-          cpuExecutionTimeMs = Math.floor(Math.random() * 3) + 1; // 1-3 ms
-        } else if (normLang === 'java') {
-          cpuExecutionTimeMs = Math.floor(Math.random() * 6) + 3; // 3-8 ms
-        } else if (normLang === 'python') {
-          cpuExecutionTimeMs = Math.floor(Math.random() * 15) + 24; // 24-38 ms
-        } else {
-          cpuExecutionTimeMs = Math.floor(Math.random() * 10) + 12; // 12-22 ms
-        }
-      }
-
-      // Authentic peak memory in KB
-      const rawMemKb = Number(data.memory);
-      const memoryUsedKb = Math.round(
-        rawMemKb > 0 ? rawMemKb : (
-          normLang === 'cpp' || normLang === 'rust' ? 1160 + Math.floor(Math.random() * 120) :
-          normLang === 'java' ? 42500 + Math.floor(Math.random() * 2500) :
-          normLang === 'python' ? 14600 + Math.floor(Math.random() * 1200) :
-          16200
-        )
-      );
+      const cpuExecutionTimeMs = runnerMetric(data.time, 1000);
+      const memoryUsedKb = runnerMetric(data.memory);
 
       return {
-        stdout: finalStdout || (isFatalErr ? '' : 'Executed successfully.'),
+        stdout: finalStdout,
         stderr: cleanDiag,
         exit_code: isFatalErr ? 1 : 0,
         execution_time_ms: cpuExecutionTimeMs,
         memory_used_kb: memoryUsedKb,
-        status: isFatalErr ? 'ERROR' : 'SUCCESS'
+        status: isFatalErr ? 'ERROR' : 'SUCCESS',
+        runnerUnavailable: !data.status?.id || data.status.id >= 13
       };
     }
   } catch (err) {
@@ -2132,7 +2116,7 @@ export async function executeCode(
       const resData = await response.json();
       const endTime = performance.now();
       const rawStderr = (resData.stderr || resData.error || '').trim();
-      const isFatalErr = Boolean(rawStderr && (rawStderr.includes('error:') || rawStderr.includes('Runtime Error') || rawStderr.includes('Exception') || rawStderr.includes('Traceback')));
+      const isFatalErr = Boolean((typeof resData.exitCode === 'number' && resData.exitCode !== 0) || rawStderr && (rawStderr.includes('error:') || rawStderr.includes('Runtime Error') || rawStderr.includes('Exception') || rawStderr.includes('Traceback')));
 
       // Self-healing fallback: If preloaded driver failed backend compilation, automatically retry with universal harness
       if (preloadedDriver && isFatalErr && rawStderr.includes('error:')) {
@@ -2154,31 +2138,8 @@ export async function executeCode(
         }
       }
 
-      let backendCpuMs = 0;
-      if (resData.execution_time !== undefined && resData.execution_time !== null) {
-        backendCpuMs = Math.round(parseFloat(String(resData.execution_time)) * 1000);
-      } else if (resData.execution_time_ms !== undefined) {
-        backendCpuMs = Math.round(Number(resData.execution_time_ms));
-      }
-      if (!backendCpuMs || backendCpuMs <= 0) {
-        if (normLang === 'cpp' || normLang === 'rust') {
-          backendCpuMs = Math.floor(Math.random() * 4) + 1;
-        } else if (normLang === 'java') {
-          backendCpuMs = Math.floor(Math.random() * 6) + 4;
-        } else if (normLang === 'python') {
-          backendCpuMs = Math.floor(Math.random() * 15) + 28;
-        } else {
-          backendCpuMs = Math.floor(Math.random() * 10) + 15;
-        }
-      }
-
-      const backendMemKb = Number(resData.memory || resData.memoryUsedKb);
-      const finalMemKb = backendMemKb > 0 ? Math.round(backendMemKb) : (
-        normLang === 'cpp' || normLang === 'rust' ? 1160 + Math.floor(Math.random() * 120) :
-        normLang === 'java' ? 42500 + Math.floor(Math.random() * 2500) :
-        normLang === 'python' ? 14600 + Math.floor(Math.random() * 1200) :
-        16200
-      );
+      const backendCpuMs = runnerMetric(resData.execution_time, 1000) ?? runnerMetric(resData.execution_time_ms);
+      const finalMemKb = runnerMetric(resData.memory ?? resData.memoryUsedKb);
 
       return {
         stdout: resData.stdout || resData.output || '',
@@ -2193,14 +2154,13 @@ export async function executeCode(
     console.error('[SDETube Compiler] Execution error:', err);
   }
 
-  // 3. Fallback
-  const fallbackCpuMs = (normLang === 'cpp' || normLang === 'rust') ? 2 : normLang === 'python' ? 32 : 12;
   return {
     stdout: '',
     stderr: 'Compiler execution failed or timed out. Please try again.',
     exit_code: 1,
-    execution_time_ms: fallbackCpuMs,
-    memory_used_kb: 1200,
+    execution_time_ms: null,
+    memory_used_kb: null,
+    runnerUnavailable: true,
     status: 'ERROR'
   };
 }

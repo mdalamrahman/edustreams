@@ -1,3 +1,4 @@
+import { HiddenSuitePanel } from './HiddenSuitePanel';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Code2,
@@ -51,7 +52,6 @@ import {
   saveSolutionCode,
   executeCompile,
   validateBackendPipeline,
-  expandTestcasesAI,
   assembleCodeWithDriver,
   ProblemSpec,
   fetchStudentReports,
@@ -330,27 +330,6 @@ export const ProblemManagementStudio: React.FC = () => {
       showToast(res.message || 'Test cases saved to Cloudflare R2!');
     } else {
       showToast(res.message || 'Failed to save test cases', 'error');
-    }
-  };
-
-  const handleAIExpandTestCases = async () => {
-    if (!activeProblem) return;
-    setIsSaving(true);
-    showToast('Invoking AI Testcase Expansion Engine...', 'info');
-
-    const res = await expandTestcasesAI(activeProblem.slug);
-    setIsSaving(false);
-
-    if (res.success && res.testCases && res.testCases.length > 0) {
-      const newRows: TestCaseRow[] = res.testCases.map((tc, idx) => ({
-        input: tc,
-        expectedOutput: (res.expectedOutputs && res.expectedOutputs[idx]) || ''
-      }));
-      setTestCases(newRows);
-      setRawJsonText(JSON.stringify(newRows, null, 2));
-      showToast(`Generated ${newRows.length} comprehensive testcases with AI!`);
-    } else {
-      showToast('AI Expansion endpoint returned no cases. Please check Mistral API configuration.', 'error');
     }
   };
 
@@ -735,13 +714,13 @@ export const ProblemManagementStudio: React.FC = () => {
                 </button>
 
                 <button
-                  onClick={handleAIExpandTestCases}
+                  onClick={() => setActiveStudioTab('verify')}
                   disabled={isSaving}
                   className="p-2 px-3 rounded-xl bg-purple-950 hover:bg-purple-900 border border-purple-700 text-purple-300 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  title="Expand to 10+ comprehensive edge cases with Mistral AI"
+                  title="Prepare a separately graded hidden suite"
                 >
                   <Wand2 className="w-3.5 h-3.5 text-purple-400" />
-                  <span>AI Expand (10+ Cases)</span>
+                  <span>Prepare hidden tests</span>
                 </button>
 
                 <button
@@ -1036,6 +1015,7 @@ export const ProblemManagementStudio: React.FC = () => {
         {/* Tab 4: Verify Pipeline (Stack Verification) */}
         {activeStudioTab === 'verify' && (
           <div className="p-6 space-y-6 max-w-6xl">
+            <HiddenSuitePanel key={activeProblem.slug} slug={activeProblem.slug} samples={testCases.map(item => ({ input: item.input, output: item.expectedOutput }))} />
             <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-cyan-950/40 border border-cyan-800/40 flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center space-x-2">

@@ -36,13 +36,12 @@ import {
   AtsResumeEducation,
   AtsResumeExperience,
   AtsResumeProject,
-  DEFAULT_ATS_RESUME,
+
   generateAtsResumeWithMistral,
   enhanceBulletWithMistral,
   calculateLiveAtsScore,
   LiveAtsScoreResult,
   ResumeAnalysisResult,
-  SAMPLE_JOB_DESCRIPTIONS
 } from '../../lib/resumeAnalyzerService';
 import {
   canAffordAction,
@@ -54,21 +53,25 @@ import {
 interface AtsResumeCreatorViewProps {
   initialData?: AtsResumeData;
   analysisContext?: ResumeAnalysisResult | null;
+  baseResumeText?: string;
+  jobDescription?: string;
 }
 
 export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
   initialData,
-  analysisContext
+  analysisContext, baseResumeText, jobDescription
 }) => {
-  // 1. Core Resume Data State (defaults to Senior Software Engineer SDE-2)
+  // 1. Resume data
   const [resumeData, setResumeData] = useState<AtsResumeData>(() => {
     try {
       const saved = localStorage.getItem('edustream_user_ats_resume');
       if (saved) return JSON.parse(saved);
     } catch {}
     return initialData || {
-      ...DEFAULT_ATS_RESUME,
-      targetRole: 'Senior Software Engineer (SDE-2 / Full Stack)'
+      personalInfo: { fullName: '', email: '', phone: '', location: '', linkedin: '', github: '', portfolio: '' },
+      targetRole: '', summary: '',
+      skills: { languages: [], frameworks: [], cloudDevOps: [], databases: [], toolsAndMethods: [] },
+      experience: [], projects: [], education: [], certifications: [],
     };
   });
 
@@ -76,8 +79,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
   const [alignWithJd, setAlignWithJd] = useState<boolean>(true);
   const [customJd, setCustomJd] = useState<string>(() => {
     if (analysisContext?.job_description_preview) return analysisContext.job_description_preview;
-    const defaultJd = SAMPLE_JOB_DESCRIPTIONS[0]?.text || '';
-    return defaultJd;
+    return jobDescription || '';
   });
 
   // 3. UI Navigation & Tool States
@@ -154,7 +156,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
       const tailored = await generateAtsResumeWithMistral({
         jobDescription: customJd,
         targetRole: resumeData.targetRole || 'Senior Software Engineer (SDE-2 / Full Stack)',
-        baseResumeText: analysisContext?.resume_preview,
+        baseResumeText: baseResumeText || analysisContext?.resume_preview,
         currentProfile: resumeData
       });
 
@@ -577,18 +579,7 @@ export const AtsResumeCreatorView: React.FC<AtsResumeCreatorViewProps> = ({
             </div>
           </label>
 
-          {/* Quick preset loader */}
-          {alignWithJd && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setCustomJd(SAMPLE_JOB_DESCRIPTIONS[0]?.text || '')}
-                className="px-3 py-1.5 rounded-xl bg-[#090d16] border border-white/10 hover:border-cyan-500/40 text-[11px] font-mono text-slate-300 hover:text-white transition-all cursor-pointer shadow-sm"
-              >
-                Load Senior SDE-2 JD
-              </button>
-            </div>
-          )}
+
         </div>
 
         {/* Expandable JD Input & AI Tailor Trigger */}

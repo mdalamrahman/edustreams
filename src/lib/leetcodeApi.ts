@@ -221,103 +221,67 @@ export async function fetchLeetCodePOTD(forceRefresh = false): Promise<LeetCodeD
 /**
  * Fetches the active authentic GeeksforGeeks Problem of the Day (POTD).
  */
-export async function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuestion> {
-  const today = new Date().toISOString().slice(0, 10);
-  const cacheKey = `sdetube_gfg_potd_${today}`;
+const gfgListeners = new Set<(value: GFGDailyQuestion | null) => void>();
+const gfgCacheKey = 'sdetube_gfg_verified_daily_v2';
+let gfgRequest: Promise<GFGDailyQuestion | null> | undefined;
 
-  if (forceRefresh) {
-    try { localStorage.removeItem(cacheKey); } catch {}
-  } else {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (
-          parsed?.title &&
-          parsed?.url &&
-          parsed?.date === today &&
-          parsed.title !== 'Parenthesis Checker' &&
-          parsed.title !== 'Minimum Cost Selection' &&
-          parsed.title !== 'Marks from Ranks' &&
-          parsed.title !== 'Count Subsequences Divisible by n'
-        ) {
-          return parsed;
-        } else {
-          localStorage.removeItem(cacheKey);
-        }
-      }
-    } catch {}
-  }
+export function getGfgDate(time = new Date()): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(time);
+}
 
-  // 1. Try local Edge & Backend Proxies with cache-busting (proxied to avoid browser CORS blocks)
-  const t = Date.now();
-  const endpoints = [
-    `/api/potd/gfg?t=${t}`,
-    `/api/gfg/potd?t=${t}`,
-    `/api/gfg-potd?t=${t}`,
-    `${repositoryConfig.studentUrl}/api/potd/gfg?t=${t}`,
-    `${repositoryConfig.backendUrl}/api/potd/gfg?force_refresh=true&t=${t}`
-  ];
+export function isCurrentGfgPotd(value: GFGDailyQuestion | null): value is GFGDailyQuestion {
+  return value?.date === getGfgDate();
+}
 
-  for (const ep of endpoints) {
-    try {
-      const res = await fetch(ep, {
-        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
-        signal: AbortSignal.timeout(5000)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (data.title || data.problem_name) && (data.url || data.problem_url)) {
-          const title = data.title || data.problem_name;
-          if (title === 'Parenthesis Checker' || title === 'Minimum Cost Selection' || title === 'Count Subsequences Divisible by n' || title === 'Marks from Ranks') {
-            continue;
-          }
-          const url = data.url || data.problem_url;
-          const match = url.match(/\/problems\/([^/]+)\//);
-          const slug = match ? match[1] : (data.slug || data.titleSlug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-          
-          const dynamicResult: GFGDailyQuestion = {
-            id: data.id || data.problem_id || 2157,
-            date: data.date ? data.date.slice(0, 10) : today,
-            questionId: String(data.problem_id || data.id || '704156'),
-            title: title,
-            titleSlug: slug,
-            difficulty: (data.difficulty as any) || 'Medium',
-            topicTags: Array.isArray(data.topicTags) ? data.topicTags : (data.tags?.topic_tags || ['Dynamic Programming']),
-            companyTags: data.companyTags || data.tags?.company_tags || [],
-            url: url,
-            accuracy: data.accuracy || 49.82,
-            totalSubmissions: data.totalSubmissions || data.total_submissions || 12890
-          };
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify(dynamicResult));
-            localStorage.setItem('edustream_potd_cache_gfg', JSON.stringify(dynamicResult));
-          } catch {}
-          return dynamicResult;
-        }
-      }
-    } catch {}
-  }
-
-  // Authentic Fallback for Today
-  const fallbackResult: GFGDailyQuestion = {
-    id: 2157,
-    date: today,
-    questionId: '704156',
-    title: 'Minimum Cost for n Characters',
-    titleSlug: 'minimum-time1238',
-    difficulty: 'Medium',
-    topicTags: ['Dynamic Programming'],
-    companyTags: [],
-    url: 'https://www.geeksforgeeks.org/problems/minimum-time1238/1',
-    accuracy: 49.82,
-    totalSubmissions: 12890
-  };
+export function getCachedCurrentGfgPotd(): GFGDailyQuestion | null {
   try {
-    localStorage.setItem(cacheKey, JSON.stringify(fallbackResult));
-    localStorage.setItem('edustream_potd_cache_gfg', JSON.stringify(fallbackResult));
-  } catch {}
-  return fallbackResult;
+    const problem = JSON.parse(localStorage.getItem(gfgCacheKey) || 'null')?.problem;
+    return isCurrentGfgPotd(problem) ? problem : null;
+  } catch { return null; }
+}
+
+export function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuestion | null> {
+  if (gfgRequest) return gfgRequest;
+  gfgRequest = (async () => {
+    let last: GFGDailyQuestion | null = null;
+    let fetchedAt = 0;
+    try {
+      const cached = JSON.parse(localStorage.getItem(gfgCacheKey) || 'null');
+      last = cached?.problem || null;
+      fetchedAt = cached?.fetchedAt || 0;
+    } catch {}
+    if (isCurrentGfgPotd(last) && !forceRefresh && Date.now() - fetchedAt < 300_000) return last;
+    const path = `/api/potd/gfg${forceRefresh ? '?force_refresh=true' : ''}`;
+    for (const endpoint of new Set([path, repositoryConfig.backendUrl ? repositoryConfig.backendUrl + path : path])) {
+      try {
+        const res = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(12000) });
+        if (!res.ok) continue;
+        const problem: GFGDailyQuestion = await res.json();
+        if (!problem.title || !problem.titleSlug || !/^\d{4}-\d{2}-\d{2}$/.test(problem.date) || problem.date > getGfgDate()) continue;
+        if (last && problem.date < last.date) continue;
+        try { localStorage.setItem(gfgCacheKey, JSON.stringify({ problem, fetchedAt: Date.now() })); } catch {}
+        return problem;
+      } catch {}
+    }
+    return last;
+  })().then(value => {
+    for (const listener of gfgListeners) listener(value);
+    return value;
+  }).finally(() => { gfgRequest = undefined; });
+  return gfgRequest;
+}
+
+export function watchGfgPotd(listener: (value: GFGDailyQuestion | null) => void) {
+  gfgListeners.add(listener);
+  const refresh = () => { if (document.visibilityState !== 'hidden') void fetchGFGPOTD(); };
+  const timer = window.setInterval(refresh, 60_000);
+  document.addEventListener('visibilitychange', refresh);
+  refresh();
+  return () => {
+    gfgListeners.delete(listener);
+    window.clearInterval(timer);
+    document.removeEventListener('visibilitychange', refresh);
+  };
 }
 
 /**
@@ -511,6 +475,7 @@ export interface LeetCodeQuestionDetail {
   }>;
   sampleTestCase?: string;
   exampleTestcases?: string;
+  categoryTitle?: string;
   hints?: string[];
   topicTags?: Array<{ name: string; slug: string }>;
 }
@@ -536,54 +501,11 @@ export async function fetchLeetCodeQuestionData(titleSlug: string): Promise<Leet
       if (res.ok) {
         const json = await res.json();
         const q = json?.data?.question || json?.question;
-        if (q && q.title) return q as LeetCodeQuestionDetail;
+        if (!json?.errors?.length && q?.title && q.titleSlug === cleanSlug && typeof q.content === 'string' && q.content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim()) {
+          return q as LeetCodeQuestionDetail;
+        }
       }
     } catch {}
-  }
-
-  // Direct GraphQL query with required User-Agent header
-  try {
-    const query = `query questionData($titleSlug: String!) {
-      question(titleSlug: $titleSlug) {
-        questionId
-        questionFrontendId
-        title
-        titleSlug
-        difficulty
-        content
-        codeSnippets {
-          lang
-          langSlug
-          code
-        }
-        sampleTestCase
-        exampleTestcases
-        hints
-        topicTags {
-          name
-          slug
-        }
-      }
-    }`;
-
-    const res = await fetch('https://leetcode.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': `https://leetcode.com/problems/${cleanSlug}/`
-      },
-      body: JSON.stringify({ query, variables: { titleSlug: cleanSlug } }),
-      signal: AbortSignal.timeout(6000)
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      const q = json?.data?.question;
-      if (q && q.title) return q as LeetCodeQuestionDetail;
-    }
-  } catch (err) {
-    console.warn('[LeetCode GraphQL fetch error]:', err);
   }
 
   return null;

@@ -13,7 +13,7 @@ export const onRequest: PagesFunction = async (context) => {
   try {
     let slug = '';
     const url = new URL(context.request.url);
-    slug = url.searchParams.get('slug') || url.searchParams.get('titleSlug') || '';
+    slug = (typeof context.params.slug === 'string' ? context.params.slug : '') || url.searchParams.get('slug') || url.searchParams.get('titleSlug') || '';
 
     if (!slug && context.request.method === 'POST') {
       try {
@@ -31,7 +31,7 @@ export const onRequest: PagesFunction = async (context) => {
         .replace(/(^-|-$)/g, '');
     }
 
-    if (!slug) {
+    if (!slug || slug.length > 180) {
       return new Response(JSON.stringify({ error: 'Missing slug parameter' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -57,6 +57,7 @@ export const onRequest: PagesFunction = async (context) => {
 
     const leetcodeRes = await fetch('https://leetcode.com/graphql', {
       method: 'POST',
+      signal: AbortSignal.timeout(6500),
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -67,6 +68,12 @@ export const onRequest: PagesFunction = async (context) => {
 
     if (leetcodeRes.ok) {
       const data = await leetcodeRes.json();
+      const question = data?.data?.question;
+      if (data?.errors?.length || !question?.title || question.titleSlug !== slug || !question.content?.trim()) {
+        return Response.json({ error: 'Complete public statement unavailable' }, {
+          status: 404, headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
       return new Response(JSON.stringify(data), {
         headers: {
           'Content-Type': 'application/json',

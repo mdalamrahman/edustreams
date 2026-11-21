@@ -637,7 +637,7 @@ export function cleanJsonResponse(raw: string): string {
  * Dynamically loads pdf.js from CDN for robust PDF text extraction,
  * falling back to stream block decoding.
  */
-export async function extractResumeTextFromFile(file: File): Promise<string> {
+export async function extractResumeTextFromFile(file: File, options?: { requireReadableText?: boolean }): Promise<string> {
   const fileName = file.name.toLowerCase();
 
   // Plain text / Markdown
@@ -664,13 +664,13 @@ export async function extractResumeTextFromFile(file: File): Promise<string> {
         if (win.pdfjsLib) {
           win.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
           const buffer = await file.arrayBuffer();
-          const loadingTask = win.pdfjsLib.getDocument({ data: buffer });
+          const loadingTask = win.pdfjsLib.getDocument({ data: buffer, isEvalSupported: false });
           const pdf = await loadingTask.promise;
           let fullText = '';
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(' ');
+            const pageText = textContent.items.map((item: { str?: string; hasEOL?: boolean }) => 'str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : '').join('');
             fullText += pageText + '\n\n';
           }
           if (fullText.trim().length > 30) {
@@ -681,6 +681,8 @@ export async function extractResumeTextFromFile(file: File): Promise<string> {
     } catch (err) {
       console.warn('PDF.js dynamic extraction notice, falling back to stream parser:', err);
     }
+
+    if (options?.requireReadableText) throw new Error('No selectable PDF text found');
 
     // Fallback: binary stream text block extraction
     try {
@@ -3767,7 +3769,7 @@ export async function runUnifiedResumeAnalysis(params: {
   const lines = resumeText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let name = lines[0]?.slice(0, 40) || 'Candidate';
   const emailMatch = resumeText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  const email = emailMatch ? emailMatch[0] : 'candidate@example.com';
+  const email = emailMatch?.[0] || '';
 
   let expMetrics = extractAccurateExperience(resumeText, manualYoeOverride);
   let skillProof = classifySkillProofLevels(resumeText);
@@ -3795,10 +3797,10 @@ export async function runUnifiedResumeAnalysis(params: {
 
   const bullets = lines.filter(l => l.startsWith('-') || l.startsWith('•') || l.startsWith('*'));
   const quantifiedBullets = bullets.filter(b => /[\d%]|ms|x|k|m|₹|\$|reduced|increased|improved|scaled/i.test(b));
-  const quantifiedBulletRatio = bullets.length > 0 ? (quantifiedBullets.length / bullets.length) : 0.65;
+  const quantifiedBulletRatio = bullets.length > 0 ? (quantifiedBullets.length / bullets.length) : 0;
 
   // 5. Evaluate ATS Audit
-  const dummyResumeObj: AtsResumeData = {
+  const parsedResume: AtsResumeData = {
     personalInfo: {
       fullName: name,
       email,
@@ -3815,26 +3817,26 @@ export async function runUnifiedResumeAnalysis(params: {
       frameworks: skillProof.allSkills.filter(s => ['React', 'Next.js', 'Node.js', 'NestJS'].includes(s)),
       databases: skillProof.allSkills.filter(s => ['PostgreSQL', 'MongoDB', 'Redis'].includes(s)),
       cloudDevOps: skillProof.allSkills.filter(s => ['Kubernetes', 'Docker', 'AWS', 'GCP', 'Apache Kafka'].includes(s)),
-      toolsAndMethods: ['Microservices', 'REST', 'System Design']
+      toolsAndMethods: []
     },
     experience: bullets.map((b, i) => ({
       id: `exp-${i}`,
       title: targetRole,
-      company: 'Tech Corp',
-      location: 'Remote',
-      startDate: '2021',
-      endDate: 'Present',
-      current: true,
+      company: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      current: false,
       bullets: [b.replace(/^[-•*]\s*/, '')]
     })),
     projects: [],
-    education: [{ id: 'edu-1', degree: 'B.Tech in Computer Science', institution: 'University', year: expMetrics.detectedGraduationYear ? String(expMetrics.detectedGraduationYear) : '2021' }],
+    education: [],
     certifications: []
   };
 
   const atsAuditRes = calculateLiveAtsScore(
-    dummyResumeObj,
-    targetJobDescription || (targetRole + ' microservices, distributed systems, system design, high concurrency')
+    parsedResume,
+    targetJobDescription
   );
 
   // 6. Realistic 2026 Dual Market Valuation

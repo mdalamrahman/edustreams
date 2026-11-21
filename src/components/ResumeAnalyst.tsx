@@ -1,5 +1,6 @@
+import { assessResume } from '../lib/atsEvidence';
 // src/components/ResumeAnalyst.tsx
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Upload,
@@ -42,8 +43,6 @@ import {
 import {
   UnifiedResumeAnalysisResponse,
   runUnifiedResumeAnalysis,
-  SAMPLE_RESUMES,
-  SAMPLE_JOB_DESCRIPTIONS,
   extractResumeTextFromFile,
   LiveJobMatch,
   SkillRoiRecommendation,
@@ -98,7 +97,7 @@ export const ResumeAnalyst: React.FC = () => {
   const [jobsLaneFilter, setJobsLaneFilter] = useState<'domestic' | 'outside' | 'all'>('domestic');
   const [simulatedSkills, setSimulatedSkills] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [resumeText, setResumeText] = useState<string>(SAMPLE_RESUMES[0].preview);
+  const [resumeText, setResumeText] = useState<string>('');
   const [targetRole, setTargetRole] = useState<string>('Software Engineer');
   const [targetJobForScan, setTargetJobForScan] = useState<LiveJobMatch | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -106,9 +105,18 @@ export const ResumeAnalyst: React.FC = () => {
   const [analyzingStep, setAnalyzingStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [loadLatencyMs, setLoadLatencyMs] = useState<number>(42);
+  const [loadLatencyMs, setLoadLatencyMs] = useState<number>(0);
   const [walletBalance, setWalletBalance] = useState<number>(() => getUserWallet().balance);
   const [unifiedData, setUnifiedData] = useState<UnifiedResumeAnalysisResponse | null>(null);
+
+  const uploadGeneration = useRef(0);
+  const analysisGeneration = useRef(0);
+  const uploadedText = useRef('');
+  const currentLocation = useRef(locationPrefs);
+  const [jobDescription, setJobDescription] = useState('');
+  const ats = useMemo(() => resumeText ? assessResume(resumeText, jobDescription) : null, [resumeText, jobDescription]);
+  const valuation = unifiedData && (unifiedData.parsedCandidate.resumeSkills.length > 0 || unifiedData.parsedCandidate.extractedYoe > 0)
+    ? unifiedData.dualValuation : null;
 
   // Sync wallet
   useEffect(() => {
@@ -140,14 +148,17 @@ export const ResumeAnalyst: React.FC = () => {
     locOverride?: UserLocationPreferences,
     simBoostOverride?: number
   ) => {
+    if (!textToAnalyze.trim() || textToAnalyze !== uploadedText.current) return;
+    const request = ++analysisGeneration.current;
+    setUnifiedData(null);
     const startTime = performance.now();
     try {
       if (force) setIsRefreshing(true);
       else setIsAnalyzing(true);
       setError(null);
 
-      const activeLoc = locOverride || locationPrefs;
-      const activeSimBoost = simBoostOverride !== undefined ? simBoostOverride : simulatedBoost;
+      const activeLoc = locOverride || currentLocation.current;
+      const activeSimBoost = simBoostOverride ?? 0;
 
       const result = await runUnifiedResumeAnalysis({
         resumeText: textToAnalyze,
@@ -160,42 +171,54 @@ export const ResumeAnalyst: React.FC = () => {
         forceRefresh: force
       });
 
+      if (request !== analysisGeneration.current) return;
       const elapsed = Math.round(performance.now() - startTime);
       setLoadLatencyMs(elapsed);
       setUnifiedData(result);
     } catch (err: any) {
-      console.error('Resume Analysis Error:', err);
+      if (request !== analysisGeneration.current) return;
       setError(err?.message || 'Failed to analyze resume. Please try again.');
     } finally {
-      setIsAnalyzing(false);
-      setIsRefreshing(false);
-      setAnalyzingStep(0);
+      if (request === analysisGeneration.current) {
+        setIsAnalyzing(false);
+        setIsRefreshing(false);
+        setAnalyzingStep(0);
+      }
     }
   }, [targetRole, targetJobForScan, locationPrefs]);
 
-  // Initial auto-run on mount
-  useEffect(() => {
-    executeAnalysis(resumeText, includeSdeTubeData, false, locationPrefs, 0);
-  }, []);
+  function resetUpload() {
+    uploadGeneration.current++;
+    analysisGeneration.current++;
+    uploadedText.current = '';
+    setResumeText('');
+    setSelectedFile(null);
+    setUnifiedData(null);
+    setSimulatedSkills([]);
+    setIsAnalyzing(false);
+    setIsRefreshing(false);
+    setError(null);
+  }
 
-  // File selection
-  const handleFileSelect = useCallback(async (file: File) => {
-    const ext = file.name.toLowerCase();
-    if (!ext.endsWith('.pdf') && !ext.endsWith('.txt') && !ext.endsWith('.md')) {
-      setError('Please select a PDF or plain text (.txt, .md) file.');
+  const handleFileSelect = async (file: File) => {
+    resetUpload();
+    const generation = uploadGeneration.current;
+    if (!/\.(pdf|txt|md)$/i.test(file.name) || file.size > 10 * 1024 * 1024) {
+      setError('Upload a PDF, TXT, or Markdown file up to 10 MB.');
       return;
     }
-    setError(null);
-    setSelectedFile(file);
     try {
-      const text = await extractResumeTextFromFile(file);
+      const text = (await extractResumeTextFromFile(file, { requireReadableText: true })).trim();
+      if (generation !== uploadGeneration.current) return;
+      if (!/\p{L}{2,}/u.test(text) || text.split(/\s+/).length < 5) throw new Error('No readable resume text');
+      uploadedText.current = text;
+      setSelectedFile(file);
       setResumeText(text);
-      executeAnalysis(text, includeSdeTubeData, false);
-    } catch (err: any) {
-      console.warn('Text extraction warning:', err);
-      setError('Could not extract text from file. Please paste text directly.');
+      void executeAnalysis(text, includeSdeTubeData, false, currentLocation.current, 0);
+    } catch {
+      if (generation === uploadGeneration.current) setError('Could not read this resume. Upload a text-based PDF, TXT, or Markdown file.');
     }
-  }, [includeSdeTubeData, executeAnalysis]);
+  };
 
   const activeCountryConfig = COUNTRY_CONFIGS[locationPrefs.countryCode] || COUNTRY_CONFIGS.IN;
 
@@ -209,6 +232,7 @@ export const ResumeAnalyst: React.FC = () => {
       currencyUnit: nextConfig.unitLabel,
       preferredCity: nextConfig.cities[0].name,
     };
+    currentLocation.current = next;
     setLocationPrefs(next);
     executeAnalysis(resumeText, includeSdeTubeData, false, next, simulatedBoost);
   };
@@ -216,6 +240,7 @@ export const ResumeAnalyst: React.FC = () => {
   // Update Location Preferences & Trigger Fast Refresh
   const updateLocationPrefs = (updates: Partial<UserLocationPreferences>) => {
     const next: UserLocationPreferences = { ...locationPrefs, ...updates };
+    currentLocation.current = next;
     setLocationPrefs(next);
     executeAnalysis(resumeText, includeSdeTubeData, false, next, simulatedBoost);
   };
@@ -232,7 +257,7 @@ export const ResumeAnalyst: React.FC = () => {
       const next = prev.includes(skillName) ? prev.filter(s => s !== skillName) : [...prev, skillName];
       const newBoost = next.reduce((sum, name) => {
         const rec = unifiedData?.skillRoiRecommendations.find(r => r.skillName === name);
-        return sum + (rec ? rec.marketValueDeltaLPA : 2.5);
+        return sum + (rec?.marketValueDeltaLPA ?? 0);
       }, 0);
       executeAnalysis(resumeText, includeSdeTubeData, false, locationPrefs, newBoost);
       return next;
@@ -244,18 +269,9 @@ export const ResumeAnalyst: React.FC = () => {
     if (!unifiedData || simulatedSkills.length === 0) return 0;
     return simulatedSkills.reduce((sum, skillName) => {
       const rec = unifiedData.skillRoiRecommendations.find(r => r.skillName === skillName);
-      return sum + (rec ? rec.marketValueDeltaLPA : 2.5);
+      return sum + (rec?.marketValueDeltaLPA ?? 0);
     }, 0);
   }, [unifiedData, simulatedSkills]);
-
-  // Total Projected Market Value (Domestic)
-  const currentTotalLpa = useMemo(() => {
-    if (!unifiedData) return 21.5;
-    if (unifiedData.dualValuation) {
-      return unifiedData.dualValuation.domestic.totalEstimatedValue;
-    }
-    return Number((unifiedData.marketValuation.totalEstimatedValueLPA + simulatedBoost).toFixed(1));
-  }, [unifiedData, simulatedBoost]);
 
   // Filtered Jobs based on 2-Lane Location Preferences
   const displayedJobs = useMemo(() => {
@@ -273,17 +289,10 @@ export const ResumeAnalyst: React.FC = () => {
     return unifiedData.liveJobs;
   }, [unifiedData, jobsLaneFilter]);
 
-  // Preload Sample Resume
-  const handleLoadSample = (sampleId: string) => {
-    const r = SAMPLE_RESUMES.find(s => s.id === sampleId) || SAMPLE_RESUMES[0];
-    setResumeText(r.preview);
-    setSelectedFile(null);
-    executeAnalysis(r.preview, includeSdeTubeData, false);
-  };
-
   // 1-Click "Scan Resume Against This Job" from Jobs Tab
   const handleScanAgainstJob = (job: LiveJobMatch) => {
     setTargetJobForScan(job);
+    setJobDescription(job.cleanFullText || job.rawDescription || job.cleanSummary || '');
     setActiveTab('ats_scanner');
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
@@ -299,17 +308,13 @@ export const ResumeAnalyst: React.FC = () => {
       id: 'dashboard' as const,
       label: 'Market Valuation & ROI',
       icon: BarChart3,
-      badge: unifiedData?.dualValuation
-        ? `${unifiedData.dualValuation.domestic.currencySymbol}${unifiedData.dualValuation.domestic.totalEstimatedValue} ${unifiedData.dualValuation.domestic.unitLabel}`
-        : activeCountryConfig.isLPA
-        ? `₹${currentTotalLpa} LPA`
-        : `${activeCountryConfig.currencySymbol}${Math.round(currentTotalLpa * 10)} ${activeCountryConfig.unitLabel}`
+      badge: valuation ? `${valuation.domestic.currencySymbol}${valuation.domestic.totalEstimatedValue} ${valuation.domestic.unitLabel}` : ''
     },
     {
       id: 'ats_scanner' as const,
       label: 'Deep ATS Scanner & Tailor',
       icon: FileCheck,
-      badge: unifiedData ? `${unifiedData.atsAudit.overallScore}% ATS` : 'Audit'
+      badge: ats ? 'Audit' : ''
     },
     {
       id: 'jobs' as const,
@@ -327,7 +332,7 @@ export const ResumeAnalyst: React.FC = () => {
       id: 'transitions' as const,
       label: 'Role Transitions & 3D Cards',
       icon: Target,
-      badge: `${unifiedData?.roleTransitions.length || 2} Roles`
+      badge: unifiedData ? `${unifiedData.roleTransitions.length} Roles` : ''
     },
     {
       id: 'creator' as const,
@@ -355,23 +360,25 @@ export const ResumeAnalyst: React.FC = () => {
             <div className="truncate mr-2">
               <div className="text-xs font-semibold text-white truncate flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-                <span className="truncate">{selectedFile ? selectedFile.name : 'Sample Resume (SDE-2)'}</span>
+                <span className="truncate">{selectedFile ? selectedFile.name : 'Upload your resume'}</span>
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
-                {unifiedData?.parsedCandidate.resumeSkills.length || 12} Skills &bull; {unifiedData?.parsedCandidate.extractedYoe || 2.5} YOE Detected
+                {unifiedData ? `${unifiedData.parsedCandidate.resumeSkills.length} skills detected` : 'PDF, TXT, or Markdown'}
               </div>
             </div>
             <label className="px-2.5 py-1 text-xs font-mono font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg cursor-pointer shrink-0 transition flex items-center gap-1">
               <Upload className="w-3 h-3" />
-              <span>Upload</span>
+              <span>Upload resume</span>
               <input
                 type="file"
                 accept=".pdf,.txt,.md"
-                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void handleFileSelect(file); }}
                 className="hidden"
               />
             </label>
           </div>
+
+          {selectedFile && <button type="button" className="text-xs text-slate-300 underline" onClick={resetUpload}>Remove resume</button>}
 
           {/* 2. Country, Domestic City & Remote Filter (5 cols) */}
           <div className="lg:col-span-5 grid grid-cols-3 gap-2">
@@ -455,9 +462,7 @@ export const ResumeAnalyst: React.FC = () => {
                   )}
                 </div>
                 <div className="text-[10px] text-slate-400 truncate">
-                  {includeSdeTubeData
-                    ? `Boost: +${unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}${unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 2.4} ${unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel} / +$${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.sdeTubeBoostUSD ?? 8500).toLocaleString()}`
-                    : 'Resume-Only Valuation'}
+                  {includeSdeTubeData ? 'Include account activity when available' : 'Resume-only estimate'}
                 </div>
               </div>
             </label>
@@ -466,7 +471,7 @@ export const ResumeAnalyst: React.FC = () => {
             <button
               type="button"
               onClick={() => executeAnalysis(resumeText, includeSdeTubeData, true, locationPrefs, simulatedBoost)}
-              disabled={isRefreshing}
+              disabled={!resumeText || isRefreshing || isAnalyzing}
               className="p-2.5 rounded-xl bg-[#0f1422] border border-white/[0.08] text-stitch-dim hover:text-white transition disabled:opacity-50 cursor-pointer flex-shrink-0"
               title="Force refresh analysis"
             >
@@ -476,80 +481,17 @@ export const ResumeAnalyst: React.FC = () => {
 
         </div>
 
-        {/* Dual Market Valuation Banner: In-Country vs Outside-Country */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-4 pt-4 border-t border-slate-800/80">
-          
-          {/* Card A: Within-Country Market Value */}
-          <div className="bg-slate-950/80 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col justify-between shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-mono font-semibold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                <span>In-Country Value ({unifiedData?.dualValuation?.domestic.cityOrRemoteLabel || locationPrefs.preferredCity})</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                {activeCountryConfig.cities.find((c) => c.name === locationPrefs.preferredCity)?.label || activeCountryConfig.name}
-              </span>
-            </div>
-
-            <div className="my-1.5">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
-                  {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.totalEstimatedValue ?? (activeCountryConfig.isLPA ? currentTotalLpa : Math.round(currentTotalLpa * 10))} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}
-                </span>
-                <span className="text-xs font-mono text-slate-400">
-                  (Range: {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.range.min ?? 0} – {unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.range.max ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel})
-                </span>
-              </div>
-            </div>
-
-            <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
-              <span>Resume Base: <strong className="text-slate-200">{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.baseResumeOnlyValue ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong></span>
-              {includeSdeTubeData && (
-                <span className="text-emerald-400">
-                  &bull; SDETube Boost: <strong>+{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.sdeTubeVerifiedBoost ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
-                </span>
-              )}
-              {simulatedBoost > 0 && (
-                <span className="text-amber-300">
-                  &bull; What-If: <strong>+{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.simulatedSkillsBoost ?? simulatedBoost.toFixed(1)} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
-                </span>
-              )}
-              <span className="text-indigo-300">
-                &bull; {activeCountryConfig.name} Remote: <strong>{unifiedData?.dualValuation?.domestic.currencySymbol ?? activeCountryConfig.currencySymbol}{unifiedData?.dualValuation?.domestic.comparisons?.domesticRemoteMedian ?? (unifiedData?.dualValuation?.domestic as any)?.domesticRemoteComparison?.domesticRemoteMedian ?? 0} {unifiedData?.dualValuation?.domestic.unitLabel ?? activeCountryConfig.unitLabel}</strong>
-              </span>
-            </div>
-          </div>
-
-          {/* Card B: Outside-Country Market Value */}
-          <div className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-3.5 flex flex-col justify-between shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-mono font-semibold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5 text-sky-400" />
-                <span>Outside-Country Value (Global Remote &amp; Relocation)</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
-                Readiness: {unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.readinessPct ?? 88}%
-              </span>
-            </div>
-
-            <div className="my-1.5">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
-                  ${(unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.totalMedianUSD ?? 76500).toLocaleString()} <span className="text-base font-semibold text-slate-400">/ yr</span>
-                </span>
-                <span className="text-xs font-mono text-slate-400">
-                  (${unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.hourlyRateUSD.min ?? 32}–${unifiedData?.dualValuation?.outsideCountry.globalRemoteUSD.hourlyRateUSD.max ?? 49}/hr Remote)
-                </span>
-              </div>
-            </div>
-
-            <div className="text-[11px] font-mono text-slate-400 flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04]">
-              <span>US Bay Area: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[0]?.estimatedRange || '$145K – $198K / yr'}</strong></span>
-              <span>&bull; EU Berlin: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[2]?.estimatedRange || '€85K – €115K / yr'}</strong></span>
-              <span>&bull; Dubai: <strong className="text-slate-200">{unifiedData?.dualValuation?.outsideCountry.internationalRelocationHubs[4]?.estimatedRange || 'AED 320K – 440K / yr'}</strong></span>
-            </div>
-          </div>
-
+          <section className="bg-slate-950/80 border border-emerald-500/30 rounded-xl p-4">
+            <h2 className="text-sm text-emerald-300 font-semibold">In-Country Value ({locationPrefs.preferredCity})</h2>
+            {valuation ? <p className="mt-2 text-white">Estimated range {valuation.domestic.currencySymbol}{valuation.domestic.range.min}?{valuation.domestic.range.max} {valuation.domestic.unitLabel}</p>
+              : <p className="mt-2 text-sm text-slate-400">{!resumeText ? 'Upload your resume to see an estimate.' : isAnalyzing || isRefreshing ? 'Calculating estimate?' : 'Estimate unavailable'}</p>}
+          </section>
+          <section className="bg-slate-950/80 border border-sky-500/30 rounded-xl p-4">
+            <h2 className="text-sm text-sky-300 font-semibold">Outside-Country Value (Global Remote)</h2>
+            {valuation ? <p className="mt-2 text-white">Estimated annual value ${valuation.outsideCountry.globalRemoteUSD.totalMedianUSD.toLocaleString()}</p>
+              : <p className="mt-2 text-sm text-slate-400">{!resumeText ? 'Upload your resume to see an estimate.' : isAnalyzing || isRefreshing ? 'Calculating estimate?' : 'Estimate unavailable'}</p>}
+          </section>
         </div>
 
       </div>
@@ -616,6 +558,22 @@ export const ResumeAnalyst: React.FC = () => {
       {/* ========================================================================= */}
       {/* 3. STUDIO TAB VIEWS                                                       */}
       {/* ========================================================================= */}
+      {activeTab === 'ats_scanner' && ats ? (
+        <section className="rounded-2xl border border-slate-700 bg-slate-900 p-6 space-y-4">
+          <h2 className="text-xl font-bold">Resume parseability and quality</h2>
+          <ul className="space-y-2 text-sm">
+            {ats.checks.map(check => <li key={check.label}>{check.label}: {check.detail}</li>)}
+          </ul>
+          <label className="block text-sm" htmlFor="ats-job-description">Job description (optional)</label>
+          <textarea id="ats-job-description" className="w-full rounded-lg bg-slate-950 p-3 min-h-28" value={jobDescription} onChange={event => setJobDescription(event.target.value)} />
+          {ats.match && <div className="space-y-2">
+            <h3 className="font-semibold">Estimated job requirement coverage: {ats.match.score}%</h3>
+            <ul className="space-y-2 text-sm">
+              {ats.match.requirements.map(item => <li key={item.term}><strong>{item.term}</strong> {item.evidence ? `? ${item.evidence}` : '? Evidence not found'}</li>)}
+            </ul>
+          </div>}
+        </section>
+      ) : null}
       {isAnalyzing ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-4">
           <div className="relative w-16 h-16">
@@ -631,7 +589,7 @@ export const ResumeAnalyst: React.FC = () => {
         <div>
 
           {/* TAB 1: MARKET VALUATION & WHAT-IF SKILL SIMULATOR */}
-          {activeTab === 'dashboard' && (
+          {activeTab === 'dashboard' && valuation && (
             <div className="space-y-6">
               
               {/* Top Multi-Factor Formula Breakdown Card */}
@@ -841,145 +799,6 @@ export const ResumeAnalyst: React.FC = () => {
                       </div>
                     );
                   })}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* TAB 2: UNIFIED DEEP ATS SCANNER & BULLET FIXER */}
-          {activeTab === 'ats_scanner' && (
-            <div className="space-y-6">
-              
-              {/* 6-Pillar Score Ring & Overview */}
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 sm:p-8 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Deterministic 6-Pillar ATS Audit</span>
-                    </span>
-                    <span className="text-xs font-mono text-stitch-dim">100-Point Machine Scale</span>
-                  </div>
-                  <h2 className="text-2xl font-black text-white">
-                    Overall ATS Pass Probability: {unifiedData.atsAudit.overallScore}%
-                  </h2>
-                  <p className="text-xs text-stitch-dim max-w-xl">
-                    Evaluated against standard Greenhouse, Lever, and Workday parsing engines. Every detected blocker is ranked with evidence-gated fixes.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('creator')}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-mono font-bold transition shadow-lg shadow-purple-950/40 flex items-center gap-2 cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>Open Live Paper ATS Creator</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 6 Category Sub-scores */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-                <div className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] text-center">
-                  <span className="text-[10px] font-mono text-stitch-dim uppercase font-bold">Parseability</span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {unifiedData.atsAudit.subScores.parseabilityAndFormatting}/15
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-mono">Single-Column</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] text-center">
-                  <span className="text-[10px] font-mono text-stitch-dim uppercase font-bold">Keywords</span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {unifiedData.atsAudit.subScores.keywordAndSkillMatch}/30
-                  </div>
-                  <span className="text-[10px] text-cyan-300 font-mono">Core Stack</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] text-center">
-                  <span className="text-[10px] font-mono text-stitch-dim uppercase font-bold">XYZ Metrics</span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {unifiedData.atsAudit.subScores.impactAndQuantification}/25
-                  </div>
-                  <span className="text-[10px] text-amber-300 font-mono">Numbers &amp; Scale</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] text-center">
-                  <span className="text-[10px] font-mono text-stitch-dim uppercase font-bold">Action Verbs</span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {unifiedData.atsAudit.subScores.actionVerbsAndTone}/10
-                  </div>
-                  <span className="text-[10px] text-stitch-dim font-mono">Active Voice</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] text-center">
-                  <span className="text-[10px] font-mono text-stitch-dim uppercase font-bold">Brevity</span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {unifiedData.atsAudit.subScores.brevityAndStructure}/10
-                  </div>
-                  <span className="text-[10px] text-stitch-dim font-mono">Word Length</span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#080c16] border border-emerald-500/30 text-center bg-emerald-950/10">
-                  <span className="text-[10px] font-mono text-emerald-300 uppercase font-bold">Evidence</span>
-                  <div className="text-xl font-bold font-mono text-emerald-400 mt-1">
-                    {unifiedData.atsAudit.subScores.evidenceVerification}/10
-                  </div>
-                  <span className="text-[10px] text-emerald-300 font-mono">SDETube Proof</span>
-                </div>
-              </div>
-
-              {/* Interactive Bullet-by-Bullet Fixer */}
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0c101a] p-6 shadow-xl space-y-4">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-cyan-400" />
-                  <span>Evidence-Gated XYZ Bullet Rewriter (AI Calibrated)</span>
-                </h3>
-                <p className="text-xs text-stitch-dim">
-                  Bullets from your resume analyzed against FAANG bar-raiser impact standards.
-                </p>
-
-                <div className="space-y-3.5 pt-2">
-                  {unifiedData.atsAudit.bulletAudits.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 rounded-xl bg-[#080c16] border border-white/[0.08] space-y-3 hover:border-cyan-400/30 transition"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-mono text-stitch-dim">
-                          Section: <strong>{item.section}</strong> &bull; Issue: <span className="text-rose-400">{item.issue}</span>
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                          item.score === 'strong' ? 'bg-emerald-500/20 text-emerald-300' :
-                          item.score === 'moderate' ? 'bg-amber-500/20 text-amber-300' :
-                          'bg-rose-500/20 text-rose-300'
-                        }`}>
-                          {item.score.toUpperCase()}
-                        </span>
-                      </div>
-
-                      {/* Original Bullet */}
-                      <div className="p-3 rounded-lg bg-black/40 border border-white/[0.04] text-xs font-mono text-slate-300">
-                        <span className="text-stitch-dim select-none mr-2">Original:</span>
-                        {item.originalBullet}
-                      </div>
-
-                      {/* AI Suggested XYZ Rewrite */}
-                      <div className="p-3 rounded-lg bg-cyan-950/20 border border-cyan-500/30 text-xs font-mono text-cyan-200 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-cyan-400 uppercase font-bold flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Recommended XYZ Rewrite:</span>
-                          </span>
-                          <span className="text-[10px] text-stitch-dim">Action + Metric + Tech</span>
-                        </div>
-                        <p className="leading-relaxed">{item.aiSuggestedRewrite}</p>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -1456,12 +1275,14 @@ export const ResumeAnalyst: React.FC = () => {
           {/* TAB 6: AI ATS RESUME CREATOR (LIVE PAPER PREVIEW) */}
           {activeTab === 'creator' && (
             <AtsResumeCreatorView
-              analysisContext={null}
+              key={selectedFile?.name + String(uploadGeneration.current)}
+              baseResumeText={resumeText}
+              jobDescription={jobDescription}
             />
           )}
 
         </div>
-      ) : null}
+      ) : !resumeText ? <p className="py-10 text-center text-slate-400">Upload your resume to start analysis.</p> : null}
 
     </div>
   );

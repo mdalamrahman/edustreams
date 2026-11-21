@@ -1,4 +1,5 @@
 import { generateKeyPairSync } from 'node:crypto';
+import path from 'node:path';
 import { expect, test, Page } from '@playwright/test';
 
 async function mockServices(page: Page) {
@@ -33,6 +34,83 @@ async function mockServices(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => { await mockServices(page); });
+
+async function studentSession(page: Page) {
+  const user = { id: '00000000-0000-4000-8000-000000000004', email: 'student@example.com', aud: 'authenticated', created_at: new Date().toISOString(), email_confirmed_at: new Date().toISOString(), app_metadata: {}, user_metadata: {} };
+  const accessToken = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'test-signature'].join('.');
+  await page.addInitScript(({ user, accessToken }) => {
+    localStorage.setItem('sb-preview-test-auth-token', JSON.stringify({ access_token: accessToken, refresh_token: 'test-refresh', expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user }));
+    localStorage.setItem('edustream_student_session', JSON.stringify(user));
+  }, { user, accessToken });
+  await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
+}
+
+test('Resume and in-country value wait for a readable upload', async ({ page }) => {
+  await studentSession(page);
+  let modelRequests = 0;
+  await page.route('**/api/provider/**', async route => {
+    modelRequests++;
+    await route.fulfill({ status: 503, json: { detail: 'Offline test provider' } });
+  });
+  await page.goto('http://127.0.0.1:4173/resume-analyst?tab=ats_scanner');
+  const upload = page.locator('input[type="file"]');
+  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
+  await page.locator('select').first().selectOption('US');
+  await upload.setInputFiles({ name: 'empty.txt', mimeType: 'text/plain', buffer: Buffer.alloc(0) });
+  await expect(page.getByText(/Could not read this resume/)).toBeVisible();
+  expect(modelRequests).toBe(0);
+  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
+  await upload.setInputFiles({ name: 'actual-resume.txt', mimeType: 'text/plain', buffer: Buffer.from('Taylor Example\nExperience\nEngineer 2020 - 2025\nReduced latency by 25% using Python.\nSkills\nPython, SQL, React.') });
+  await expect(page.getByRole('heading', { name: 'Resume parseability and quality' })).toBeVisible();
+  await expect(page.getByText('Estimated range', { exact: false })).toBeVisible();
+  await expect(page.getByText(/Estimated job requirement coverage/)).toHaveCount(0);
+  await page.getByLabel('Job description (optional)').fill('Experience with Python and Kubernetes.');
+  await expect(page.getByText('Estimated job requirement coverage: 50%')).toBeVisible();
+  await expect(page.getByText('Evidence not found', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove resume' }).click();
+  await expect(page.getByText('Upload your resume to see an estimate.')).toHaveCount(2);
+  await expect(page.getByText(/Estimated job requirement coverage/)).toHaveCount(0);
+});
+
+test('Same Tree preserves source, Monaco caret and sample-only submit status', async ({ page }) => {
+  await studentSession(page);
+  await page.route('https://cdn.jsdelivr.net/npm/monaco-editor@*/min/vs/**', async route => {
+    const name = new URL(route.request().url()).pathname.split('/min/vs/')[1];
+    try { await route.fulfill({ path: path.resolve('node_modules/monaco-editor/min/vs', name), headers: { 'Access-Control-Allow-Origin': '*' } }); }
+    catch { await route.abort(); }
+  });
+  await page.route('**/api/leetcode/question?slug=same-tree', route => route.fulfill({ json: { data: { question: {
+    title: 'Same Tree', titleSlug: 'same-tree', difficulty: 'Easy',
+    content: '<p>Compare two trees.</p><pre>Tree notation</pre><p>Example 1:</p><pre>Input: p = [1,2,3], q = [1,2,3]\nOutput: true</pre><p>Example 2:</p><pre>Input: p = [1,2], q = [1,null,2]\nOutput: false</pre><p>Example 3:</p><pre>Input: p = [1,2,1], q = [1,1,2]\nOutput: false</pre><p>Follow-up: iterative traversal.</p>',
+    codeSnippets: [{ lang: 'C++', langSlug: 'cpp', code: 'class Solution {\npublic:\n    bool isSameTree(TreeNode* p, TreeNode* q) { return p == q; }\n};' }],
+  } } } }));
+  let samplesRun = 0;
+  await page.route('https://ce.judge0.com/submissions?**', route => {
+    if (route.request().method() !== 'POST') return route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'content-type' } });
+    const source = Buffer.from(route.request().postDataJSON().source_code, 'base64').toString();
+    samplesRun++;
+    const result = source.includes('[1,2,3]') ? 'true' : 'false';
+    return route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, json: { stdout: Buffer.from(result).toString('base64'), time: '0', memory: null, status: { id: 3 } } });
+  });
+  await page.route('**/api/problem/same-tree/grade', route => route.fulfill({ json: { verdict: 'hidden_unavailable', totalCount: 0, passedCount: 0, measurements: [] } }));
+  await page.goto('http://127.0.0.1:4173/problem/same-tree');
+  await expect(page.getByText('Follow-up: iterative traversal.')).toBeVisible();
+  await expect(page.getByText('Tree notation', { exact: true })).toBeVisible();
+  const editor = page.locator('.monaco-editor').first();
+  await editor.locator('.view-lines').click();
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.type('// A');
+  await page.waitForTimeout(450);
+  await page.keyboard.type('B');
+  await expect(editor).toContainText('// ABclass Solution');
+  await page.setViewportSize({ width: 1110, height: 900 });
+  await page.keyboard.type('C');
+  await expect(editor).toContainText('// ABCclass Solution');
+  await page.getByRole('button', { name: /^Submit/ }).click();
+  await expect(page.getByText('Samples passed · Hidden tests unavailable', { exact: true })).toBeVisible();
+  expect(samplesRun).toBe(3);
+  await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
+});
 
 test('Admin sign-in fields are visible, usable, and recover after an invalid code', async ({ page }, testInfo) => {
   await page.goto('http://127.0.0.1:4174');

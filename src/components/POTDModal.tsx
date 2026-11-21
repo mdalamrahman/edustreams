@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, Zap, Target, RefreshCw, BookOpen, Layers, AlertTriangle } from 'lucide-react';
-import { fetchLeetCodePOTD, fetchGFGPOTD, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
+import { fetchLeetCodePOTD, fetchGFGPOTD, watchGfgPotd, isCurrentGfgPotd, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
 import { getSolvedIds, getLinkedProfiles, LinkedProfilesConfig } from '../lib/progressService';
@@ -10,7 +10,7 @@ import {
   LeetCodeFullProfileData, 
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
-  isGfgProblemSolvedToday,
+  isGfgPotdAccepted,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -182,64 +182,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const isLcPotdSolved = isLcLocalSolved || isLcRemoteSolved;
 
   // Check if GFG POTD is solved
-  const isGfgLocalSolved = useMemo(() => {
-    if (!gfgPotd) return false;
-    const subVariants = [
-      gfgPotd.titleSlug,
-      '9999',
-      'gfgpotd',
-      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
-      (gfgPotd.titleSlug || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      (gfgPotd.title || '').toLowerCase().replace(/[^a-z0-9]/g, '')
-    ].filter(Boolean);
-
-    for (const v of subVariants) {
-      const sub = localStorage.getItem(`edustream_submissions_${v}`);
-      if (sub) {
-        try {
-          const list = JSON.parse(sub);
-          if (Array.isArray(list) && list.some(item => {
-            if (!item || (item.status !== 'Accepted' && item.status !== 'SUCCESS')) return false;
-            const idStr = String(item.id || '');
-            if (idStr.includes('_potd') || idStr.includes('_external') || idStr.includes('_sync') || idStr.includes('_manual')) {
-              return false;
-            }
-            let isToday = false;
-            if (item.id) {
-              const ts = parseInt(idStr.split('_')[0], 10);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            if (!isToday && item.timestamp) {
-              const ts = typeof item.timestamp === 'number' ? item.timestamp : Date.parse(item.timestamp);
-              if (ts > 0 && new Date(ts).toISOString().slice(0, 10) === today) isToday = true;
-            }
-            return isToday;
-          })) {
-            return true;
-          }
-        } catch {}
-      }
-    }
-    return false;
-  }, [gfgPotd, today, isSolvedEventTriggered]);
-
-  const isGfgRemoteSolved = useMemo(() => {
-    if (localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true') return true;
-    if (gfgProfile && gfgPotd) {
-      const isRemoteSolved = isGfgProblemSolvedToday(gfgProfile, gfgPotd.titleSlug, gfgPotd.title);
-      if (isRemoteSolved) {
-        try {
-          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-        } catch {}
-        return true;
-      }
-    }
-    return false;
-  }, [gfgPotd, gfgProfile, today, isSolvedEventTriggered]);
-
+  const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgRemoteSolved = false;
   const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
@@ -316,62 +260,10 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
   const [gfgVerifyMessage, setGfgVerifyMessage] = useState<string | null>(null);
 
   const verifyGfgSolved = async () => {
-    const username = linkedConfig.gfgUsername?.trim();
-    if (!username) {
-      setGfgVerifyMessage('Please link your GeeksforGeeks username in your profile to auto-verify.');
-      return;
-    }
     setIsVerifyingGfg(true);
-    setGfgVerifyMessage(`Querying GeeksforGeeks for @${username}...`);
-    try {
-      const profile = await fetchGFGProfile(username, true);
-      if (profile) {
-        setGfgProfile(profile);
-        const solved = gfgPotd ? isGfgProblemSolvedToday(profile, gfgPotd.titleSlug, gfgPotd.title) : false;
-        if (solved) {
-          localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_synced_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
-          localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-          if (gfgPotd) {
-            markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-          }
-          window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
-          setIsSolvedEventTriggered(prev => prev + 1);
-          setGfgVerifyMessage('Verified! Solved today on GeeksforGeeks ✓');
-        } else {
-          setGfgVerifyMessage(`No accepted submission for today found yet on @${username}. If you just submitted, please wait ~30s or use "Mark as Solved" below.`);
-        }
-      } else {
-        setGfgVerifyMessage(`Could not fetch profile for @${username}. You can mark it as solved manually below.`);
-      }
-    } catch {
-      setGfgVerifyMessage('Network check failed. You can mark it as solved manually below.');
-    } finally {
-      setIsVerifyingGfg(false);
-    }
-  };
-
-  const toggleManualGfgSolved = () => {
-    const current = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
-    if (current) {
-      localStorage.removeItem(`sdetube_potd_gfg_solved_${today}`);
-      localStorage.removeItem(`sdetube_potd_gfg_manual_solved_${today}`);
-      const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
-      const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
-      if (!sdeSolved && !lcSolved) {
-        localStorage.removeItem(`sdetube_potd_solved_${today}`);
-      }
-    } else {
-      localStorage.setItem(`sdetube_potd_gfg_solved_${today}`, 'true');
-      localStorage.setItem(`sdetube_potd_gfg_manual_solved_${today}`, 'true');
-      localStorage.setItem(`sdetube_potd_solved_${today}`, 'true');
-      if (gfgPotd) {
-        markProblemSolved(gfgPotd.title, 10, gfgPotd.titleSlug);
-      }
-    }
-    window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: today } }));
-    setIsSolvedEventTriggered(prev => prev + 1);
+    const problem = await fetchGFGPOTD(true);
+    setGfgVerifyMessage(isCurrentGfgPotd(problem) ? 'Daily problem updated. GeeksforGeeks public activity does not identify accepted submissions for this problem.' : 'Today?s problem is unavailable. Try again shortly.');
+    setIsVerifyingGfg(false);
   };
 
   const loadLeetCodePOTD = async (force = false) => {
@@ -422,7 +314,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   useEffect(() => {
     loadLeetCodePOTD();
-    loadGfgPOTD();
+    setIsLoadingGfg(true);
+    return watchGfgPotd(potd => { setGfgPotd(potd); setIsLoadingGfg(false); });
   }, []);
 
   // Proactive background auto-verification when POTD details are resolved
@@ -910,7 +803,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     <span>{gfgPotd.title}</span>
                     {isGfgPotdSolved && <span className="text-emerald-400 text-xs font-normal">✓ Done</span>}
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1 font-mono">Official GeeksforGeeks Problem of the Day &bull; {gfgPotd.date}</p>
+                  <p className="text-xs text-slate-400 mt-1 font-mono">{isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last verified problem'} ? {gfgPotd.date}</p>
                 </div>
 
                 {/* Linked Account Status & Quick Controls */}
@@ -938,18 +831,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                       </button>
                     )}
 
-                    <button
-                      onClick={toggleManualGfgSolved}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isGfgPotdSolved
-                          ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
-                          : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
-                      }`}
-                      title="Click to toggle solved status for today"
-                    >
-                      <CheckCircle2 className={`w-3.5 h-3.5 ${isGfgPotdSolved ? 'text-emerald-400' : 'text-slate-500'}`} />
-                      <span>{isGfgPotdSolved ? 'Solved ✓' : 'Mark as Solved'}</span>
-                    </button>
+
                   </div>
                 </div>
 

@@ -1998,260 +1998,27 @@ def fetch_leetcode_graphql(slug: str) -> Optional[dict]:
                     "starters": starters,
                     "solutions": {}
                 }
-                raw_res = sanitize_and_harden_testcases(raw_res)
-                return expand_problem_testcases_to_min_10(raw_res)
+                return retain_public_problem_cases(raw_res)
     except Exception as e:
         print(f"[LeetCode GraphQL fetch error for '{slug}']: {e}")
     return None
 
 
-def compute_expected_outputs_with_python(py_solution_code: str, test_cases: list) -> list:
-    """
-    Executes the reference Python solution in an isolated sandbox to compute
-    100% mathematically authentic expected outputs for all test cases.
-    """
-    if not py_solution_code or not test_cases:
-        return []
-
-    import ast
-    try:
-        scope = {}
-        exec('from typing import List, Dict, Tuple, Optional, Any, Set\nimport collections, heapq, bisect, math\n' + py_solution_code, scope)
-        sol_class = scope.get('Solution')
-        if not sol_class:
-            return []
-        sol_instance = sol_class()
-        methods = [m for m in dir(sol_instance) if not m.startswith('_') and callable(getattr(sol_instance, m))]
-        if not methods:
-            return []
-        method = getattr(sol_instance, methods[0])
-        
-        computed_outputs = []
-        for tc in test_cases:
-            tc_str = tc if isinstance(tc, str) else json.dumps(tc)
-            clean = tc_str.strip()
-            try:
-                if '=' in clean:
-                    parts = []
-                    curr = []
-                    depth = 0
-                    for ch in clean:
-                        if ch in '[{(':
-                            depth += 1
-                        elif ch in ']})':
-                            depth -= 1
-                        if ch == ',' and depth == 0:
-                            parts.append(''.join(curr).strip())
-                            curr = []
-                        else:
-                            curr.append(ch)
-                    if curr:
-                        parts.append(''.join(curr).strip())
-                    
-                    args = []
-                    for part in parts:
-                        if '=' in part:
-                            _, v = part.split('=', 1)
-                            args.append(ast.literal_eval(v.strip()))
-                        else:
-                            args.append(ast.literal_eval(part.strip()))
-                    res = method(*args)
-                else:
-                    val = ast.literal_eval(clean)
-                    if isinstance(val, tuple):
-                        args = list(val)
-                        res = method(*args)
-                    else:
-                        args = [val]
-                        res = method(val)
-                
-                if isinstance(res, bool):
-                    computed_outputs.append('true' if res else 'false')
-                elif res is None:
-                    # For in-place mutating void functions (e.g. rotate, setZeroes, sortColors), output the mutated first argument
-                    if args and len(args) > 0 and isinstance(args[0], (list, dict)):
-                        computed_outputs.append(json.dumps(args[0], separators=(',', ':')))
-                    else:
-                        computed_outputs.append('null')
-                else:
-                    computed_outputs.append(json.dumps(res, separators=(',', ':')))
-            except Exception as err:
-                computed_outputs.append(None)
-        return computed_outputs
-    except Exception as e:
-        print(f"[Python Solver Auto-eval Error]: {e}")
-        return []
-
-
-
-def expand_problem_testcases_to_min_10(problem_data: dict) -> dict:
-    """
-    Guarantees that every coding problem has AT LEAST 10 diverse, comprehensive
-    test cases with exact matching expected outputs (base cases, boundary values,
-    negatives, duplicates, large inputs, corner cases). Uses python reference solver
-    for 100% mathematical accuracy.
-    """
-    if not problem_data or not isinstance(problem_data, dict):
-        return problem_data
-
-    problem_data = sanitize_and_harden_testcases(problem_data)
-
-    tcs = problem_data.get("testCases") or []
-    eos = problem_data.get("expectedOutputs") or []
-    py_sol = (problem_data.get("solutions") or {}).get("python") or ""
-
-    # Clean strings
-    clean_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in tcs]
-    clean_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in eos]
-
-    title = problem_data.get("name") or "DSA Problem Challenge"
-    desc = problem_data.get("description") or ""
-
-    # If < 10 test cases, ask AI to generate diverse test case inputs
-    if len(clean_tcs) < 10:
-        param_names = extract_function_param_names(problem_data.get("starters") or {}, problem_data.get("examples") or [])
-        param_hint = f"All parameters ({', '.join(param_names)}) MUST be included in every single testcase string, e.g. '{param_names[0]} = ..., {param_names[1]} = ...'" if len(param_names) >= 2 else "Every testcase must be a complete valid function call input."
-
-        prompt = f"""You are a Lead DSA Test Suite and Verification Engineer.
-Problem: "{title}"
-Description:
-{desc[:1500]}
-
-Existing sample test cases:
-{json.dumps(clean_tcs)}
-
-CRITICAL MULTI-ARGUMENT TEST CASE RULE:
-{param_hint}
-DO NOT separate arguments into different test cases! Each item in "testCases" must be ONE COMPLETE FUNCTION INVOCATION INPUT containing all arguments.
-
-Generate a full test suite of AT LEAST 10 diverse, comprehensive test case inputs:
-1. Standard sample cases
-2. Base / boundary cases (n=0, n=1, single element, minimal constraint)
-3. Negative values / mixed signs (if permitted)
-4. All duplicates / identical elements
-5. Large inputs / upper constraint bounds
-6. Edge case structures (strictly increasing, strictly decreasing, alternating)
-
-Return ONLY valid JSON matching:
-{{
-  "testCases": ["... array of min 10 test case input strings ..."],
-  "expectedOutputs": ["... array of min 10 matching expected output strings ..."]
-}}"""
-
-        # Try Mistral first, then Groq
-        new_tcs = []
-        new_eos = []
-        try:
-            resp = requests.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-                json={"model": "mistral-small-latest", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
-                timeout=12
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                parsed = json.loads(data["choices"][0]["message"]["content"])
-                new_tcs = parsed.get("testCases") or []
-                new_eos = parsed.get("expectedOutputs") or []
-        except Exception as e:
-            print(f"[Mistral testcase notice for '{title}']: {e}")
-
-        # Fallback to Groq 120B if Mistral failed or was rate limited
-        if not new_tcs and GROQ_API_KEY:
-            try:
-                g_resp = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"}},
-                    timeout=15
-                )
-                if g_resp.status_code == 200:
-                    g_data = g_resp.json()
-                    g_parsed = json.loads(g_data["choices"][0]["message"]["content"])
-                    new_tcs = g_parsed.get("testCases") or []
-                    new_eos = g_parsed.get("expectedOutputs") or []
-            except Exception as ge:
-                print(f"[Groq testcase fallback notice for '{title}']: {ge}")
-
-        if new_tcs:
-            str_new_tcs = [json.dumps(tc) if not isinstance(tc, str) else tc for tc in new_tcs]
-            str_new_eos = [json.dumps(eo) if not isinstance(eo, str) else eo for eo in new_eos]
-
-            if len(str_new_tcs) >= 10:
-                clean_tcs = str_new_tcs
-                clean_eos = str_new_eos
-            elif len(str_new_tcs) > 0:
-                for tc, eo in zip(str_new_tcs, str_new_eos):
-                    if tc not in clean_tcs:
-                        clean_tcs.append(tc)
-                        clean_eos.append(eo)
-
-        # Deterministic fallback synthesizer if AI is unavailable or rate limited
-        if len(clean_tcs) < 10 and len(clean_tcs) > 0:
-            sample_c = clean_tcs[0]
-            starters_str = json.dumps(problem_data.get("starters") or {})
-            is_tree = "root" in sample_c or "TreeNode" in starters_str
-            if is_tree:
-                is_bool = len(clean_eos) > 0 and clean_eos[0] in ["true", "false"]
-                tree_defaults = [
-                    ("root = [1]", "true" if is_bool else "[1]"),
-                    ("root = [2, 1, 3]", "true" if is_bool else "[2, 1, 3]"),
-                    ("root = [2, 2, 2]", "false" if is_bool else "[2, 2, 2]"),
-                    ("root = [1, null, 2]", "true" if is_bool else "[1, 2]"),
-                    ("root = [1, 2, null, 3]", "true" if is_bool else "[1, 2, 3]"),
-                    ("root = [10, 5, 15, null, null, 6, 20]", "false" if is_bool else "[10, 5, 15, 6, 20]"),
-                    ("root = [3, 1, 5, 0, 2, 4, 6]", "true" if is_bool else "[3, 1, 5, 0, 2, 4, 6]"),
-                    ("root = [0, -10, 10]", "true" if is_bool else "[0, -10, 10]"),
-                    ("root = [2147483647]", "true" if is_bool else "[2147483647]"),
-                    ("root = [-2147483648]", "true" if is_bool else "[-2147483648]"),
-                    ("root = [1, 1]", "false" if is_bool else "[1, 1]"),
-                    ("root = [5, 4, 6, null, null, 3, 7]", "false" if is_bool else "[5, 4, 6, 3, 7]"),
-                ]
-                for tc_val, eo_val in tree_defaults:
-                    if len(clean_tcs) >= 10:
-                        break
-                    if tc_val not in clean_tcs:
-                        clean_tcs.append(tc_val)
-                        clean_eos.append(eo_val)
-            else:
-                while len(clean_tcs) < 10 and len(clean_tcs) > 0:
-                    idx = len(clean_tcs) % min(3, len(clean_tcs))
-                    clean_tcs.append(clean_tcs[idx])
-                    clean_eos.append(clean_eos[idx] if idx < len(clean_eos) else "0")
-
-    problem_data["testCases"] = clean_tcs
-    problem_data["expectedOutputs"] = clean_eos
-    problem_data = sanitize_and_harden_testcases(problem_data)
-
-    clean_tcs = problem_data.get("testCases") or []
-    clean_eos = problem_data.get("expectedOutputs") or []
-
-    # Re-evaluate all test cases with Python Reference Solution to ensure 100% mathematical accuracy
-    if py_sol and len(clean_tcs) > 0:
-        verified_eos = compute_expected_outputs_with_python(py_sol, clean_tcs)
-        if verified_eos and len(verified_eos) == len(clean_tcs):
-            final_eos = []
-            for i, v_eo in enumerate(verified_eos):
-                if v_eo is not None:
-                    final_eos.append(v_eo)
-                elif i < len(clean_eos):
-                    final_eos.append(clean_eos[i])
-                else:
-                    final_eos.append("[]")
-            clean_eos = final_eos
-
-    problem_data["testCases"] = clean_tcs
-    problem_data["expectedOutputs"] = clean_eos
-
-    # Guarantee problem statement examples are populated with the visible sample test cases
-    if not problem_data.get("examples") and len(clean_tcs) > 0:
-        ex_limit = min(3, len(clean_tcs))
-        problem_data["examples"] = [
-            {"input": clean_tcs[i], "output": clean_eos[i] if i < len(clean_eos) else ""}
-            for i in range(ex_limit)
-        ]
-
-    return problem_data
+def retain_public_problem_cases(problem_data: dict) -> dict:
+    """Keep published examples paired and separate from server grading suites."""
+    pairs = []
+    seen = set()
+    for example in problem_data.get("examples") or []:
+        if not isinstance(example, dict) or "input" not in example or "output" not in example:
+            continue
+        raw_input, raw_output = example["input"], example["output"]
+        input_text = raw_input if isinstance(raw_input, str) else json.dumps(raw_input)
+        output_text = raw_output if isinstance(raw_output, str) else json.dumps(raw_output)
+        if not input_text.strip() or input_text in seen:
+            continue
+        seen.add(input_text)
+        pairs.append((input_text, output_text))
+    return {**problem_data, "testCases": [case[0] for case in pairs], "expectedOutputs": [case[1] for case in pairs]}
 
 
 def fetch_gfg_problem_beautifulsoup(slug: str) -> Optional[dict]:
@@ -2595,7 +2362,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
                 )
                 if not is_corrupt_cache and len(cached.get("testCases", [])) >= 1:
                     if len(cached.get("testCases", [])) < 10:
-                        cached = expand_problem_testcases_to_min_10(cached)
+                        cached = retain_public_problem_cases(cached)
                         _PROBLEM_CACHE[clean_slug] = cached
                     return JSONResponse(cached, headers=cors_headers)
 
@@ -2618,7 +2385,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
                     if not is_corrupted:
                         problem_data = sanitize_and_harden_testcases(problem_data)
                         if len(problem_data.get("testCases", [])) < 10 or len(problem_data.get("expectedOutputs", [])) < 10:
-                            problem_data = expand_problem_testcases_to_min_10(problem_data)
+                            problem_data = retain_public_problem_cases(problem_data)
                             try:
                                 r2_storage.upload_problem(clean_slug, problem_data)
                             except Exception as e:
@@ -2634,7 +2401,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
         lc_data = fetch_leetcode_graphql(clean_slug)
         if lc_data and lc_data.get("name") and lc_data.get("description"):
             lc_data = sanitize_and_harden_testcases(lc_data)
-            lc_data = expand_problem_testcases_to_min_10(lc_data)
+            lc_data = retain_public_problem_cases(lc_data)
             _PROBLEM_CACHE[clean_slug] = lc_data
             try:
                 r2_storage.upload_problem(clean_slug, lc_data)
@@ -2646,7 +2413,7 @@ async def get_problem_route(slug: str, refresh: bool = False):
         gfg_data = fetch_gfg_problem_beautifulsoup(clean_slug)
         if gfg_data and gfg_data.get("name") and gfg_data.get("description"):
             gfg_data = sanitize_and_harden_testcases(gfg_data)
-            gfg_data = expand_problem_testcases_to_min_10(gfg_data)
+            gfg_data = retain_public_problem_cases(gfg_data)
             _PROBLEM_CACHE[clean_slug] = gfg_data
             try:
                 r2_storage.upload_problem(clean_slug, gfg_data)
@@ -2686,7 +2453,7 @@ Requirements:
                 cleaned_text = re.sub(r',\s*([}\]])', r'\1', cleaned_text)
                 parsed = json.loads(cleaned_text)
                 if parsed and parsed.get("name") and parsed.get("description"):
-                    parsed = expand_problem_testcases_to_min_10(parsed)
+                    parsed = retain_public_problem_cases(parsed)
                     _PROBLEM_CACHE[clean_slug] = parsed
                     try:
                         r2_storage.upload_problem(clean_slug, parsed)
@@ -2713,7 +2480,7 @@ Requirements:
                         cleaned_text = re.sub(r',\s*([}\]])', r'\1', cleaned_text)
                         parsed = json.loads(cleaned_text)
                         if parsed and parsed.get("name") and parsed.get("description"):
-                            parsed = expand_problem_testcases_to_min_10(parsed)
+                            parsed = retain_public_problem_cases(parsed)
                             _PROBLEM_CACHE[clean_slug] = parsed
                             try:
                                 r2_storage.upload_problem(clean_slug, parsed)
@@ -2798,7 +2565,7 @@ async def expand_testcases_endpoint(slug: str, req: Request):
         return JSONResponse(status_code=404, content={"error": "Problem not found"})
 
     try:
-        problem = expand_problem_testcases_to_min_10(problem)
+        problem = retain_public_problem_cases(problem)
         _PROBLEM_CACHE[clean_slug] = problem
         try:
             r2_storage.upload_problem(clean_slug, problem)
@@ -3216,41 +2983,8 @@ async def validate_problem_pipeline_endpoint(slug: str):
     desc = problem.get("description", "")
     starters = problem.get("starters", {})
 
-    # Stage 1: Validate / Generate clean testcases
-    tc_prompt = f"""You are a Competitive Programming Judge.
-Generate 5-8 comprehensive test cases with EXACT mathematically correct expected outputs for this problem.
-
-Problem: {title}
-Description: {desc[:2000]}
-C++ Starter: {starters.get('cpp', '')}
-Python Starter: {starters.get('python', '')}
-
-CRITICAL RULES:
-1. Every testcase input MUST include the named parameter variables (e.g. 'matrix = [[1,2,3],[4,5,6],[7,8,9]]' or 'g = [1,2,3], s = [1,1]').
-2. For in-place mutating functions (like 'void rotate(vector<vector<int>>& matrix)'), the expected output MUST BE the final mutated matrix/array/object (e.g. '[[7,4,1],[8,5,2],[9,6,3]]'), NEVER 'null'!
-3. Calculate the true mathematical expected output for each testcase.
-4. Return ONLY valid JSON in this exact structure:
-{{
-  "testCases": ["input1", "input2", ...],
-  "expectedOutputs": ["expected1", "expected2", ...]
-}}"""
-
-    try:
-        resp = requests.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {MISTRAL_API_KEY}"},
-            json={"model": "mistral-large-latest", "messages": [{"role": "user", "content": tc_prompt}], "temperature": 0.1, "response_format": {"type": "json_object"}},
-            timeout=30
-        )
-        if resp.status_code == 200:
-            tc_data = json.loads(resp.json()["choices"][0]["message"]["content"])
-            test_cases = tc_data.get("testCases", [])
-            expected_outputs = tc_data.get("expectedOutputs", [])
-            if test_cases and expected_outputs:
-                problem["testCases"] = test_cases
-                problem["expectedOutputs"] = expected_outputs
-    except Exception as e:
-        print(f"[Validate Pipeline Stage 1 Error]: {e}")
+    # Preserve official sample outputs. Hidden suites have a separate publication flow.
+    problem = retain_public_problem_cases(problem)
 
     # Stage 2 & 3: Drivers & Solutions
     drivers = {}
@@ -4489,6 +4223,131 @@ async def get_user_code(slug: str, email: str = "anonymous", language: Literal["
     return {"code": "", "status": "ok"}
 
 
+class HiddenGradeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=60_000)
+    language: Literal["cpp", "python", "javascript", "java", "go", "rust"]
+
+
+class HiddenSample(BaseModel):
+    input: str = Field(max_length=12_000)
+    output: str = Field(max_length=12_000)
+
+
+class HiddenSuiteRequest(BaseModel):
+    language: Literal["cpp", "python", "javascript", "java", "go", "rust"]
+    harness: str = Field(min_length=1, max_length=40_000)
+    reference: str = Field(min_length=1, max_length=40_000)
+    official_samples: list[HiddenSample] = Field(min_length=1, max_length=12)
+    reviewed_inputs: list[str] = Field(min_length=1, max_length=12)
+
+
+class HiddenCandidateRequest(BaseModel):
+    language: Literal["cpp", "python", "javascript", "java", "go", "rust"]
+    official_samples: list[HiddenSample] = Field(min_length=1, max_length=12)
+
+
+def hidden_suite_key(slug: str, language: str) -> str:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,179}", slug):
+        raise HTTPException(400, "Invalid problem slug")
+    return f"hidden-judge-v1/{slug}/{language}.json"
+
+
+_CURATED_SUITE_LOCK = threading.Lock()
+_CURATED_SUITES = {}
+
+
+def load_hidden_suite(slug, language, key):
+    suite = r2_storage.fetch_json(key)
+    if isinstance(suite, dict):
+        return suite
+    if slug != "same-tree":
+        return None
+    from same_tree_suite import HARNESSES, build
+    if language not in HARNESSES:
+        return None
+    with _CURATED_SUITE_LOCK:
+        if language not in _CURATED_SUITES:
+            _CURATED_SUITES[language] = build(language)
+            r2_storage.upload_json(key, _CURATED_SUITES[language])
+        return _CURATED_SUITES[language]
+
+
+@app.post("/api/admin/problems/{slug}/hidden-suite")
+async def publish_hidden_suite(slug: str, payload: HiddenSuiteRequest):
+    from hidden_judge import prepare_suite
+
+    key = hidden_suite_key(slug, payload.language)
+    if any(len(value) > 12_000 for value in payload.reviewed_inputs):
+        raise HTTPException(422, "Hidden input exceeds the size limit")
+    # The administrator reviews constraints and supplies a trusted reference and stdin harness.
+    # The judge computes outputs and publishes only after the reference passes all samples.
+    try:
+        suite = await asyncio.to_thread(
+            prepare_suite, payload.harness, payload.reference, payload.language,
+            [sample.model_dump() for sample in payload.official_samples], payload.reviewed_inputs,
+        )
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    if not await asyncio.to_thread(r2_storage.upload_json, key, suite):
+        raise HTTPException(503, "Hidden suite storage unavailable")
+    return {"totalCount": len(suite["cases"])}
+
+
+@app.post("/api/admin/problems/{slug}/hidden-candidates")
+async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
+    from hidden_judge import unique_inputs
+
+    hidden_suite_key(slug, payload.language)
+    if not MISTRAL_API_KEY:
+        raise HTTPException(503, "Hidden input generation is unavailable")
+    problem = _PROBLEM_CACHE.get(slug) or await asyncio.to_thread(r2_storage.fetch_problem, slug)
+    if not problem or not problem.get("description"):
+        raise HTTPException(404, "Load the problem specification before generating inputs")
+    samples = [sample.model_dump() for sample in payload.official_samples]
+    prompt = {
+        "task": "Generate seven distinct test inputs within the problem constraints. Follow the exact stdin format in the samples. Return JSON with an inputs array of strings and no expected outputs. Include boundary and stress cases where they fit.",
+        "statement": problem["description"][:6000],
+        "constraints": problem.get("constraints", []),
+        "sample_inputs": [sample["input"][:2000] for sample in samples],
+    }
+    try:
+        response = await asyncio.to_thread(
+            requests.post, "https://api.mistral.ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {MISTRAL_API_KEY}"},
+            json={
+                "model": os.getenv("MISTRAL_TESTCASE_MODEL", "mistral-large-latest"),
+                "messages": [{"role": "user", "content": json.dumps(prompt)}],
+                "response_format": {"type": "json_object"},
+            }, timeout=24,
+        )
+        response.raise_for_status()
+        generated = json.loads(response.json()["choices"][0]["message"]["content"])["inputs"]
+        if not isinstance(generated, list):
+            raise ValueError("Expected an input list")
+        inputs = list(unique_inputs((value for value in generated[:12] if isinstance(value, str) and len(value) <= 12_000), samples))
+    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as error:
+        raise HTTPException(502, "Could not generate candidate inputs") from error
+    return {"inputs": inputs}
+
+
+_HIDDEN_GRADING_SLOTS = asyncio.Semaphore(2)
+
+
+@app.post("/api/problem/{slug}/grade")
+async def grade_problem_submission(slug: str, payload: HiddenGradeRequest):
+    from hidden_judge import grade
+
+    key = hidden_suite_key(slug, payload.language)
+    if _HIDDEN_GRADING_SLOTS.locked():
+        raise HTTPException(503, "The grading service is busy")
+    async with _HIDDEN_GRADING_SLOTS:
+        try:
+            suite = await asyncio.to_thread(load_hidden_suite, slug, payload.language, key)
+            return await asyncio.to_thread(grade, suite, payload.code, payload.language)
+        except ValueError:
+            return {"verdict": "runner_unavailable", "passedCount": 0, "totalCount": 0, "measurements": []}
+
+
 @app.post("/api/problem/{slug}/submissions")
 async def save_user_submission(slug: str, request: Request):
     """
@@ -4626,8 +4485,8 @@ async def analyze_problem_complexity(slug: str, req: CodeComplexityRequest):
     """
     clean_slug = re.sub(r'[^a-z0-9]+', '-', slug.lower()).strip('-')
     raw_code = req.code or ""
-    code_hash = hashlib.md5(raw_code.encode('utf-8')).hexdigest()[:12]
-    cache_key = f"complexity_cache/{clean_slug}_{req.language}_{code_hash}.json"
+    code_hash = hashlib.sha256(raw_code.encode('utf-8')).hexdigest()
+    cache_key = f"complexity_cache_v2/{clean_slug}_{req.language}_{code_hash}.json"
 
     cached = r2_storage.fetch_json(cache_key)
     if cached and isinstance(cached, dict) and cached.get("timeComplexity"):
@@ -4637,7 +4496,7 @@ async def analyze_problem_complexity(slug: str, req: CodeComplexityRequest):
 ```{req.language}
 {raw_code[:4000]}
 ```
-Determine the exact time complexity and space complexity of THIS specific code implementation.
+Estimate the time and auxiliary space complexity of this implementation. State the assumptions and identify the code that supports each estimate. If the available code is incomplete, return an empty JSON object.
 Respond with a strict JSON object matching:
 {{
   "timeComplexity": "O(...)",
@@ -4671,25 +4530,9 @@ Respond with a strict JSON object matching:
         except Exception as ge:
             print(f"[Groq Complexity Notice]: {ge}")
 
-    if not analysis:
-        # Fallback heuristic analysis
-        code_str = raw_code
-        tc = "O(N)"
-        sc = "O(1)"
-        if "for " in code_str and code_str.count("for ") >= 2:
-            tc = "O(N²)"
-        elif "sort(" in code_str or "sorted(" in code_str:
-            tc = "O(N log N)"
-        if "vector" in code_str or "unordered_map" in code_str or "map" in code_str or "dict" in code_str or "list(" in code_str or "set(" in code_str:
-            sc = "O(N)"
-        analysis = {
-            "timeComplexity": tc,
-            "spaceComplexity": sc,
-            "timeExplanation": f"Determined from algorithmic loops ({tc}).",
-            "spaceExplanation": f"Determined from dynamic memory allocations ({sc}).",
-            "optimalTimeComplexity": "O(N)",
-            "optimalSpaceComplexity": "O(1)"
-        }
+    required = ("timeComplexity", "spaceComplexity", "timeExplanation", "spaceExplanation")
+    if not isinstance(analysis, dict) or any(not isinstance(analysis.get(key), str) or not analysis[key].strip() for key in required):
+        raise HTTPException(503, "A code-based estimate is unavailable")
 
     try:
         r2_storage.upload_json(cache_key, analysis)
@@ -6407,162 +6250,30 @@ async def get_leetcode_month_potd_endpoint(year: int = None, month: int = None):
     return JSONResponse({"year": y, "month": m, "challenges": []}, headers={"Access-Control-Allow-Origin": "*"})
 
 
-_GFG_POTD_CACHE = {"date": "", "data": None}
+_GFG_POTD_CACHE = {"date": "", "data": None, "fetched_at": 0}
+
 
 @app.get("/api/potd/gfg")
 @app.get("/api/gfg/potd")
 @app.get("/api/gfg-potd")
 @app.get("/gfg/potd")
 async def get_gfg_potd_endpoint(force_refresh: bool = False):
-    """
-    Fetches live authentic Problem of the Day directly from GeeksforGeeks using BeautifulSoup parsing & practice feeds.
-    """
-    global _GFG_POTD_CACHE
-    today_str = datetime.utcnow().strftime("%Y-%m-%d")
+    from gfg_potd import fetch_gfg_daily, india_date
 
-    if not force_refresh and _GFG_POTD_CACHE.get("date") == today_str and _GFG_POTD_CACHE.get("data"):
-        return JSONResponse(
-            _GFG_POTD_CACHE["data"],
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
-            }
-        )
+    today = india_date()
+    cached = _GFG_POTD_CACHE.get("data")
+    now = time.monotonic()
+    headers = {"Cache-Control": "no-store"}
+    if not force_refresh and cached and cached["date"] == today and now - _GFG_POTD_CACHE.get("fetched_at", 0) < 300:
+        return JSONResponse(cached, headers=headers)
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/html, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.geeksforgeeks.org/"
-    }
-
-    # Strategy 1: Live GFG Practice Feed + BeautifulSoup Problem Detail Parser
-    endpoints = [
-        "https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/",
-        "https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/"
-    ]
-    for ep in endpoints:
-        try:
-            resp = requests.get(ep, headers=headers, timeout=8)
-            if resp.ok:
-                data = resp.json()
-                if data and (data.get("problem_name") or data.get("title")) and (data.get("problem_url") or data.get("url")):
-                    title = data.get("problem_name") or data.get("title")
-                    url = data.get("problem_url") or data.get("url")
-                    match = re.search(r"/problems/([^/]+)/", url)
-                    slug = match.group(1) if match else re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
-                    
-                    # Extract rich description using BeautifulSoup from problem detail endpoint or webpage
-                    desc_clean = ""
-                    desc_html = ""
-                    try:
-                        detail_url = f"https://practiceapi.geeksforgeeks.org/api/v1/problems/{slug}/"
-                        d_resp = requests.get(detail_url, headers=headers, timeout=6)
-                        if d_resp.ok:
-                            d_json = d_resp.json().get("results", {})
-                            desc_html = d_json.get("problem_question", "")
-                            if desc_html:
-                                soup = BeautifulSoup(desc_html, "html.parser")
-                                desc_clean = soup.get_text(separator="\n").strip()
-                    except Exception as bse:
-                        print(f"[GFG BeautifulSoup detail parsing warning]: {bse}")
-
-                    # If description is still empty, scrape directly from the problem webpage using BeautifulSoup
-                    if not desc_clean:
-                        try:
-                            web_resp = requests.get(url, headers=headers, timeout=6)
-                            if web_resp.ok:
-                                soup = BeautifulSoup(web_resp.text, "html.parser")
-                                meta_desc = soup.find("meta", attrs={"name": "description"})
-                                if meta_desc and meta_desc.get("content"):
-                                    desc_clean = meta_desc["content"].strip()
-                        except Exception as wse:
-                            print(f"[GFG BeautifulSoup web scrape warning]: {wse}")
-
-                    result = {
-                        "id": data.get("id") or data.get("problem_id") or 2156,
-                        "date": (data.get("date") or today_str)[:10],
-                        "questionId": str(data.get("problem_id") or data.get("id") or "702846"),
-                        "title": title,
-                        "titleSlug": slug,
-                        "slug": slug,
-                        "difficulty": data.get("difficulty", "Medium"),
-                        "topicTags": data.get("tags", {}).get("topic_tags", ["Arrays", "Searching"]),
-                        "companyTags": data.get("tags", {}).get("company_tags", []),
-                        "url": url,
-                        "accuracy": data.get("accuracy", 48.53),
-                        "totalSubmissions": data.get("total_submissions", 8184),
-                        "description": desc_clean,
-                        "descriptionHtml": desc_html
-                    }
-
-                    _GFG_POTD_CACHE = {"date": today_str, "data": result}
-
-                    return JSONResponse(
-                        result,
-                        headers={
-                            "Access-Control-Allow-Origin": "*",
-                            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
-                        }
-                    )
-        except Exception as e:
-            print(f"[GFG POTD Fetch Error from {ep}]: {e}")
-
-    # Strategy 2: Direct BeautifulSoup Web Scraping of GFG Problem of the Day Page
-    scrape_urls = [
-        "https://www.geeksforgeeks.org/problem-of-the-day",
-        "https://practice.geeksforgeeks.org/problem-of-the-day"
-    ]
-    for url in scrape_urls:
-        try:
-            resp = requests.get(url, headers=headers, timeout=8)
-            if resp.ok and resp.text:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                meta_desc = soup.find("meta", attrs={"name": "description"})
-                og_title = soup.find("meta", property="og:title")
-                title = og_title["content"].split("|")[0].strip() if og_title else "Minimum Cost for n Characters"
-                
-                result = {
-                    "id": 2157,
-                    "date": today_str,
-                    "questionId": "704156",
-                    "title": title,
-                    "titleSlug": "minimum-time1238",
-                    "slug": "minimum-time1238",
-                    "difficulty": "Medium",
-                    "topicTags": ["Dynamic Programming"],
-                    "companyTags": [],
-                    "url": "https://www.geeksforgeeks.org/problems/minimum-time1238/1",
-                    "accuracy": 49.82,
-                    "totalSubmissions": 12890,
-                    "description": meta_desc["content"].strip() if meta_desc else ""
-                }
-                _GFG_POTD_CACHE = {"date": today_str, "data": result}
-                return JSONResponse(
-                    result,
-                    headers={
-                        "Access-Control-Allow-Origin": "*",
-                        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
-                    }
-                )
-        except Exception as e:
-            print(f"[GFG BeautifulSoup fallback error on {url}]: {e}")
-
-    # Verified guaranteed fallback
-    return JSONResponse({
-        "id": 2157,
-        "date": today_str,
-        "questionId": "704156",
-        "title": "Minimum Cost for n Characters",
-        "titleSlug": "minimum-time1238",
-        "slug": "minimum-time1238",
-        "difficulty": "Medium",
-        "topicTags": ["Dynamic Programming"],
-        "companyTags": [],
-        "url": "https://www.geeksforgeeks.org/problems/minimum-time1238/1",
-        "accuracy": 49.82,
-        "totalSubmissions": 12890
-    }, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"})
+    result = await asyncio.to_thread(fetch_gfg_daily, today)
+    if result and (not cached or result["date"] >= cached["date"]):
+        _GFG_POTD_CACHE.update(date=result["date"], data=result, fetched_at=now)
+        cached = result
+    if cached and cached["date"] <= today:
+        return JSONResponse(cached, headers=headers)
+    return JSONResponse({"detail": "GeeksforGeeks daily problem unavailable"}, status_code=503, headers=headers)
 
 
 @app.get("/api/leetcode/raw/{slug}")
@@ -7360,15 +7071,12 @@ async def compile_code(req: CodeCompileRequest):
                 lines = [l for l in final_stderr.splitlines() if not l.strip().startswith("warning:") and "warning: structured bindings" not in l]
                 final_stderr = "\n".join(lines).strip()
 
-            if not final_stdout and not final_stderr:
-                final_stdout = f"Program finished with status: {status_desc}."
-
             return {
                 "stdout": final_stdout,
                 "stderr": final_stderr,
                 "exitCode": 0 if not is_error else 1,
-                "memory": int(float(data.get("memory") or 1200)),
-                "execution_time": float(data.get("time") or 0.02),
+                "memory": float(data["memory"]) if data.get("memory") is not None else None,
+                "execution_time": float(data["time"]) if data.get("time") is not None else None,
                 "status": status_desc
             }
     except Exception as e:
@@ -7383,10 +7091,12 @@ async def compile_code(req: CodeCompileRequest):
             "java": "openjdk-head",
             "javascript": "nodejs-head"
         }
-        wb_compiler = wb_compiler_map.get(lang, "gcc-head")
+        wb_compiler = wb_compiler_map.get(lang)
+        if not wb_compiler:
+            raise HTTPException(503, "Compiler service unavailable")
         wb_resp = requests.post(
             "https://wandbox.org/api/compile.json",
-            json={"compiler": wb_compiler, "code": code},
+            json={"compiler": wb_compiler, "code": code, "stdin": req.input or ""},
             timeout=8
         )
         if wb_resp.status_code == 200:
@@ -7400,12 +7110,7 @@ async def compile_code(req: CodeCompileRequest):
     except Exception as e:
         print(f"[Compiler] Wandbox API notice: {e}")
 
-    return {
-        "stdout": f"[{lang.upper()} Sandbox Execution]\nExecuted successfully.",
-        "stderr": "",
-        "exitCode": 0,
-        "status": "Success"
-    }
+    raise HTTPException(503, "Compiler service unavailable")
 
 
 @app.post("/api/ai/code-review")

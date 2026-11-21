@@ -620,10 +620,10 @@ export const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
           {executionResult && (
             <div className="flex items-center space-x-3 font-mono text-[11px]">
               <span className="text-slate-400 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-indigo-400" /> {executionResult.execution_time_ms} ms
+                <Clock className="w-3 h-3 text-indigo-400" /> {executionResult.execution_time_ms == null ? 'Unavailable' : `${executionResult.execution_time_ms} ms`}
               </span>
               <span className="text-slate-400 flex items-center gap-1">
-                <Cpu className="w-3 h-3 text-emerald-400" /> {executionResult.memory_used_kb} KB
+                <Cpu className="w-3 h-3 text-emerald-400" /> {executionResult.memory_used_kb == null ? 'Unavailable' : `${executionResult.memory_used_kb} KB`}
               </span>
             </div>
           )}
