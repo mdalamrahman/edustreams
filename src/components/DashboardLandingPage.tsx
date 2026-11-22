@@ -353,7 +353,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
   const isGfgExternalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdVerified(gfgPotd.titleSlug, gfgPotd.date, linkedConfig.gfgUsername);
   const isGfgManuallySolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date);
-  const isGfgPotdSolved = isGfgLocalSolved || isGfgExternalSolved || isGfgManuallySolved;
+  const isGfgReview = isGfgExternalSolved || isGfgManuallySolved;
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgReview;
 
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
@@ -875,9 +876,10 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                  title={isGfgReview ? 'Review problem on GFG' : undefined}
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Solve on GFG
+                  {isGfgReview ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                  {isGfgExternalSolved ? 'Solved on GFG' : isGfgManuallySolved ? 'Marked as Solved' : 'Solve on GFG'}
                 </a>
                 <button
                   onClick={handleSyncGfgPotd}

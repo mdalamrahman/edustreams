@@ -237,6 +237,9 @@ test('GFG daily completion supports manual marking and automatically detects a m
     verified, slug: 'test-gfg-daily', date: day,
   } }));
   await page.goto('http://127.0.0.1:4173');
+  const gfgUrl = 'https://www.geeksforgeeks.org/problems/test-gfg-daily/1';
+  const gfgDashboardLink = page.getByRole('link', { name: 'Solve on GFG', exact: true });
+  await expect(gfgDashboardLink).toHaveAttribute('href', gfgUrl);
   await page.getByTitle("Open Today's Problem of the Day").click();
   await page.getByRole('button', { name: 'GFG POTD', exact: true }).click();
   await page.getByRole('button', { name: 'Sync GFG', exact: true }).click();
@@ -244,12 +247,15 @@ test('GFG daily completion supports manual marking and automatically detects a m
   await expect(page.getByText(/No matching solve found on GFG today/).last()).toBeVisible();
   await page.getByRole('button', { name: 'Mark as Solved', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Undo manual mark', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('link', { name: 'Marked as Solved', exact: true })).toHaveAttribute('href', gfgUrl);
   expect(await page.evaluate(day => localStorage.getItem('sdetube_potd_gfg_manual_solved_' + day), day)).toBe('test-gfg-daily');
   await page.getByRole('button', { name: 'Undo manual mark', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Mark as Solved', exact: true })).toBeVisible();
+  await expect(gfgDashboardLink.first()).toHaveAttribute('href', gfgUrl);
   verified = true;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByText('Verified on GFG', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Solved on GFG', exact: true })).toHaveAttribute('href', gfgUrl);
   await expect(page.getByRole('button', { name: 'Mark as Solved', exact: true })).toHaveCount(0);
   expect(await page.evaluate(day => localStorage.getItem('sdetube_potd_gfg_verified_test-handle_' + day), day)).toBe('test-gfg-daily');
   await page.route('**/api/gfg/question?slug=test-gfg-daily', route => route.fulfill({ json: {
