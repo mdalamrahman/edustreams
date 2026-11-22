@@ -4253,14 +4253,18 @@ async def publish_hidden_suite(slug: str, payload: HiddenSuiteRequest):
 
 @app.post("/api/admin/problems/{slug}/hidden-candidates")
 async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
-    from hidden_judge import unique_inputs
+    from hidden_judge import suggest_sample_variants, unique_inputs
 
     hidden_suite_key(slug, payload.language)
+    samples = [sample.model_dump() for sample in payload.official_samples]
+    variants = suggest_sample_variants(samples)
     providers = [
         (MISTRAL_API_KEY, "https://api.mistral.ai/v1/chat/completions", os.getenv("MISTRAL_TESTCASE_MODEL", "mistral-small-latest")),
         (GROQ_API_KEY, "https://api.groq.com/openai/v1/chat/completions", os.getenv("GROQ_TESTCASE_MODEL", "llama-3.3-70b-versatile")),
     ]
     if not any(key for key, _, _ in providers):
+        if variants:
+            return {"inputs": variants}
         raise HTTPException(503, "Hidden input generation is unavailable. Add reviewed inputs manually.")
     problem = _PROBLEM_CACHE.get(slug) or await asyncio.to_thread(r2_storage.fetch_problem, slug)
     if not problem or not problem.get("description"):
@@ -4278,8 +4282,9 @@ async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
         except (HTTPException, ValueError, AttributeError):
             pass
     if not problem or not problem.get("description"):
+        if variants:
+            return {"inputs": variants}
         raise HTTPException(404, "Load the problem specification before generating inputs")
-    samples = [sample.model_dump() for sample in payload.official_samples]
     prompt = {
         "task": "Generate seven distinct test inputs within the problem constraints. Follow the exact stdin format in the samples. Return JSON with an inputs array of strings and no expected outputs. Include boundary and stress cases where they fit.",
         "statement": problem["description"][:6000],
@@ -4305,6 +4310,8 @@ async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
                     return {"inputs": inputs}
         except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
             continue
+    if variants:
+        return {"inputs": variants}
     raise HTTPException(502, "Could not generate distinct inputs. Add reviewed inputs manually.")
 
 

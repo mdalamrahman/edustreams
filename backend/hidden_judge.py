@@ -5,6 +5,7 @@ import math
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 
 import requests
 
@@ -91,6 +92,35 @@ def unique_inputs(candidates, official):
         if text.strip() and normalized not in seen:
             seen.add(normalized)
             yield text
+
+
+def suggest_sample_variants(official, limit=7):
+    """Suggest editable variants of JSON-lines stdin, without assigning any verdict or output."""
+    samples = []
+    for sample in official:
+        lines = sample['input'].strip().splitlines()
+        if not 1 <= len(lines) <= 20:
+            continue
+        try:
+            samples.append(([json.loads(line) for line in lines], lines))
+        except (ValueError, RecursionError):
+            continue
+
+    def variations():
+        for values, lines in samples:
+            for others, other_lines in samples:
+                if tuple(map(type, values)) != tuple(map(type, others)):
+                    continue
+                for index, (left, right) in enumerate(zip(values, others)):
+                    if left != right:
+                        yield '\n'.join([*lines[:index], other_lines[index], *lines[index + 1:]])
+        for values, lines in samples:
+            for index, value in enumerate(values):
+                if isinstance(value, list) and len(value) > 1:
+                    for candidate in (value[::-1], value[:1], value[-1:]):
+                        yield '\n'.join([*lines[:index], json.dumps(candidate, separators=(',', ':')), *lines[index + 1:]])
+
+    return list(islice(unique_inputs(variations(), official), limit))
 
 
 def prepare_suite(harness, reference, language, official, candidates, runner=run_submission):

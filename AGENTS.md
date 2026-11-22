@@ -107,6 +107,7 @@ graph TD
 - **Implementation Files**: `src/lib/pipelineVerifier.ts`, `src/lib/problemService.ts`
 - **Execution-First Rule**: Hidden suite preparation runs an approved reference and harness against every published example in Judge0. It then runs distinct reviewed inputs to obtain expected outputs.
 - **Test Case Safeguard**: Published examples remain paired and immutable in the workspace. Distinct hidden inputs use a separate server-only suite. Administrators review candidate constraints, then Judge0 verifies the reference against the public examples before publication.
+- **Candidate Fallback**: When AI input suggestions are unavailable, the review panel can suggest distinct variations of official examples formatted as one JSON value per line. All suggestions still require constraint review and reference execution.
 - **Automated Self-Healing**: `verifyAndHealPipeline()` runs the solution on all test cases. If discrepancies occur, it classifies the defect type (`solution`, `driver`, or `testcase`) and prompts Mistral AI with the error history to self-heal the broken component up to 3 attempts.
 
 ### 3.4. Zero-CORS POTD Auto-Verification Subsystem

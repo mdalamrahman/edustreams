@@ -145,6 +145,16 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(result.json(), {'inputs': ['[2]']})
 
+    async def test_hidden_candidates_fall_back_when_the_provider_is_unavailable(self):
+        with patch.object(self.main.r2_storage, 'fetch_problem', return_value={'description': 'Test statement'}), patch.object(
+            self.main, 'MISTRAL_API_KEY', 'test-key'
+        ), patch.object(self.main.requests, 'post', side_effect=self.main.requests.HTTPError):
+            result = await self.client.post('/api/admin/problems/provider-offline/hidden-candidates',
+                                            headers={'Authorization': 'Bearer admin'}, json={
+                                                'language': 'python', 'official_samples': [{'input': '[1,2]', 'output': '1'}]})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json(), {'inputs': ['[2,1]', '[1]', '[2]']})
+
     async def test_testcase_repair_uses_official_output_without_releasing_bounty(self):
         from fastapi.responses import JSONResponse
 

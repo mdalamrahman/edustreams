@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
 from gfg_potd import fetch_gfg_daily, india_date, normalize_daily
-from hidden_judge import grade, metric, prepare_suite, unique_inputs
+from hidden_judge import grade, metric, prepare_suite, suggest_sample_variants, unique_inputs
 from same_tree_suite import SAMPLES, candidate_inputs
 
 
@@ -30,6 +30,21 @@ class DailyTests(unittest.TestCase):
 
 
 class HiddenTests(unittest.TestCase):
+    def test_fallback_candidates_keep_shape_and_exclude_official_inputs(self):
+        official = [
+            {'input': '[1, 2]\n3', 'output': '0'},
+            {'input': '[2, 1]\n4', 'output': '1'},
+            {'input': 'custom format', 'output': '0'},
+        ]
+        candidates = suggest_sample_variants(official)
+        self.assertTrue(candidates)
+        self.assertEqual(candidates, list(unique_inputs(candidates, official)))
+        for candidate in candidates:
+            values, target = map(json.loads, candidate.splitlines())
+            self.assertIsInstance(values, list)
+            self.assertIn(target, (3, 4))
+        self.assertEqual(suggest_sample_variants(official[-1:]), [])
+
     def test_same_tree_reference_fixture_and_distinct_inputs(self):
         candidates = candidate_inputs()
         self.assertEqual(len(set(candidates)), 7)
