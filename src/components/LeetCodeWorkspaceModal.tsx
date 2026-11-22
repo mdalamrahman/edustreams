@@ -197,6 +197,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isSqlType = searchParams.get('type') === 'sql';
+  const isGfgSource = searchParams.get('source') === 'gfg' || codingProblem?.category === 'GFG POTD';
 
   const resolvedCodingProblem = useMemo(() => {
     if (codingProblem) return codingProblem;
@@ -273,6 +274,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
 
   const currentProblemSlug = useMemo(() => {
+    if (isGfgSource && slug) return toSlug(slug);
     const rawName = (effectiveCodingProblem?.name || effectiveCodingProblem?.title || cleanTitle || '').toLowerCase();
     if (rawName.includes('floor in bst') || rawName.includes('floor in a binary search tree')) {
       return 'floor-in-bst';
@@ -291,7 +293,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       return candidateNameSlug;
     }
     return candidateNameSlug;
-  }, [effectiveCodingProblem, cleanTitle]);
+  }, [effectiveCodingProblem, cleanTitle, isGfgSource, slug]);
 
   const effectiveTranscript = transcript || matchingVideo?.telegram_caption || '';
 
@@ -331,8 +333,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     setIsLoadingEnriched(true);
     setStatementError(false);
 
-    const rawTarget = effectiveCodingProblem?.id === 9999 && effectiveCodingProblem.gfg
-      ? effectiveCodingProblem.gfg
+    const rawTarget = isGfgSource
+      ? slug || effectiveCodingProblem?.gfg || currentProblemSlug
       : effectiveCodingProblem?.slug && typeof effectiveCodingProblem.slug === 'string' && effectiveCodingProblem.slug.trim()
       ? effectiveCodingProblem.slug
       : PREDEFINED_SPECIAL_PROBLEMS[currentProblemSlug]
@@ -348,7 +350,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
     fetchEnrichedProblem(
       rawTarget,
-      effectiveCodingProblem?.category || 'Algorithms',
+      isGfgSource ? 'GFG POTD' : effectiveCodingProblem?.category || 'Algorithms',
       effectiveCodingProblem?.difficulty || 'Medium',
       effectiveTranscript,
       notes
@@ -495,7 +497,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [currentProblemSlug, effectiveCodingProblem, cleanTitle, effectiveTranscript, notes, statementAttempt]);
+  }, [currentProblemSlug, effectiveCodingProblem, cleanTitle, effectiveTranscript, notes, statementAttempt, isGfgSource, slug]);
 
   // Selected Approach
   const [selectedApproachId, setSelectedApproachId] = useState<string>(() => {
@@ -1432,7 +1434,25 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
   };
 
   // Strict Output Validation Logic (Handles order-independent nested subsets, bools, ints, whitespace)
-  const currentExpectedOutput = problemStatementExamples.find(example => example.input === testInput)?.output;
+  const [testcaseRepairVersion, setTestcaseRepairVersion] = useState(0);
+  const repairKey = `edustream_verified_testcase_outputs_${currentProblemSlug}`;
+  const repairedOutputs = useMemo(() => {
+    try {
+      return new Map<string, string>(JSON.parse(localStorage.getItem(repairKey) || '[]'));
+    } catch {
+      return new Map<string, string>();
+    }
+  }, [repairKey, testcaseRepairVersion]);
+  const currentExpectedOutput = repairedOutputs.get(testInput.trim()) ??
+    problemStatementExamples.find(example => example.input === testInput)?.output;
+
+  const applyTestcaseRepair = (input: string, output: string) => {
+    const next = new Map(repairedOutputs);
+    next.set(input.trim(), output);
+    try { localStorage.setItem(repairKey, JSON.stringify([...next].slice(-50))); } catch {}
+    setTestcaseRepairVersion(version => version + 1);
+    setTestInput(input);
+  };
 
   const isOutputValid = (stdout: string, expectedOutput: string, caseInput: string): boolean => {
     if (currentProblemSlug === 'convert-sorted-array-to-binary-search-tree' && isValidHeightBalancedBSTForNums(stdout, caseInput)) return true;
@@ -1441,7 +1461,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
   // Run Code (First 3 Run Cases) vs Submit (All Hidden Cases)
   const handleExecute = async (isSubmission: boolean = false, templateOverride?: ProblemTemplate) => {
-    if (statementError || (isSubmission && !problemStatementExamples.length)) {
+    if (isLoadingEnriched || statementError || (isSubmission && !problemStatementExamples.length)) {
       setConsoleTab('result');
       setSubmissionResult({ isSubmission, passedCount: 0, totalCount: 0, isSuccess: false, verdictLabel: 'Official examples are unavailable for grading.' });
       return;
@@ -1529,7 +1549,8 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
       } else {
         // ----------------------------------------------------
         // Public examples are paired, and their outputs come from the statement.
-        const samples = await Promise.all(problemStatementExamples.map(async (example, index) => {
+        const samples = await Promise.all(problemStatementExamples.map(async (published, index) => {
+          const example = { ...published, output: repairedOutputs.get(published.input.trim()) ?? published.output };
           const run = await executeCode(code, language, example.input, cleanTitle, preloadedDriver);
           return { example, index, run, passed: run.status === 'SUCCESS' && isOutputValid(run.stdout, example.output, example.input) };
         }));
@@ -1555,12 +1576,15 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           }
         }
         const totalWallClockMs = Date.now() - start;
-        const isAllSuccess = !failed && hidden?.verdict === 'accepted' && hidden.totalCount > 0;
+        const verifiedHidden = !failed && hidden?.verdict === 'accepted' && hidden.totalCount > 0;
+        const acceptedOnSamples = !failed && samples.length > 0 && hidden?.verdict === 'hidden_unavailable';
+        const isAllSuccess = verifiedHidden || acceptedOnSamples;
         const verdictLabel = failed
           ? failed.run.runnerUnavailable ? 'Runner unavailable | Try again'
             : failed.run.status === 'ERROR' ? `Execution failed on sample ${failed.index + 1}` : `Wrong answer on sample ${failed.index + 1}`
-          : isAllSuccess ? 'Accepted'
-            : !hidden || hidden.verdict === 'hidden_unavailable' ? 'Samples passed · Hidden tests unavailable'
+          : verifiedHidden ? 'Accepted'
+            : acceptedOnSamples ? 'Accepted (public samples only)'
+              : !hidden ? 'Hidden grading unavailable'
               : hidden.verdict === 'runner_unavailable' ? 'Samples passed · Hidden test runner unavailable'
                 : hidden.verdict === 'wrong_answer' ? 'Wrong answer on hidden tests'
                   : hidden.verdict === 'time_limit' ? 'Time limit exceeded on hidden tests' : 'Execution failed during server grading';
@@ -1581,7 +1605,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         setExecutionTime(runtimeMs);
         setExecutionResult(failed?.run ?? samples.at(-1)?.run ?? null);
         setSubmissionAnalytics(analytics);
-        setIsSubmissionVisualizerOpen(isAllSuccess);
+        setIsSubmissionVisualizerOpen(verifiedHidden);
         setSubmissionResult({
           isSubmission: true, passedCount: analytics.passedCases, totalCount: analytics.totalCases,
           hiddenCount: hidden?.totalCount, verdictLabel, isSuccess: isAllSuccess,
@@ -1594,7 +1618,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
           runtime: runtimeMs == null ? 'Unavailable' : `${runtimeMs} ms`,
           memory: memoryKb == null ? 'Unavailable' : `${(memoryKb / 1024).toFixed(2)} MB`,
           lang: language.toUpperCase(), code, passedCount: analytics.passedCases,
-          totalCount: analytics.totalCases, verifiedHidden: isAllSuccess, analytics,
+          totalCount: analytics.totalCases, verifiedHidden, acceptedOnSamples, analytics,
         };
         setSubmissionsList(prev => {
           const updated = [newSubItem, ...prev];
@@ -3316,7 +3340,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
               {/* Report Issue Button with Hover Tooltip */}
               <div className="relative group">
                 <button
-                  onClick={() => setIsReportModalOpen(true)}
+                  onClick={() => { setReportTestCaseIdx(-1); setIsReportModalOpen(true); }}
                   className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-mono font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 transition-colors cursor-pointer"
                   aria-label="Report issue with problem, driver, testcases, or solution"
                 >
@@ -3506,7 +3530,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                 <button
                   onClick={() => handleExecute(false)}
-                  disabled={isExecuting}
+                  disabled={isExecuting || isLoadingEnriched}
                   title="Run code against active test case (Ctrl + ')"
                   className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 group"
                 >
@@ -3519,7 +3543,7 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
 
                 <button
                   onClick={() => handleExecute(true)}
-                  disabled={isExecuting}
+                  disabled={isExecuting || isLoadingEnriched}
                   title="Submit code against all test cases (Ctrl + Enter)"
                   className="flex items-center space-x-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 group"
                 >
@@ -4141,10 +4165,13 @@ export const LeetCodeWorkspaceModal: React.FC<LeetCodeWorkspaceModalProps> = ({
         problemSlug={problemTemplate.sourceSlug || currentProblemSlug}
         language={language}
         userCode={code}
-        currentInput={submissionResult?.failedInput ?? problemStatementExamples[reportTestCaseIdx]?.input ?? testInput}
-        currentExpectedOutput={submissionResult?.failedExpected ?? problemStatementExamples[reportTestCaseIdx]?.output}
+        currentInput={problemStatementExamples[reportTestCaseIdx]?.input ?? testInput}
+        currentExpectedOutput={reportTestCaseIdx < 0 ? currentExpectedOutput :
+          repairedOutputs.get(problemStatementExamples[reportTestCaseIdx]?.input?.trim() ?? '') ??
+          problemStatementExamples[reportTestCaseIdx]?.output}
         userActualOutput={submissionResult?.failedOutput ?? executionResult?.stdout}
         executionError={submissionResult?.failedStderr ?? executionResult?.stderr}
+        onTestcaseRepair={applyTestcaseRepair}
       />
 
       {/* Problem Diagram Fullscreen Zoom Lightbox */}

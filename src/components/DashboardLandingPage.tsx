@@ -51,6 +51,8 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgPotdAccepted,
+  isGfgPotdManuallySolved,
+  syncGfgDaily,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -93,7 +95,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
     if (propOpenSdeProblem) propOpenSdeProblem(prob);
     else {
       const slug = (prob as any).slug || prob.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      routerNavigate(`/problem/${slug}`);
+      routerNavigate(`/problem/${slug}${prob.category === 'GFG POTD' ? '?source=gfg' : ''}`);
     }
   };
 
@@ -345,8 +347,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   // Check Card C: GFG POTD solved status
   const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
-  const isGfgRemoteSolved = false;
-  const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
+  const isGfgManuallySolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgManuallySolved;
 
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
@@ -405,10 +407,14 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   const handleSyncGfgPotd = async () => {
     setIsSyncingGfg(true);
-    const problem = await fetchGFGPOTD(true);
-    setGfgSyncMessage(isCurrentGfgPotd(problem) ? 'Daily problem updated.' : 'Today?s problem is unavailable. Try again shortly.');
-    setIsSyncingGfg(false);
-    setTimeout(() => setGfgSyncMessage(null), 4000);
+    try {
+      const { problem, profile, message } = await syncGfgDaily(linkedConfig.gfgUsername);
+      setGfgPotd(problem);
+      if (profile) setGfgProfile(profile);
+      setGfgSyncMessage(message);
+    } finally {
+      setIsSyncingGfg(false);
+    }
   };
 
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'Alex';
@@ -803,10 +809,10 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 }`}>
                   {gfgPotd?.difficulty || '?'}
                 </span>
-                {isGfgRemoteSolved ? (
+                {isGfgPotdSolved ? (
                   <span className="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    Solved on GFG
+                    {isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}
                   </span>
                 ) : (
                   <span className="font-mono text-[10px] text-stitch-muted">
@@ -818,7 +824,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 {gfgPotd?.title || 'GeeksforGeeks daily problem unavailable'}
               </h3>
               <p className="text-xs text-stitch-dim mb-4 leading-relaxed">
-                {gfgPotd ? `${isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last verified problem'} ? ${gfgPotd.date}` : 'Refresh to try again.'}
+                {gfgPotd ? `${isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last published problem'} · ${gfgPotd.date}` : 'Refresh to try again.'}
               </p>
               <div className="flex flex-wrap gap-1.5 mb-6">
                 {(gfgPotd?.topicTags || []).slice(0, 2).map((tag, i) => (
@@ -837,7 +843,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                     const dynamicProblem: SDEProblem = {
                       id: 9999,
                       sheetType: 'sde',
-                      category: (gfgPotd.topicTags && gfgPotd.topicTags[0]) || 'GFG POTD',
+                      category: 'GFG POTD',
                       name: gfgPotd.title,
                       difficulty: (gfgPotd.difficulty as any) || 'Medium',
                       rating: '5.0 / 5',
@@ -860,33 +866,19 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
               {/* Secondary row: Solved on GFG / Solve on GFG + Sync button */}
               <div className="flex gap-2">
                 <a
-                  href={gfgPotd?.url || (gfgPotd?.titleSlug ? `https://www.geeksforgeeks.org/problems/${gfgPotd.titleSlug}/1` : 'https://www.geeksforgeeks.org/problem-of-the-day')}
+                  href={gfgPotd?.url || 'https://www.geeksforgeeks.org/problem-of-the-day'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex-1 py-2 px-3 rounded-xl font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    isGfgRemoteSolved
-                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 hover:text-emerald-200 shadow-sm'
-                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200'
-                  }`}
-                  title={isGfgRemoteSolved ? 'Solved on GFG ✓ Click to review on GeeksforGeeks' : 'Solve on official GeeksforGeeks platform'}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
                 >
-                  {isGfgRemoteSolved ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>✓ Solved on GFG</span>
-                    </>
-                  ) : (
-                    <>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Solve on GFG</span>
-                    </>
-                  )}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Solve on GFG
                 </a>
                 <button
                   onClick={handleSyncGfgPotd}
                   disabled={isSyncingGfg}
                   className="px-3 py-2 rounded-xl bg-stitch-container hover:bg-stitch-high border border-stitch-variant text-stitch-dim hover:text-emerald-300 transition-all cursor-pointer disabled:opacity-50"
-                  title={gfgSyncMessage || 'Auto-sync & verify GFG POTD solve'}
+                  title="Refresh GFG problem and profile"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncingGfg ? 'animate-spin text-emerald-400' : ''}`} />
                 </button>

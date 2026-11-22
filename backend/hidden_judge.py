@@ -110,7 +110,7 @@ def prepare_suite(harness, reference, language, official, candidates, runner=run
         cases.append({'input': input_text, 'output': result['output']})
     if not cases:
         raise ValueError('Provide at least one distinct input that is not an official sample')
-    return {'version': VERSION, 'harness': harness, 'samples': official, 'cases': cases}
+    return {'version': VERSION, 'harness': harness, 'reference': reference, 'samples': official, 'cases': cases}
 
 
 def grade(suite, code, language, runner=run_submission):

@@ -129,6 +129,47 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), {'verdict': 'hidden_unavailable', 'passedCount': 0, 'totalCount': 0, 'measurements': []})
 
+    async def test_hidden_candidates_use_upstream_statement_when_storage_is_empty(self):
+        from fastapi.responses import JSONResponse
+        from unittest.mock import Mock
+
+        provider = Mock()
+        provider.json.return_value = {'choices': [{'message': {'content': '{"inputs":["[1]","[2]","[2]"]}'}}]}
+        upstream = JSONResponse({'data': {'question': {'content': '<p>Count the test values.</p>'}}})
+        with patch.object(self.main.r2_storage, 'fetch_problem', return_value=None), patch.object(
+            self.main, 'get_leetcode_problem_raw_endpoint', return_value=upstream
+        ), patch.object(self.main, 'MISTRAL_API_KEY', 'test-key'), patch.object(self.main.requests, 'post', return_value=provider):
+            result = await self.client.post('/api/admin/problems/upstream-fixture/hidden-candidates',
+                                            headers={'Authorization': 'Bearer admin'}, json={
+                                                'language': 'python', 'official_samples': [{'input': '[1]', 'output': '1'}]})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json(), {'inputs': ['[2]']})
+
+    async def test_testcase_repair_uses_official_output_without_releasing_bounty(self):
+        from fastapi.responses import JSONResponse
+
+        student = {'Authorization': 'Bearer student'}
+        admin = {'Authorization': 'Bearer admin'}
+        response = await self.client.post('/api/problem-reports', headers=student, json={
+            'slug': 'repair-fixture', 'problemTitle': 'Repair fixture', 'issueType': 'testcase',
+            'language': 'python', 'note': 'Expected should match the source.', 'testInput': 'arr=[1,2]',
+            'expectedOutput': '0', 'actualOutput': '999',
+        })
+        self.assertEqual(response.status_code, 201, response.text)
+        report_id = response.json()['id']
+        path = '/api/problem-reports/' + report_id + '/testcase-repair'
+        self.assertEqual((await self.client.post(path, headers=admin)).status_code, 404)
+        upstream = JSONResponse({'data': {'question': {'content':
+            '<pre><b>Input:</b> arr[] = [1, 2]\n<b>Output:</b> 3\n<b>Explanation:</b> Add the numbers.</pre>'}}})
+        with patch.object(self.main, 'get_leetcode_problem_raw_endpoint', return_value=upstream):
+            verification = await self.client.post(path, headers=student)
+        self.assertEqual(verification.json(), {'status': 'repaired', 'input': 'arr=[1,2]', 'expectedOutput': '3',
+                                               'source': 'published_example'})
+        queue = await self.client.get('/api/admin/bounties', headers=admin)
+        report = next(item for item in queue.json()['reports'] if item['id'] == report_id)
+        self.assertEqual(report['status'], 'pending')
+        self.assertEqual(report['rewardedAmount'], 0)
+
     async def test_real_wallet_validation_and_idempotency(self):
         headers = {'Authorization': 'Bearer student', 'Idempotency-Key': 'app-debit-1'}
         body = {'email': 'student@example.com', 'amount': -1, 'category': 'TEST', 'description': 'test'}

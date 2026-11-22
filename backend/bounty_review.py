@@ -9,6 +9,8 @@ import uuid
 
 from wallet_ledger import credit_bounty
 
+_QUOTED_INPUT = re.compile(r'''("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')''')
+
 
 def ensure_schema(conn):
     conn.execute("""CREATE TABLE IF NOT EXISTS bounty_reports (
@@ -73,9 +75,30 @@ def list_reports(path, status, limit, offset):
 def _normalized_input(input_text):
     # Normalize whitespace around structural delimiters only. Keep unquoted strings intact.
     normalized = input_text.strip().replace('\r\n', '\n')
-    parts = re.split(r'''("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')''', normalized)
+    parts = _QUOTED_INPUT.split(normalized)
     return ''.join(part if index % 2 else re.sub(r'\s*([\[\]{},=:])\s*', r'\1', part)
                    for index, part in enumerate(parts))
+
+
+def owned_testcase_report(path, report_id, reporter_id):
+    with closing(_connect(path)) as conn, conn:
+        ensure_schema(conn)
+        row = conn.execute(
+            "SELECT * FROM bounty_reports WHERE id = ? AND reporter_id = ? AND category = 'testcase'",
+            (report_id, reporter_id),
+        ).fetchone()
+        return _public(row) if row else None
+
+
+def input_matches(first, second):
+    def normalized(text):
+        parts = _QUOTED_INPUT.split(text.strip())
+        return _normalized_input(''.join(
+            part if index % 2 else re.sub(r'(^|[,\n]\s*)(\w+)\[\s*\](?=\s*=)', r'\1\2', part)
+            for index, part in enumerate(parts)
+        ))
+
+    return normalized(first) == normalized(second)
 
 
 def pending_wallet_recipient(path, report_id, actor):

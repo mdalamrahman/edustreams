@@ -94,7 +94,7 @@ export const onRequest: PagesFunction = async (context) => {
       difficulty: gfgData.difficulty || 'Medium',
       description: cleanDesc || title,
       descriptionHtml: rawHtml,
-      examples: examples.length > 0 ? examples : [{ input: 'N/A', output: 'N/A', explanation: '' }],
+      examples,
       constraints: [],
       testCases: examples.map(e => e.input).filter(Boolean),
       expectedOutputs: examples.map(e => e.output).filter(Boolean),

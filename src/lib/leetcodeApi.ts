@@ -260,7 +260,8 @@ export function fetchGFGPOTD(forceRefresh = false): Promise<GFGDailyQuestion | n
         if (!problem.title || !problem.titleSlug || !/^\d{4}-\d{2}-\d{2}$/.test(problem.date) || problem.date > getGfgDate()) continue;
         if (last && problem.date < last.date) continue;
         try { localStorage.setItem(gfgCacheKey, JSON.stringify({ problem, fetchedAt: Date.now() })); } catch {}
-        return problem;
+        last = problem;
+        if (isCurrentGfgPotd(last)) return last;
       } catch {}
     }
     return last;

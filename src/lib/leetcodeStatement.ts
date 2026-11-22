@@ -12,12 +12,12 @@ function statementText(root: Element): string {
   return walk(root).replace(/\u00a0/g, ' ').trim();
 }
 
-export function parseLeetCodeStatement(html: string) {
+export function parseLeetCodeStatement(html: string, assetBase = 'https://assets.leetcode.com/') {
   const document = new DOMParser().parseFromString(DOMPurify.sanitize(html), 'text/html');
   const body = document.body;
   for (const image of body.querySelectorAll('img[src]')) {
     try {
-      const url = new URL(image.getAttribute('src') || '', 'https://assets.leetcode.com/');
+      const url = new URL(image.getAttribute('src') || '', assetBase);
       if (url.protocol === 'https:') image.setAttribute('src', url.href);
       else image.removeAttribute('src');
       image.setAttribute('loading', 'lazy');

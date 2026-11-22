@@ -14,11 +14,12 @@ interface ReportProps {
   currentExpectedOutput?: string;
   userActualOutput?: string;
   executionError?: string;
+  onTestcaseRepair?: (input: string, output: string) => void;
 }
 
 type Category = 'testcase' | 'driver' | 'problem' | 'solution';
 
-export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug, language, userCode, currentInput, currentExpectedOutput, userActualOutput, executionError }: ReportProps) {
+export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug, language, userCode, currentInput, currentExpectedOutput, userActualOutput, executionError, onTestcaseRepair }: ReportProps) {
   const [category, setCategory] = useState<Category>('problem');
   const [testInput, setTestInput] = useState('');
   const [note, setNote] = useState('');
@@ -26,6 +27,7 @@ export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug,
   const [pending, setPending] = useState(false);
   const [reportId, setReportId] = useState('');
   const [error, setError] = useState('');
+  const [repairMessage, setRepairMessage] = useState('');
   const requestId = useRef('');
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug,
     setShareCode(false);
     setReportId('');
     setError('');
+    setRepairMessage('');
     requestId.current = crypto.randomUUID();
   }, [isOpen, problemSlug]);
 
@@ -47,7 +50,12 @@ export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug,
         <div><h2 id="report-issue-title" className="flex items-center gap-2 text-xl font-semibold text-white"><Flag className="h-5 w-5 text-amber-300" />Report an issue</h2><p className="mt-1 text-sm text-slate-400">{problemTitle}</p></div>
         <button type="button" aria-label="Close report" disabled={pending} onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800"><X className="h-5 w-5" /></button>
       </header>
-      {reportId ? <div className="mt-5 space-y-3"><p role="status" className="rounded-xl bg-emerald-950/70 p-3 text-emerald-200">Report submitted for review. An approved bounty will be credited to your wallet.</p><p className="break-all text-xs text-slate-400">Report ID {reportId}</p><button onClick={onClose} className="rounded-lg bg-slate-700 px-4 py-2">Done</button></div> : <form className="mt-5 space-y-4" onSubmit={async event => {
+      {reportId ? <div className="mt-5 space-y-3">
+        <p role="status" className="rounded-xl bg-emerald-950/70 p-3 text-emerald-200">Report submitted. Bounty credit is pending admin review.</p>
+        {repairMessage && <p role="status" className="rounded-xl bg-slate-950 p-3 text-sm text-slate-200">{repairMessage}</p>}
+        <p className="break-all text-xs text-slate-400">Report ID {reportId}</p>
+        <button type="button" onClick={onClose} disabled={pending} className="rounded-lg bg-slate-700 px-4 py-2 disabled:opacity-50">Done</button>
+      </div> : <form className="mt-5 space-y-4" onSubmit={async event => {
         event.preventDefault();
         if (pending || !note.trim()) return;
         setPending(true);
@@ -64,6 +72,26 @@ export function UnifiedReportModal({ isOpen, onClose, problemTitle, problemSlug,
           const data = await response.json();
           if (!response.ok || !data.id) throw new Error(typeof data.detail === 'string' ? data.detail : 'The report could not be saved. Try again.');
           setReportId(data.id);
+          if (category === 'testcase' && onTestcaseRepair) {
+            setRepairMessage('Checking the testcase against a trusted source…');
+            try {
+              const verification = await apiFetch(`${repositoryConfig.backendUrl}/api/problem-reports/${encodeURIComponent(data.id)}/testcase-repair`, {
+                method: 'POST', signal: AbortSignal.timeout(35000),
+              });
+              if (!verification.ok) throw new Error('Testcase check unavailable');
+              const result = await verification.json();
+              if (result.status === 'repaired' && typeof result.input === 'string' && typeof result.expectedOutput === 'string') {
+                onTestcaseRepair(result.input, result.expectedOutput);
+                setRepairMessage('The verified expected output was applied in your workspace. Run or submit again.');
+              } else if (result.status === 'already_correct') {
+                setRepairMessage('The trusted source confirms the current expected output.');
+              } else {
+                setRepairMessage('No trusted correction was available for this input. Your report is saved.');
+              }
+            } catch {
+              setRepairMessage('The automatic check could not finish. Your report is saved.');
+            }
+          }
         } catch (failure) { setError(failure instanceof Error ? failure.message : 'The report could not be saved.'); }
         finally { setPending(false); }
       }}>

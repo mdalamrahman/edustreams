@@ -3,6 +3,7 @@ import { Sparkles, Flame, ExternalLink, Code, CheckCircle2, Trophy, ArrowRight, 
 import { fetchLeetCodePOTD, fetchGFGPOTD, watchGfgPotd, isCurrentGfgPotd, clearPOTDCache, LeetCodeDailyQuestion, GFGDailyQuestion } from '../lib/leetcodeApi';
 import { SDEProblem, SDE_SHEET_DATA, getUniversalSdePotd } from '../lib/sdeSheetData';
 import { isProblemSlugSolved, isPotdSolvedToday, markProblemSolved, resetUnverifiedPotdToday } from '../lib/analytics';
+import { requestSignInForPreview } from '../lib/recruiterPreview';
 import { getSolvedIds, getLinkedProfiles, LinkedProfilesConfig } from '../lib/progressService';
 import { 
   fetchLeetCodeFullProfile, 
@@ -11,6 +12,9 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgPotdAccepted,
+  isGfgPotdManuallySolved,
+  setGfgPotdManuallySolved,
+  syncGfgDaily,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -183,8 +187,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   // Check if GFG POTD is solved
   const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
-  const isGfgRemoteSolved = false;
-  const isGfgPotdSolved = isGfgLocalSolved || isGfgRemoteSolved;
+  const isGfgManuallySolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgManuallySolved;
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
@@ -261,9 +265,20 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   const verifyGfgSolved = async () => {
     setIsVerifyingGfg(true);
-    const problem = await fetchGFGPOTD(true);
-    setGfgVerifyMessage(isCurrentGfgPotd(problem) ? 'Daily problem updated. GeeksforGeeks public activity does not identify accepted submissions for this problem.' : 'Today?s problem is unavailable. Try again shortly.');
-    setIsVerifyingGfg(false);
+    try {
+      const { problem, profile, message } = await syncGfgDaily(linkedConfig.gfgUsername);
+      setGfgPotd(problem);
+      if (profile) setGfgProfile(profile);
+      setGfgVerifyMessage(message);
+    } finally {
+      setIsVerifyingGfg(false);
+    }
+  };
+
+  const toggleManualGfgSolved = () => {
+    if (requestSignInForPreview() || !isCurrentGfgPotd(gfgPotd)) return;
+    setGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date, !isGfgManuallySolved);
+    setGfgVerifyMessage(null);
   };
 
   const loadLeetCodePOTD = async (force = false) => {
@@ -801,9 +816,9 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     isGfgPotdSolved ? 'text-emerald-200' : 'text-slate-100'
                   }`}>
                     <span>{gfgPotd.title}</span>
-                    {isGfgPotdSolved && <span className="text-emerald-400 text-xs font-normal">✓ Done</span>}
+                    {isGfgPotdSolved && <span className="text-xs font-normal text-emerald-400">{isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}</span>}
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1 font-mono">{isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last verified problem'} ? {gfgPotd.date}</p>
+                  <p className="mt-1 text-xs text-slate-400">{isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last published problem'} · {gfgPotd.date}</p>
                 </div>
 
                 {/* Linked Account Status & Quick Controls */}
@@ -820,18 +835,25 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {linkedConfig.gfgUsername && (
+                    <button
+                      type="button"
+                      onClick={verifyGfgSolved}
+                      disabled={isVerifyingGfg}
+                      className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      {isVerifyingGfg ? 'Refreshing GFG…' : 'Sync GFG'}
+                    </button>
+                    {isCurrentGfgPotd(gfgPotd) && (!isGfgLocalSolved || isGfgManuallySolved) && (
                       <button
-                        onClick={verifyGfgSolved}
-                        disabled={isVerifyingGfg}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        type="button"
+                        onClick={toggleManualGfgSolved}
+                        aria-pressed={isGfgManuallySolved}
+                        className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-slate-800 aria-pressed:border-emerald-500"
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingGfg ? 'animate-spin' : ''}`} />
-                        <span>{isVerifyingGfg ? 'Checking GFG...' : 'Verify Submission'}</span>
+                        {isGfgManuallySolved ? 'Undo manual mark' : 'Mark as Solved'}
                       </button>
                     )}
-
-
                   </div>
                 </div>
 
@@ -848,7 +870,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                       const dynamicProblem: SDEProblem = {
                         id: 9999,
                         sheetType: 'sde',
-                        category: (gfgPotd.topicTags && gfgPotd.topicTags[0]) || 'GFG POTD',
+                        category: 'GFG POTD',
                         name: gfgPotd.title,
                         difficulty: (gfgPotd.difficulty as any) || 'Medium',
                         rating: '5.0 / 5',
@@ -875,24 +897,10 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     href={gfgPotd.url}
                     target="_blank"
                     rel="noreferrer"
-                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      isGfgRemoteSolved
-                        ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300 hover:text-emerald-200 shadow-sm'
-                        : 'bg-slate-900 hover:bg-slate-800 border-slate-700 hover:border-emerald-500/50 text-slate-200 hover:text-emerald-300'
-                    }`}
-                    title={isGfgRemoteSolved ? 'Solved on GeeksforGeeks ✓' : 'Solve directly on GeeksforGeeks website'}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-200 hover:bg-slate-800"
                   >
-                    {isGfgRemoteSolved ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>✓ Solved on GFG</span>
-                      </>
-                    ) : (
-                      <>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>↗ Solve on GeeksforGeeks</span>
-                      </>
-                    )}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Solve on GeeksforGeeks
                   </a>
 
                   <button

@@ -6,7 +6,8 @@ export function HiddenSuitePanel({ slug, samples }: { slug: string; samples: { i
   const [language, setLanguage] = useState('cpp');
   const [harness, setHarness] = useState('');
   const [reference, setReference] = useState('');
-  const [official, setOfficial] = useState(() => JSON.stringify(samples, null, 2));
+  const [officialEdit, setOfficial] = useState<string>();
+  const official = officialEdit ?? JSON.stringify(samples, null, 2);
   const [candidates, setCandidates] = useState('[]');
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
@@ -15,7 +16,11 @@ export function HiddenSuitePanel({ slug, samples }: { slug: string; samples: { i
     setPending(true);
     setMessage('');
     try {
-      const payload = { language, official_samples: JSON.parse(official) };
+      const officialSamples = JSON.parse(official);
+      if (!Array.isArray(officialSamples) || !officialSamples.length) {
+        throw new Error('Add at least one official input and output pair before preparing the suite.');
+      }
+      const payload = { language, official_samples: officialSamples };
       const body = publish ? { ...payload, harness, reference, reviewed_inputs: JSON.parse(candidates) } : payload;
       const operation = publish ? 'hidden-suite' : 'hidden-candidates';
       const response = await adminFetch(new URL('/api/admin/problems/' + encodeURIComponent(slug) + '/' + operation, config.backendUrl), {

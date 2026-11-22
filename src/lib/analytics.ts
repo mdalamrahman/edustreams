@@ -5,7 +5,7 @@ import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
-import { getRealSheetSolvedBreakdown, isGfgPotdAccepted } from './userProfileService';
+import { getRealSheetSolvedBreakdown, isGfgPotdAccepted, isGfgPotdManuallySolved } from './userProfileService';
 
 // Dedicated per-sheet maps for accurate O(1) problem ID lookup (prevents cross-sheet ID collisions)
 const sdeProblemMap = new Map<number, any>();
@@ -317,20 +317,20 @@ export function isPotdSolvedToday(platform?: 'sdetube' | 'leetcode' | 'gfg'): bo
   }
 
   if (platform === 'gfg') {
-    return isVerifiedGfgDailySolved();
+    return isGfgDailySolved();
   }
 
   // General check: only true if any platform was actually solved TODAY
   return (
     localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true' ||
     localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true' ||
-    isVerifiedGfgDailySolved()
+    isGfgDailySolved()
   );
 }
 
-function isVerifiedGfgDailySolved(): boolean {
+function isGfgDailySolved(): boolean {
   const daily = getCachedCurrentGfgPotd();
-  return Boolean(daily && isGfgPotdAccepted(daily.titleSlug, daily.date));
+  return Boolean(daily && (isGfgPotdAccepted(daily.titleSlug, daily.date) || isGfgPotdManuallySolved(daily.titleSlug, daily.date)));
 }
 
 /**
@@ -344,7 +344,7 @@ export function resetUnverifiedPotdToday(): void {
   // If none of the platforms were solved today, clear today's aggregate potd flag
   const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
   const lcSolved = localStorage.getItem(`sdetube_potd_leetcode_solved_${today}`) === 'true';
-  const gfgStillSolved = isVerifiedGfgDailySolved();
+  const gfgStillSolved = isGfgDailySolved();
   if (!sdeSolved && !lcSolved && !gfgStillSolved) {
     localStorage.removeItem(`sdetube_potd_solved_${today}`);
   }

@@ -3129,76 +3129,41 @@ export async function fetchFromLeetCodeAPI(slugOrUrl: string): Promise<ProblemTe
 export async function fetchFromGFGAPI(slugOrUrl: string): Promise<ProblemTemplate | null> {
   const slug = toSlug(slugOrUrl);
   if (!slug || slug === 'algorithm-problem') return null;
-
+  const encoded = encodeURIComponent(slug);
   const endpoints = [
-    `/api/gfg/${encodeURIComponent(slug)}`,
-    `${TELEGRAM_BACKEND_URL}/api/gfg/${encodeURIComponent(slug)}`
+    '/api/gfg/question?slug=' + encoded,
+    TELEGRAM_BACKEND_URL + '/api/gfg/question/' + encoded,
   ];
 
-  for (const ep of endpoints) {
+  for (const endpoint of endpoints) {
     try {
-      const resp = await fetch(ep, { signal: AbortSignal.timeout(8000) });
-      if (resp.ok) {
-        const data = await resp.json();
-        const resObj = data?.results || data;
-        if (resObj && (resObj.problem_name || resObj.name) && (resObj.problem_question || resObj.description)) {
-          const rawHtml = resObj.problem_question || resObj.description || '';
-          const title = resObj.problem_name || resObj.name;
-          const cleanDesc = rawHtml
-            .replace(/<pre>[\s\S]*?<\/pre>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-          const examples: ProblemTemplate['examples'] = [];
-          const exMatches = Array.from(rawHtml.matchAll(/<pre>([\s\S]*?)<\/pre>/gi)) as RegExpMatchArray[];
-          for (const m of exMatches) {
-            const text = (m[1] || '').replace(/<[^>]+>/g, '').trim();
-            const inM = text.match(/Input:\s*([\s\S]*?)(?=\nOutput:|$)/i);
-            const outM = text.match(/Output:\s*([\s\S]*?)(?=\nExplanation:|$)/i);
-            const expM = text.match(/Explanation:\s*([\s\S]*?)$/i);
-            if (inM && outM) {
-              examples.push({
-                input: inM[1].trim(),
-                output: outM[1].trim(),
-                explanation: expM ? expM[1].trim() : undefined
-              });
-            }
-          }
-
-          const constraints: string[] = [];
-          const cMatch = rawHtml.match(/Constraints:[\s\S]*?(<\/p>|$)/i);
-          if (cMatch) {
-            const cText = cMatch[0].replace(/<[^>]+>/g, ' ').replace(/Constraints:/i, '').replace(/&le;/g, '<=').replace(/&ge;/g, '>=').replace(/\s+/g, ' ').trim();
-            if (cText) constraints.push(cText);
-          }
-
-          const defaultStarters = generateDefaultStarters(title);
-          const tcs = examples.map(e => e.input).filter(Boolean);
-          const eos = examples.map(e => e.output).filter(Boolean);
-
-          const template: ProblemTemplate = {
-            name: title,
-            category: resObj.tags?.topic_tags?.[0] || 'Dynamic Programming',
-            difficulty: resObj.difficulty || 'Medium',
-            description: cleanDesc || title,
-            examples,
-            constraints,
-            testCases: tcs.length >= 10 ? tcs : (tcs.length > 0 ? tcs : ['n = 9, i = 1, d = 2, c = 1']),
-            expectedOutputs: eos.length >= 10 ? eos : (eos.length > 0 ? eos : ['5']),
-            hints: [],
-            starters: defaultStarters,
-            solutions: defaultStarters
-          };
-
-          return repairAndHardenProblem(template);
-        }
-      }
-    } catch {}
+      const response = await fetch(endpoint, { signal: AbortSignal.timeout(8000) });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const problem = data.results ?? data;
+      const title = problem.problem_name || problem.name;
+      const html = problem.problem_question || problem.descriptionHtml;
+      if (!title || !html) continue;
+      const statement = parseLeetCodeStatement(html, 'https://www.geeksforgeeks.org/');
+      const examples = statement.examples.map(example => ({
+        ...example,
+        input: example.input.replace(/\b([a-zA-Z_]\w*)\[\s*\](?=\s*=)/g, '$1'),
+      }));
+      const difficulty = problem.difficulty;
+      return {
+        name: title,
+        category: problem.tags?.topic_tags?.[0] || problem.category || 'GFG',
+        difficulty: difficulty === 'Easy' || difficulty === 'Hard' ? difficulty : 'Medium',
+        sourceSlug: slug,
+        description: statement.description,
+        statementHtml: statement.html,
+        constraints: statement.constraints,
+        examples,
+        testCases: examples.map(example => example.input),
+        expectedOutputs: examples.map(example => example.output),
+        starters: generateDefaultStarters(title),
+      };
+    } catch { /* Try the backend if Pages is unavailable. */ }
   }
   return null;
 }
@@ -3729,6 +3694,12 @@ export async function fetchEnrichedProblem(
     } catch (_) {}
     return p;
   };
+
+  if (/geeksforgeeks\.org/i.test(slugOrTitle) || /^GFG/i.test(category)) {
+    const official = await fetchFromGFGAPI(slugOrTitle);
+    if (official) return official;
+    throw new Error('The GeeksforGeeks statement could not be loaded.');
+  }
 
   // 0. Check predefined special problems (Exact Match Only)
   const normSlug = slug.replace(/[^a-z0-9]/g, '');

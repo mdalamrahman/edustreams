@@ -1027,7 +1027,10 @@ async def add_cors_and_caching_headers_middleware(request: Request, call_next):
             is_billing = request.url.path.startswith(('/api/billing/', '/api/bounty/'))
             is_repair = request.url.path.endswith(('/correct-driver', '/correct-testcase')) or (
                 request.method == 'POST' and request.url.path.startswith('/api/problem/') and '/driver/' in request.url.path)
-            is_report_write = request.method == 'POST' and request.url.path.startswith(('/api/problem-reports', '/api/admin/bounties/'))
+            is_report_write = request.method == 'POST' and (
+                request.url.path == '/api/problem-reports' or request.url.path.endswith(('/review', '/resolve'))
+                and request.url.path.startswith(('/api/admin/bounties/', '/api/problem-reports/'))
+            )
             if ledger_key and response.status_code < 300 and (is_billing or is_repair or is_report_write):
                 from billing_restore import persist_ledger
                 await asyncio.to_thread(persist_ledger, SQLITE_DB_PATH, r2_storage, ledger_key)
@@ -3684,6 +3687,53 @@ async def create_problem_report(payload: ProblemReportPayload, request: Request)
     return {"success": True, "id": report["id"], "status": report["status"]}
 
 
+@app.post("/api/problem-reports/{report_id}/testcase-repair")
+async def repair_reported_testcase(report_id: str, request: Request):
+    from bounty_review import input_matches, owned_testcase_report
+    from hidden_judge import LANGUAGES, VERSION, outputs_match, run_submission
+
+    report = await asyncio.to_thread(owned_testcase_report, SQLITE_DB_PATH, report_id, request.state.user["id"])
+    if report is None:
+        raise HTTPException(404, "Testcase report not found")
+    slug, language, input_text = report["slug"], report["language"], report["testInput"]
+
+    def verified(output, source):
+        status = "already_correct" if outputs_match(output, report["expectedOutput"]) else "repaired"
+        return {"status": status, "input": input_text, "expectedOutput": output, "source": source}
+
+    # Restore public examples from the original provider. Reported outputs and code are never used as an oracle.
+    for fetcher, is_gfg in ((get_leetcode_problem_raw_endpoint, False), (get_gfg_problem_endpoint, True)):
+        try:
+            response = await fetcher(slug)
+            payload = json.loads(response.body)
+            question = payload.get("results") if is_gfg else (payload.get("data") or {}).get("question")
+            html_content = (question or {}).get("problem_question" if is_gfg else "content")
+            for example in parse_leetcode_html(html_content or "")["examples"]:
+                if 0 < len(example["output"]) <= 3000 and input_matches(example["input"], input_text):
+                    return verified(example["output"], "published_example")
+        except (HTTPException, ValueError, AttributeError):
+            continue
+
+    # Only existing public practice inputs may be repaired from an approved reference.
+    problem = _PROBLEM_CACHE.get(slug) or await asyncio.to_thread(r2_storage.fetch_problem, slug) or {}
+    public_cases = problem.get("testCases") or []
+    if language not in LANGUAGES or not any(isinstance(case, str) and input_matches(case, input_text) for case in public_cases):
+        return {"status": "unavailable"}
+    key = hidden_suite_key(slug, language)
+    suite = await asyncio.to_thread(r2_storage.fetch_json, key)
+    if not isinstance(suite, dict) or suite.get("version") != VERSION or not suite.get("reference") or not suite.get("harness"):
+        return {"status": "unavailable"}
+    if any(input_matches(case["input"], input_text) for case in suite.get("cases", [])):
+        return {"status": "unavailable"}
+    if _HIDDEN_GRADING_SLOTS.locked():
+        return {"status": "unavailable"}
+    async with _HIDDEN_GRADING_SLOTS:
+        result = await asyncio.to_thread(run_submission, suite["harness"], suite["reference"], language, input_text)
+    if result["verdict"] == "completed" and len(result["output"]) <= 3000:
+        return verified(result["output"], "verified_reference")
+    return {"status": "unavailable"}
+
+
 @app.get("/api/problem-reports")
 @app.get("/api/admin/bounties")
 async def get_problem_reports(status: Literal["pending", "approved", "rejected", "duplicate", "all", "legacy"] = "pending", offset: int = 0, limit: int = 15):
@@ -4155,6 +4205,7 @@ def hidden_suite_key(slug: str, language: str) -> str:
 
 _CURATED_SUITE_LOCK = threading.Lock()
 _CURATED_SUITES = {}
+_CURATED_RETRY_AT = {}
 
 
 def load_hidden_suite(slug, language, key):
@@ -4168,7 +4219,13 @@ def load_hidden_suite(slug, language, key):
         return None
     with _CURATED_SUITE_LOCK:
         if language not in _CURATED_SUITES:
-            _CURATED_SUITES[language] = build(language)
+            if time.monotonic() < _CURATED_RETRY_AT.get(language, 0):
+                return None
+            try:
+                _CURATED_SUITES[language] = build(language)
+            except ValueError:
+                _CURATED_RETRY_AT[language] = time.monotonic() + 60
+                return None
             r2_storage.upload_json(key, _CURATED_SUITES[language])
         return _CURATED_SUITES[language]
 
@@ -4199,9 +4256,27 @@ async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
     from hidden_judge import unique_inputs
 
     hidden_suite_key(slug, payload.language)
-    if not MISTRAL_API_KEY:
-        raise HTTPException(503, "Hidden input generation is unavailable")
+    providers = [
+        (MISTRAL_API_KEY, "https://api.mistral.ai/v1/chat/completions", os.getenv("MISTRAL_TESTCASE_MODEL", "mistral-small-latest")),
+        (GROQ_API_KEY, "https://api.groq.com/openai/v1/chat/completions", os.getenv("GROQ_TESTCASE_MODEL", "llama-3.3-70b-versatile")),
+    ]
+    if not any(key for key, _, _ in providers):
+        raise HTTPException(503, "Hidden input generation is unavailable. Add reviewed inputs manually.")
     problem = _PROBLEM_CACHE.get(slug) or await asyncio.to_thread(r2_storage.fetch_problem, slug)
+    if not problem or not problem.get("description"):
+        try:
+            upstream = await get_leetcode_problem_raw_endpoint(slug)
+            question = json.loads(upstream.body).get("data", {}).get("question") or {}
+            problem = parse_leetcode_html(question.get("content") or "")
+        except (HTTPException, ValueError, AttributeError):
+            pass
+    if not problem or not problem.get("description"):
+        try:
+            upstream = await get_gfg_problem_endpoint(slug)
+            question = json.loads(upstream.body).get("results") or {}
+            problem = parse_leetcode_html(question.get("problem_question") or "")
+        except (HTTPException, ValueError, AttributeError):
+            pass
     if not problem or not problem.get("description"):
         raise HTTPException(404, "Load the problem specification before generating inputs")
     samples = [sample.model_dump() for sample in payload.official_samples]
@@ -4211,24 +4286,27 @@ async def suggest_hidden_candidates(slug: str, payload: HiddenCandidateRequest):
         "constraints": problem.get("constraints", []),
         "sample_inputs": [sample["input"][:2000] for sample in samples],
     }
-    try:
-        response = await asyncio.to_thread(
-            requests.post, "https://api.mistral.ai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {MISTRAL_API_KEY}"},
-            json={
-                "model": os.getenv("MISTRAL_TESTCASE_MODEL", "mistral-large-latest"),
-                "messages": [{"role": "user", "content": json.dumps(prompt)}],
-                "response_format": {"type": "json_object"},
-            }, timeout=24,
-        )
-        response.raise_for_status()
-        generated = json.loads(response.json()["choices"][0]["message"]["content"])["inputs"]
-        if not isinstance(generated, list):
-            raise ValueError("Expected an input list")
-        inputs = list(unique_inputs((value for value in generated[:12] if isinstance(value, str) and len(value) <= 12_000), samples))
-    except (requests.RequestException, KeyError, IndexError, TypeError, ValueError) as error:
-        raise HTTPException(502, "Could not generate candidate inputs") from error
-    return {"inputs": inputs}
+    for key, url, model in providers:
+        if not key:
+            continue
+        try:
+            response = await asyncio.to_thread(
+                requests.post, url, headers={"Authorization": f"Bearer {key}"},
+                json={"model": model, "messages": [{"role": "user", "content": json.dumps(prompt)}],
+                      "response_format": {"type": "json_object"}}, timeout=20,
+            )
+            response.raise_for_status()
+            generated = json.loads(response.json()["choices"][0]["message"]["content"])["inputs"]
+            if isinstance(generated, list):
+                inputs = list(unique_inputs(
+                    (value for value in generated[:12] if isinstance(value, str) and len(value) <= 12_000), samples,
+                ))
+                if inputs:
+                    return {"inputs": inputs}
+        except (requests.RequestException, KeyError, IndexError, TypeError, ValueError):
+            continue
+    raise HTTPException(502, "Could not generate distinct inputs. Add reviewed inputs manually.")
+
 
 
 _HIDDEN_GRADING_SLOTS = asyncio.Semaphore(2)
@@ -4274,7 +4352,7 @@ async def save_user_submission(slug: str, request: Request):
 
         # Update global problem benchmark in R2 for real user comparison
         status_val = str(submission.get("status") or "")
-        if "accepted" in status_val.lower():
+        if status_val == "Accepted" and submission.get("verifiedHidden") is True:
             benchmark_key = f"benchmarks/{clean_slug}.json"
             benchmarks = r2_storage.fetch_json(benchmark_key) or {}
             if not isinstance(benchmarks, dict):
@@ -4705,20 +4783,22 @@ _CODEFORCES_PROFILE_CACHE: dict = {}
 
 @app.get("/api/gfg/{username}")
 @app.get("/api/gfg/profile/{username}")
-async def get_gfg_profile(username: str):
+async def get_gfg_profile(username: str, force_refresh: bool = False):
     """
     Scrapes & parses public GeeksforGeeks profile metrics with 15-minute caching.
     Extracts overall score, total problems solved, rank, streak, organization, and difficulty breakdown.
     """
     clean_user = username.strip().strip("/")
-    if not clean_user:
-        return JSONResponse(status_code=400, content={"error": "Username is required"})
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", clean_user):
+        return JSONResponse(status_code=400, content={"error": "Invalid GFG username"})
 
+    from gfg_potd import INDIA, india_date
     now = time.time()
+    today_ist = india_date()
     cache_key = clean_user.lower()
     if cache_key in _GFG_PROFILE_CACHE:
         cached_time, cached_data = _GFG_PROFILE_CACHE[cache_key]
-        if now - cached_time < 900:
+        if cached_data.get("checked_date_ist") == today_ist and now - cached_time < (30 if force_refresh else 900):
             return cached_data
 
     def _fetch_and_parse_gfg():
@@ -4872,13 +4952,9 @@ async def get_gfg_profile(username: str):
         if diff_sum > 0 and res["total_problems_solved"] == 0:
             res["total_problems_solved"] = diff_sum
 
-        # Verify actual submission on today's date in IST to eliminate streak carryover false positive
-        now_utc = datetime.now(timezone.utc)
-        now_ist = now_utc + timedelta(hours=5, minutes=30)
-        today_ist_str = now_ist.strftime("%Y-%m-%d")
-        res["checked_date_ist"] = today_ist_str
-        res["solved_today_verified"] = False
-        res["today_submission_count"] = 0
+        # Profile activity does not contain a slug or verdict for today's POTD.
+        now_ist = datetime.now(INDIA)
+        res["checked_date_ist"] = today_ist
 
         try:
             heatmap_resp = requests.post(
@@ -4896,15 +4972,9 @@ async def get_gfg_profile(username: str):
                 h_json = heatmap_resp.json()
                 result_map = h_json.get("result", {})
                 if isinstance(result_map, dict):
-                    cnt = int(result_map.get(today_ist_str, 0))
-                    res["today_submission_count"] = cnt
-                    if cnt >= 1:
-                        res["solved_today_verified"] = True
+                    res["today_submission_count"] = int(result_map.get(today_ist, 0))
         except Exception as e:
-            # Fallback if practiceapi is unreachable
             print(f"[GFG Heatmap Notice]: {e}")
-            res["today_submission_count"] = 1 if res.get("current_streak", 0) >= 1 else 0
-            res["solved_today_verified"] = res.get("current_streak", 0) >= 1
 
         return res, True
 
@@ -6199,7 +6269,7 @@ async def get_leetcode_problem_raw_endpoint(slug: str):
         categoryTitle
       }
     }"""
-    try:
+    def fetch_question():
         req = urllib.request.Request(
             "https://leetcode.com/graphql",
             data=json.dumps({"query": query, "variables": {"titleSlug": clean_slug}}).encode("utf-8"),
@@ -6210,12 +6280,14 @@ async def get_leetcode_problem_raw_endpoint(slug: str):
             }
         )
         with urllib.request.urlopen(req, timeout=8) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            if res_data.get("data", {}).get("question"):
-                return JSONResponse(
-                    res_data,
-                    headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"}
-                )
+            return json.load(response)
+
+    try:
+        res_data = await asyncio.to_thread(fetch_question)
+        if res_data.get("data", {}).get("question"):
+            return JSONResponse(
+                res_data, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"}
+            )
     except Exception as e:
         print(f"[LeetCode Problem Detail Error for '{clean_slug}']: {e}")
 
@@ -6233,7 +6305,9 @@ async def get_gfg_problem_endpoint(slug: str):
         "Accept": "application/json, text/html, */*"
     }
     try:
-        resp = requests.get(f"https://practiceapi.geeksforgeeks.org/api/v1/problems/{clean_slug}/", headers=headers, timeout=8)
+        resp = await asyncio.to_thread(
+            requests.get, f"https://practiceapi.geeksforgeeks.org/api/v1/problems/{clean_slug}/", headers=headers, timeout=8
+        )
         if resp.ok:
             return JSONResponse(
                 resp.json(),

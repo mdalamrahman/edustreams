@@ -182,8 +182,11 @@ test('Same Tree preserves source, Monaco caret and sample-only submit status', a
   await page.keyboard.type('C');
   await expect(editor).toContainText('// ABCclass Solution');
   await page.getByRole('button', { name: /^Submit/ }).click();
-  await expect(page.getByText('Samples passed · Hidden tests unavailable', { exact: true })).toBeVisible();
+  await expect(page.getByText('Accepted (public samples only)', { exact: true }).first()).toBeVisible();
   expect(samplesRun).toBe(3);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('sdetube_solved_slugs'))).toContain('same-tree');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('edustream_submissions_same-tree') || '[]')[0]);
+  expect(saved).toMatchObject({ acceptedOnSamples: true, verifiedHidden: false });
   await expect(page.getByText('Unavailable', { exact: true })).toBeVisible();
 
   let reportSent = false;
@@ -191,20 +194,55 @@ test('Same Tree preserves source, Monaco caret and sample-only submit status', a
     expect(route.request().headers().authorization).toMatch(/^Bearer /);
     const report = route.request().postDataJSON();
     expect(report.slug).toBe('same-tree');
-    expect(report.issueType).toBe('problem');
+    expect(report.issueType).toBe('testcase');
     expect(report.studentCode).toBe('');
-    expect(report.note).toBe('The statement omits the allowed tree size.');
+    expect(report.note).toBe('Check the expected output for the second example.');
     expect(report.requestId).toBeTruthy();
     reportSent = true;
     await route.fulfill({ status: 201, json: { id: 'rep-test-student', status: 'pending' } });
   });
+  await page.route('**/api/problem-reports/rep-test-student/testcase-repair', route =>
+    route.fulfill({ json: { status: 'repaired', input: 'p = [1,2], q = [1,null,2]', expectedOutput: 'false', source: 'published_example' } }));
   await page.getByRole('button', { name: 'Report issue with problem, driver, testcases, or solution' }).click();
   const dialog = page.getByRole('dialog', { name: 'Report an issue' });
-  await dialog.getByRole('combobox', { name: 'Issue type' }).selectOption('problem');
-  await dialog.getByLabel('Steps to reproduce').fill('The statement omits the allowed tree size.');
+  await dialog.getByRole('combobox', { name: 'Issue type' }).selectOption('testcase');
+  await dialog.getByLabel('Test input').fill('p = [1,2], q = [1,null,2]');
+  await dialog.getByLabel('Steps to reproduce').fill('Check the expected output for the second example.');
   await dialog.getByRole('button', { name: 'Submit for review' }).click();
   await expect(dialog.getByText('Report ID rep-test-student')).toBeVisible();
+  await expect(dialog.getByText(/verified expected output was applied/)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('edustream_verified_testcase_outputs_same-tree'))).toContain('"false"');
   expect(reportSent).toBe(true);
+});
+
+test('GFG daily problem refresh and manual completion follow the published IST day', async ({ page }) => {
+  await studentSession(page);
+  const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format();
+  let refreshed = false;
+  await page.route('**/api/potd/gfg**', async route => {
+    if (new URL(route.request().url()).searchParams.get('force_refresh') === 'true') refreshed = true;
+    return route.fulfill({ json: {
+      date: day, title: 'Test GFG daily', titleSlug: 'test-gfg-daily', difficulty: 'Easy',
+      url: 'https://www.geeksforgeeks.org/problems/test-gfg-daily/1', topicTags: ['Arrays'],
+    } });
+  });
+  await page.goto('http://127.0.0.1:4173');
+  await page.getByTitle("Open Today's Problem of the Day").click();
+  await page.getByRole('button', { name: 'GFG POTD', exact: true }).click();
+  await page.getByRole('button', { name: 'Sync GFG', exact: true }).click();
+  await expect.poll(() => refreshed).toBe(true);
+  await page.getByRole('button', { name: 'Mark as Solved', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Undo manual mark', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(day => localStorage.getItem('sdetube_potd_gfg_manual_solved_' + day), day)).toBe('test-gfg-daily');
+  await page.getByRole('button', { name: 'Undo manual mark', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mark as Solved', exact: true })).toBeVisible();
+  await page.route('**/api/gfg/question?slug=test-gfg-daily', route => route.fulfill({ json: {
+    name: 'Test GFG daily', difficulty: 'Easy',
+    descriptionHtml: '<p>Count items in the array.</p><pre><b>Input:</b> arr[] = [1, 2]\n<b>Output:</b> 2</pre>',
+  } }));
+  await page.getByRole('button', { name: /Solve on SDETube IDE/ }).click();
+  await expect(page).toHaveURL(/\/problem\/test-gfg-daily\?source=gfg$/);
+  await expect(page.getByText('Count items in the array.', { exact: true })).toBeVisible();
 });
 
 test('Admin sign-in fields are visible, usable, and recover after an invalid code', async ({ page }, testInfo) => {

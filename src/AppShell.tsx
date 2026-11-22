@@ -198,7 +198,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onSolveSdeProblem={(prob) => {
             setIsPotdModalOpen(false);
             const slug = (prob as any).slug || prob.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-            navigate(`/problem/${slug}`);
+            navigate(`/problem/${slug}${prob.category === 'GFG POTD' ? '?source=gfg' : ''}`);
           }}
         />
       )}

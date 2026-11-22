@@ -1,4 +1,4 @@
-import { getGfgDate } from './leetcodeApi';
+import { fetchGFGPOTD, getGfgDate, isCurrentGfgPotd } from './leetcodeApi';
 import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { apiFetch as fetch } from './apiFetch';
 /**
@@ -471,9 +471,9 @@ export async function fetchGFGProfile(username: string, forceFresh?: boolean): P
   if (!clean) return null;
 
   try {
-    const url = `${TELEGRAM_BACKEND_URL}/api/gfg/profile/${encodeURIComponent(clean)}${forceFresh ? `?t=${Date.now()}` : ''}`;
+    const url = `${TELEGRAM_BACKEND_URL}/api/gfg/profile/${encodeURIComponent(clean)}${forceFresh ? '?force_refresh=true' : ''}`;
     const res = await fetch(url, {
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(16000),
       cache: forceFresh ? 'no-cache' : 'default'
     });
     if (res.ok) {
@@ -486,6 +486,20 @@ export async function fetchGFGProfile(username: string, forceFresh?: boolean): P
     console.warn('[GFG Profile Fetch Notice]:', err);
   }
   return null;
+}
+
+export async function syncGfgDaily(username?: string) {
+  const [problem, profile] = await Promise.all([
+    fetchGFGPOTD(true),
+    username?.trim() ? fetchGFGProfile(username, true) : null,
+  ]);
+  const message = !isCurrentGfgPotd(problem) ? 'Today’s GFG problem is unavailable.'
+    : !username?.trim() ? 'Today’s problem is up to date. Use Mark as Solved after submitting on GFG.'
+      : !profile ? 'Today’s problem is up to date. The GFG profile could not be refreshed.'
+        : profile.checked_date_ist === problem.date && typeof profile.today_submission_count === 'number'
+          ? `GFG shows ${profile.today_submission_count} submissions today. Use Mark as Solved to record this problem.`
+          : 'GFG profile refreshed. Use Mark as Solved to record this problem.';
+  return { problem, profile, message };
 }
 
 /**
@@ -718,14 +732,19 @@ export function getAuthenticActivityDateCounts(): Record<string, number> {
     for (let k = 0; k < localStorage.length; k++) {
       const key = localStorage.key(k);
       if (!key) continue;
+      const datePart = key.slice(-10);
+      const value = localStorage.getItem(key);
+      if (key.startsWith('sdetube_potd_gfg_manual_solved_') && /^\d{4}-\d{2}-\d{2}$/.test(datePart) &&
+          value && /^[a-z0-9-]+$/.test(value) && value !== 'true') {
+        potdDates.add(datePart);
+      }
       if (
         key.startsWith('sdetube_potd_solved_') ||
         key.startsWith('sdetube_potd_sdetube_solved_') ||
         key.startsWith('sdetube_potd_leetcode_solved_') ||
         key.startsWith('sdetube_potd_gfg_solved_')
       ) {
-        if (localStorage.getItem(key) === 'true') {
-          const datePart = key.slice(-10);
+        if (value === 'true') {
           if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
             potdDates.add(datePart);
           }
@@ -1572,12 +1591,25 @@ export function isLeetCodeProblemSolvedToday(
   return false;
 }
 
+export function isGfgPotdManuallySolved(slug: string, day: string): boolean {
+  return localStorage.getItem(`sdetube_potd_gfg_manual_solved_${day}`) === slug;
+}
+
+export function setGfgPotdManuallySolved(slug: string, day: string, solved: boolean) {
+  if (day !== getGfgDate()) return;
+  const key = `sdetube_potd_gfg_manual_solved_${day}`;
+  if (solved) localStorage.setItem(key, slug);
+  else if (isGfgPotdManuallySolved(slug, day)) localStorage.removeItem(key);
+  window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: day, manual: true } }));
+}
+
 /** The public activity calendar does not establish a problem-level verdict. */
 export function isGfgPotdAccepted(slug: string, day: string): boolean {
   try {
     const entries = JSON.parse(localStorage.getItem(`edustream_submissions_${slug}`) || '[]');
     return Array.isArray(entries) && entries.some(entry => {
-      if (entry?.status !== 'Accepted' || entry.verifiedHidden !== true) return false;
+      if (!(entry?.status === 'Accepted' && entry.verifiedHidden === true) &&
+          !(entry?.status === 'Accepted (public samples only)' && entry.acceptedOnSamples === true)) return false;
       const at = Number(entry.id?.split('_')[0]);
       return Number.isFinite(at) && at > 0 && getGfgDate(new Date(at)) === day;
     });
