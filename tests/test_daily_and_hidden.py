@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
-from gfg_potd import fetch_gfg_daily, india_date, normalize_daily
+from gfg_potd import fetch_gfg_daily, india_date, matches_gfg_solve, normalize_daily
 from hidden_judge import grade, metric, prepare_suite, suggest_sample_variants, unique_inputs
 from same_tree_suite import SAMPLES, candidate_inputs
 
@@ -27,6 +27,19 @@ class DailyTests(unittest.TestCase):
         get.side_effect = [Mock(json=lambda: self.problem('2026-11-20')), Mock(json=lambda: self.problem('2026-11-21'))]
         self.assertEqual(fetch_gfg_daily('2026-11-21')['date'], '2026-11-21')
         self.assertEqual(get.call_count, 2)
+
+    def test_gfg_solve_requires_exact_problem_on_the_published_day(self):
+        data = {'status': 'success', 'result': {'Medium': {
+            '1': {'slug': 'daily', 'user_subtime': '2026-11-21 23:59:59'},
+            '2': {'slug': 'another-problem', 'user_subtime': '2026-11-22 12:23:19'},
+        }}}
+        self.assertFalse(matches_gfg_solve(data, 'daily', '2026-11-22'))
+        data['result']['Medium']['1']['user_subtime'] = '2026-11-21T18:30:00Z'
+        self.assertTrue(matches_gfg_solve(data, 'daily', '2026-11-22'))
+        data['result']['Medium']['1']['user_subtime'] = '2026-11-22 12:23:19'
+        self.assertTrue(matches_gfg_solve(data, 'daily', '2026-11-22'))
+        with self.assertRaises(ValueError):
+            matches_gfg_solve({'status': 'failed'}, 'daily', '2026-11-22')
 
 
 class HiddenTests(unittest.TestCase):

@@ -4799,7 +4799,7 @@ async def get_gfg_profile(username: str, force_refresh: bool = False):
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", clean_user):
         return JSONResponse(status_code=400, content={"error": "Invalid GFG username"})
 
-    from gfg_potd import INDIA, india_date
+    from gfg_potd import INDIA, SUBMISSIONS_URL, india_date
     now = time.time()
     today_ist = india_date()
     cache_key = clean_user.lower()
@@ -4965,7 +4965,7 @@ async def get_gfg_profile(username: str, force_refresh: bool = False):
 
         try:
             heatmap_resp = requests.post(
-                "https://practiceapi.geeksforgeeks.org/api/v1/user/problems/submissions/",
+                SUBMISSIONS_URL,
                 json={
                     "handle": clean_user,
                     "requestType": "getYearwiseUserSubmissions",
@@ -6231,27 +6231,51 @@ async def get_leetcode_month_potd_endpoint(year: int = None, month: int = None):
 _GFG_POTD_CACHE = {"date": "", "data": None, "fetched_at": 0}
 
 
-@app.get("/api/potd/gfg")
-@app.get("/api/gfg/potd")
-@app.get("/api/gfg-potd")
-@app.get("/gfg/potd")
-async def get_gfg_potd_endpoint(force_refresh: bool = False):
-    from gfg_potd import fetch_gfg_daily, india_date
+async def load_gfg_potd(today: str, force_refresh: bool = False):
+    from gfg_potd import fetch_gfg_daily
 
-    today = india_date()
     cached = _GFG_POTD_CACHE.get("data")
     now = time.monotonic()
-    headers = {"Cache-Control": "no-store"}
     if not force_refresh and cached and cached["date"] == today and now - _GFG_POTD_CACHE.get("fetched_at", 0) < 300:
-        return JSONResponse(cached, headers=headers)
+        return cached
 
     result = await asyncio.to_thread(fetch_gfg_daily, today)
     if result and (not cached or result["date"] >= cached["date"]):
         _GFG_POTD_CACHE.update(date=result["date"], data=result, fetched_at=now)
         cached = result
-    if cached and cached["date"] <= today:
+    return cached if cached and cached["date"] <= today else None
+
+
+@app.get("/api/potd/gfg")
+@app.get("/api/gfg/potd")
+@app.get("/api/gfg-potd")
+@app.get("/gfg/potd")
+async def get_gfg_potd_endpoint(force_refresh: bool = False):
+    from gfg_potd import india_date
+
+    cached = await load_gfg_potd(india_date(), force_refresh)
+    headers = {"Cache-Control": "no-store"}
+    if cached:
         return JSONResponse(cached, headers=headers)
     return JSONResponse({"detail": "GeeksforGeeks daily problem unavailable"}, status_code=503, headers=headers)
+
+
+@app.get("/api/potd/gfg/verify/{username}")
+async def verify_gfg_potd(username: str):
+    from gfg_potd import fetch_gfg_solve, india_date
+
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", username):
+        raise HTTPException(400, "Invalid GFG username")
+    today = india_date()
+    daily = await load_gfg_potd(today)
+    if not daily or daily["date"] != today:
+        raise HTTPException(503, "GeeksforGeeks daily problem unavailable")
+    slug = daily["titleSlug"]
+    try:
+        verified = await asyncio.to_thread(fetch_gfg_solve, username, slug, today)
+    except (requests.RequestException, ValueError):
+        raise HTTPException(502, "GeeksforGeeks solved history unavailable")
+    return JSONResponse({"verified": verified, "slug": slug, "date": today}, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/leetcode/raw/{slug}")

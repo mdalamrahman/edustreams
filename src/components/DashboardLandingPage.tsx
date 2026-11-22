@@ -51,8 +51,10 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgPotdAccepted,
+  isGfgPotdVerified,
   isGfgPotdManuallySolved,
   syncGfgDaily,
+  watchGfgDailySolve,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -221,6 +223,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
   const [gfgPotd, setGfgPotd] = useState<GFGDailyQuestion | null>(null);
   const [isLoadingGfg, setIsLoadingGfg] = useState(false);
 
+  useEffect(() => watchGfgDailySolve(gfgPotd, linkedConfig.gfgUsername), [gfgPotd, linkedConfig.gfgUsername]);
+
   useEffect(() => {
     setIsLoadingLc(true);
     fetchLeetCodePOTD().then((res) => {
@@ -347,8 +351,9 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
 
   // Check Card C: GFG POTD solved status
   const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgExternalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdVerified(gfgPotd.titleSlug, gfgPotd.date, linkedConfig.gfgUsername);
   const isGfgManuallySolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date);
-  const isGfgPotdSolved = isGfgLocalSolved || isGfgManuallySolved;
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgExternalSolved || isGfgManuallySolved;
 
   const handleSyncPlatformPotd = async () => {
     clearPOTDCache();
@@ -812,7 +817,7 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                 {isGfgPotdSolved ? (
                   <span className="font-mono text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    {isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}
+                    {isGfgExternalSolved ? 'Verified on GFG' : isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}
                   </span>
                 ) : (
                   <span className="font-mono text-[10px] text-stitch-muted">
@@ -883,8 +888,8 @@ export const DashboardLandingPage: React.FC<DashboardLandingPageProps> = ({
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncingGfg ? 'animate-spin text-emerald-400' : ''}`} />
                 </button>
               </div>
-              {gfgSyncMessage && (
-                <p className={`text-[10px] font-mono text-center ${gfgSyncMessage.startsWith('✓') ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {gfgSyncMessage && !isGfgExternalSolved && (
+                <p className="text-[10px] font-mono text-center text-amber-400">
                   {gfgSyncMessage}
                 </p>
               )}

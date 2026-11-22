@@ -5,7 +5,7 @@ import { BLIND_75_SHEET_DATA } from './blind75SheetData';
 import { CODESTORYWITHMIK_SHEET_DATA } from './mikSheetData';
 import { LLD_PROBLEMS } from './lldData';
 import { setSolvedIds, getSolvedIds, saveUserProgress, recordStudyMinutes, getUserProgressSync } from './progressService';
-import { getRealSheetSolvedBreakdown, isGfgPotdAccepted, isGfgPotdManuallySolved } from './userProfileService';
+import { getRealSheetSolvedBreakdown, isGfgPotdAccepted, isGfgPotdManuallySolved, isGfgPotdVerified } from './userProfileService';
 
 // Dedicated per-sheet maps for accurate O(1) problem ID lookup (prevents cross-sheet ID collisions)
 const sdeProblemMap = new Map<number, any>();
@@ -330,7 +330,8 @@ export function isPotdSolvedToday(platform?: 'sdetube' | 'leetcode' | 'gfg'): bo
 
 function isGfgDailySolved(): boolean {
   const daily = getCachedCurrentGfgPotd();
-  return Boolean(daily && (isGfgPotdAccepted(daily.titleSlug, daily.date) || isGfgPotdManuallySolved(daily.titleSlug, daily.date)));
+  return Boolean(daily && (isGfgPotdAccepted(daily.titleSlug, daily.date) ||
+    isGfgPotdManuallySolved(daily.titleSlug, daily.date) || isGfgPotdVerified(daily.titleSlug, daily.date)));
 }
 
 /**

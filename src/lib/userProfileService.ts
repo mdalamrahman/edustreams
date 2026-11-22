@@ -1,4 +1,4 @@
-import { fetchGFGPOTD, getGfgDate, isCurrentGfgPotd } from './leetcodeApi';
+import { fetchGFGPOTD, getGfgDate, isCurrentGfgPotd, type GFGDailyQuestion } from './leetcodeApi';
 import { requestSignInForPreview, isRecruiterPreviewEnabled } from './recruiterPreview';
 import { apiFetch as fetch } from './apiFetch';
 /**
@@ -488,17 +488,57 @@ export async function fetchGFGProfile(username: string, forceFresh?: boolean): P
   return null;
 }
 
+const gfgVerificationRequests = new Map<string, Promise<boolean | null>>();
+const gfgVerifiedPrefix = (username = '') => `sdetube_potd_gfg_verified_${username.trim().toLowerCase()}_`;
+
+export function isGfgPotdVerified(slug: string, day: string, username = getLinkedProfiles().gfgUsername): boolean {
+  return Boolean(username?.trim() && !isRecruiterPreviewEnabled() && localStorage.getItem(gfgVerifiedPrefix(username) + day) === slug);
+}
+
+async function verifyGfgDaily(problem: GFGDailyQuestion | null, username?: string): Promise<boolean | null> {
+  const handle = username?.trim();
+  if (!handle || !isCurrentGfgPotd(problem) || isRecruiterPreviewEnabled()) return null;
+  if (isGfgPotdVerified(problem.titleSlug, problem.date, handle)) return true;
+  const storageKey = gfgVerifiedPrefix(handle) + problem.date;
+  const key = `${storageKey}:${problem.titleSlug}`;
+  const pending = gfgVerificationRequests.get(key);
+  if (pending) return pending;
+
+  const request = (async () => {
+    try {
+      const response = await fetch(`${TELEGRAM_BACKEND_URL}/api/potd/gfg/verify/${encodeURIComponent(handle)}`, {
+        signal: AbortSignal.timeout(17_000), cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (result?.slug !== problem.titleSlug || result.date !== problem.date || !isCurrentGfgPotd(problem)) return null;
+      if (result.verified !== true) return false;
+      localStorage.setItem(storageKey, problem.titleSlug);
+      window.dispatchEvent(new CustomEvent('sdetube_potd_solved', { detail: { platform: 'gfg', date: problem.date } }));
+      return true;
+    } catch { return null; }
+  })().finally(() => gfgVerificationRequests.delete(key));
+  gfgVerificationRequests.set(key, request);
+  return request;
+}
+
+export function watchGfgDailySolve(problem: GFGDailyQuestion | null, username?: string) {
+  if (!isCurrentGfgPotd(problem) || !username?.trim() || isRecruiterPreviewEnabled()) return;
+  const refresh = () => { void verifyGfgDaily(problem, username); };
+  refresh();
+  window.addEventListener('focus', refresh);
+  return () => window.removeEventListener('focus', refresh);
+}
+
 export async function syncGfgDaily(username?: string) {
-  const [problem, profile] = await Promise.all([
-    fetchGFGPOTD(true),
-    username?.trim() ? fetchGFGProfile(username, true) : null,
-  ]);
+  const profileRequest = username?.trim() ? fetchGFGProfile(username, true) : null;
+  const problem = await fetchGFGPOTD(true);
+  const [profile, verified] = await Promise.all([profileRequest, verifyGfgDaily(problem, username)]);
   const message = !isCurrentGfgPotd(problem) ? 'Today’s GFG problem is unavailable.'
-    : !username?.trim() ? 'Today’s problem is up to date. Use Mark as Solved after submitting on GFG.'
-      : !profile ? 'Today’s problem is up to date. The GFG profile could not be refreshed.'
-        : profile.checked_date_ist === problem.date && typeof profile.today_submission_count === 'number'
-          ? `GFG shows ${profile.today_submission_count} submissions today. Use Mark as Solved to record this problem.`
-          : 'GFG profile refreshed. Use Mark as Solved to record this problem.';
+    : verified ? 'GFG confirmed your solve for this problem.'
+      : !username?.trim() ? 'Link your GFG account to verify solves automatically, or use Mark as Solved.'
+        : verified === false ? 'No matching solve found on GFG today. Use Mark as Solved if you’ve already completed it.'
+          : 'GFG solved history is unavailable. Use Mark as Solved if you’ve already completed it.';
   return { problem, profile, message };
 }
 
@@ -729,12 +769,13 @@ export function getAuthenticActivityDateCounts(): Record<string, number> {
     // 3. Deduplicate POTD active dates: any POTD solved guarantees that date is credited as an active day.
     // However, if the date ALREADY has submissions/activity recorded, do NOT add multiple duplicate counts.
     const potdDates = new Set<string>();
+    const gfgPrefix = gfgVerifiedPrefix(getLinkedProfiles().gfgUsername);
     for (let k = 0; k < localStorage.length; k++) {
       const key = localStorage.key(k);
       if (!key) continue;
       const datePart = key.slice(-10);
       const value = localStorage.getItem(key);
-      if (key.startsWith('sdetube_potd_gfg_manual_solved_') && /^\d{4}-\d{2}-\d{2}$/.test(datePart) &&
+      if ((key.startsWith('sdetube_potd_gfg_manual_solved_') || key.startsWith(gfgPrefix)) && /^\d{4}-\d{2}-\d{2}$/.test(datePart) &&
           value && /^[a-z0-9-]+$/.test(value) && value !== 'true') {
         potdDates.add(datePart);
       }

@@ -10,6 +10,7 @@ FEEDS = (
     'https://practiceapi.geeksforgeeks.org/api/vr/problems-of-day/problem/today/',
     'https://practiceapi.geeksforgeeks.org/api/v1/problems-of-day/problem/today/',
 )
+SUBMISSIONS_URL = 'https://practiceapi.geeksforgeeks.org/api/v1/user/problems/submissions/'
 
 
 def india_date(now=None):
@@ -60,3 +61,38 @@ def fetch_gfg_daily(today):
         except (requests.RequestException, ValueError):
             continue
     return previous
+
+
+def matches_gfg_solve(data, slug, day):
+    """The solved-problems feed groups accepted entries by difficulty and problem ID."""
+    groups = data.get('result') if isinstance(data, dict) and data.get('status') == 'success' else None
+    if not isinstance(groups, dict):
+        raise ValueError('GeeksforGeeks solved history unavailable')
+    for entries in groups.values():
+        if not isinstance(entries, dict):
+            continue
+        for entry in entries.values():
+            if not isinstance(entry, dict) or entry.get('slug') != slug:
+                continue
+            try:
+                submitted = datetime.fromisoformat(entry.get('user_subtime'))
+            except (TypeError, ValueError):
+                continue
+            # The upstream timestamp has India-local wall time when no offset is supplied.
+            if submitted.tzinfo is not None:
+                submitted = submitted.astimezone(INDIA)
+            if submitted.date().isoformat() == day:
+                return True
+    return False
+
+
+def fetch_gfg_solve(handle, slug, day):
+    response = requests.post(
+        SUBMISSIONS_URL,
+        json={'handle': handle, 'requestType': '', 'year': '', 'month': ''},
+        headers={'Accept': 'application/json', 'Origin': 'https://www.geeksforgeeks.org',
+                 'Referer': 'https://www.geeksforgeeks.org/', 'User-Agent': 'Mozilla/5.0'},
+        timeout=8,
+    )
+    response.raise_for_status()
+    return matches_gfg_solve(response.json(), slug, day)

@@ -12,9 +12,11 @@ import {
   GFGProfileData, 
   isLeetCodeProblemSolvedToday, 
   isGfgPotdAccepted,
+  isGfgPotdVerified,
   isGfgPotdManuallySolved,
   setGfgPotdManuallySolved,
   syncGfgDaily,
+  watchGfgDailySolve,
   checkLeetCodeProfilePrivacy,
   verifyLeetCodePotdSubmission
 } from '../lib/userProfileService';
@@ -84,6 +86,8 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
         .catch(() => {});
     }
   }, [linkedConfig.leetcodeUsername, linkedConfig.gfgUsername]);
+
+  useEffect(() => watchGfgDailySolve(gfgPotd, linkedConfig.gfgUsername), [gfgPotd, linkedConfig.gfgUsername]);
 
   useEffect(() => {
     resetUnverifiedPotdToday();
@@ -187,8 +191,9 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
 
   // Check if GFG POTD is solved
   const isGfgLocalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdAccepted(gfgPotd.titleSlug, gfgPotd.date);
+  const isGfgExternalSolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdVerified(gfgPotd.titleSlug, gfgPotd.date, linkedConfig.gfgUsername);
   const isGfgManuallySolved = isCurrentGfgPotd(gfgPotd) && isGfgPotdManuallySolved(gfgPotd.titleSlug, gfgPotd.date);
-  const isGfgPotdSolved = isGfgLocalSolved || isGfgManuallySolved;
+  const isGfgPotdSolved = isGfgLocalSolved || isGfgExternalSolved || isGfgManuallySolved;
 
   const isAnyPotdSolved = isSdePotdSolved || isLcPotdSolved || isGfgPotdSolved;
 
@@ -248,7 +253,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
     if (current) {
       localStorage.removeItem(`sdetube_potd_leetcode_solved_${today}`);
       const sdeSolved = localStorage.getItem(`sdetube_potd_sdetube_solved_${today}`) === 'true';
-      const gfgSolved = localStorage.getItem(`sdetube_potd_gfg_solved_${today}`) === 'true';
+      const gfgSolved = isPotdSolvedToday('gfg');
       if (!sdeSolved && !gfgSolved) {
         localStorage.removeItem(`sdetube_potd_solved_${today}`);
       }
@@ -816,7 +821,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                     isGfgPotdSolved ? 'text-emerald-200' : 'text-slate-100'
                   }`}>
                     <span>{gfgPotd.title}</span>
-                    {isGfgPotdSolved && <span className="text-xs font-normal text-emerald-400">{isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}</span>}
+                    {isGfgPotdSolved && <span className="text-xs font-normal text-emerald-400">{isGfgExternalSolved ? 'Verified on GFG' : isGfgLocalSolved ? 'Solved in SDETube' : 'Marked manually'}</span>}
                   </h4>
                   <p className="mt-1 text-xs text-slate-400">{isCurrentGfgPotd(gfgPotd) ? 'Published' : 'Last published problem'} · {gfgPotd.date}</p>
                 </div>
@@ -844,7 +849,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                       <RefreshCw className="h-3.5 w-3.5" />
                       {isVerifyingGfg ? 'Refreshing GFG…' : 'Sync GFG'}
                     </button>
-                    {isCurrentGfgPotd(gfgPotd) && (!isGfgLocalSolved || isGfgManuallySolved) && (
+                    {isCurrentGfgPotd(gfgPotd) && !isGfgExternalSolved && (!isGfgLocalSolved || isGfgManuallySolved) && (
                       <button
                         type="button"
                         onClick={toggleManualGfgSolved}
@@ -857,7 +862,7 @@ export const POTDModal: React.FC<POTDModalProps> = ({ onClose, onSolveSdeProblem
                   </div>
                 </div>
 
-                {gfgVerifyMessage && (
+                {gfgVerifyMessage && !isGfgExternalSolved && (
                   <div className="text-[11px] font-mono px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
                     {gfgVerifyMessage}
                   </div>
