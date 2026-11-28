@@ -96,11 +96,39 @@ export function assessResume(resume: string, jobDescription = '', preferredText 
   const preferred = termsIn(preferredLines.join('\n') + '\n' + preferredText).filter(term => !core.includes(term));
   const requirements = evidence.filter(item => core.includes(item.term) || preferred.includes(item.term))
     .map(item => ({ ...item, preferred: preferred.includes(item.term) }));
+  const skills = evidence.filter(item => item.evidence);
+  const words = resume.trim().split(/\s+/).length;
+  const workLines = lines.filter(line => (line.section === 'Experience' || line.section === 'Projects') &&
+    !resumeHeading(line.text) && line.text.length > 35);
+  const actionLines = workLines.filter(line => /^(?:[-*•]\s*)?(?:built|developed|led|designed|implemented|automated|improved|reduced|delivered|created|maintained|tested|managed|optimized|deployed|integrated|migrated|resolved|launched|analyzed|supported|engineered|scaled)\b/i.test(line.text));
+  const factors = [
+    { label: 'Contact details', score: hasEmail ? 100 : 0, weight: 15,
+      detail: hasEmail ? 'Email found in extracted text.' : 'Add a working email address in selectable text.' },
+    { label: 'Section structure', score: Math.round(100 * ['Education', 'Skills', sections.has('Experience') ? 'Experience' : 'Projects'].filter(name => sections.has(name as Section)).length / 3), weight: 20,
+      detail: 'Checks for Education, Skills, and Experience or Projects headings.' },
+    { label: 'Experience evidence', score: workLines.length ? Math.round(50 + 50 * Math.min(1, actionLines.length / Math.min(workLines.length, 4))) : 0, weight: 20,
+      detail: `${workLines.length} work or project lines, including ${actionLines.length} starting with an action verb. Describe your contribution and its outcome.` },
+    { label: 'Measurable impact', score: Math.round(100 * Math.min(1, measuredBullets / 3)), weight: 20,
+      detail: `${measuredBullets} work or project lines with quantities. Three such lines earn full credit. Include only figures you can substantiate.` },
+    { label: 'Technical skills', score: Math.round(100 * Math.min(1, skills.length / 4)), weight: 15,
+      detail: `${skills.length} recognized technical skills. Four earn full credit. Job-specific relevance is assessed separately.` },
+    { label: 'Length and dates', score: (words >= 200 && words <= 1000 ? 50 : words >= 100 && words <= 1500 ? 25 : 0) + (workLines.some(line => /\b(?:19|20)\d{2}\b/.test(line.text)) || lines.some(line => line.section === 'Experience' && /\b(?:19|20)\d{2}\b/.test(line.text)) ? 50 : 0), weight: 10,
+      detail: `${words} words. Checks for a 200–1,000 word resume and year dates in work or project entries. Review chronology and layout in the original document.` },
+  ];
+  const readinessScore = Math.round(factors.reduce((sum, factor) => sum + factor.score * factor.weight / 100, 0));
+  const required = requirements.filter(item => !item.preferred);
+  const preferredRequirements = requirements.filter(item => item.preferred);
+  const coverage = (items: typeof requirements) => items.length ? Math.round(100 * items.filter(item => item.evidence).length / items.length) : null;
   return {
     checks,
-    skills: evidence.filter(item => item.evidence),
+    skills,
+    readinessScore,
+    factors,
+    improvements: factors.filter(factor => factor.score < 100).sort((a, b) => (100 - b.score) * b.weight - (100 - a.score) * a.weight),
     match: requirements.length ? {
       requirements,
+      requiredScore: coverage(required),
+      preferredScore: coverage(preferredRequirements),
       matched: requirements.filter(item => item.evidence).length,
       score: Math.round(100 * requirements.filter(item => item.evidence).length / requirements.length),
     } : null,

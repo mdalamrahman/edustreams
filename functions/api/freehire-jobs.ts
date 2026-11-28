@@ -1,7 +1,8 @@
-import type { ResumeJob, WorkMode } from '../../src/lib/resumeMarket';
+import { marketCountries, type MarketCountry, type ResumeJob, type WorkMode } from '../../src/lib/resumeMarket';
 
 export interface Env {
   FREEHIRE_API_KEY?: string;
+  FREEHIRE_TOKEN?: string;
 }
 
 const searchUrl = 'https://freehire.me/api/v1/jobs/search';
@@ -18,6 +19,10 @@ type ProviderJob = {
   posted_at?: string;
   description?: string;
   url?: string;
+  apply_url?: string;
+  closed_at?: string | null;
+  employment_type?: string;
+  salary?: ResumeJob['salary'];
   enrichment?: {
     summary?: string;
     employment_type?: string;
@@ -32,10 +37,13 @@ type ProviderJob = {
 function normalizeJob(job: ProviderJob): ResumeJob | null {
   if (!job.public_slug || !job.title || !job.company) return null;
   const enrichment = job.enrichment ?? {};
-  const { salary_min: min, salary_max: max, salary_currency: currency, salary_period: period } = enrichment;
+  const { min, max, currency, period } = job.salary || {
+    min: enrichment.salary_min, max: enrichment.salary_max,
+    currency: enrichment.salary_currency, period: enrichment.salary_period,
+  };
   let applyUrl = '';
   try {
-    const url = new URL(job.url ?? '');
+    const url = new URL(job.url || job.apply_url || `https://freehire.me/jobs/${encodeURIComponent(job.public_slug)}`);
     if (url.protocol === 'https:' || url.protocol === 'http:') applyUrl = url.href;
   } catch { /* The source did not include a usable link. */ }
   return {
@@ -50,7 +58,7 @@ function normalizeJob(job: ProviderJob): ResumeJob | null {
     description: (job.description || enrichment.summary || '').replace(/<[^>]*>/g, ' ').slice(0, 16_000),
     required: (enrichment.requirements ?? []).filter(item => item.priority === 'required').map(item => item.text).slice(0, 25),
     preferred: (enrichment.requirements ?? []).filter(item => item.priority === 'preferred').map(item => item.text).slice(0, 25),
-    employment: enrichment.employment_type || '',
+    employment: job.employment_type || enrichment.employment_type || '',
     salary: typeof min === 'number' && typeof max === 'number' && Number.isFinite(min) && Number.isFinite(max) &&
       min > 0 && max >= min && currency && /^[A-Z]{3}$/.test(currency) && period && ['year', 'month', 'day', 'hour'].includes(period)
       ? { min, max, currency, period } : null,
@@ -68,18 +76,20 @@ export async function onRequestGet({ request, env }: { request: Request; env: En
       (lane !== 'global' && lane !== 'domestic') || !['all', 'remote', 'hybrid', 'onsite'].includes(mode ?? '')) {
     return Response.json({ error: 'Invalid job search filters.' }, { status: 400 });
   }
-  if (!env.FREEHIRE_API_KEY) {
+  const token = (env.FREEHIRE_API_KEY || env.FREEHIRE_TOKEN || '').trim();
+  if (!token) {
     return Response.json({ error: 'Live job listings are currently unavailable.' }, { status: 503 });
   }
 
   const query = new URLSearchParams({
-    q: role, limit: '50', posted_within_days: '90', sort: 'posted_at', order: 'desc',
+    q: role, limit: '100', posted_within_days: '90', sort: 'posted_at', order: 'desc',
+    ...(params.get('salary_only') === 'true' ? { salary_min: '1', salary_currency: lane === 'global' ? 'USD' : marketCountries[country.toUpperCase() as MarketCountry]?.currency || 'USD' } : {}),
     ...(lane === 'global' ? { regions: 'global', work_mode: 'remote' }
-      : { ...(city ? { cities: city } : { countries: country.toUpperCase() }), ...(mode !== 'all' && mode ? { work_mode: mode } : {}) }),
+      : { countries: country, ...(city ? { cities: city } : {}), ...(mode !== 'all' && mode ? { work_mode: mode } : {}) }),
   });
   try {
     const response = await fetch(searchUrl + '?' + query, {
-      headers: { Accept: 'application/json', Authorization: 'Bearer ' + env.FREEHIRE_API_KEY },
+      headers: { Accept: 'application/json', Authorization: 'Bearer ' + token },
       signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) throw new Error('Provider request failed');
@@ -88,8 +98,9 @@ export async function onRequestGet({ request, env }: { request: Request; env: En
     const roleWords = role.toLowerCase().match(/[a-z0-9]+/g) ?? [];
     const jobs = new Map<string, ResumeJob>();
     for (const job of payload.data) {
+      if (job.closed_at) continue;
       if (lane === 'global' ? job.work_mode !== 'remote' || !job.regions?.includes('global') || job.countries?.length
-        : !job.countries?.includes(country) || (mode !== 'all' && job.work_mode !== mode)) continue;
+        : !job.countries?.some(code => code.toLowerCase() === country) || (mode !== 'all' && job.work_mode !== mode)) continue;
       const titleWords = job.title?.toLowerCase().match(/[a-z0-9]+/g) ?? [];
       if (!roleWords.length || !roleWords.every(word => titleWords.includes(word))) continue;
       const normalized = normalizeJob(job);

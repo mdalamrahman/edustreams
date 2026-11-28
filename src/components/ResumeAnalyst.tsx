@@ -62,7 +62,7 @@ export function ResumeAnalyst() {
   const [version, retry] = useState(0);
   const [domestic, setDomestic] = useState<ListingState>();
   const [global, setGlobal] = useState<ListingState>();
-  const searchKey = JSON.stringify([country, city, role, workMode, version]);
+  const searchKey = JSON.stringify([country, city, role, workMode, tab === 'dashboard', version]);
   const needsListings = Boolean(resume) && (tab === 'dashboard' || tab === 'jobs');
 
   useEffect(() => {
@@ -71,6 +71,7 @@ export function ResumeAnalyst() {
     async function fetchLane(lane: JobLane, save: (listing: ListingState) => void) {
       try {
         const query = new URLSearchParams({ q: role, country, work_mode: workMode, lane });
+        if (tab === 'dashboard') query.set('salary_only', 'true');
         if (lane === 'domestic' && city) query.set('city', city);
         const response = await fetch('/api/freehire-jobs?' + query, { signal: abort.signal });
         if (!response.ok) throw new Error('Job feed unavailable');
@@ -215,6 +216,23 @@ export function ResumeAnalyst() {
           <h2 className={title}>{tabs.find(item => item.id === tab)?.label}</h2>
           <p className="mt-2 text-sm text-slate-300">Upload a readable resume to use this tool.</p>
         </section> : <>
+          {audit && <section className={panel} aria-label="Resume assessment summary">
+            <div className="grid gap-6 sm:grid-cols-3">
+              <div><h2 className="text-sm font-medium text-slate-300">ATS readiness score</h2>
+                <p className="mt-2 text-4xl font-semibold text-teal-300">{audit.readinessScore}<span className="text-lg text-slate-400"> / 100</span></p>
+                <p className="mt-2 text-sm text-slate-400">{audit.readinessScore >= 80 ? 'Strong foundation' : audit.readinessScore >= 50 ? 'Improvements recommended' : 'Needs attention'}</p>
+              </div>
+              <div><h2 className="text-sm font-medium text-slate-300">Job keyword coverage</h2>
+                <p className="mt-2 text-4xl font-semibold text-cyan-300">{audit.match ? `${audit.match.score}%` : '—'}</p>
+                <p className="mt-2 text-sm text-slate-400">{audit.match ? `${audit.match.matched} of ${audit.match.requirements.length} recognized terms found` : 'Add a job description in ATS review to assess the match.'}</p>
+              </div>
+              <div><h2 className="text-sm font-medium text-slate-300">Skills found in your resume</h2>
+                <p className="mt-2 break-words text-sm leading-relaxed text-slate-200">{audit.skills.map(skill => skill.term).join(', ') || 'No recognized technical skills found. Review the extracted text.'}</p>
+                <button className={button + ' mt-3'} onClick={() => changeTab('ats_scanner')}>Review score factors</button>
+              </div>
+            </div>
+            <p className="mt-5 border-t border-slate-800 pt-3 text-xs leading-relaxed text-slate-400">Readiness is a local checklist score from your uploaded text. Expand the factors in ATS review to see the weights. Employer screening results depend on their system, job requirements, and the original document layout.</p>
+          </section>}
           {tab === 'dashboard' && <section className="space-y-4">
             <div><h2 className={title}>Posted pay for {role}</h2>
               <p className="mt-2 text-sm text-slate-300">Compare advertised pay from listings posted in the last 90 days. These figures describe the available postings.</p>
@@ -227,6 +245,21 @@ export function ResumeAnalyst() {
           </section>}
 
           {tab === 'ats_scanner' && audit && <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+            <section className={panel + ' lg:col-span-2'}>
+              <h2 className={title}>ATS score breakdown</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {audit.factors.map(factor => <details key={factor.label} className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+                  <summary className="cursor-pointer text-sm font-medium text-white">{factor.label}<span className="ml-2 text-teal-300">{factor.score}/100</span></summary>
+                  <progress aria-label={factor.label} className="mt-3 h-2 w-full accent-teal-400" value={factor.score} max={100} />
+                  <p className="mt-2 text-sm leading-relaxed text-slate-300">{factor.detail}</p>
+                  <p className="mt-2 text-xs text-slate-400">Weight {factor.weight}% · Contribution {(factor.score * factor.weight / 100).toFixed(1)} points</p>
+                </details>)}
+              </div>
+              <h3 className="mt-5 font-semibold text-white">Priority improvements</h3>
+              {audit.improvements.length ? <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                {audit.improvements.slice(0, 3).map(factor => <li key={factor.label}><span className="font-medium text-white">{factor.label}. </span>{factor.detail}</li>)}
+              </ul> : <p className="mt-2 text-sm text-teal-300">All checklist factors are satisfied. Review your job-specific evidence next.</p>}
+            </section>
             <section className={panel}>
               <h2 className={title}>Resume parseability and quality</h2>
               <dl className="mt-3 divide-y divide-slate-800">
@@ -248,7 +281,10 @@ export function ResumeAnalyst() {
                   onChange={event => { setDescription(event.target.value); setSelectedJob(undefined); }} placeholder="Paste the requirements and preferred qualifications from a job posting." />
               </label>
               {audit.match ? <div className="mt-5">
-                <p className="font-semibold text-white">{audit.match.matched} of {audit.match.requirements.length} recognized terms found</p>
+                <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-950 p-3 text-sm">
+                  <p>Required skill coverage <strong className="block text-xl text-teal-300">{audit.match.requiredScore === null ? 'No terms identified' : `${audit.match.requiredScore}%`}</strong></p>
+                  <p>Preferred skill coverage <strong className="block text-xl text-cyan-300">{audit.match.preferredScore === null ? 'No terms identified' : `${audit.match.preferredScore}%`}</strong></p>
+                </div>
                 <ul className="mt-2 divide-y divide-slate-800">
                   {audit.match.requirements.map(item => <li key={item.term} className="py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">

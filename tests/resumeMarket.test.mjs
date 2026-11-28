@@ -32,6 +32,17 @@ test('resume evidence prefers work examples and retains preferred versus require
   assert.equal(match.requirements.find(item => item.term === 'Python').preferred, true);
 });
 
+test('readiness score is explained by its weighted factors and keeps job coverage separate', () => {
+  const resume = 'Taylor\ntaylor@example.com\nExperience\nEngineer 2020 - 2025\n- Built Python services for 200 users\n- Reduced latency by 25%\n- Automated 50 tests with Playwright\nEducation\nUniversity\nSkills\nPython, SQL, Docker, Playwright';
+  const audit = assessResume(resume, 'Python and Kubernetes', 'Docker');
+  assert.equal(audit.factors.reduce((sum, factor) => sum + factor.weight, 0), 100);
+  assert.equal(audit.readinessScore, Math.round(audit.factors.reduce((sum, factor) => sum + factor.score * factor.weight / 100, 0)));
+  assert.equal(audit.match.requiredScore, 50);
+  assert.equal(audit.match.preferredScore, 100);
+  assert.equal(assessResume(resume).readinessScore, audit.readinessScore);
+  assert.ok(assessResume('Some unstructured text').readinessScore < audit.readinessScore);
+});
+
 test('resume tailoring reorders only complete bullets inside a role and preserves the authored text', () => {
   const resume = 'Experience\nFirst role\n- Wrote tests\n- Built a Docker CI job\n\nSecond role\n- Refactored services\n- Tuned PostgreSQL queries\n continuation\n\nEducation\n- University';
   const draft = prioritizeResumeBullets(resume, 'Docker and PostgreSQL');
