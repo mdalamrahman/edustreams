@@ -61,6 +61,7 @@ test('Resume and in-country value wait for a readable upload', async ({ page }) 
     await route.fulfill({ json: { jobs: params.get('lane') === 'global' ? [] : [0, 1, 2].map(index => ({
       id: 'job-' + index, companyKey: 'employer-' + index, company: 'Test employer ' + index, title: 'Software Engineer',
       postedAt: new Date(Date.now() - 86400_000).toISOString(), applyUrl: 'https://example.com', employment: 'full_time',
+      required: ['Python'], preferred: [], experienceMin: 2,
       salary: { min: 100_000 + index * 1000, max: 130_000 + index * 1000, period: 'year', currency: 'USD' },
     })) } });
   });
@@ -104,6 +105,36 @@ test('Resume and in-country value wait for a readable upload', async ({ page }) 
   await page.getByRole('button', { name: 'Remove resume' }).click();
   await expect(page.getByText('Upload a readable resume to use this tool.')).toBeVisible();
   await expect(draft).toHaveCount(0);
+});
+
+test('replacing a resume refreshes search skills, pay comparisons, and job matches', async ({ page }) => {
+  await studentSession(page);
+  const searches: string[] = [];
+  await page.route('**/api/freehire-jobs?**', route => {
+    const skills = new URL(route.request().url()).searchParams.get('skills') || '';
+    searches.push(skills);
+    const stack = skills.includes('python') ? 'Python' : 'React';
+    return route.fulfill({ json: { jobs: [0, 1, 2].map(index => ({
+      id: stack + index, companyKey: stack + index, company: stack + ' employer ' + index,
+      title: stack + ' Software Engineer', required: [stack], preferred: [], experienceMin: 1,
+      postedAt: new Date(Date.now() - 86400_000).toISOString(), employment: 'full_time',
+      salary: { min: stack === 'Python' ? 1000000 : 2000000, max: stack === 'Python' ? 1500000 : 2500000, currency: 'INR', period: 'year' },
+    })) } });
+  });
+  await page.goto('http://127.0.0.1:4173/resume-analyst');
+  const upload = page.getByLabel('Upload resume', { exact: true });
+  await upload.setInputFiles({ name: 'python.txt', mimeType: 'text/plain', buffer: Buffer.from('Experience\nEngineer 2020 - 2025\nBuilt Python services\nSkills\nPython, SQL') });
+  await expect(page.getByText(/Resume search skills/)).toContainText('Python');
+  await expect(page.getByText(/₹10.*₹15.*LPA/)).toBeVisible();
+  await page.getByRole('button', { name: 'Job listings', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Python Software Engineer' })).toHaveCount(3);
+  await upload.setInputFiles({ name: 'react.txt', mimeType: 'text/plain', buffer: Buffer.from('Experience\nDeveloper 2024 - 2025\nBuilt React interfaces\nSkills\nReact, TypeScript') });
+  await expect(page.getByRole('heading', { name: 'React Software Engineer' })).toHaveCount(3);
+  await expect(page.getByRole('heading', { name: 'Python Software Engineer' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Market pay', exact: true }).click();
+  await expect(page.getByText(/₹20.*₹25.*LPA/)).toBeVisible();
+  expect(searches.some(skills => skills.includes('python'))).toBe(true);
+  expect(searches.some(skills => skills.includes('react'))).toBe(true);
 });
 
 test('Lesson retries a failed media ticket and renews it after real sign-in', async ({ page }) => {

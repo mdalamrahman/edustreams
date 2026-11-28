@@ -147,7 +147,7 @@ graph TD
 - **Resume Scanner & Creator**:
   - Resume Analyst requires a readable upload. Extraction, ATS evidence checks, job comparison, and draft editing run in the browser. The job search sends only selected filters.
   - ATS readiness shows a weighted checklist with contact, structure, experience evidence, impact, skills, and length/date factors. Required and preferred job keyword coverage are displayed separately with excerpts and prioritized improvements.
-  - Market pay searches salary-disclosing postings and uses recent annual salary disclosures from distinct employers. Configure the licensed FreeHire API key as the server-side Pages secret `FREEHIRE_API_KEY` (legacy `FREEHIRE_TOKEN` is supported). When listings are unavailable, students can paste a posting into ATS review.
+  - Market and job searches use recognized resume skills along with the selected title and location. Results are ranked locally by skill evidence and filtered by stated minimum experience. Work date ranges provide an editable experience estimate, counting overlapping years once. Replacing the upload clears previous search results. Pay uses only matching salary disclosures from distinct employers. Configure the licensed FreeHire API key as the server-side Pages secret `FREEHIRE_API_KEY` (legacy `FREEHIRE_TOKEN` is supported).
   - The editor can reorganize existing bullets and export Markdown, plain text, or PDF through the browser. Skill and transition views use resume excerpts and selected job requirements.
 
 ### 3.8. Telegram Video Streaming CDN

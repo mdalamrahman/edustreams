@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assessResume, prioritizeResumeBullets } from '../src/lib/atsEvidence.ts';
-import { displayPay, postedPay } from '../src/lib/resumeMarket.ts';
+import { displayPay, matchResumeJobs, postedPay, resumeSearchProfile } from '../src/lib/resumeMarket.ts';
 import { onRequestGet } from '../functions/api/freehire-jobs.ts';
 
 test('posted pay uses recent full-time annual listings from distinct employers, in one currency', () => {
@@ -30,6 +30,17 @@ test('resume evidence prefers work examples and retains preferred versus require
   assert.equal(match.requirements.find(item => item.term === 'PostgreSQL').section, 'Experience');
   assert.equal(match.requirements.find(item => item.term === 'Docker').evidence, null);
   assert.equal(match.requirements.find(item => item.term === 'Python').preferred, true);
+});
+
+test('different resumes produce different job matches and overlapping work dates are counted once', () => {
+  const python = 'Education\nUniversity 2010 - 2014\nExperience\nEngineer 2020 - 2024\nConsultant 2022 - 2025\nBuilt Python services\nSkills\nPython, SQL';
+  const react = 'Experience\nDeveloper 2024 - 2025\nBuilt React interfaces\nSkills\nReact, TypeScript';
+  assert.equal(resumeSearchProfile(python).years, 5);
+  const job = (id, required, experienceMin = 0) => ({ id, required, preferred: [], experienceMin });
+  const jobs = [job('python', ['Python', 'SQL']), job('react', ['React', 'TypeScript']), job('senior', ['Python'], 10)];
+  assert.deepEqual(matchResumeJobs(jobs, python, 5).map(item => item.job.id), ['python']);
+  assert.deepEqual(matchResumeJobs(jobs, react, 1).map(item => item.job.id), ['react']);
+  assert.equal(resumeSearchProfile('Skills\nPython').years, null);
 });
 
 test('readiness score is explained by its weighted factors and keeps job coverage separate', () => {

@@ -26,6 +26,7 @@ type ProviderJob = {
   enrichment?: {
     summary?: string;
     employment_type?: string;
+    experience_years_min?: number;
     salary_min?: number;
     salary_max?: number;
     salary_currency?: string;
@@ -59,6 +60,7 @@ function normalizeJob(job: ProviderJob): ResumeJob | null {
     required: (enrichment.requirements ?? []).filter(item => item.priority === 'required').map(item => item.text).slice(0, 25),
     preferred: (enrichment.requirements ?? []).filter(item => item.priority === 'preferred').map(item => item.text).slice(0, 25),
     employment: job.employment_type || enrichment.employment_type || '',
+    experienceMin: typeof enrichment.experience_years_min === 'number' && enrichment.experience_years_min >= 0 ? enrichment.experience_years_min : null,
     salary: typeof min === 'number' && typeof max === 'number' && Number.isFinite(min) && Number.isFinite(max) &&
       min > 0 && max >= min && currency && /^[A-Z]{3}$/.test(currency) && period && ['year', 'month', 'day', 'hour'].includes(period)
       ? { min, max, currency, period } : null,
@@ -72,6 +74,10 @@ export async function onRequestGet({ request, env }: { request: Request; env: En
   const city = (params.get('city') || '').trim();
   const lane = params.get('lane');
   const mode = params.get('work_mode');
+  const skills = (params.get('skills') || '').trim();
+  if (skills.length > 200 || (skills && !/^[a-zA-Z0-9.+# /,-]+$/.test(skills))) {
+    return Response.json({ error: 'Invalid skill filters.' }, { status: 400 });
+  }
   if (!role || role.length > 80 || city.length > 80 || city.includes(',') || !/^[a-z]{2}$/.test(country) ||
       (lane !== 'global' && lane !== 'domestic') || !['all', 'remote', 'hybrid', 'onsite'].includes(mode ?? '')) {
     return Response.json({ error: 'Invalid job search filters.' }, { status: 400 });
@@ -83,6 +89,7 @@ export async function onRequestGet({ request, env }: { request: Request; env: En
 
   const query = new URLSearchParams({
     q: role, limit: '100', posted_within_days: '90', sort: 'posted_at', order: 'desc',
+    ...(skills ? { skills, skills_mode: 'or' } : {}),
     ...(params.get('salary_only') === 'true' ? { salary_min: '1', salary_currency: lane === 'global' ? 'USD' : marketCountries[country.toUpperCase() as MarketCountry]?.currency || 'USD' } : {}),
     ...(lane === 'global' ? { regions: 'global', work_mode: 'remote' }
       : { countries: country, ...(city ? { cities: city } : {}), ...(mode !== 'all' && mode ? { work_mode: mode } : {}) }),

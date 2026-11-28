@@ -1,3 +1,5 @@
+import { assessResume, resumeHeading } from './atsEvidence';
+
 export const marketCountries = {
   IN: { name: 'India', currency: 'INR' },
   US: { name: 'United States', currency: 'USD' },
@@ -24,7 +26,50 @@ export interface ResumeJob {
   required: string[];
   preferred: string[];
   employment: string;
+  experienceMin?: number | null;
   salary: { min: number; max: number; currency: string; period: string } | null;
+}
+
+export function resumeSearchProfile(text: string, now = new Date()) {
+  const audit = assessResume(text);
+  const skills = [...audit.skills].sort((a, b) => Number(b.section === 'Experience' || b.section === 'Projects') - Number(a.section === 'Experience' || a.section === 'Projects'))
+    .slice(0, 8).map(item => item.term);
+  const intervals: [number, number][] = [];
+  let inExperience = false;
+  for (const line of text.split(/\r?\n/)) {
+    const heading = resumeHeading(line);
+    if (heading) inExperience = heading === 'Experience';
+    if (!inExperience) continue;
+    for (const match of line.matchAll(/\b((?:19|20)\d{2})\s*(?:[-–—]|to)\s*((?:19|20)\d{2}|present|current|now)\b/gi)) {
+      const start = Number(match[1]);
+      const end = /^\d/.test(match[2]) ? Number(match[2]) : now.getFullYear();
+      if (start <= end && end <= now.getFullYear()) intervals.push([start, end]);
+    }
+  }
+  intervals.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [];
+  for (const interval of intervals) {
+    const previous = merged[merged.length - 1];
+    if (previous && interval[0] <= previous[1]) previous[1] = Math.max(previous[1], interval[1]);
+    else merged.push([...interval]);
+  }
+  const stated = text.match(/\b(\d{1,2})(?:\+)?\s+years?(?:\s+of)?\s+(?:(?:professional|industry|relevant|work|software development)\s+)?experience\b/i);
+  const years = stated ? Number(stated[1]) : merged.length ? merged.reduce((sum, [start, end]) => sum + end - start, 0) : null;
+  return { skills, years };
+}
+
+export function matchResumeJobs(jobs: ResumeJob[], text: string, years: number | null) {
+  return jobs.map(job => {
+    const requirements = job.required?.length ? job.required.join('\n') : job.description || '';
+    const match = assessResume(text, requirements, job.preferred?.join('\n') || '').match;
+    const required = match?.requirements.filter(item => !item.preferred) || [];
+    const terms = required.length ? required : match?.requirements || [];
+    const matched = terms.filter(item => item.evidence).map(item => item.term);
+    const missing = terms.filter(item => !item.evidence).map(item => item.term);
+    const eligible = years === null || job.experienceMin == null || job.experienceMin <= years;
+    return { job, matched, missing, eligible, coverage: terms.length ? Math.round(100 * matched.length / terms.length) : null };
+  }).filter(item => item.eligible && (item.coverage === null || item.matched.length > 0))
+    .sort((a, b) => (b.coverage ?? -1) - (a.coverage ?? -1));
 }
 
 export function postedPay(jobs: ResumeJob[], currency: string, now = Date.now()) {

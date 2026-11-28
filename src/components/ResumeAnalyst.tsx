@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, BarChart3, Briefcase, FileCheck, FileText, GitBr
 import { Link, useSearchParams } from 'react-router-dom';
 import { assessResume } from '../lib/atsEvidence';
 import { extractResumeTextFromFile } from '../lib/resumeAnalyzerService';
-import { displayPay, marketCountries, postedPay, type JobLane, type MarketCountry, type ResumeJob } from '../lib/resumeMarket';
+import { displayPay, marketCountries, matchResumeJobs, postedPay, resumeSearchProfile, type JobLane, type MarketCountry, type ResumeJob } from '../lib/resumeMarket';
 import { AtsResumeCreatorView } from './resume/AtsResumeCreatorView';
 
 const tabs = [
@@ -62,7 +62,10 @@ export function ResumeAnalyst() {
   const [version, retry] = useState(0);
   const [domestic, setDomestic] = useState<ListingState>();
   const [global, setGlobal] = useState<ListingState>();
-  const searchKey = JSON.stringify([country, city, role, workMode, tab === 'dashboard', version]);
+  const profile = useMemo(() => resume ? resumeSearchProfile(resume.text) : null, [resume]);
+  const [experienceOverride, setExperienceOverride] = useState('');
+  const experience = experienceOverride === '' ? profile?.years ?? null : Number(experienceOverride);
+  const searchKey = JSON.stringify([country, city, role, workMode, tab === 'dashboard', version, generation.current, profile?.skills, experience]);
   const needsListings = Boolean(resume) && (tab === 'dashboard' || tab === 'jobs');
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export function ResumeAnalyst() {
     async function fetchLane(lane: JobLane, save: (listing: ListingState) => void) {
       try {
         const query = new URLSearchParams({ q: role, country, work_mode: workMode, lane });
+        if (profile?.skills.length) query.set('skills', profile.skills.map(skill => skill.toLowerCase()).join(','));
         if (tab === 'dashboard') query.set('salary_only', 'true');
         if (lane === 'domestic' && city) query.set('city', city);
         const response = await fetch('/api/freehire-jobs?' + query, { signal: abort.signal });
@@ -94,6 +98,9 @@ export function ResumeAnalyst() {
   function clearResume() {
     generation.current++;
     setResume(undefined);
+    setDomestic(undefined);
+    setGlobal(undefined);
+    setExperienceOverride('');
     setDraft('');
     setDescription('');
     setSelectedJob(undefined);
@@ -123,9 +130,11 @@ export function ResumeAnalyst() {
 
   const market = marketCountries[country];
   const listings = lane === 'domestic' ? domestic : global;
+  const rankedJobs = useMemo(() => resume && listings?.jobs ? matchResumeJobs(listings.jobs, resume.text, experience) : [], [resume, listings, experience]);
   function renderMarket(label: string, state: ListingState | undefined, currency: string) {
     const current = state?.key === searchKey ? state : undefined;
-    const pay = current?.jobs ? postedPay(current.jobs, currency) : null;
+    const matched = current?.jobs && resume ? matchResumeJobs(current.jobs, resume.text, experience) : [];
+    const pay = current?.jobs ? postedPay(matched.filter(item => item.coverage !== null && item.matched.length > 0).map(item => item.job), currency) : null;
     return <section className={panel}>
       <h3 className={title}>{label}</h3>
       {!current ? <p role="status" className="mt-3 text-slate-300">Checking listings…</p>
@@ -133,6 +142,7 @@ export function ResumeAnalyst() {
           : pay?.range ? <>
             <p className="mt-3 break-words text-2xl font-semibold text-teal-300">{displayPay(pay.range.min, pay.range.max, currency, 'year')}</p>
             <p className="mt-2 text-sm text-slate-400">Median lower and upper pay from {pay.count} employers with recent full-time postings in {currency}.</p>
+            <p className="mt-2 text-sm text-slate-400">These postings share skills with your resume and pass the experience filter where the employer states a minimum.</p>
             <details className="mt-4 text-sm">
               <summary className="cursor-pointer font-medium text-teal-300">View source postings</summary>
               <ul className="mt-2 space-y-2">
@@ -201,6 +211,10 @@ export function ResumeAnalyst() {
                   <option value="hybrid">Hybrid</option><option value="onsite">On-site</option>
                 </select>
               </label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Relevant experience (years)</span>
+                <input type="number" min="0" max="60" step="0.5" className={control} value={experienceOverride} placeholder={profile?.years == null ? 'Enter to filter' : String(profile.years)} onChange={event => setExperienceOverride(event.target.value)} />
+              </label>
+              {profile && <p className="text-xs leading-relaxed text-slate-400 sm:col-span-2">Resume search skills · {profile.skills.join(', ') || 'No recognized skills; using your target title'}. Experience · {experience === null ? 'not detected' : `${experience} years`}{experienceOverride === '' && profile.years !== null ? ' estimated from stated experience or work date ranges; adjust above if needed' : ''}.</p>}
               <button className={button + ' self-end sm:justify-self-start'} type="submit" disabled={!roleInput.trim()}>Search listings <ArrowRight size={15} /></button>
             </form>
           </section>
@@ -235,7 +249,7 @@ export function ResumeAnalyst() {
           </section>}
           {tab === 'dashboard' && <section className="space-y-4">
             <div><h2 className={title}>Posted pay for {role}</h2>
-              <p className="mt-2 text-sm text-slate-300">Compare advertised pay from listings posted in the last 90 days. These figures describe the available postings.</p>
+              <p className="mt-2 text-sm text-slate-300">Compare advertised pay from recent postings matched to your uploaded resume’s skills and experience. The range describes those postings.</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {renderMarket('In-country · ' + (city ? city + ', ' : '') + market.name, domestic, market.currency)}
@@ -317,11 +331,14 @@ export function ResumeAnalyst() {
                   <a className={button} href="https://freehire.me/jobs" target="_blank" rel="noreferrer">Browse FreeHire</a>
                   <button className={button} onClick={() => changeTab('ats_scanner')}>Open ATS review</button>
                 </div>
-              </div> : !listings.jobs?.length ? <p className={panel}>No recent listings match these filters. Try another job title or work arrangement.</p>
+              </div> : !rankedJobs.length ? <p className={panel}>No recent listings match your resume and search filters. Review the detected skills, experience, or target job title.</p>
                 : <div className="grid gap-4 md:grid-cols-2">
-                  {listings.jobs.map(job => <article key={job.id} className={panel}>
+                  {rankedJobs.map(({ job, matched, missing, coverage }) => <article key={job.id} className={panel}>
                     <h3 className="break-words text-base font-semibold text-white">{job.title}</h3>
                     <p className="mt-1 break-words text-sm text-slate-300">{[job.company, job.location, job.workMode].filter(Boolean).join(' · ')}</p>
+                    <p className="mt-3 text-sm text-cyan-300">{coverage === null ? 'Skill requirements unavailable for comparison' : `${coverage}% recognized skill coverage · ${matched.join(', ')}`}</p>
+                    {!!missing.length && <p className="mt-2 text-sm text-amber-300">Review gaps · {missing.join(', ')}</p>}
+                    <p className="mt-2 text-xs text-slate-400">{job.experienceMin == null ? 'Minimum experience not stated' : `Minimum experience ${job.experienceMin} years`}</p>
                     <p className="mt-3 text-sm text-teal-300">{job.salary ? displayPay(job.salary.min, job.salary.max, job.salary.currency, job.salary.period) : 'Pay not listed'}</p>
                     {Number.isFinite(Date.parse(job.postedAt)) && <p className="mt-1 text-sm text-slate-400">Posted {new Date(job.postedAt).toLocaleDateString()}</p>}
                     <div className="mt-4 flex flex-wrap gap-2">
